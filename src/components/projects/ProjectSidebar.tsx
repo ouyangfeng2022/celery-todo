@@ -190,7 +190,7 @@ function ProjectSidebarComponent({
                     <FolderIcon size={16} />
                     <span className="flex-1 truncate">{project.name}</span>
                     {isDefault && (
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                      <span className="text-xs px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity" style={{ backgroundColor: 'var(--bg-hover)' }}>
                         默认
                       </span>
                     )}
