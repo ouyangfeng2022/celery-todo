@@ -29,6 +29,31 @@ const electronAPI = {
 
   /** 平台信息 */
   platform: process.platform,
+
+  // ===== 数据存储位置 =====
+
+  /** 获取当前数据存储配置（文件路径 + 默认目录） */
+  storageGetConfig: (): Promise<{ filePath: string; defaultDir: string }> =>
+    ipcRenderer.invoke('storage:get-config'),
+
+  /** 从当前存储路径读取数据库二进制 */
+  storageLoad: (): Promise<Uint8Array | null> => ipcRenderer.invoke('storage:load'),
+
+  /** 写入数据库二进制到当前存储路径 */
+  storageSave: (data: Uint8Array): Promise<void> => ipcRenderer.invoke('storage:save', data),
+
+  /** 弹出文件夹选择对话框，返回所选目录路径或 null */
+  storageChooseDirectory: (): Promise<string | null> => ipcRenderer.invoke('storage:choose-directory'),
+
+  /** 切换存储目录并迁移已有数据 */
+  storageSetPath: (newDir: string): Promise<{ filePath: string }> =>
+    ipcRenderer.invoke('storage:set-path', newDir),
+
+  /** 在系统资源管理器中显示数据库文件 */
+  storageOpenInFolder: (): Promise<void> => ipcRenderer.invoke('storage:open-in-folder'),
+
+  /** 重置到默认存储位置（同时迁移数据） */
+  storageResetToDefault: (): Promise<{ filePath: string }> => ipcRenderer.invoke('storage:reset-to-default'),
 };
 
 // 通过 contextBridge 暴露 API

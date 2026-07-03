@@ -1,13 +1,21 @@
 /**
  * @file SettingsPanel - 设置面板
- * @description 主题、通知、Electron 设置、数据导入导出
+ * @description 主题、通知、Electron 设置、数据导入导出、数据存储位置
  */
 
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ThemeMode, AppSettings } from '../../types';
-import { XIcon, DownloadIcon, UploadIcon, SunIcon, MoonIcon, MonitorIcon } from '../common/Icons';
+import { XIcon, DownloadIcon, UploadIcon, SunIcon, MoonIcon, MonitorIcon, FolderIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import {
+  getStorageInfo,
+  chooseStorageDirectory,
+  changeStorageDirectory,
+  resetStorageDirectory,
+  openStorageInFolder,
+  type StorageInfo,
+} from '../../utils/database';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -31,6 +39,54 @@ function SettingsPanelComponent({
   onResetData,
 }: SettingsPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+  const [confirmResetStorage, setConfirmResetStorage] = useState(false);
+
+  // 面板打开时加载存储位置信息（仅桌面端）
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const info = await getStorageInfo();
+      if (!cancelled) setStorageInfo(info);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  const isStorageCustomizable = storageInfo?.mode === 'electron';
+
+  // 选择并切换存储目录
+  const handleChooseStorageDir = useCallback(async () => {
+    try {
+      setStorageBusy(true);
+      const dir = await chooseStorageDirectory();
+      if (!dir) return;
+      await changeStorageDirectory(dir);
+      const info = await getStorageInfo();
+      setStorageInfo(info);
+    } catch (err) {
+      alert(`切换存储位置失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, []);
+
+  // 重置为默认存储位置
+  const handleResetStorage = useCallback(async () => {
+    try {
+      setStorageBusy(true);
+      await resetStorageDirectory();
+      const info = await getStorageInfo();
+      setStorageInfo(info);
+    } catch (err) {
+      alert(`重置存储位置失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, []);
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -179,6 +235,56 @@ function SettingsPanelComponent({
                   </section>
                 )}
 
+                {/* 数据存储位置（仅桌面端） */}
+                {isStorageCustomizable && storageInfo && (
+                  <section>
+                    <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
+                      数据存储位置
+                    </h3>
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 rounded-md mb-2 text-xs"
+                      style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-tertiary)' }}
+                    >
+                      <FolderIcon size={14} className="flex-shrink-0" />
+                      <span className="truncate font-mono" title={storageInfo.filePath ?? ''}>
+                        {storageInfo.filePath}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={handleChooseStorageDir}
+                        disabled={storageBusy}
+                        className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+                        style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+                      >
+                        <FolderIcon size={14} />
+                        更改位置
+                      </button>
+                      <button
+                        onClick={() => void openStorageInFolder()}
+                        disabled={storageBusy}
+                        className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+                        style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+                      >
+                        <FolderIcon size={14} />
+                        打开文件夹
+                      </button>
+                      <button
+                        onClick={() => setConfirmResetStorage(true)}
+                        disabled={storageBusy}
+                        className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+                        style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+                      >
+                        <FolderIcon size={14} />
+                        重置为默认
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                      更改位置时，已有数据会自动迁移到新目录。
+                    </p>
+                  </section>
+                )}
+
                 {/* 数据管理 */}
                 <section>
                   <h3 className="text-sm font-medium mb-3" style={{ color: 'var(--text-primary)' }}>
@@ -260,6 +366,18 @@ function SettingsPanelComponent({
           setConfirmReset(false);
         }}
         onCancel={() => setConfirmReset(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmResetStorage}
+        title="重置存储位置"
+        message="数据将被迁移回应用的默认目录。确定继续吗？"
+        confirmText="重置位置"
+        onConfirm={() => {
+          void handleResetStorage();
+          setConfirmResetStorage(false);
+        }}
+        onCancel={() => setConfirmResetStorage(false)}
       />
     </>
   );

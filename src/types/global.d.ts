@@ -16,6 +16,20 @@ interface ElectronAPI {
   showTrayNotification: (title: string, body: string) => void;
   /** 平台信息 */
   platform: string;
+  /** 获取当前数据存储配置 */
+  storageGetConfig: () => Promise<{ filePath: string; defaultDir: string }>;
+  /** 从当前存储路径读取数据库二进制 */
+  storageLoad: () => Promise<Uint8Array | null>;
+  /** 写入数据库二进制到当前存储路径 */
+  storageSave: (data: Uint8Array) => Promise<void>;
+  /** 弹出文件夹选择对话框 */
+  storageChooseDirectory: () => Promise<string | null>;
+  /** 切换存储目录并迁移数据 */
+  storageSetPath: (newDir: string) => Promise<{ filePath: string }>;
+  /** 在系统资源管理器中显示数据库文件 */
+  storageOpenInFolder: () => Promise<void>;
+  /** 重置到默认存储位置 */
+  storageResetToDefault: () => Promise<{ filePath: string }>;
 }
 
 /** 扩展 Window 接口以包含 electronAPI */

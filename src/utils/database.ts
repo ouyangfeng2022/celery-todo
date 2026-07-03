@@ -1,7 +1,8 @@
 /**
  * @file SQLite 数据库服务
  * @description 使用 sql.js (WebAssembly SQLite) 实现数据持久化
- *              数据库实例保存在 IndexedDB 中，支持自动保存（debounce）
+ *              桌面端 (Electron) 通过 IPC 将数据库二进制保存为真实文件，
+ *              存储位置可在设置中自定义；Web 端兜底使用 IndexedDB。
  *              数据结构包含: projects, todos, deleted_todos, settings, notifications
  */
 
@@ -32,6 +33,9 @@ let db: Database | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let isInitialized = false;
 let initPromise: Promise<Database> | null = null;
+
+/** 当前持久化模式：Electron 文件 / Web IndexedDB。首次加载时确定。 */
+let currentStorageMode: 'electron' | 'web' | null = null;
 
 // ============================================
 // IndexedDB 辅助函数（用于存储 SQLite 二进制数据）
@@ -80,6 +84,36 @@ async function idbSet(key: string, value: Uint8Array): Promise<void> {
     tx.onerror = () => reject(tx.error);
     tx.oncomplete = () => resolve();
   });
+}
+
+// ============================================
+// 持久化抽象层（桌面端走 IPC 文件读写，Web 端兜底 IndexedDB）
+// ============================================
+
+/**
+ * 加载数据库二进制。
+ * 桌面端：通过 IPC 从当前存储路径读取真实文件。
+ * Web 端：从 IndexedDB 读取（兜底）。
+ * 首次调用会锁定本会话的存储模式。
+ */
+async function loadDbBinary(): Promise<Uint8Array | null> {
+  if (window.electronAPI?.storageLoad) {
+    currentStorageMode = 'electron';
+    return (await window.electronAPI.storageLoad()) ?? null;
+  }
+  currentStorageMode = 'web';
+  return idbGet(DB_STORAGE_KEY);
+}
+
+/**
+ * 写入数据库二进制到当前持久化目标。
+ */
+async function saveDbBinary(data: Uint8Array): Promise<void> {
+  if (currentStorageMode === 'electron' && window.electronAPI?.storageSave) {
+    await window.electronAPI.storageSave(data);
+    return;
+  }
+  await idbSet(DB_STORAGE_KEY, data);
 }
 
 // ============================================
@@ -182,15 +216,24 @@ export async function initDatabase(): Promise<Database> {
       });
     }
 
-    // 尝试从 IndexedDB 加载已有数据库
-    const savedData = await idbGet(DB_STORAGE_KEY);
+    // 尝试从当前持久化目标加载已有数据库
+    const savedData = await loadDbBinary();
     if (savedData) {
       db = new SQL.Database(savedData);
     } else {
-      db = new SQL.Database();
-      createTables(db);
-      // 插入默认设置
-      db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('dataVersion', ?)`, [String(DB_VERSION)]);
+      // 桌面端首次启动：可能存在旧版本 IndexedDB 数据，需一次性迁移到文件
+      const legacyData = await migrateFromIndexedDbIfNeeded();
+      if (legacyData) {
+        db = new SQL.Database(legacyData);
+        createTables(db);
+      } else {
+        db = new SQL.Database();
+        createTables(db);
+        // 插入默认设置
+        db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('dataVersion', ?)`, [
+          String(DB_VERSION),
+        ]);
+      }
       await persistDatabase();
     }
 
@@ -204,12 +247,34 @@ export async function initDatabase(): Promise<Database> {
 }
 
 /**
- * 持久化数据库到 IndexedDB
+ * 一次性迁移：把旧版本存放在 IndexedDB 中的数据库迁移到 Electron 文件存储。
+ * 仅在桌面端、当前文件路径尚无数据、IndexedDB 仍有旧数据时执行。
+ * 迁移完成后在 IndexedDB 写入 'migrated' 标记，避免重复迁移。
+ */
+async function migrateFromIndexedDbIfNeeded(): Promise<Uint8Array | null> {
+  // 只有桌面端且当前模式确实是 electron 时才需要迁移
+  if (currentStorageMode !== 'electron') return null;
+  try {
+    const migrated = await idbGet('migrated');
+    if (migrated && migrated.length > 0) return null;
+    const legacy = await idbGet(DB_STORAGE_KEY);
+    if (!legacy) return null;
+    // 标记为已迁移，避免后续重复读取
+    await idbSet('migrated', new Uint8Array([1]));
+    return legacy;
+  } catch {
+    // IndexedDB 读取失败时静默回退（不影响主流程）
+    return null;
+  }
+}
+
+/**
+ * 持久化数据库到当前存储目标（桌面端文件 / Web IndexedDB）
  */
 async function persistDatabase(): Promise<void> {
   if (!db) return;
   const data = db.export();
-  await idbSet(DB_STORAGE_KEY, data);
+  await saveDbBinary(data);
 }
 
 /**
@@ -692,4 +757,80 @@ export async function resetDatabase(): Promise<void> {
   db.run('DROP TABLE IF EXISTS notifications');
   createTables(db);
   await flushSave();
+}
+
+// ============================================
+// 存储位置管理（仅桌面端 Electron）
+// ============================================
+
+/** 存储位置信息 */
+export interface StorageInfo {
+  /** 当前持久化模式 */
+  mode: 'electron' | 'web';
+  /** 当前数据库文件完整路径（仅 Electron 模式有值） */
+  filePath: string | null;
+  /** 默认数据目录（仅 Electron 模式有值） */
+  defaultDir: string | null;
+}
+
+/**
+ * 获取当前存储位置信息（用于设置面板展示）
+ */
+export async function getStorageInfo(): Promise<StorageInfo> {
+  if (!window.electronAPI?.storageGetConfig) {
+    return { mode: 'web', filePath: null, defaultDir: null };
+  }
+  try {
+    const cfg = await window.electronAPI.storageGetConfig();
+    return { mode: 'electron', filePath: cfg.filePath, defaultDir: cfg.defaultDir };
+  } catch {
+    return { mode: 'web', filePath: null, defaultDir: null };
+  }
+}
+
+/**
+ * 弹出原生对话框选择新的存储目录。
+ * @returns 选中的目录路径，用户取消时返回 null
+ */
+export async function chooseStorageDirectory(): Promise<string | null> {
+  if (!window.electronAPI?.storageChooseDirectory) return null;
+  return window.electronAPI.storageChooseDirectory();
+}
+
+/**
+ * 切换到新目录并迁移当前数据库文件。
+ * 主进程会拷贝旧文件到新位置、更新配置；切换后内存中的 DB 实例不变，
+ * 后续 save 会写入新路径。返回新文件路径。
+ */
+export async function changeStorageDirectory(newDir: string): Promise<string> {
+  if (!window.electronAPI?.storageSetPath) {
+    throw new Error('当前环境不支持自定义存储位置');
+  }
+  if (!db) throw new Error('Database not initialized');
+  // 1. 主进程切换路径并迁移文件
+  const result = await window.electronAPI.storageSetPath(newDir);
+  // 2. 把内存中当前的 DB 强制写入新位置（保证两端一致）
+  await flushSave();
+  return result.filePath;
+}
+
+/**
+ * 重置到默认存储位置（同时迁移数据）。返回新文件路径。
+ */
+export async function resetStorageDirectory(): Promise<string> {
+  if (!window.electronAPI?.storageResetToDefault) {
+    throw new Error('当前环境不支持自定义存储位置');
+  }
+  if (!db) throw new Error('Database not initialized');
+  const result = await window.electronAPI.storageResetToDefault();
+  await flushSave();
+  return result.filePath;
+}
+
+/**
+ * 在系统资源管理器中显示数据库文件
+ */
+export async function openStorageInFolder(): Promise<void> {
+  if (!window.electronAPI?.storageOpenInFolder) return;
+  await window.electronAPI.storageOpenInFolder();
 }

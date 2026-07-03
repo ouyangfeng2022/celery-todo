@@ -3,9 +3,10 @@
  * @description 创建窗口、系统托盘、开机自启、窗口位置记忆
  */
 
-import { app, BrowserWindow, Tray, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, Tray, ipcMain } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
+import { registerStorageIpc } from './storage';
 import type { AppWithIsQuitting } from './types';
 
 // ============================================
@@ -52,6 +53,22 @@ function createMainWindow(): BrowserWindow {
   window.once('ready-to-show', () => {
     window.show();
   });
+
+  // 移除默认菜单栏（Windows/Linux），macOS 保留系统菜单
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null);
+  } else {
+    // macOS: 设置极简菜单，避免默认英文菜单栏
+    const template: Electron.MenuItemConstructorOptions[] = [
+      {
+        label: app.name,
+        submenu: [
+          { role: 'quit' },
+        ],
+      },
+    ];
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
 
   // 记忆窗口位置
   const saveBounds = () => {
@@ -132,6 +149,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     mainWindow = createMainWindow();
     tray = createTray(mainWindow);
+    registerStorageIpc();
 
     // macOS 激活应用
     app.on('activate', () => {
