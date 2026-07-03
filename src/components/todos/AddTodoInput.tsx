@@ -4,7 +4,7 @@
  */
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
 import { PRIORITY_LABELS } from '../../types';
 import { PlusIcon } from '../common/Icons';
@@ -52,10 +52,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const hasSeparator = /[,，;；\n]/.test(title);
 
   return (
-    <motion.div
-      layout
-      className="claude-card p-3"
-    >
+    <div className="claude-card p-3">
       <div className="flex items-center gap-2">
         <button
           onClick={handleAdd}
@@ -92,65 +89,76 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
       </div>
 
       {/* 扩展选项 */}
-      {showOptions && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: 'auto', opacity: 1 }}
-          exit={{ height: 0, opacity: 0 }}
-          className="flex items-center gap-3 mt-3 pt-3 border-t"
-          style={{ borderColor: 'var(--border-color)' }}
-        >
-          {/* 优先级选择 */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              优先级
-            </span>
-            <div className="flex gap-1">
-              {(['high', 'medium', 'low'] as Priority[]).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPriority(p)}
-                  className="px-2 py-0.5 rounded text-xs transition-all"
-                  style={{
-                    backgroundColor: priority === p ? 'var(--accent)' : 'var(--bg-secondary)',
-                    color: priority === p ? 'white' : 'var(--text-secondary)',
-                  }}
-                >
-                  {PRIORITY_LABELS[p]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 截止日期 */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              截止
-            </span>
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="text-xs px-2 py-0.5 rounded border-none bg-transparent"
-              style={{
-                color: 'var(--text-secondary)',
-                backgroundColor: 'var(--bg-secondary)',
-              }}
-            />
-          </div>
-
-          <button
-            onClick={() => {
-              setShowOptions(false);
-              inputRef.current?.blur();
+      <AnimatePresence initial={false}>
+        {showOptions && (
+          <motion.div
+            key="options"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{
+              height: { duration: 0.25, ease: [0.4, 0, 0.2, 1] },
+              opacity: { duration: 0.18, ease: 'easeOut' },
             }}
-            className="btn-ghost ml-auto text-xs"
+            style={{ overflow: 'hidden' }}
           >
-            收起
-          </button>
-        </motion.div>
-      )}
-    </motion.div>
+            <div
+              className="flex items-center gap-3 mt-3 pt-3 border-t"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              {/* 优先级选择 */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  优先级
+                </span>
+                <div className="flex gap-1">
+                  {(['high', 'medium', 'low'] as Priority[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setPriority(p)}
+                      className="px-2 py-0.5 rounded text-xs transition-all"
+                      style={{
+                        backgroundColor: priority === p ? 'var(--accent)' : 'var(--bg-secondary)',
+                        color: priority === p ? 'white' : 'var(--text-secondary)',
+                      }}
+                    >
+                      {PRIORITY_LABELS[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 截止日期 */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  截止
+                </span>
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="text-xs px-2 py-0.5 rounded border-none bg-transparent"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    backgroundColor: 'var(--bg-secondary)',
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  setShowOptions(false);
+                  inputRef.current?.blur();
+                }}
+                className="btn-ghost ml-auto text-xs"
+              >
+                收起
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
