@@ -112,16 +112,6 @@ function TodoItemComponent({
         </button>
       )}
 
-      {/* 批量选择复选框 */}
-      <input
-        type="checkbox"
-        checked={isSelected}
-        onChange={() => onToggleSelect(todo.id)}
-        className="mt-1 w-4 h-4 rounded cursor-pointer accent-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ opacity: isSelected ? 1 : undefined }}
-        aria-label="选择事项"
-      />
-
       {/* 完成状态复选框 */}
       <button
         onClick={() => onToggle(todo.id)}
@@ -277,6 +267,16 @@ function TodoItemComponent({
           </button>
         </div>
       )}
+
+      {/* 批量选择复选框（悬浮时显示在最右侧并垂直居中） */}
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={() => onToggleSelect(todo.id)}
+        className="self-center w-4 h-4 rounded cursor-pointer accent-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity"
+        style={{ opacity: isSelected ? 1 : undefined }}
+        aria-label="选择事项"
+      />
     </motion.div>
   );
 }
