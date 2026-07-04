@@ -28,6 +28,7 @@ import { BatchToolbar } from './components/todos/BatchToolbar';
 import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { FocusIcon } from './components/common/Icons';
+import { Logo } from './components/common/Logo';
 
 import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
@@ -211,26 +212,7 @@ function App() {
           className="flex flex-col items-center gap-4"
         >
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{
-                backgroundColor: 'var(--accent)',
-                boxShadow: '0 4px 12px -2px rgba(217, 119, 87, 0.4)',
-              }}
-            >
-              <svg
-                viewBox="0 0 24 24"
-                width="16"
-                height="16"
-                fill="none"
-                stroke="white"
-                strokeWidth={3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
+            <Logo size={32} />
             <h1
               className="text-xl font-serif tracking-tight"
               style={{ color: 'var(--text-primary)' }}

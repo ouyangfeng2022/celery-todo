@@ -17,6 +17,7 @@ import {
   ListIcon,
 } from '../common/Icons';
 import type { AppNotification } from '../../types';
+import { Logo } from '../common/Logo';
 
 interface HeaderProps {
   project: Project | undefined;
@@ -77,7 +78,8 @@ function HeaderComponent({
       )}
 
       {/* 项目标题 - 衬线、克制、不喧哗 */}
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <Logo size={22} className="flex-shrink-0" />
         <h1
           className="text-xl font-serif truncate tracking-tight"
           style={{ color: 'var(--text-primary)' }}

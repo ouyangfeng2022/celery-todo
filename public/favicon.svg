@@ -1,4 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <rect width="32" height="32" rx="7" fill="#d97757"/>
-  <path d="M9 16.5l4.5 4.5L23 11" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- 纸质米白底，圆角 -->
+  <rect width="32" height="32" rx="7" fill="#faf9f7"/>
+  <!-- 兔耳（左浅右深，呼应主 logo 的层次） -->
+  <path d="M11 7c-0.6 3.2-0.2 6 1.2 7.2 1-2.4 1.2-4.8 0.4-7.4-0.7-0.7-1.3-0.7-1.6 0.2z" fill="#d97757"/>
+  <path d="M19 6.4c-0.8 2.6-0.6 5 0.4 7.4 1.4-1.2 1.8-4 1.2-7.2-0.3-0.9-0.9-0.9-1.6-0.2z" fill="#c75d3d"/>
+  <!-- 兔头剪影（珊瑚主色） -->
+  <path d="M16 11c-4.4 0-7 3-7 6.4 0 2.4 1.4 4.2 3.4 5.2 1 0.5 2.3 0.7 3.6 0.7s2.6-0.2 3.6-0.7c2-1 3.4-2.8 3.4-5.2 0-3.4-2.6-6.4-7-6.4z" fill="#d97757"/>
+  <!-- 眼睛（暖深灰点睛） -->
+  <circle cx="13.4" cy="17" r="1" fill="#2f2d27"/>
+  <circle cx="18.6" cy="17" r="1" fill="#2f2d27"/>
 </svg>

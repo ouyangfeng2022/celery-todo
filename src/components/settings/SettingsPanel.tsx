@@ -16,6 +16,7 @@ import {
   FolderIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { Logo } from '../common/Logo';
 import {
   getStorageInfo,
   chooseStorageDirectory,
@@ -149,12 +150,15 @@ function SettingsPanelComponent({
                   borderColor: 'var(--border-color)',
                 }}
               >
-                <h2
-                  className="text-xl font-serif tracking-tight"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  设置
-                </h2>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Logo size={26} className="flex-shrink-0" />
+                  <h2
+                    className="text-xl font-serif tracking-tight"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    设置
+                  </h2>
+                </div>
                 <button onClick={onClose} className="btn-ghost p-1.5" aria-label="关闭">
                   <XIcon size={18} />
                 </button>
