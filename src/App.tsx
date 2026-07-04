@@ -237,10 +237,11 @@ function App() {
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/*
         侧边栏 - 专注模式下完全隐藏
-        动画策略：外层 motion.div 用 width 0 → 16rem 做宽度展开/收起（固定目标值，
-        避免动画到 'auto' 时中间帧计算失真），overflow-hidden 配合实现"揭示式"出现。
-        内层 <aside> 始终保持 w-64 固有宽度，背景色不会因外层裁剪而缺失；
-        叠加一个轻微的 x 位移让内容随宽度展开"滑入"，过渡更连贯。
+        动画策略：外层 motion.div 用 width 0 → 256px 做宽度展开/收起，
+        overflow-hidden 让 <aside> 在收起过程中被"卷起来"。
+        关键：给 <aside> 加上 min-width: 256px（通过 className），确保它在任何
+        容器宽度下都保持固有宽度与完整背景，绝不被父级 flex 收缩，
+        从根本上避免"半边无色"。
       */}
       <AnimatePresence initial={false}>
         {sidebarOpen && !focusMode && (
@@ -251,13 +252,9 @@ function App() {
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
             className="group/sidebar relative flex-shrink-0 overflow-hidden"
+            style={{ width: 0 }}
           >
-            <motion.div
-              initial={{ x: -16 }}
-              animate={{ x: 0 }}
-              exit={{ x: -16 }}
-              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            >
+            <div style={{ width: '256px', minWidth: '256px' }}>
               <ProjectSidebar
                 projects={projects}
                 activeProjectId={activeProjectId}
@@ -271,7 +268,7 @@ function App() {
                 onOpenSettings={() => setSettingsOpen(true)}
                 recycleBinCount={deletedTodos.length}
               />
-            </motion.div>
+            </div>
 
             {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
             <button
