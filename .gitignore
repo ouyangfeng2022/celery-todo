@@ -18,3 +18,6 @@ skills/
 
 # Impeccable 编辑工具缓存
 .impeccable/
+
+# Git worktrees
+.worktrees/
