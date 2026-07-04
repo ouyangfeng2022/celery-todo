@@ -31,6 +31,9 @@ function createMainWindow(): BrowserWindow {
   // 读取上次窗口位置
   const savedBounds = getSavedBounds();
 
+  const isMac = process.platform === 'darwin';
+  const isWin = process.platform === 'win32';
+
   const window = new BrowserWindow({
     width: savedBounds?.width ?? 1200,
     height: savedBounds?.height ?? 800,
@@ -41,7 +44,19 @@ function createMainWindow(): BrowserWindow {
     show: false,
     title: 'Celery Todo',
     backgroundColor: '#faf9f7',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // macOS 隐藏标题栏但保留红绿灯按钮；Windows 隐藏标题栏文字 + 自带 overlay 控制按钮
+    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+    // Windows/Linux 通过 overlay 保留原生最小化/最大化/关闭按钮。
+    // 应用默认启动即专注模式，初始颜色对齐 --bg-primary（纸色），避免启动瞬间色差。
+    titleBarOverlay: !isMac
+      ? {
+          color: '#faf9f7',
+          symbolColor: '#5c584c',
+          height: 36,
+        }
+      : undefined,
+    // Linux 无原生 overlay 支持，直接 frameless
+    frame: isMac ? undefined : !isWin ? false : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -205,6 +220,19 @@ ipcMain.handle('show-tray-notification', (_event, title: string, body: string) =
     });
   }
 });
+
+/**
+ * 更新标题栏 overlay 颜色（与渲染进程主题同步）
+ * 仅 Windows / Linux 生效，macOS 红绿灯按钮不受影响
+ */
+ipcMain.handle(
+  'set-titlebar-overlay',
+  (_event, options: { color: string; symbolColor: string }) => {
+    if (mainWindow && typeof mainWindow.setTitleBarOverlay === 'function') {
+      mainWindow.setTitleBarOverlay(options);
+    }
+  },
+);
 
 // 导出供其他模块使用
 export { mainWindow, tray };

@@ -305,6 +305,21 @@
     background-clip: content-box;
   }
 
+  /* ============================================
+     Frameless 窗口拖动区
+     Electron 隐藏标题栏后，需要标记可拖动区域。
+     - .titlebar-drag：所在元素可拖动整窗（标题栏区域）
+     - .titlebar-no-drag：拖动区域内的可交互元素（按钮/输入框）需排除
+     在 Web 浏览器中这些属性被忽略，不影响 dev 模式。
+     ============================================ */
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
   /* Markdown 渲染 */
   .markdown-body {
     font-size: 0.875rem;

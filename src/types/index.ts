@@ -124,6 +124,8 @@ export interface AppSettings {
   notificationLeadHours: number;
   /** 数据版本号（用于迁移） */
   dataVersion: number;
+  /** 是否处于专注模式（隐藏侧边栏 / 统计 / 筛选 / 添加框 / Header 图标） */
+  focusMode: boolean;
 }
 
 /** 默认设置 */
@@ -134,6 +136,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   notificationsEnabled: true,
   notificationLeadHours: 24,
   dataVersion: 1,
+  // 默认启动即进入专注模式
+  focusMode: true,
 };
 
 // ============================================

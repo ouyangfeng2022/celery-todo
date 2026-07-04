@@ -198,6 +198,19 @@ function SettingsPanelComponent({
                       );
                     })}
                   </div>
+
+                  {/* 专注模式：隐藏侧边栏 / 统计 / 筛选 / Header 图标，仅保留标题与列表 */}
+                  <label className="flex items-center justify-between py-2 cursor-pointer">
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                      专注模式
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={settings.focusMode}
+                      onChange={(e) => onUpdateSettings({ focusMode: e.target.checked })}
+                      className="w-4 h-4 accent-[var(--accent)]"
+                    />
+                  </label>
                 </section>
 
                 {/* 通知 */}
@@ -400,6 +413,7 @@ function SettingsPanelComponent({
                       ['Ctrl + S', '保存'],
                       ['Ctrl + B', '切换侧边栏'],
                       ['Ctrl + D', '切换主题'],
+                      ['Ctrl + P', '切换专注模式'],
                       ['Ctrl + 1/2/3', '切换筛选视图'],
                       ['Esc', '取消编辑'],
                     ].map(([key, desc]) => (

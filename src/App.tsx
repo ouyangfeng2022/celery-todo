@@ -27,10 +27,11 @@ import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { FocusIcon } from './components/common/Icons';
 
 import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
-import { downloadFile, readFileAsText } from './utils/helpers';
+import { cn, downloadFile, readFileAsText } from './utils/helpers';
 import type { Priority } from './types';
 
 function App() {
@@ -41,9 +42,12 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
+  // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
+  const [composerVisible, setComposerVisible] = useState(false);
 
   // === Stores ===
   const settings = useSettingsStore();
+  const focusMode = settings.focusMode;
   const { toggleTheme } = useTheme();
   const {
     projects,
@@ -102,13 +106,26 @@ function App() {
 
   // === 键盘快捷键 ===
   useKeyboardShortcuts({
-    onNewTodo: () => setNewTodoFocusSignal((n) => n + 1),
+    onNewTodo: () => {
+      // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 先把它唤出再触发聚焦
+      if (focusMode) setComposerVisible(true);
+      setNewTodoFocusSignal((n) => n + 1);
+    },
     onSearch: () => setSearchFocusSignal((n) => n + 1),
     onSave: () => {
       db.flushSave();
     },
-    onToggleSidebar: () => setSidebarOpen((s) => !s),
+    onToggleSidebar: () => {
+      // 专注模式下侧边栏被隐藏，Ctrl+B 优先退出专注模式以露出侧边栏
+      if (focusMode) {
+        useSettingsStore.getState().setFocusMode(false);
+        return;
+      }
+      setSidebarOpen((s) => !s);
+    },
     onToggleTheme: toggleTheme,
+    onToggleFocusMode: () =>
+      useSettingsStore.getState().setFocusMode(!useSettingsStore.getState().focusMode),
     onFilterAll: () => changeFilter('all'),
     onFilterActive: () => changeFilter('active'),
     onFilterCompleted: () => changeFilter('completed'),
@@ -116,6 +133,8 @@ function App() {
       clearSelection();
       setRecycleBinOpen(false);
       setSettingsOpen(false);
+      // 专注模式下 Esc 收起临时唤出的 AddTodoInput
+      if (focusMode) setComposerVisible(false);
     },
   });
 
@@ -234,9 +253,9 @@ function App() {
 
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* 侧边栏 */}
+      {/* 侧边栏 - 专注模式下完全隐藏 */}
       <AnimatePresence>
-        {sidebarOpen && (
+        {sidebarOpen && !focusMode && (
           <motion.div
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 'auto', opacity: 1 }}
@@ -262,47 +281,84 @@ function App() {
       </AnimatePresence>
 
       {/* 主内容区 */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header
-          project={activeProject}
-          search={search}
-          onSearchChange={changeSearch}
-          searchFocusSignal={searchFocusSignal}
-          notifications={notifications}
-          unreadCount={unreadCount}
-          onMarkAsRead={markAsRead}
-          onMarkAllAsRead={markAllAsRead}
-          onDeleteNotification={deleteNotification}
-          isDark={isDark}
-          onToggleTheme={toggleTheme}
-          onToggleSidebar={() => setSidebarOpen((s) => !s)}
-          onOpenSettings={() => setSettingsOpen(true)}
-        />
+      <div className="relative flex-1 flex flex-col min-w-0">
+        {/* Header - 专注模式下隐藏，由右上角浮动指示器代替 */}
+        {!focusMode && (
+          <Header
+            project={activeProject}
+            search={search}
+            onSearchChange={changeSearch}
+            searchFocusSignal={searchFocusSignal}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onDeleteNotification={deleteNotification}
+            isDark={isDark}
+            onToggleTheme={toggleTheme}
+            onToggleSidebar={() => setSidebarOpen((s) => !s)}
+            onOpenSettings={() => setSettingsOpen(true)}
+            focusMode={focusMode}
+            onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}
+          />
+        )}
+
+        {/* 专注模式浮动指示器：点击退出，避免用户被困住 */}
+        {/* 位置避开右上角原生窗口控制按钮（约 152px 宽） */}
+        {focusMode && (
+          <>
+            {/* 隐藏的拖动条：专注模式下 Header 不渲染，需要保留拖动整窗能力 */}
+            <div className="titlebar-drag absolute top-0 left-0 right-0 h-9 z-0 pointer-events-auto" />
+            <button
+              onClick={() => useSettingsStore.getState().setFocusMode(false)}
+              className="titlebar-no-drag absolute top-2.5 right-[156px] z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] transition-colors hover:bg-[var(--bg-hover)]"
+              style={{ color: 'var(--text-quaternary)' }}
+              title="退出专注模式 (Ctrl+P)"
+              aria-label="退出专注模式"
+            >
+              <FocusIcon size={13} />
+              <span>专注中</span>
+            </button>
+          </>
+        )}
 
         <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-10">
-          <div className="max-w-3xl mx-auto space-y-5">
-            {/* 添加事项 */}
-            <AddTodoInput onAdd={addTodo} focusSignal={newTodoFocusSignal} />
+          <div className={cn('mx-auto space-y-5', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
+            {/* 添加事项：完整模式始终可见；专注模式仅 Ctrl+N 唤出时可见 */}
+            {(!focusMode || composerVisible) && (
+              <AddTodoInput
+                onAdd={(title, priority, dueDate) => {
+                  addTodo(title, priority, dueDate);
+                  // 专注模式下添加完成后收起 composer
+                  if (focusMode) setComposerVisible(false);
+                }}
+                focusSignal={newTodoFocusSignal}
+              />
+            )}
 
-            {/* 统计 */}
-            <StatsPanel
-              total={stats.total}
-              completed={stats.completed}
-              active={stats.active}
-              overdue={stats.overdue}
-              percentage={stats.percentage}
-            />
+            {/* 统计 - 专注模式下隐藏 */}
+            {!focusMode && (
+              <StatsPanel
+                total={stats.total}
+                completed={stats.completed}
+                active={stats.active}
+                overdue={stats.overdue}
+                percentage={stats.percentage}
+              />
+            )}
 
-            {/* 筛选栏 */}
-            <FilterBar
-              filter={filter}
-              sort={sort}
-              activeCount={stats.active}
-              completedCount={stats.completed}
-              onFilterChange={changeFilter}
-              onSortChange={changeSort}
-              onClearCompleted={clearCompleted}
-            />
+            {/* 筛选栏 - 专注模式下隐藏 */}
+            {!focusMode && (
+              <FilterBar
+                filter={filter}
+                sort={sort}
+                activeCount={stats.active}
+                completedCount={stats.completed}
+                onFilterChange={changeFilter}
+                onSortChange={changeSort}
+                onClearCompleted={clearCompleted}
+              />
+            )}
 
             {/* 事项列表 */}
             <TodoList

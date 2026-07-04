@@ -719,6 +719,8 @@ export function exportAllData(): import('../types').AppExportData {
       notificationsEnabled: getSetting('notificationsEnabled') !== 'false',
       notificationLeadHours: Number(getSetting('notificationLeadHours') ?? 24),
       dataVersion: DB_VERSION,
+      // 与 useSettingsStore.loadSettings 保持一致：未持久化时回退默认值 true
+      focusMode: getSetting('focusMode') === null ? true : getSetting('focusMode') === 'true',
     },
   };
 }

@@ -7,8 +7,24 @@ import { useCallback, useEffect } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import type { ThemeMode } from '../types';
 
+/**
+ * 标题栏 overlay 颜色（与 globals.css 的 CSS 变量对齐）。
+ * 完整模式下 Header 透出 --bg-tertiary；专注模式下 Header 不渲染，
+ * 顶部透出 --bg-primary，需用对应背景色避免色差。
+ */
+const OVERLAY_COLORS = {
+  full: {
+    light: { color: '#ffffff', symbolColor: '#5c584c' }, // --bg-tertiary
+    dark: { color: '#282723', symbolColor: '#b8b3a4' },
+  },
+  focus: {
+    light: { color: '#faf9f7', symbolColor: '#5c584c' }, // --bg-primary（纸色）
+    dark: { color: '#1a1916', symbolColor: '#b8b3a4' },
+  },
+} as const;
+
 /** 应用主题到 document */
-function applyTheme(theme: ThemeMode): void {
+function applyTheme(theme: ThemeMode, focusMode: boolean): void {
   const root = document.documentElement;
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -19,25 +35,30 @@ function applyTheme(theme: ThemeMode): void {
   } else {
     root.classList.remove('dark');
   }
+
+  // 同步 Electron 标题栏 overlay 颜色（仅 Win/Linux 生效，Web 环境下为 noop）
+  const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
+  window.electronAPI?.setTitleBarOverlay?.(isDark ? palette.dark : palette.light);
 }
 
 export function useTheme() {
   const theme = useSettingsStore((s) => s.theme);
+  const focusMode = useSettingsStore((s) => s.focusMode);
   const setTheme = useSettingsStore((s) => s.setTheme);
 
-  // 应用主题
+  // 应用主题（theme 或 focusMode 任一变化都重算 overlay 颜色）
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    applyTheme(theme, focusMode);
+  }, [theme, focusMode]);
 
   // 监听系统主题变化（仅在 system 模式下生效）
   useEffect(() => {
     if (theme !== 'system') return;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => applyTheme('system');
+    const handler = () => applyTheme('system', focusMode);
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
-  }, [theme]);
+  }, [theme, focusMode]);
 
   const toggleTheme = useCallback(() => {
     const root = document.documentElement;

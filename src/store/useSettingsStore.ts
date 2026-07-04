@@ -21,6 +21,8 @@ interface SettingsState extends AppSettings {
   setNotificationsEnabled: (enabled: boolean) => void;
   /** 设置通知提前时间 */
   setNotificationLeadHours: (hours: number) => void;
+  /** 设置专注模式开关 */
+  setFocusMode: (enabled: boolean) => void;
   /** 更新多个设置 */
   updateSettings: (updates: Partial<AppSettings>) => void;
 }
@@ -29,6 +31,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
 
   loadSettings: () => {
+    // focusMode 在 settings 表中可能不存在（首次升级的老数据），用 null 判断走默认值
+    const storedFocus = db.getSetting('focusMode');
     const settings: AppSettings = {
       theme: (db.getSetting('theme') as ThemeMode) ?? DEFAULT_SETTINGS.theme,
       autoStart: db.getSetting('autoStart') === 'true',
@@ -38,6 +42,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         db.getSetting('notificationLeadHours') ?? DEFAULT_SETTINGS.notificationLeadHours,
       ),
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
+      focusMode: storedFocus === null ? DEFAULT_SETTINGS.focusMode : storedFocus === 'true',
     };
     set(settings);
   },
@@ -69,6 +74,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNotificationLeadHours: (notificationLeadHours) => {
     db.setSetting('notificationLeadHours', String(notificationLeadHours));
     set({ notificationLeadHours });
+  },
+
+  setFocusMode: (focusMode) => {
+    db.setSetting('focusMode', String(focusMode));
+    set({ focusMode });
   },
 
   updateSettings: (updates) => {

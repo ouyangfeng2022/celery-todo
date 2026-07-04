@@ -22,6 +22,10 @@ const electronAPI = {
   showTrayNotification: (title: string, body: string): Promise<void> =>
     ipcRenderer.invoke('show-tray-notification', title, body),
 
+  /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
+  setTitleBarOverlay: (options: { color: string; symbolColor: string }): Promise<void> =>
+    ipcRenderer.invoke('set-titlebar-overlay', options),
+
   /** 监听快速添加事件 */
   onQuickAdd: (callback: () => void): void => {
     ipcRenderer.on('quick-add', () => callback());

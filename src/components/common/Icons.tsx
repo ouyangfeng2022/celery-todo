@@ -223,6 +223,16 @@ export const ListIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+export const FocusIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <circle cx="12" cy="12" r="7" />
+    <line x1="12" y1="2" x2="12" y2="5" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+    <line x1="2" y1="12" x2="5" y2="12" />
+    <line x1="19" y1="12" x2="22" y2="12" />
+  </BaseIcon>
+));
+
 export const InboxIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />

@@ -10,6 +10,7 @@
  * - Ctrl/Cmd + 1/2/3: 切换筛选视图（全部/进行中/已完成）
  * - Ctrl/Cmd + B: 切换侧边栏
  * - Ctrl/Cmd + D: 切换深色/浅色主题
+ * - Ctrl/Cmd + P: 切换专注模式
  * - Esc: 取消编辑/关闭对话框
  */
 
@@ -25,6 +26,7 @@ export interface ShortcutHandlers {
   onFilterCompleted?: () => void;
   onToggleSidebar?: () => void;
   onToggleTheme?: () => void;
+  onToggleFocusMode?: () => void;
   onEscape?: () => void;
 }
 
@@ -79,6 +81,12 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers): void {
           if (!inInput) {
             e.preventDefault();
             handlers.onToggleTheme?.();
+          }
+          break;
+        case 'p':
+          if (!inInput) {
+            e.preventDefault();
+            handlers.onToggleFocusMode?.();
           }
           break;
         case '1':

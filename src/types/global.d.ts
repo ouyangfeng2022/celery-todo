@@ -14,6 +14,8 @@ interface ElectronAPI {
   onQuickAdd: (callback: () => void) => void;
   /** 显示托盘通知 */
   showTrayNotification: (title: string, body: string) => void;
+  /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
+  setTitleBarOverlay: (options: { color: string; symbolColor: string }) => Promise<void>;
   /** 平台信息 */
   platform: string;
   /** 获取当前数据存储配置 */

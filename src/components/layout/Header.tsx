@@ -7,7 +7,15 @@ import { memo, useState } from 'react';
 import type { Project } from '../../types';
 import { SearchBar } from '../filters/SearchBar';
 import { NotificationPanel } from '../common/NotificationPanel';
-import { BellIcon, SunIcon, MoonIcon, MenuIcon, SettingsIcon } from '../common/Icons';
+import {
+  BellIcon,
+  SunIcon,
+  MoonIcon,
+  MenuIcon,
+  SettingsIcon,
+  FocusIcon,
+  ListIcon,
+} from '../common/Icons';
 import type { AppNotification } from '../../types';
 
 interface HeaderProps {
@@ -24,6 +32,10 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onToggleSidebar: () => void;
   onOpenSettings: () => void;
+  /** 是否处于专注模式 */
+  focusMode: boolean;
+  /** 切换专注 / 完整模式 */
+  onToggleFocusMode: () => void;
 }
 
 function HeaderComponent({
@@ -40,21 +52,29 @@ function HeaderComponent({
   onToggleTheme,
   onToggleSidebar,
   onOpenSettings,
+  focusMode,
+  onToggleFocusMode,
 }: HeaderProps) {
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
     <header
-      className="flex items-center gap-3 px-5 py-3.5 border-b"
+      className="titlebar-drag flex items-center gap-3 px-5 py-3.5 border-b pr-[152px]"
       style={{
         backgroundColor: 'var(--bg-tertiary)',
         borderColor: 'var(--border-color)',
       }}
     >
-      {/* 侧边栏切换（移动端） */}
-      <button onClick={onToggleSidebar} className="btn-ghost p-2 lg:hidden" aria-label="切换侧边栏">
-        <MenuIcon size={20} />
-      </button>
+      {/* 侧边栏切换（移动端；专注模式下隐藏，因侧边栏本就被隐藏） */}
+      {!focusMode && (
+        <button
+          onClick={onToggleSidebar}
+          className="titlebar-no-drag btn-ghost p-2 lg:hidden"
+          aria-label="切换侧边栏"
+        >
+          <MenuIcon size={20} />
+        </button>
+      )}
 
       {/* 项目标题 - 衬线、克制、不喧哗 */}
       <div className="flex items-center gap-2.5 min-w-0">
@@ -66,52 +86,68 @@ function HeaderComponent({
         </h1>
       </div>
 
-      {/* 搜索框 */}
-      <div className="flex-1 flex justify-center">
-        <SearchBar value={search} onChange={onSearchChange} focusSignal={searchFocusSignal} />
-      </div>
+      {/* 搜索框（专注模式下隐藏，为标题让出空间） */}
+      {!focusMode && (
+        <div className="titlebar-no-drag flex-1 flex justify-center max-w-md">
+          <SearchBar value={search} onChange={onSearchChange} focusSignal={searchFocusSignal} />
+        </div>
+      )}
+      {/* 专注模式下用占位把切换按钮推到右侧 */}
+      {focusMode && <div className="flex-1" />}
 
       {/* 右侧操作 */}
-      <div className="flex items-center gap-0.5">
-        {/* 通知 */}
-        <div className="relative">
-          <button
-            onClick={() => setNotifOpen(!notifOpen)}
-            className="btn-ghost p-2 relative"
-            aria-label="通知"
-          >
-            <BellIcon size={18} />
-            {unreadCount > 0 && (
-              <span
-                className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
-                style={{
-                  backgroundColor: 'var(--accent)',
-                  color: 'white',
-                  boxShadow: '0 0 0 2px var(--bg-tertiary)',
-                }}
+      <div className="titlebar-no-drag flex items-center gap-0.5">
+        {/* 通知 / 主题 / 设置：专注模式下隐藏，仅保留专注切换按钮，避免被困在专注模式 */}
+        {!focusMode && (
+          <>
+            <div className="relative">
+              <button
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="btn-ghost p-2 relative"
+                aria-label="通知"
               >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
-          <NotificationPanel
-            open={notifOpen}
-            notifications={notifications}
-            onMarkAsRead={onMarkAsRead}
-            onMarkAllAsRead={onMarkAllAsRead}
-            onDelete={onDeleteNotification}
-            onClose={() => setNotifOpen(false)}
-          />
-        </div>
+                <BellIcon size={18} />
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                      color: 'white',
+                      boxShadow: '0 0 0 2px var(--bg-tertiary)',
+                    }}
+                  >
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              <NotificationPanel
+                open={notifOpen}
+                notifications={notifications}
+                onMarkAsRead={onMarkAsRead}
+                onMarkAllAsRead={onMarkAllAsRead}
+                onDelete={onDeleteNotification}
+                onClose={() => setNotifOpen(false)}
+              />
+            </div>
 
-        {/* 主题切换 */}
-        <button onClick={onToggleTheme} className="btn-ghost p-2" aria-label="切换主题">
-          {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
-        </button>
+            <button onClick={onToggleTheme} className="btn-ghost p-2" aria-label="切换主题">
+              {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
+            </button>
 
-        {/* 设置 */}
-        <button onClick={onOpenSettings} className="btn-ghost p-2" aria-label="设置">
-          <SettingsIcon size={18} />
+            <button onClick={onOpenSettings} className="btn-ghost p-2" aria-label="设置">
+              <SettingsIcon size={18} />
+            </button>
+          </>
+        )}
+
+        {/* 专注 / 完整 模式切换：专注时显示 ListIcon（切回完整），完整时显示 FocusIcon */}
+        <button
+          onClick={onToggleFocusMode}
+          className="btn-ghost p-2"
+          aria-label={focusMode ? '退出专注模式' : '进入专注模式'}
+          title={focusMode ? '退出专注模式 (Ctrl+P)' : '进入专注模式 (Ctrl+P)'}
+        >
+          {focusMode ? <ListIcon size={18} /> : <FocusIcon size={18} />}
         </button>
       </div>
     </header>
