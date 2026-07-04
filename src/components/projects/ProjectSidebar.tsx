@@ -89,7 +89,7 @@ function ProjectSidebarComponent({
       style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
     >
       {/* Logo / 标题 - 品牌字，呼吸感 */}
-      <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-color)' }}>
+      <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
           <Logo size={36} className="flex-shrink-0" />
           <h1
