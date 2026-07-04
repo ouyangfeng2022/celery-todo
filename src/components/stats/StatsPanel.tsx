@@ -28,7 +28,11 @@ function StatsPanelComponent({ total, completed, active, overdue, percentage }: 
             <span style={{ color: 'var(--success)' }}>全部完成 · 享受此刻</span>
           ) : (
             <>
-              还有 <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{active}</span> 项待完成
+              还有{' '}
+              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                {active}
+              </span>{' '}
+              项待完成
             </>
           )}
         </p>

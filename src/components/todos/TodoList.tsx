@@ -126,11 +126,7 @@ function TodoListComponent({
   // 仅在手动排序模式下启用拖拽
   if (isManualSort) {
     return (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-1">{listContent}</div>
         </SortableContext>

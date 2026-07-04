@@ -34,8 +34,16 @@ function sendDesktopNotification(title: string, body: string): void {
 }
 
 export function useNotification() {
-  const { notifications, unreadCount, addNotification, markAsRead, markAllAsRead, deleteNotification, clearAll, loadNotifications } =
-    useNotificationStore();
+  const {
+    notifications,
+    unreadCount,
+    addNotification,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    loadNotifications,
+  } = useNotificationStore();
   const settings = useSettingsStore();
   const todos = useTodoStore((s) => s.todos);
   const checkedRef = useRef<Set<string>>(new Set());
@@ -66,7 +74,10 @@ export function useNotification() {
             message: `"${todo.title}" 将在 ${settings.notificationLeadHours} 小时内到期`,
             todoId: todo.id,
           });
-          sendDesktopNotification('事项即将到期', `"${todo.title}" 将在 ${settings.notificationLeadHours} 小时内到期`);
+          sendDesktopNotification(
+            '事项即将到期',
+            `"${todo.title}" 将在 ${settings.notificationLeadHours} 小时内到期`,
+          );
         }
       }
     },
@@ -76,9 +87,12 @@ export function useNotification() {
   // 定时检查（每 5 分钟）
   useEffect(() => {
     checkDueTodos(todos);
-    const interval = setInterval(() => {
-      checkDueTodos(useTodoStore.getState().todos);
-    }, 5 * 60 * 1000);
+    const interval = setInterval(
+      () => {
+        checkDueTodos(useTodoStore.getState().todos);
+      },
+      5 * 60 * 1000,
+    );
     return () => clearInterval(interval);
   }, [todos, checkDueTodos]);
 

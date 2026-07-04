@@ -52,11 +52,7 @@ function HeaderComponent({
       }}
     >
       {/* 侧边栏切换（移动端） */}
-      <button
-        onClick={onToggleSidebar}
-        className="btn-ghost p-2 lg:hidden"
-        aria-label="切换侧边栏"
-      >
+      <button onClick={onToggleSidebar} className="btn-ghost p-2 lg:hidden" aria-label="切换侧边栏">
         <MenuIcon size={20} />
       </button>
 
@@ -109,20 +105,12 @@ function HeaderComponent({
         </div>
 
         {/* 主题切换 */}
-        <button
-          onClick={onToggleTheme}
-          className="btn-ghost p-2"
-          aria-label="切换主题"
-        >
+        <button onClick={onToggleTheme} className="btn-ghost p-2" aria-label="切换主题">
           {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
         </button>
 
         {/* 设置 */}
-        <button
-          onClick={onOpenSettings}
-          className="btn-ghost p-2"
-          aria-label="设置"
-        >
+        <button onClick={onOpenSettings} className="btn-ghost p-2" aria-label="设置">
           <SettingsIcon size={18} />
         </button>
       </div>

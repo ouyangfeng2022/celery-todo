@@ -89,10 +89,7 @@ function NotificationPanelComponent({
                   >
                     <div className="flex items-start gap-2">
                       <div className="flex-1 min-w-0">
-                        <p
-                          className="text-sm font-medium"
-                          style={{ color: 'var(--text-primary)' }}
-                        >
+                        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                           {notification.title}
                         </p>
                         <p

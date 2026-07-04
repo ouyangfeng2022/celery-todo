@@ -69,9 +69,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
           style={{
             backgroundColor: 'var(--accent)',
             color: 'white',
-            boxShadow: title.trim()
-              ? '0 2px 6px -1px rgba(217, 119, 87, 0.4)'
-              : 'none',
+            boxShadow: title.trim() ? '0 2px 6px -1px rgba(217, 119, 87, 0.4)' : 'none',
           }}
           aria-label="添加事项"
         >
@@ -139,8 +137,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                       onClick={() => setPriority(p)}
                       className="px-2 py-0.5 rounded text-xs font-medium transition-all"
                       style={{
-                        backgroundColor:
-                          priority === p ? 'var(--bg-tertiary)' : 'transparent',
+                        backgroundColor: priority === p ? 'var(--bg-tertiary)' : 'transparent',
                         color: priority === p ? 'var(--text-primary)' : 'var(--text-tertiary)',
                         boxShadow: priority === p ? 'var(--shadow-xs)' : 'none',
                       }}

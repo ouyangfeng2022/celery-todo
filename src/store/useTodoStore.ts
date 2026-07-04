@@ -226,7 +226,12 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       case 'complete': {
         const updated = todos.map((t) =>
           selectedIds.has(t.id)
-            ? { ...t, completed: true, completedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+            ? {
+                ...t,
+                completed: true,
+                completedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              }
             : t,
         );
         updated.forEach((t) => {
@@ -238,7 +243,12 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       case 'uncomplete': {
         const updated = todos.map((t) =>
           selectedIds.has(t.id)
-            ? { ...t, completed: false, completedAt: undefined, updatedAt: new Date().toISOString() }
+            ? {
+                ...t,
+                completed: false,
+                completedAt: undefined,
+                updatedAt: new Date().toISOString(),
+              }
             : t,
         );
         updated.forEach((t) => {
@@ -258,7 +268,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         db.deleteTodos(ids);
         set({
           todos: todos.filter((t) => !selectedIds.has(t.id)),
-          deletedTodos: [...toDelete.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })), ...get().deletedTodos],
+          deletedTodos: [
+            ...toDelete.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })),
+            ...get().deletedTodos,
+          ],
           selectedIds: new Set(),
         });
         break;
@@ -266,9 +279,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       case 'setPriority': {
         if (!priority) return;
         const updated = todos.map((t) =>
-          selectedIds.has(t.id)
-            ? { ...t, priority, updatedAt: new Date().toISOString() }
-            : t,
+          selectedIds.has(t.id) ? { ...t, priority, updatedAt: new Date().toISOString() } : t,
         );
         updated.forEach((t) => {
           if (selectedIds.has(t.id)) db.updateTodo(t);
@@ -329,7 +340,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     set({
       todos: todos.filter((t) => !t.completed),
-      deletedTodos: [...completed.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })), ...get().deletedTodos],
+      deletedTodos: [
+        ...completed.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })),
+        ...get().deletedTodos,
+      ],
     });
   },
 }));

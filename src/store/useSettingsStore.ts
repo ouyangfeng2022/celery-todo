@@ -34,7 +34,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       autoStart: db.getSetting('autoStart') === 'true',
       minimizeToTray: db.getSetting('minimizeToTray') !== 'false',
       notificationsEnabled: db.getSetting('notificationsEnabled') !== 'false',
-      notificationLeadHours: Number(db.getSetting('notificationLeadHours') ?? DEFAULT_SETTINGS.notificationLeadHours),
+      notificationLeadHours: Number(
+        db.getSetting('notificationLeadHours') ?? DEFAULT_SETTINGS.notificationLeadHours,
+      ),
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
     };
     set(settings);

@@ -72,13 +72,8 @@ function App() {
     permanentlyDelete,
     emptyRecycleBin,
   } = useTodos();
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-  } = useNotification();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
+    useNotification();
 
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
@@ -148,29 +143,32 @@ function App() {
     downloadFile(csv, `todos-${activeProject?.name ?? 'export'}.csv`, 'text/csv;charset=utf-8');
   }, [todos, activeProject]);
 
-  const handleImportProject = useCallback(async (file: File) => {
-    try {
-      const text = await readFileAsText(file);
-      const data = parseImportData(text);
-      if ('project' in data) {
-        // 导入单个项目
-        const newId = createProject(data.project.name);
-        data.todos.forEach((t) => {
-          db.insertTodo({ ...t, id: crypto.randomUUID(), projectId: newId });
-        });
-        useTodoStore.getState().loadProject(newId);
-        switchProject(newId);
-      } else {
-        // 导入完整应用数据
-        await db.importAllData(data);
-        loadProjects();
-        useSettingsStore.getState().loadSettings();
-        useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+  const handleImportProject = useCallback(
+    async (file: File) => {
+      try {
+        const text = await readFileAsText(file);
+        const data = parseImportData(text);
+        if ('project' in data) {
+          // 导入单个项目
+          const newId = createProject(data.project.name);
+          data.todos.forEach((t) => {
+            db.insertTodo({ ...t, id: crypto.randomUUID(), projectId: newId });
+          });
+          useTodoStore.getState().loadProject(newId);
+          switchProject(newId);
+        } else {
+          // 导入完整应用数据
+          await db.importAllData(data);
+          loadProjects();
+          useSettingsStore.getState().loadSettings();
+          useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+        }
+      } catch (err) {
+        alert(`导入失败: ${err instanceof Error ? err.message : '未知错误'}`);
       }
-    } catch (err) {
-      alert(`导入失败: ${err instanceof Error ? err.message : '未知错误'}`);
-    }
-  }, [createProject, switchProject, loadProjects]);
+    },
+    [createProject, switchProject, loadProjects],
+  );
 
   const handleResetData = useCallback(async () => {
     await db.resetDatabase();
@@ -214,7 +212,10 @@ function App() {
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <h1 className="text-xl font-serif tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <h1
+              className="text-xl font-serif tracking-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
               Celery Todo
             </h1>
           </div>

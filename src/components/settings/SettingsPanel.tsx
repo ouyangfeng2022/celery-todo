@@ -6,7 +6,15 @@
 import { memo, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ThemeMode, AppSettings } from '../../types';
-import { XIcon, DownloadIcon, UploadIcon, SunIcon, MoonIcon, MonitorIcon, FolderIcon } from '../common/Icons';
+import {
+  XIcon,
+  DownloadIcon,
+  UploadIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
+  FolderIcon,
+} from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import {
   getStorageInfo,
@@ -155,10 +163,7 @@ function SettingsPanelComponent({
               <div className="p-6 space-y-7">
                 {/* 主题 */}
                 <section>
-                  <h3
-                    className="claude-eyebrow mb-3"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                     外观
                   </h3>
                   <div className="grid grid-cols-3 gap-2">
@@ -172,9 +177,7 @@ function SettingsPanelComponent({
                           className="flex flex-col items-center gap-2 p-3 rounded-lg border transition-all"
                           style={{
                             borderColor: isActive ? 'var(--accent)' : 'var(--border-color)',
-                            backgroundColor: isActive
-                              ? 'var(--accent-subtle)'
-                              : 'transparent',
+                            backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
                           }}
                         >
                           <Icon
@@ -199,10 +202,7 @@ function SettingsPanelComponent({
 
                 {/* 通知 */}
                 <section>
-                  <h3
-                    className="claude-eyebrow mb-3"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                     通知
                   </h3>
                   <label className="flex items-center justify-between py-2 cursor-pointer">
@@ -245,10 +245,7 @@ function SettingsPanelComponent({
                 {/* Electron 设置（仅在桌面端显示） */}
                 {window.electronAPI && (
                   <section>
-                    <h3
-                      className="claude-eyebrow mb-3"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
+                    <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                       桌面应用
                     </h3>
                     <label className="flex items-center justify-between py-2 cursor-pointer">
@@ -279,10 +276,7 @@ function SettingsPanelComponent({
                 {/* 数据存储位置（仅桌面端） */}
                 {isStorageCustomizable && storageInfo && (
                   <section>
-                    <h3
-                      className="claude-eyebrow mb-3"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
+                    <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                       数据存储位置
                     </h3>
                     <div
@@ -343,10 +337,7 @@ function SettingsPanelComponent({
 
                 {/* 数据管理 */}
                 <section>
-                  <h3
-                    className="claude-eyebrow mb-3"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                     数据管理
                   </h3>
                   <div className="space-y-1.5">
@@ -399,10 +390,7 @@ function SettingsPanelComponent({
 
                 {/* 快捷键说明 */}
                 <section>
-                  <h3
-                    className="claude-eyebrow mb-3"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
+                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
                     键盘快捷键
                   </h3>
                   <div className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>

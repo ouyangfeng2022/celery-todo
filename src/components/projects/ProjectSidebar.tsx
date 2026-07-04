@@ -6,7 +6,16 @@
 import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Project } from '../../types';
-import { PlusIcon, TrashIcon, EditIcon, DownloadIcon, UploadIcon, FolderIcon, RecycleIcon, SettingsIcon } from '../common/Icons';
+import {
+  PlusIcon,
+  TrashIcon,
+  EditIcon,
+  DownloadIcon,
+  UploadIcon,
+  FolderIcon,
+  RecycleIcon,
+  SettingsIcon,
+} from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ProjectSidebarProps {
@@ -89,11 +98,23 @@ function ProjectSidebarComponent({
               boxShadow: '0 2px 6px -1px rgba(217, 119, 87, 0.4)',
             }}
           >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              width="15"
+              height="15"
+              fill="none"
+              stroke="white"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 className="text-lg font-serif tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h1
+            className="text-lg font-serif tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Celery Todo
           </h1>
         </div>
@@ -277,7 +298,10 @@ function ProjectSidebarComponent({
       </div>
 
       {/* 底部操作 */}
-      <div className="px-3 py-3 border-t space-y-0.5" style={{ borderColor: 'var(--border-color)' }}>
+      <div
+        className="px-3 py-3 border-t space-y-0.5"
+        style={{ borderColor: 'var(--border-color)' }}
+      >
         <button
           onClick={handleImportClick}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"

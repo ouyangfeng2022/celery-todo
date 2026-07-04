@@ -373,18 +373,23 @@ export function getProjectById(id: string): import('../types').Project | null {
 
 /** 插入项目 */
 export function insertProject(project: import('../types').Project): void {
-  execute(
-    `INSERT INTO projects (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-    [project.id, project.name, project.color ?? null, project.createdAt, project.updatedAt],
-  );
+  execute(`INSERT INTO projects (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`, [
+    project.id,
+    project.name,
+    project.color ?? null,
+    project.createdAt,
+    project.updatedAt,
+  ]);
 }
 
 /** 更新项目 */
 export function updateProject(project: import('../types').Project): void {
-  execute(
-    `UPDATE projects SET name = ?, color = ?, updated_at = ? WHERE id = ?`,
-    [project.name, project.color ?? null, project.updatedAt, project.id],
-  );
+  execute(`UPDATE projects SET name = ?, color = ?, updated_at = ? WHERE id = ?`, [
+    project.name,
+    project.color ?? null,
+    project.updatedAt,
+    project.id,
+  ]);
 }
 
 /** 删除项目（同时删除其下所有 Todo） */
@@ -601,7 +606,10 @@ export function emptyRecycleBin(projectId?: string): void {
 /** 清理过期回收站事项（30 天前） */
 export function cleanupExpiredDeletedTodos(): number {
   const now = new Date().toISOString();
-  const before = queryAll<{ count: number }>('SELECT COUNT(*) as count FROM deleted_todos WHERE expires_at < ?', [now]);
+  const before = queryAll<{ count: number }>(
+    'SELECT COUNT(*) as count FROM deleted_todos WHERE expires_at < ?',
+    [now],
+  );
   execute('DELETE FROM deleted_todos WHERE expires_at < ?', [now]);
   return before[0]?.count ?? 0;
 }
@@ -612,10 +620,9 @@ export function cleanupExpiredDeletedTodos(): number {
 
 /** 获取设置值 */
 export function getSetting(key: string): string | null {
-  const row = queryOne<{ key: string; value: string }>(
-    'SELECT value FROM settings WHERE key = ?',
-    [key],
-  );
+  const row = queryOne<{ key: string; value: string }>('SELECT value FROM settings WHERE key = ?', [
+    key,
+  ]);
   return row?.value ?? null;
 }
 
@@ -654,9 +661,9 @@ function rowToNotification(row: NotificationRow): import('../types').AppNotifica
 
 /** 获取所有通知 */
 export function getAllNotifications(): import('../types').AppNotification[] {
-  return queryAll<NotificationRow>(
-    'SELECT * FROM notifications ORDER BY created_at DESC',
-  ).map(rowToNotification);
+  return queryAll<NotificationRow>('SELECT * FROM notifications ORDER BY created_at DESC').map(
+    rowToNotification,
+  );
 }
 
 /** 插入通知 */

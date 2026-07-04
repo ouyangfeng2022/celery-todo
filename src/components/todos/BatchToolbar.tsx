@@ -59,10 +59,7 @@ function BatchToolbarComponent({
               boxShadow: 'var(--shadow-lg)',
             }}
           >
-            <span
-              className="text-sm font-medium px-2"
-              style={{ color: 'var(--text-primary)' }}
-            >
+            <span className="text-sm font-medium px-2" style={{ color: 'var(--text-primary)' }}>
               <span
                 className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 mr-1.5 rounded-full text-[11px] font-semibold tabular-nums"
                 style={{ backgroundColor: 'var(--accent)', color: 'white' }}
@@ -138,11 +135,7 @@ function BatchToolbarComponent({
 
             <div className="w-px h-5 mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
 
-            <button
-              onClick={onClearSelection}
-              className="btn-ghost p-1"
-              aria-label="取消选择"
-            >
+            <button onClick={onClearSelection} className="btn-ghost p-1" aria-label="取消选择">
               <XIcon size={16} />
             </button>
           </div>

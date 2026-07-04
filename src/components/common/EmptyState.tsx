@@ -36,8 +36,7 @@ function EmptyStateComponent() {
         className="text-sm max-w-xs leading-relaxed text-pretty"
         style={{ color: 'var(--text-secondary)' }}
       >
-        在上方输入框写下你的第一个待办。
-        用逗号或分号分隔，可以一次添加多项。
+        在上方输入框写下你的第一个待办。 用逗号或分号分隔，可以一次添加多项。
       </p>
 
       <div

@@ -117,16 +117,10 @@ function RecycleBinModalComponent({
                         }}
                       >
                         <div className="flex-1 min-w-0">
-                          <p
-                            className="text-sm truncate"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
+                          <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                             {todo.title}
                           </p>
-                          <p
-                            className="text-xs mt-0.5"
-                            style={{ color: 'var(--text-tertiary)' }}
-                          >
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
                             删除于 {formatDate(todo.deletedAt)} · {formatDate(todo.expiresAt)}{' '}
                             后自动清除
                           </p>

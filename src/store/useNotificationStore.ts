@@ -55,9 +55,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
   markAsRead: (id) => {
     db.markNotificationRead(id);
-    const notifications = get().notifications.map((n) =>
-      n.id === id ? { ...n, read: true } : n,
-    );
+    const notifications = get().notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
     set({
       notifications,
       unreadCount: notifications.filter((n) => !n.read).length,
