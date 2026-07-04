@@ -3,7 +3,7 @@
  * @description 渲染筛选后的事项列表，支持拖拽排序（使用 @dnd-kit）
  */
 
-import { memo, useCallback } from 'react';
+import { forwardRef, memo, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -38,17 +38,40 @@ interface TodoListProps {
 }
 
 /** 可排序的 TodoItem 包装器 */
-function SortableTodoItem(props: {
+interface SortableTodoItemProps {
   todo: Todo;
   isSelected: boolean;
   onToggle: (id: string) => void;
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
-}) {
+}
+
+/**
+ * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局，
+ * 因此这里用 forwardRef 暴露内部 div 的 ref，并把 framer-motion 的 ref 与
+ * dnd-kit 的 setNodeRef 合并到同一个 DOM 节点上。
+ */
+const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
+  props,
+  externalRef,
+) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: props.todo.id,
   });
+
+  // 合并两个 ref：dnd-kit 的 setNodeRef 和外层传入的 ref
+  const setMergedRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node);
+      if (typeof externalRef === 'function') {
+        externalRef(node);
+      } else if (externalRef) {
+        externalRef.current = node;
+      }
+    },
+    [setNodeRef, externalRef],
+  );
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -58,7 +81,7 @@ function SortableTodoItem(props: {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setMergedRef} style={style}>
       <TodoItem
         todo={props.todo}
         isSelected={props.isSelected}
@@ -70,7 +93,7 @@ function SortableTodoItem(props: {
       />
     </div>
   );
-}
+});
 
 function TodoListComponent({
   todos,
