@@ -19,9 +19,9 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 
 /** 优先级颜色（Tailwind 类名） */
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  low: 'bg-sand-100 text-sand-600 dark:bg-sand-800 dark:text-sand-300',
+  high: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  medium: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  low: 'bg-sand-100 text-sand-600 dark:bg-sand-800/60 dark:text-sand-300',
 };
 
 // ============================================

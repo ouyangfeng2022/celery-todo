@@ -45,7 +45,7 @@ function HeaderComponent({
 
   return (
     <header
-      className="flex items-center gap-3 px-4 py-3 border-b"
+      className="flex items-center gap-3 px-5 py-3.5 border-b"
       style={{
         backgroundColor: 'var(--bg-tertiary)',
         borderColor: 'var(--border-color)',
@@ -60,10 +60,10 @@ function HeaderComponent({
         <MenuIcon size={20} />
       </button>
 
-      {/* 项目标题 */}
-      <div className="flex items-center gap-2 min-w-0">
+      {/* 项目标题 - 衬线、克制、不喧哗 */}
+      <div className="flex items-center gap-2.5 min-w-0">
         <h1
-          className="text-lg font-serif truncate"
+          className="text-xl font-serif truncate tracking-tight"
           style={{ color: 'var(--text-primary)' }}
         >
           {project?.name ?? 'Celery Todo'}
@@ -76,7 +76,7 @@ function HeaderComponent({
       </div>
 
       {/* 右侧操作 */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         {/* 通知 */}
         <div className="relative">
           <button
@@ -84,11 +84,15 @@ function HeaderComponent({
             className="btn-ghost p-2 relative"
             aria-label="通知"
           >
-            <BellIcon size={20} />
+            <BellIcon size={18} />
             {unreadCount > 0 && (
               <span
-                className="absolute top-1 right-1 w-4 h-4 rounded-full text-xs flex items-center justify-center"
-                style={{ backgroundColor: 'var(--danger)', color: 'white' }}
+                className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full text-[10px] font-semibold flex items-center justify-center"
+                style={{
+                  backgroundColor: 'var(--accent)',
+                  color: 'white',
+                  boxShadow: '0 0 0 2px var(--bg-tertiary)',
+                }}
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
@@ -110,7 +114,7 @@ function HeaderComponent({
           className="btn-ghost p-2"
           aria-label="切换主题"
         >
-          {isDark ? <SunIcon size={20} /> : <MoonIcon size={20} />}
+          {isDark ? <SunIcon size={18} /> : <MoonIcon size={18} />}
         </button>
 
         {/* 设置 */}
@@ -119,7 +123,7 @@ function HeaderComponent({
           className="btn-ghost p-2"
           aria-label="设置"
         >
-          <SettingsIcon size={20} />
+          <SettingsIcon size={18} />
         </button>
       </div>
     </header>

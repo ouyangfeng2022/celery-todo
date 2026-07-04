@@ -79,29 +79,30 @@ function ProjectSidebarComponent({
       className="w-64 flex-shrink-0 h-full flex flex-col border-r"
       style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
     >
-      {/* Logo / 标题 */}
-      <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-        <div className="flex items-center gap-2">
+      {/* Logo / 标题 - 品牌字，呼吸感 */}
+      <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-color)' }}>
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ backgroundColor: 'var(--accent)' }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{
+              backgroundColor: 'var(--accent)',
+              boxShadow: '0 2px 6px -1px rgba(217, 119, 87, 0.4)',
+            }}
           >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="white" strokeWidth={3}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 className="text-lg font-serif" style={{ color: 'var(--text-primary)' }}>
+          <h1 className="text-lg font-serif tracking-tight" style={{ color: 'var(--text-primary)' }}>
             Celery Todo
           </h1>
         </div>
       </div>
 
       {/* 项目列表 */}
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+      <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className="flex items-center justify-between px-2 mb-2">
-          <span className="text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-            项目
-          </span>
+          <span className="claude-eyebrow">项目</span>
           <button
             onClick={() => setIsCreating(true)}
             className="btn-ghost p-1"
@@ -118,7 +119,7 @@ function ProjectSidebarComponent({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="px-2 mb-2 overflow-hidden"
+              className="px-1 mb-1 overflow-hidden"
             >
               <input
                 type="text"
@@ -137,10 +138,11 @@ function ProjectSidebarComponent({
                 }}
                 placeholder="项目名称..."
                 autoFocus
-                className="w-full px-2 py-1.5 text-sm rounded-md border-none outline-none"
+                className="w-full px-2.5 py-1.5 text-sm rounded-md border outline-none"
                 style={{
                   backgroundColor: 'var(--bg-tertiary)',
                   color: 'var(--text-primary)',
+                  borderColor: 'var(--border-strong)',
                 }}
               />
             </motion.div>
@@ -148,7 +150,7 @@ function ProjectSidebarComponent({
         </AnimatePresence>
 
         {/* 项目项 */}
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 mt-1">
           {projects.map((project) => {
             const isActive = project.id === activeProjectId;
             const isEditing = editingId === project.id;
@@ -159,7 +161,7 @@ function ProjectSidebarComponent({
                 key={project.id}
                 className="group relative rounded-md transition-colors"
                 style={{
-                  backgroundColor: isActive ? 'var(--accent-light)' : 'transparent',
+                  backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
                 }}
               >
                 {isEditing ? (
@@ -173,24 +175,32 @@ function ProjectSidebarComponent({
                     }}
                     onBlur={handleConfirmRename}
                     autoFocus
-                    className="w-full px-3 py-2 text-sm rounded-md border-none outline-none"
+                    className="w-full px-3 py-2 text-sm rounded-md border outline-none"
                     style={{
                       backgroundColor: 'var(--bg-tertiary)',
                       color: 'var(--text-primary)',
+                      borderColor: 'var(--accent)',
                     }}
                   />
                 ) : (
                   <button
                     onClick={() => onSwitch(project.id)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md"
                     style={{
                       color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                      fontWeight: isActive ? 500 : 400,
                     }}
                   >
-                    <FolderIcon size={16} />
+                    <FolderIcon size={15} />
                     <span className="flex-1 truncate">{project.name}</span>
                     {isDefault && (
-                      <span className="text-xs px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity" style={{ backgroundColor: 'var(--bg-hover)' }}>
+                      <span
+                        className="text-[10px] px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity font-medium"
+                        style={{
+                          backgroundColor: 'var(--bg-hover)',
+                          color: 'var(--text-tertiary)',
+                        }}
+                      >
                         默认
                       </span>
                     )}
@@ -209,7 +219,7 @@ function ProjectSidebarComponent({
                       style={{ color: 'var(--text-tertiary)' }}
                       aria-label="导出项目"
                     >
-                      <DownloadIcon size={14} />
+                      <DownloadIcon size={13} />
                     </button>
                     <button
                       onClick={(e) => {
@@ -220,7 +230,7 @@ function ProjectSidebarComponent({
                       style={{ color: 'var(--text-tertiary)' }}
                       aria-label="重命名"
                     >
-                      <EditIcon size={14} />
+                      <EditIcon size={13} />
                     </button>
                     {!isDefault && (
                       <button
@@ -232,7 +242,7 @@ function ProjectSidebarComponent({
                         style={{ color: 'var(--text-tertiary)' }}
                         aria-label="删除项目"
                       >
-                        <TrashIcon size={14} />
+                        <TrashIcon size={13} />
                       </button>
                     )}
                   </div>
@@ -242,18 +252,21 @@ function ProjectSidebarComponent({
           })}
         </div>
 
-        {/* 回收站 */}
-        <div className="mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+        {/* 回收站 - 分组带留白 */}
+        <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+          <div className="px-2 mb-2">
+            <span className="claude-eyebrow">已删除</span>
+          </div>
           <button
             onClick={onOpenRecycleBin}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-secondary)' }}
           >
-            <RecycleIcon size={16} />
+            <RecycleIcon size={15} />
             <span className="flex-1 text-left">回收站</span>
             {recycleBinCount > 0 && (
               <span
-                className="text-xs px-1.5 py-0.5 rounded-full"
+                className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
                 style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
               >
                 {recycleBinCount}
@@ -264,21 +277,21 @@ function ProjectSidebarComponent({
       </div>
 
       {/* 底部操作 */}
-      <div className="px-2 py-3 border-t space-y-1" style={{ borderColor: 'var(--border-color)' }}>
+      <div className="px-3 py-3 border-t space-y-0.5" style={{ borderColor: 'var(--border-color)' }}>
         <button
           onClick={handleImportClick}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <UploadIcon size={16} />
+          <UploadIcon size={15} />
           导入数据
         </button>
         <button
           onClick={onOpenSettings}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <SettingsIcon size={16} />
+          <SettingsIcon size={15} />
           设置
         </button>
       </div>

@@ -3,46 +3,98 @@
 @tailwind utilities;
 
 /* ============================================
-   Claude / Anthropic 风格全局样式
+   Anthropic / Claude 风格全局样式
+   设计意图：温暖的纸质底色 + 克制的珊瑚强调色，
+   衬线标题与无衬线正文搭配，层级靠排印而非边框。
    ============================================ */
 
 @layer base {
   :root {
-    --bg-primary: #faf9f7;
-    --bg-secondary: #f5f4f0;
-    --bg-tertiary: #ffffff;
-    --bg-hover: #f0eee8;
-    --text-primary: #2f2d27;
-    --text-secondary: #5c584c;
-    --text-tertiary: #948e7e;
+    /* 背景层：从主到次，逐级抬升 */
+    --bg-primary: #faf9f7; /* 应用底色 · 纸 */
+    --bg-secondary: #f3f1ec; /* 侧栏 / 输入填充 */
+    --bg-tertiary: #ffffff; /* 卡片 / 浮层 */
+    --bg-hover: #f0eee8; /* 悬停反馈 */
+    --bg-active: #ebe8df; /* 按下 / 选中填充 */
+
+    /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
+    --text-primary: #2f2d27; /* 标题与正文 */
+    --text-secondary: #5c584c; /* 次级说明 */
+    --text-tertiary: #8a8576; /* 元信息 / 占位 */
+    --text-quaternary: #b5b0a1; /* 极弱分隔 */
+
+    /* 描边：弱→强 */
     --border-color: #e8e6df;
     --border-strong: #d6d3c8;
+
+    /* 强调：Claude 标志性珊瑚色 */
     --accent: #d97757;
     --accent-hover: #c75d3d;
-    --accent-light: #faf6f3;
+    --accent-subtle: #faf6f3; /* 极浅珊瑚底 */
+    --accent-pressed: #a64a2f;
+
+    /* 语义色 */
     --danger: #c0392b;
-    --danger-light: #fdf2f0;
+    --danger-subtle: #fdf2f0;
     --success: #2d7a4f;
     --warning: #b8860b;
+
+    /* 排印 */
+    --font-serif: 'Tinos', 'Source Serif Pro', ui-serif, Georgia, Cambria,
+      'Times New Roman', Times, serif;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
+    --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas,
+      monospace;
+
+    /* 阴影：分层、纸质、不喧哗 */
+    --shadow-xs: 0 1px 2px rgba(47, 45, 39, 0.04);
+    --shadow-sm: 0 1px 3px rgba(47, 45, 39, 0.05),
+      0 1px 2px -1px rgba(47, 45, 39, 0.04);
+    --shadow-md: 0 4px 12px -2px rgba(47, 45, 39, 0.08),
+      0 2px 6px -2px rgba(47, 45, 39, 0.04);
+    --shadow-lg: 0 12px 32px -8px rgba(47, 45, 39, 0.12),
+      0 4px 12px -4px rgba(47, 45, 39, 0.06);
+
+    /* 圆角节奏 */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
   }
 
   .dark {
     --bg-primary: #1a1916;
-    --bg-secondary: #22252e;
-    --bg-tertiary: #2a2d36;
-    --bg-hover: #343945;
-    --text-primary: #f5f4f0;
+    --bg-secondary: #21201d;
+    --bg-tertiary: #282723;
+    --bg-hover: #323130;
+    --bg-active: #3a3935;
+
+    --text-primary: #f3f1ec;
     --text-secondary: #b8b3a4;
-    --text-tertiary: #736e60;
-    --border-color: #343945;
-    --border-strong: #46433a;
-    --accent: #d97757;
-    --accent-hover: #dfb39a;
-    --accent-light: #2a1f18;
+    --text-tertiary: #8a8576;
+    --text-quaternary: #5c584c;
+
+    --border-color: #34332f;
+    --border-strong: #46443e;
+
+    --accent: #df8a6a;
+    --accent-hover: #e89a7d;
+    --accent-subtle: #2a1f18;
+    --accent-pressed: #f0a98c;
+
     --danger: #e57373;
-    --danger-light: #3a1f1c;
+    --danger-subtle: #3a1f1c;
     --success: #66bb6a;
     --warning: #d4a943;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25),
+      0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.35),
+      0 2px 6px -2px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.5),
+      0 4px 12px -4px rgba(0, 0, 0, 0.3);
   }
 
   * {
@@ -60,45 +112,64 @@
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans SC', sans-serif;
-    font-size: 1rem;
-    line-height: 1.6;
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    font-feature-settings: 'cv11', 'ss01';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
 
-  /* 衬线字体类 */
+  /* 衬线标题：用于品牌字、章节大字 */
   .font-serif {
-    font-family: 'Lora', 'Source Serif Pro', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-    letter-spacing: -0.01em;
+    font-family: var(--font-serif);
+    letter-spacing: -0.012em;
+    font-feature-settings: 'liga' 1, 'kern' 1;
+  }
+
+  /* 选区使用品牌色 */
+  ::selection {
+    background-color: rgba(217, 119, 87, 0.22);
+    color: var(--text-primary);
+  }
+
+  /* 焦点环：可见但不刺眼 */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
   }
 }
 
 @layer components {
-  /* 按钮 - 主要 */
+  /* 按钮 - 主要（实心珊瑚） */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     font-size: 0.875rem;
     font-weight: 500;
     color: white;
     background-color: var(--accent);
     border: none;
     cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease,
+      box-shadow 0.15s ease;
   }
 
   .btn-primary:hover {
     background-color: var(--accent-hover);
+    box-shadow: var(--shadow-sm);
   }
 
   .btn-primary:active {
     transform: scale(0.97);
+    background-color: var(--accent-pressed);
   }
 
   /* 按钮 - 次要 */
@@ -108,28 +179,29 @@
     justify-content: center;
     gap: 0.375rem;
     padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
     background-color: var(--bg-secondary);
     border: 1px solid var(--border-strong);
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
   }
 
   .btn-secondary:hover {
     background-color: var(--bg-hover);
+    border-color: var(--text-quaternary);
   }
 
-  /* 按钮 - 幽灵（透明） */
+  /* 按钮 - 幽灵（透明，仅悬停反馈） */
   .btn-ghost {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.375rem;
     padding: 0.375rem;
-    border-radius: 0.375rem;
+    border-radius: var(--radius-sm);
     font-size: 0.875rem;
     color: var(--text-secondary);
     background-color: transparent;
@@ -143,12 +215,12 @@
     color: var(--text-primary);
   }
 
-  /* 卡片 */
+  /* 卡片：单层描边 + 极弱阴影，呈现"纸"的质感而非"卡片堆叠" */
   .claude-card {
     background-color: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: 0.75rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
   }
 
   /* 输入框 */
@@ -156,17 +228,18 @@
     background-color: var(--bg-tertiary);
     color: var(--text-primary);
     border: 1px solid var(--border-strong);
-    border-radius: 0.5rem;
+    border-radius: var(--radius-md);
     padding: 0.5rem 0.75rem;
     font-size: 0.9375rem;
     width: 100%;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease,
+      background-color 0.15s ease;
   }
 
   .claude-input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.12);
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.14);
   }
 
   .claude-input::placeholder {
@@ -180,8 +253,18 @@
     gap: 0.25rem;
     padding: 0.125rem 0.5rem;
     border-radius: 9999px;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* 章节小标题：用于设置/分组标题，克制不喧哗 */
+  .claude-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
   }
 }
 
@@ -190,7 +273,11 @@
     text-wrap: balance;
   }
 
-  /* 自定义滚动条 */
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* 自定义滚动条：细而克制 */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -203,16 +290,19 @@
   ::-webkit-scrollbar-thumb {
     background-color: var(--border-strong);
     border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
     background-color: var(--text-tertiary);
+    background-clip: content-box;
   }
 
   /* Markdown 渲染 */
   .markdown-body {
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    font-size: 0.875rem;
+    line-height: 1.65;
   }
 
   .markdown-body strong {
@@ -228,7 +318,7 @@
     background-color: var(--bg-secondary);
     padding: 0.125rem 0.375rem;
     border-radius: 0.25rem;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono);
     font-size: 0.85em;
     color: var(--accent);
   }
@@ -237,6 +327,7 @@
     color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
   }
 
   .markdown-body a:hover {
@@ -254,12 +345,23 @@
   }
 
   /* 日期选择器图标颜色 */
-  input[type="date"]::-webkit-calendar-picker-indicator {
+  input[type='date']::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.5;
   }
 
-  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  input[type='date']::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
+  }
+
+  /* 减弱动画偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

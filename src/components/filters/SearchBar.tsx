@@ -26,10 +26,10 @@ function SearchBarComponent({ value, onChange, focusSignal }: SearchBarProps) {
   return (
     <div className="relative flex-1 max-w-md">
       <div
-        className="absolute left-3 top-1/2 -translate-y-1/2"
+        className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
         style={{ color: 'var(--text-tertiary)' }}
       >
-        <SearchIcon size={16} />
+        <SearchIcon size={15} />
       </div>
       <input
         ref={inputRef}
@@ -37,7 +37,7 @@ function SearchBarComponent({ value, onChange, focusSignal }: SearchBarProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="搜索事项..."
-        className="w-full pl-9 pr-3 py-2 text-sm rounded-md border-none outline-none"
+        className="w-full pl-9 pr-9 py-1.5 text-sm rounded-md border-none outline-none transition-shadow"
         style={{
           backgroundColor: 'var(--bg-secondary)',
           color: 'var(--text-primary)',
@@ -46,7 +46,7 @@ function SearchBarComponent({ value, onChange, focusSignal }: SearchBarProps) {
       {value && (
         <button
           onClick={() => onChange('')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs"
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors"
           style={{
             backgroundColor: 'var(--bg-hover)',
             color: 'var(--text-tertiary)',

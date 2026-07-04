@@ -20,6 +20,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const [priority, setPriority] = useState<Priority>('medium');
   const [dueDate, setDueDate] = useState('');
   const [showOptions, setShowOptions] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 快捷键聚焦
@@ -52,16 +53,29 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const hasSeparator = /[,，;；\n]/.test(title);
 
   return (
-    <div className="claude-card p-3">
-      <div className="flex items-center gap-2">
+    <div
+      className="claude-card transition-all"
+      style={{
+        padding: '0.625rem 0.875rem',
+        boxShadow: isFocused ? '0 0 0 3px rgba(217, 119, 87, 0.10)' : 'var(--shadow-xs)',
+        borderColor: isFocused ? 'var(--accent)' : 'var(--border-color)',
+      }}
+    >
+      <div className="flex items-center gap-3">
         <button
           onClick={handleAdd}
           disabled={title.trim().length === 0}
-          className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors disabled:opacity-40"
-          style={{ backgroundColor: 'var(--accent)', color: 'white' }}
+          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{
+            backgroundColor: 'var(--accent)',
+            color: 'white',
+            boxShadow: title.trim()
+              ? '0 2px 6px -1px rgba(217, 119, 87, 0.4)'
+              : 'none',
+          }}
           aria-label="添加事项"
         >
-          <PlusIcon size={18} />
+          <PlusIcon size={16} />
         </button>
 
         <input
@@ -70,7 +84,11 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => setShowOptions(true)}
+          onFocus={() => {
+            setShowOptions(true);
+            setIsFocused(true);
+          }}
+          onBlur={() => setIsFocused(false)}
           placeholder="添加待办事项...（用逗号或分号分隔可批量添加）"
           className="flex-1 bg-transparent border-none outline-none text-base"
           style={{ color: 'var(--text-primary)' }}
@@ -80,8 +98,8 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
           <motion.span
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="claude-tag"
-            style={{ backgroundColor: 'var(--accent-light)', color: 'var(--accent)' }}
+            className="claude-tag flex-shrink-0"
+            style={{ backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)' }}
           >
             批量添加
           </motion.span>
@@ -103,23 +121,28 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
             style={{ overflow: 'hidden' }}
           >
             <div
-              className="flex items-center gap-3 mt-3 pt-3 border-t"
+              className="flex items-center gap-3 mt-2.5 pt-2.5 border-t"
               style={{ borderColor: 'var(--border-color)' }}
             >
-              {/* 优先级选择 */}
-              <div className="flex items-center gap-1.5">
+              {/* 优先级选择 - segmented control 风格 */}
+              <div className="flex items-center gap-2">
                 <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   优先级
                 </span>
-                <div className="flex gap-1">
+                <div
+                  className="flex gap-0.5 p-0.5 rounded-md"
+                  style={{ backgroundColor: 'var(--bg-secondary)' }}
+                >
                   {(['high', 'medium', 'low'] as Priority[]).map((p) => (
                     <button
                       key={p}
                       onClick={() => setPriority(p)}
-                      className="px-2 py-0.5 rounded text-xs transition-all"
+                      className="px-2 py-0.5 rounded text-xs font-medium transition-all"
                       style={{
-                        backgroundColor: priority === p ? 'var(--accent)' : 'var(--bg-secondary)',
-                        color: priority === p ? 'white' : 'var(--text-secondary)',
+                        backgroundColor:
+                          priority === p ? 'var(--bg-tertiary)' : 'transparent',
+                        color: priority === p ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                        boxShadow: priority === p ? 'var(--shadow-xs)' : 'none',
                       }}
                     >
                       {PRIORITY_LABELS[p]}
@@ -129,7 +152,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
               </div>
 
               {/* 截止日期 */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   截止
                 </span>
@@ -137,7 +160,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
-                  className="text-xs px-2 py-0.5 rounded border-none bg-transparent"
+                  className="text-xs px-2 py-0.5 rounded-md border-none bg-transparent"
                   style={{
                     color: 'var(--text-secondary)',
                     backgroundColor: 'var(--bg-secondary)',

@@ -36,37 +36,45 @@ function FilterBarComponent({
 }: FilterBarProps) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
-      {/* 筛选标签 */}
+      {/* 筛选标签 - segmented control */}
       <div
-        className="flex items-center gap-1 p-1 rounded-lg"
+        className="flex items-center gap-0.5 p-0.5 rounded-lg"
         style={{ backgroundColor: 'var(--bg-secondary)' }}
       >
         {FILTER_OPTIONS.map((option) => {
-          const count = option.value === 'all' ? activeCount + completedCount : option.value === 'active' ? activeCount : completedCount;
+          const count =
+            option.value === 'all'
+              ? activeCount + completedCount
+              : option.value === 'active'
+                ? activeCount
+                : completedCount;
           const isActive = filter === option.value;
           return (
             <button
               key={option.value}
               onClick={() => onFilterChange(option.value)}
-              className="relative px-3 py-1.5 text-sm rounded-md transition-colors"
+              className="relative px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors"
               style={{
-                color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
               }}
             >
               {isActive && (
                 <motion.div
                   layoutId="filter-pill"
                   className="absolute inset-0 rounded-md"
-                  style={{ backgroundColor: 'var(--bg-tertiary)' }}
+                  style={{
+                    backgroundColor: 'var(--bg-tertiary)',
+                    boxShadow: 'var(--shadow-xs)',
+                  }}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
               <span className="relative z-10 flex items-center gap-1.5">
                 {option.label}
                 <span
-                  className="text-xs px-1.5 py-0.5 rounded-full"
+                  className="text-[11px] px-1.5 py-0.5 rounded-full tabular-nums font-medium"
                   style={{
-                    backgroundColor: isActive ? 'var(--accent-light)' : 'transparent',
+                    backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
                     color: isActive ? 'var(--accent)' : 'var(--text-tertiary)',
                   }}
                 >
@@ -84,7 +92,7 @@ function FilterBarComponent({
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortType)}
-          className="text-sm px-3 py-1.5 rounded-md border-none cursor-pointer"
+          className="text-[13px] px-2.5 py-1.5 rounded-md border-none cursor-pointer transition-colors"
           style={{
             backgroundColor: 'var(--bg-secondary)',
             color: 'var(--text-secondary)',
@@ -102,10 +110,10 @@ function FilterBarComponent({
         {completedCount > 0 && (
           <button
             onClick={onClearCompleted}
-            className="btn-ghost text-sm flex items-center gap-1.5"
+            className="btn-ghost text-[13px] flex items-center gap-1.5"
             style={{ color: 'var(--text-tertiary)' }}
           >
-            <TrashIcon size={14} />
+            <TrashIcon size={13} />
             清空已完成
           </button>
         )}

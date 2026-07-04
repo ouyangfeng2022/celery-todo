@@ -184,24 +184,46 @@ function App() {
   // === 加载状态 ===
   if (!dbReady) {
     return (
-      <div className="h-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      <div
+        className="h-full flex items-center justify-center"
+        style={{ backgroundColor: 'var(--bg-primary)' }}
+      >
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-center"
+          className="flex flex-col items-center gap-4"
         >
-          <div
-            className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{ backgroundColor: 'var(--accent-light)' }}
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-              className="w-6 h-6 border-2 rounded-full"
-              style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
-            />
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{
+                backgroundColor: 'var(--accent)',
+                boxShadow: '0 4px 12px -2px rgba(217, 119, 87, 0.4)',
+              }}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="white"
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <h1 className="text-xl font-serif tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Celery Todo
+            </h1>
           </div>
-          <p style={{ color: 'var(--text-secondary)' }}>正在加载数据库...</p>
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+            className="w-5 h-5 border-[1.5px] rounded-full"
+            style={{ borderColor: 'var(--border-strong)', borderTopColor: 'var(--accent)' }}
+          />
         </motion.div>
       </div>
     );
@@ -256,8 +278,8 @@ function App() {
           onOpenSettings={() => setSettingsOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-10">
+          <div className="max-w-3xl mx-auto space-y-5">
             {/* 添加事项 */}
             <AddTodoInput onAdd={addTodo} focusSignal={newTodoFocusSignal} />
 

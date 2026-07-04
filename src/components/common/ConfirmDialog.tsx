@@ -63,32 +63,47 @@ function ConfirmDialogComponent({
         >
           {/* 遮罩 */}
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 backdrop-blur-sm"
+            style={{ backgroundColor: 'rgba(47, 45, 39, 0.4)' }}
             onClick={onCancel}
           />
 
           {/* 对话框 */}
           <motion.div
-            className="relative w-full max-w-md claude-card p-6"
-            initial={{ scale: 0.95, opacity: 0, y: 10 }}
+            className="relative w-full max-w-md rounded-claude p-6"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            initial={{ scale: 0.96, opacity: 0, y: 12 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.95, opacity: 0, y: 10 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+            exit={{ scale: 0.96, opacity: 0, y: 12 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
             <div className="flex items-start gap-4">
               {danger && (
                 <div
                   className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--danger-light)', color: 'var(--danger)' }}
+                  style={{
+                    backgroundColor: 'var(--danger-subtle)',
+                    color: 'var(--danger)',
+                  }}
                 >
-                  <AlertIcon size={20} />
+                  <AlertIcon size={18} />
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: 'var(--font-serif, serif)' }}>
+                <h3
+                  className="text-lg font-serif mb-1.5 tracking-tight"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {title}
                 </h3>
-                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                <p
+                  className="text-sm leading-relaxed text-pretty"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   {message}
                 </p>
               </div>

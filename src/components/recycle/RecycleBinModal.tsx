@@ -3,13 +3,12 @@
  * @description 显示已删除的事项，支持恢复和永久删除
  */
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DeletedTodo } from '../../types';
 import { formatDate } from '../../utils/helpers';
 import { RestoreIcon, TrashIcon, XIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
-import { useState } from 'react';
 
 interface RecycleBinModalProps {
   open: boolean;
@@ -41,25 +40,39 @@ function RecycleBinModalComponent({
             exit={{ opacity: 0 }}
           >
             <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              className="absolute inset-0 backdrop-blur-sm"
+              style={{ backgroundColor: 'rgba(47, 45, 39, 0.4)' }}
               onClick={onClose}
             />
 
             <motion.div
-              className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl shadow-xl"
+              className="relative w-full max-w-2xl max-h-[80vh] flex flex-col rounded-claude overflow-hidden"
               style={{
                 backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-strong)',
+                border: '1px solid var(--border-color)',
+                boxShadow: 'var(--shadow-lg)',
               }}
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              initial={{ scale: 0.96, opacity: 0, y: 12 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              exit={{ scale: 0.96, opacity: 0, y: 12 }}
+              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             >
               {/* 头部 */}
-              <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
-                <h2 className="text-lg font-serif" style={{ color: 'var(--text-primary)' }}>
-                  回收站
-                </h2>
+              <div
+                className="flex items-center justify-between px-6 py-4 border-b"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <div>
+                  <h2
+                    className="text-xl font-serif tracking-tight"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    回收站
+                  </h2>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    删除的事项会在此保留 30 天
+                  </p>
+                </div>
                 <div className="flex items-center gap-2">
                   {deletedTodos.length > 0 && (
                     <button
@@ -79,20 +92,26 @@ function RecycleBinModalComponent({
               {/* 列表 */}
               <div className="flex-1 overflow-y-auto p-4">
                 {deletedTodos.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div
+                      className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+                      style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        color: 'var(--text-quaternary)',
+                      }}
+                    >
+                      <TrashIcon size={24} />
+                    </div>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                       回收站为空
-                    </p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                      删除的事项会在此保留 30 天
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {deletedTodos.map((todo) => (
                       <div
                         key={todo.id}
-                        className="flex items-center gap-3 p-3 rounded-lg"
+                        className="group flex items-center gap-3 px-3.5 py-3 rounded-lg"
                         style={{
                           backgroundColor: 'var(--bg-secondary)',
                         }}
@@ -104,26 +123,32 @@ function RecycleBinModalComponent({
                           >
                             {todo.title}
                           </p>
-                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                            删除于 {formatDate(todo.deletedAt)} · {formatDate(todo.expiresAt)} 后自动清除
+                          <p
+                            className="text-xs mt-0.5"
+                            style={{ color: 'var(--text-tertiary)' }}
+                          >
+                            删除于 {formatDate(todo.deletedAt)} · {formatDate(todo.expiresAt)}{' '}
+                            后自动清除
                           </p>
                         </div>
-                        <button
-                          onClick={() => onRestore(todo.id)}
-                          className="btn-ghost p-1.5"
-                          style={{ color: 'var(--accent)' }}
-                          aria-label="恢复"
-                        >
-                          <RestoreIcon size={16} />
-                        </button>
-                        <button
-                          onClick={() => onPermanentDelete(todo.id)}
-                          className="btn-ghost p-1.5"
-                          style={{ color: 'var(--danger)' }}
-                          aria-label="永久删除"
-                        >
-                          <TrashIcon size={16} />
-                        </button>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => onRestore(todo.id)}
+                            className="btn-ghost p-1.5"
+                            style={{ color: 'var(--accent)' }}
+                            aria-label="恢复"
+                          >
+                            <RestoreIcon size={15} />
+                          </button>
+                          <button
+                            onClick={() => onPermanentDelete(todo.id)}
+                            className="btn-ghost p-1.5"
+                            style={{ color: 'var(--danger)' }}
+                            aria-label="永久删除"
+                          >
+                            <TrashIcon size={15} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

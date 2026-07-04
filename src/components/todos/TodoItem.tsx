@@ -93,12 +93,11 @@ function TodoItemComponent({
       exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className={cn(
-        'group relative flex items-start gap-3 p-3 rounded-claude transition-colors',
+        'group relative flex items-start gap-3 px-3.5 py-3 rounded-claude transition-colors',
         'hover:bg-[var(--bg-hover)]',
-        isSelected && 'bg-[var(--accent-light)]',
-        overdue && 'border-l-2',
+        isSelected && 'bg-[var(--accent-subtle)]',
       )}
-      style={overdue ? { borderLeftColor: 'var(--danger)' } : undefined}
+      style={undefined}
     >
       {/* 拖拽手柄 */}
       {dragHandleProps && (
@@ -116,14 +115,14 @@ function TodoItemComponent({
       <button
         onClick={() => onToggle(todo.id)}
         className={cn(
-          'mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
+          'mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all',
           todo.completed
             ? 'bg-[var(--accent)] border-[var(--accent)]'
             : 'border-[var(--border-strong)] hover:border-[var(--accent)]',
         )}
         aria-label={todo.completed ? '标记为未完成' : '标记为已完成'}
       >
-        {todo.completed && <CheckIcon size={12} className="text-white" />}
+        {todo.completed && <CheckIcon size={11} className="text-white" />}
       </button>
 
       {/* 内容区域 */}
@@ -168,7 +167,7 @@ function TodoItemComponent({
             <div
               onDoubleClick={handleStartEdit}
               className={cn(
-                'font-medium cursor-text break-words',
+                'text-[15px] leading-snug cursor-text break-words text-pretty transition-colors',
                 todo.completed && 'line-through',
               )}
               style={{
@@ -181,7 +180,7 @@ function TodoItemComponent({
             {/* 描述（Markdown 渲染） */}
             {todo.description && (
               <div
-                className="markdown-body mt-1 text-sm"
+                className="markdown-body mt-1 text-[13px]"
                 style={{ color: 'var(--text-secondary)' }}
                 onDoubleClick={handleStartEdit}
               >
@@ -190,8 +189,8 @@ function TodoItemComponent({
             )}
 
             {/* 元信息标签 */}
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {/* 优先级 */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+              {/* 优先级 - 使用 PRIORITY_COLORS，但配色与品牌协调 */}
               <span className={cn('claude-tag', PRIORITY_COLORS[todo.priority])}>
                 {PRIORITY_LABELS[todo.priority]}
               </span>
@@ -201,18 +200,26 @@ function TodoItemComponent({
                 <span
                   className="claude-tag gap-1"
                   style={{
-                    backgroundColor: overdue ? 'var(--danger-light)' : 'var(--bg-secondary)',
-                    color: overdue ? 'var(--danger)' : dueSoon ? 'var(--warning)' : 'var(--text-secondary)',
+                    backgroundColor: overdue ? 'var(--danger-subtle)' : 'transparent',
+                    color: overdue
+                      ? 'var(--danger)'
+                      : dueSoon
+                        ? 'var(--warning)'
+                        : 'var(--text-tertiary)',
+                    border:
+                      overdue || dueSoon
+                        ? 'none'
+                        : `1px solid var(--border-color)`,
                   }}
                 >
-                  {overdue ? <AlertIcon size={12} /> : <CalendarIcon size={12} />}
+                  {overdue ? <AlertIcon size={11} /> : <CalendarIcon size={11} />}
                   {formatDate(todo.dueDate)}
                   {overdue && ' · 已过期'}
                 </span>
               )}
 
               {/* 创建时间 */}
-              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
                 {formatDate(todo.createdAt)}创建
               </span>
             </div>
@@ -222,12 +229,12 @@ function TodoItemComponent({
 
       {/* 操作按钮 */}
       {!isEditing && (
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {/* 优先级快速切换 */}
           <select
             value={todo.priority}
             onChange={(e) => onEdit(todo.id, { priority: e.target.value as Priority })}
-            className="text-xs px-2 py-1 rounded border-none bg-transparent cursor-pointer"
+            className="text-xs px-1.5 py-1 rounded border-none bg-transparent cursor-pointer"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label="设置优先级"
           >
@@ -245,7 +252,7 @@ function TodoItemComponent({
                 dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined,
               })
             }
-            className="text-xs px-2 py-1 rounded border-none bg-transparent cursor-pointer"
+            className="text-xs px-1.5 py-1 rounded border-none bg-transparent cursor-pointer"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label="设置截止日期"
           />
@@ -255,7 +262,7 @@ function TodoItemComponent({
             className="btn-ghost p-1.5"
             aria-label="编辑"
           >
-            <EditIcon size={16} />
+            <EditIcon size={15} />
           </button>
 
           <button
@@ -263,7 +270,7 @@ function TodoItemComponent({
             className="btn-ghost p-1.5 hover:text-[var(--danger)]"
             aria-label="删除"
           >
-            <TrashIcon size={16} />
+            <TrashIcon size={15} />
           </button>
         </div>
       )}
