@@ -27,7 +27,7 @@ import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
-import { FocusIcon } from './components/common/Icons';
+import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
 
 import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
@@ -253,32 +253,97 @@ function App() {
 
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* 侧边栏 - 专注模式下完全隐藏 */}
-      <AnimatePresence>
+      {/*
+        侧边栏 + 切换手柄
+        - 用一个 group 容器把侧边栏与手柄圈在一起，鼠标悬浮在整个区域时手柄淡入
+        - 专注模式下完全隐藏（专注模式有自己的退出入口，不需要再露出手柄）
+        - 手柄本身是简单的箭头：展开时左箭头（点击收起），收起时右箭头（点击展开）
+      */}
+      <div className="group/sidebar relative flex-shrink-0">
+        {/* 侧边栏 */}
+        <AnimatePresence>
+          {sidebarOpen && !focusMode && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 'auto', opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <ProjectSidebar
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSwitch={switchProject}
+                onCreate={createProject}
+                onRename={renameProject}
+                onDelete={deleteProject}
+                onExport={handleExportProject}
+                onImport={handleImportProject}
+                onOpenRecycleBin={() => setRecycleBinOpen(true)}
+                onOpenSettings={() => setSettingsOpen(true)}
+                recycleBinCount={deletedTodos.length}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* 侧边栏收起手柄：侧边栏展开时贴在右侧边缘，鼠标悬浮在侧边栏区域才出现 */}
         {sidebarOpen && !focusMode && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 'auto', opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex-shrink-0 overflow-hidden"
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 -right-3 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 transition-opacity"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-secondary)',
+            }}
+            aria-label="收起侧边栏"
+            title="收起侧边栏 (Ctrl+B)"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
           >
-            <ProjectSidebar
-              projects={projects}
-              activeProjectId={activeProjectId}
-              onSwitch={switchProject}
-              onCreate={createProject}
-              onRename={renameProject}
-              onDelete={deleteProject}
-              onExport={handleExportProject}
-              onImport={handleImportProject}
-              onOpenRecycleBin={() => setRecycleBinOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
-              recycleBinCount={deletedTodos.length}
-            />
-          </motion.div>
+            <ChevronLeftIcon size={16} />
+          </button>
         )}
-      </AnimatePresence>
+      </div>
+
+      {/*
+        侧边栏收起后：在主内容区左边缘留一条窄的悬停热区，鼠标移过去时淡出"展开"手柄。
+        热区无视觉干扰，但提供明确的展开入口。
+      */}
+      {!sidebarOpen && !focusMode && (
+        <div className="group/expand relative flex-shrink-0">
+          {/* 隐形热区：宽度极窄，仅作 hover 触发器 */}
+          <div className="absolute inset-y-0 -right-2 w-4 z-20" aria-hidden />
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-0 z-30 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/expand:opacity-100 transition-opacity"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-secondary)',
+            }}
+            aria-label="展开侧边栏"
+            title="展开侧边栏 (Ctrl+B)"
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }}
+          >
+            <ChevronRightIcon size={16} />
+          </button>
+        </div>
+      )}
 
       {/* 主内容区 */}
       <div className="relative flex-1 flex flex-col min-w-0">
@@ -296,7 +361,6 @@ function App() {
             onDeleteNotification={deleteNotification}
             isDark={isDark}
             onToggleTheme={toggleTheme}
-            onToggleSidebar={() => setSidebarOpen((s) => !s)}
             onOpenSettings={() => setSettingsOpen(true)}
             focusMode={focusMode}
             onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}

@@ -7,15 +7,7 @@ import { memo, useState } from 'react';
 import type { Project } from '../../types';
 import { SearchBar } from '../filters/SearchBar';
 import { NotificationPanel } from '../common/NotificationPanel';
-import {
-  BellIcon,
-  SunIcon,
-  MoonIcon,
-  MenuIcon,
-  SettingsIcon,
-  FocusIcon,
-  ListIcon,
-} from '../common/Icons';
+import { BellIcon, SunIcon, MoonIcon, SettingsIcon, FocusIcon, ListIcon } from '../common/Icons';
 import type { AppNotification } from '../../types';
 
 interface HeaderProps {
@@ -30,7 +22,6 @@ interface HeaderProps {
   onDeleteNotification: (id: string) => void;
   isDark: boolean;
   onToggleTheme: () => void;
-  onToggleSidebar: () => void;
   onOpenSettings: () => void;
   /** 是否处于专注模式 */
   focusMode: boolean;
@@ -50,7 +41,6 @@ function HeaderComponent({
   onDeleteNotification,
   isDark,
   onToggleTheme,
-  onToggleSidebar,
   onOpenSettings,
   focusMode,
   onToggleFocusMode,
@@ -65,16 +55,7 @@ function HeaderComponent({
         borderColor: 'var(--border-color)',
       }}
     >
-      {/* 侧边栏切换（移动端；专注模式下隐藏，因侧边栏本就被隐藏） */}
-      {!focusMode && (
-        <button
-          onClick={onToggleSidebar}
-          className="titlebar-no-drag btn-ghost p-2 lg:hidden"
-          aria-label="切换侧边栏"
-        >
-          <MenuIcon size={20} />
-        </button>
-      )}
+      {/* 注：侧边栏切换按钮已迁移至 App.tsx 中侧边栏旁的浮动手柄，鼠标悬浮在侧边栏区域时显示 */}
 
       {/* 项目标题 - 衬线、克制、不喧哗 */}
       <div className="flex items-center gap-2.5 min-w-0">

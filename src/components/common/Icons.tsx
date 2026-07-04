@@ -201,6 +201,18 @@ export const ChevronDownIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+export const ChevronLeftIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <polyline points="15 18 9 12 15 6" />
+  </BaseIcon>
+));
+
+export const ChevronRightIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <polyline points="9 18 15 12 9 6" />
+  </BaseIcon>
+));
+
 export const GripIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <circle cx="9" cy="5" r="1" fill="currentColor" />
