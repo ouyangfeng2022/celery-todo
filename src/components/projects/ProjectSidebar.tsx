@@ -12,11 +12,11 @@ import {
   EditIcon,
   DownloadIcon,
   UploadIcon,
-  FolderIcon,
   RecycleIcon,
   SettingsIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { Logo } from '../common/Logo';
 
 interface ProjectSidebarProps {
   projects: Project[];
@@ -91,26 +91,7 @@ function ProjectSidebarComponent({
       {/* Logo / 标题 - 品牌字，呼吸感 */}
       <div className="px-5 py-5 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <div className="flex items-center gap-2.5">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{
-              backgroundColor: 'var(--accent)',
-              boxShadow: '0 2px 6px -1px rgba(217, 119, 87, 0.4)',
-            }}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="15"
-              height="15"
-              fill="none"
-              stroke="white"
-              strokeWidth={3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
+          <Logo size={36} className="flex-shrink-0" />
           <h1
             className="text-lg font-serif tracking-tight"
             style={{ color: 'var(--text-primary)' }}
@@ -212,7 +193,6 @@ function ProjectSidebarComponent({
                       fontWeight: isActive ? 500 : 400,
                     }}
                   >
-                    <FolderIcon size={15} />
                     <span className="flex-1 truncate">{project.name}</span>
                     {isDefault && (
                       <span

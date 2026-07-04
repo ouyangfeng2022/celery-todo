@@ -72,7 +72,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       updatedAt: now,
     };
     db.insertProject(project);
-    set({ projects: [...get().projects, project] });
+    // 创建后自动切换为当前项目，符合「新建即进入」的预期；
+    // activeProjectId 变化会驱动 App.tsx 中的 effect 重新 loadProject。
+    set({ projects: [...get().projects, project], activeProjectId: project.id });
     return project.id;
   },
 
