@@ -245,13 +245,16 @@ function App() {
       */}
       {!focusMode && (
         <div
-          className="group/sidebar relative flex-shrink-0 overflow-hidden"
+          className="group/sidebar relative flex-shrink-0 overflow-hidden h-full"
           style={{
             width: sidebarOpen ? '256px' : '0px',
             transition: 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <div className="sidebar-inner" style={{ width: '256px', minWidth: '256px' }}>
+          <div
+            className="sidebar-inner h-full"
+            style={{ width: '256px', minWidth: '256px' }}
+          >
             <ProjectSidebar
               projects={projects}
               activeProjectId={activeProjectId}
