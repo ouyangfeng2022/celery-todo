@@ -4,12 +4,27 @@
  */
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
 import { cn, formatDate, isOverdue, isDueSoon } from '../../utils/helpers';
-import { CheckIcon, EditIcon, TrashIcon, CalendarIcon, AlertIcon, GripIcon } from '../common/Icons';
+import {
+  CheckIcon,
+  EditIcon,
+  TrashIcon,
+  CalendarIcon,
+  AlertIcon,
+  GripIcon,
+  FlagIcon,
+} from '../common/Icons';
+
+/** 优先级对应的圆点颜色（用于动作栏的旗帜图标着色） */
+const PRIORITY_DOT_STYLE: Record<Priority, string> = {
+  high: 'var(--danger)',
+  medium: 'var(--warning)',
+  low: 'var(--text-quaternary)',
+};
 
 export interface TodoItemProps {
   todo: Todo;
@@ -20,6 +35,151 @@ export interface TodoItemProps {
   onToggleSelect: (id: string) => void;
   /** 拖拽手柄属性（由 dnd-kit 注入） */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+}
+
+/** 统一动作栏的图标按钮：固定 28×28 命中区，垂直居中 */
+function DockButton({
+  label,
+  onClick,
+  children,
+  danger,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  danger?: boolean;
+  active?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={cn(
+        'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-colors',
+        'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        danger && 'hover:text-[var(--danger)]',
+        active && 'text-[var(--accent)]',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * 优先级选择弹出菜单：替代原生 <select>，保证与其它图标按钮在动作栏中尺寸一致。
+ * 点击旗帜按钮展开三个选项，再次点击或点击外部收起。
+ */
+function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Priority) => void }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <DockButton label="设置优先级" onClick={() => setOpen((v) => !v)} active={open}>
+        <span className="relative">
+          <FlagIcon size={15} />
+          {/* 优先级颜色指示点：右下角 */}
+          <span
+            className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-[var(--bg-tertiary)]"
+            style={{ backgroundColor: PRIORITY_DOT_STYLE[value] }}
+          />
+        </span>
+      </DockButton>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.13 }}
+            className="absolute right-0 top-full mt-1 z-30 min-w-[7rem] py-1 rounded-md border"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              borderColor: 'var(--border-color)',
+              boxShadow: 'var(--shadow-md, 0 4px 12px rgba(0,0,0,0.08))',
+            }}
+          >
+            {(['high', 'medium', 'low'] as Priority[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => {
+                  onChange(p);
+                  setOpen(false);
+                }}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors text-left',
+                  'hover:bg-[var(--bg-hover)]',
+                )}
+                style={{
+                  color: p === value ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: PRIORITY_DOT_STYLE[p] }}
+                />
+                <span className="flex-1">{PRIORITY_LABELS[p]}优先级</span>
+                {p === value && <CheckIcon size={12} className="text-[var(--accent)]" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * 截止日期触发器：把原生 date input 折叠为日历图标按钮，点击展开。
+ * 与动作栏其它按钮保持一致的 28×28 命中区。
+ */
+function DueDateButton({ value, onChange }: { value?: string; onChange: (iso?: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasDate = Boolean(value);
+
+  return (
+    <label
+      className={cn(
+        'flex-shrink-0 relative w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
+        'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+      )}
+      title="设置截止日期"
+    >
+      <CalendarIcon size={15} />
+      {hasDate && (
+        <span
+          className="absolute -bottom-0 -right-0 w-1.5 h-1.5 rounded-full border border-[var(--bg-tertiary)]"
+          style={{ backgroundColor: 'var(--accent)' }}
+        />
+      )}
+      {/* 可见但透明的原生日期控件：点击图标即触发原生选择器，且支持键盘 */}
+      <input
+        ref={inputRef}
+        type="date"
+        value={value?.split('T')[0] ?? ''}
+        onChange={(e) =>
+          onChange(e.target.value ? new Date(e.target.value).toISOString() : undefined)
+        }
+        tabIndex={-1}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        aria-label="设置截止日期"
+      />
+    </label>
+  );
 }
 
 function TodoItemComponent({
@@ -93,13 +253,13 @@ function TodoItemComponent({
       exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className={cn(
-        'group relative flex items-start gap-3 px-3.5 py-3 rounded-claude transition-colors',
+        'group relative flex items-center gap-3 pl-3.5 pr-2 py-2.5 rounded-claude transition-colors',
         'hover:bg-[var(--bg-hover)]',
         isSelected && 'bg-[var(--accent-subtle)]',
       )}
       style={undefined}
     >
-      {/* 拖拽手柄 */}
+      {/* 拖拽手柄：绝对定位，悬浮显示在左侧，不占布局空间 */}
       {dragHandleProps && (
         <button
           {...dragHandleProps}
@@ -111,11 +271,11 @@ function TodoItemComponent({
         </button>
       )}
 
-      {/* 完成状态复选框 */}
+      {/* 完成状态复选框：与标题首行对齐（标题行高 1.3125rem ≈ 21px，复选框 18px） */}
       <button
         onClick={() => onToggle(todo.id)}
         className={cn(
-          'mt-0.5 flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all',
+          'flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all',
           todo.completed
             ? 'bg-[var(--accent)] border-[var(--accent)]'
             : 'border-[var(--border-strong)] hover:border-[var(--accent)]',
@@ -144,12 +304,21 @@ function TodoItemComponent({
               rows={3}
               placeholder="描述（支持 Markdown：**粗体** *斜体* `代码` [链接](url)）"
             />
-            <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              <kbd className="px-1.5 py-0.5 rounded border" style={{ borderColor: 'var(--border-strong)' }}>
+            <div
+              className="flex items-center gap-2 text-xs"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              <kbd
+                className="px-1.5 py-0.5 rounded border"
+                style={{ borderColor: 'var(--border-strong)' }}
+              >
                 ⌘+Enter
               </kbd>
               <span>保存</span>
-              <kbd className="px-1.5 py-0.5 rounded border" style={{ borderColor: 'var(--border-strong)' }}>
+              <kbd
+                className="px-1.5 py-0.5 rounded border"
+                style={{ borderColor: 'var(--border-strong)' }}
+              >
                 Esc
               </kbd>
               <span>取消</span>
@@ -206,10 +375,7 @@ function TodoItemComponent({
                       : dueSoon
                         ? 'var(--warning)'
                         : 'var(--text-tertiary)',
-                    border:
-                      overdue || dueSoon
-                        ? 'none'
-                        : `1px solid var(--border-color)`,
+                    border: overdue || dueSoon ? 'none' : `1px solid var(--border-color)`,
                   }}
                 >
                   {overdue ? <AlertIcon size={11} /> : <CalendarIcon size={11} />}
@@ -227,63 +393,47 @@ function TodoItemComponent({
         )}
       </div>
 
-      {/* 操作按钮 */}
+      {/* 统一动作栏：所有图标统一 28×28 命中区，垂直居中，固定宽度避免悬浮抖动 */}
       {!isEditing && (
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* 优先级快速切换 */}
-          <select
-            value={todo.priority}
-            onChange={(e) => onEdit(todo.id, { priority: e.target.value as Priority })}
-            className="text-xs px-1.5 py-1 rounded border-none bg-transparent cursor-pointer"
-            style={{ color: 'var(--text-tertiary)' }}
-            aria-label="设置优先级"
-          >
-            <option value="high">高优先级</option>
-            <option value="medium">中优先级</option>
-            <option value="low">低优先级</option>
-          </select>
-
-          {/* 截止日期 */}
-          <input
-            type="date"
-            value={todo.dueDate?.split('T')[0] ?? ''}
-            onChange={(e) =>
-              onEdit(todo.id, {
-                dueDate: e.target.value ? new Date(e.target.value).toISOString() : undefined,
-              })
-            }
-            className="text-xs px-1.5 py-1 rounded border-none bg-transparent cursor-pointer"
-            style={{ color: 'var(--text-tertiary)' }}
-            aria-label="设置截止日期"
+        <div
+          className={cn(
+            'flex-shrink-0 flex items-center gap-0.5 rounded-md transition-opacity',
+            isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
+          )}
+        >
+          <PriorityMenu value={todo.priority} onChange={(p) => onEdit(todo.id, { priority: p })} />
+          <DueDateButton
+            value={todo.dueDate}
+            onChange={(iso) => onEdit(todo.id, { dueDate: iso })}
           />
-
-          <button
-            onClick={handleStartEdit}
-            className="btn-ghost p-1.5"
-            aria-label="编辑"
-          >
+          <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
+          <DockButton label="编辑" onClick={handleStartEdit}>
             <EditIcon size={15} />
-          </button>
-
-          <button
-            onClick={() => onDelete(todo.id)}
-            className="btn-ghost p-1.5 hover:text-[var(--danger)]"
-            aria-label="删除"
-          >
+          </DockButton>
+          <DockButton label="删除" danger onClick={() => onDelete(todo.id)}>
             <TrashIcon size={15} />
-          </button>
+          </DockButton>
+          {/* 批量选择：与其它图标同高，但用复选框语义 */}
+          <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
+          <label
+            className={cn(
+              'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
+              'hover:bg-[var(--bg-hover)]',
+            )}
+            title="选择事项"
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleSelect(todo.id)}
+              className="w-[14px] h-[14px] cursor-pointer accent-[var(--accent)]"
+              aria-label="选择事项"
+            />
+          </label>
         </div>
       )}
-
-      {/* 批量选择复选框（悬浮时显示在最右侧并垂直居中） */}
-      <input
-        type="checkbox"
-        checked={isSelected}
-        onChange={() => onToggleSelect(todo.id)}
-        className="self-center w-4 h-4 rounded cursor-pointer accent-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ opacity: isSelected ? 1 : undefined }}
-        aria-label="选择事项"
-      />
     </motion.div>
   );
 }
