@@ -236,76 +236,68 @@ function App() {
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/*
-        侧边栏 + 切换手柄
-        - 用一个 group 容器把侧边栏与手柄圈在一起，鼠标悬浮在整个区域时手柄淡入
-        - 专注模式下完全隐藏（专注模式有自己的退出入口，不需要再露出手柄）
-        - 手柄本身是简单的箭头：展开时左箭头（点击收起），收起时右箭头（点击展开）
+        侧边栏 - 专注模式下完全隐藏
+        渲染策略：侧边栏 <aside> 始终以其固有宽度（w-64）渲染，避免动画期间
+        宽度被裁剪导致背景色只显示一半。开/关通过 AnimatePresence 挂载/卸载控制，
+        仅淡入淡出，不再做 width 动画。
       */}
-      <div className="group/sidebar relative flex-shrink-0">
-        {/* 侧边栏 */}
-        <AnimatePresence>
-          {sidebarOpen && !focusMode && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <ProjectSidebar
-                projects={projects}
-                activeProjectId={activeProjectId}
-                onSwitch={switchProject}
-                onCreate={createProject}
-                onRename={renameProject}
-                onDelete={deleteProject}
-                onExport={handleExportProject}
-                onImport={handleImportProject}
-                onOpenRecycleBin={() => setRecycleBinOpen(true)}
-                onOpenSettings={() => setSettingsOpen(true)}
-                recycleBinCount={deletedTodos.length}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 侧边栏收起手柄：侧边栏展开时贴在右侧边缘，鼠标悬浮在侧边栏区域才出现 */}
+      <AnimatePresence initial={false}>
         {sidebarOpen && !focusMode && (
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 -right-3 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 transition-opacity"
-            style={{
-              backgroundColor: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-secondary)',
-            }}
-            aria-label="收起侧边栏"
-            title="收起侧边栏 (Ctrl+B)"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              e.currentTarget.style.color = 'var(--text-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
+          <motion.div
+            key="sidebar"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="group/sidebar relative flex-shrink-0"
           >
-            <ChevronLeftIcon size={16} />
-          </button>
-        )}
-      </div>
+            <ProjectSidebar
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSwitch={switchProject}
+              onCreate={createProject}
+              onRename={renameProject}
+              onDelete={deleteProject}
+              onExport={handleExportProject}
+              onImport={handleImportProject}
+              onOpenRecycleBin={() => setRecycleBinOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              recycleBinCount={deletedTodos.length}
+            />
 
-      {/*
-        侧边栏收起后：在主内容区左边缘留一条窄的悬停热区，鼠标移过去时淡出"展开"手柄。
-        热区无视觉干扰，但提供明确的展开入口。
-      */}
-      {!sidebarOpen && !focusMode && (
-        <div className="group/expand relative flex-shrink-0">
-          {/* 隐形热区：宽度极窄，仅作 hover 触发器 */}
-          <div className="absolute inset-y-0 -right-2 w-4 z-20" aria-hidden />
+            {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 -right-3 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 focus:opacity-100 transition-opacity"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+              }}
+              aria-label="收起侧边栏"
+              title="收起侧边栏 (Ctrl+B)"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
+              <ChevronLeftIcon size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 主内容区 - group/main 作为悬停域，控制侧边栏收起态的展开手柄淡入 */}
+      <div className="group/main relative flex-1 flex flex-col min-w-0">
+        {/* 展开手柄：侧边栏收起时贴在主内容区左边缘，鼠标悬浮在主内容区时淡入 */}
+        {!sidebarOpen && !focusMode && (
           <button
             onClick={() => setSidebarOpen(true)}
-            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-0 z-30 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/expand:opacity-100 transition-opacity"
+            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-1 z-30 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/main:opacity-100 focus:opacity-100 transition-opacity"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               border: '1px solid var(--border-color)',
@@ -324,11 +316,8 @@ function App() {
           >
             <ChevronRightIcon size={16} />
           </button>
-        </div>
-      )}
+        )}
 
-      {/* 主内容区 */}
-      <div className="relative flex-1 flex flex-col min-w-0">
         {/* Header - 专注模式下隐藏，由右上角浮动指示器代替 */}
         {!focusMode && (
           <Header
