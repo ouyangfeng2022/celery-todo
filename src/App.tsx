@@ -231,8 +231,6 @@ function App() {
     );
   }
 
-  const isDark = document.documentElement.classList.contains('dark');
-
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/*
@@ -341,9 +339,6 @@ function App() {
             onMarkAsRead={markAsRead}
             onMarkAllAsRead={markAllAsRead}
             onDeleteNotification={deleteNotification}
-            isDark={isDark}
-            onToggleTheme={toggleTheme}
-            onOpenSettings={() => setSettingsOpen(true)}
             focusMode={focusMode}
             onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}
           />
