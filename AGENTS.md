@@ -127,6 +127,12 @@ notifications:   id, type, title, message, todo_id, created_at, read
   sql.js. Don't remove it from `public/`.
 - electron-builder config is inlined in `package.json` (`build` field). Windows
   target is NSIS; output goes to `release/`.
+- Windows 无框窗口（`titleBarStyle: 'hidden'` + `titleBarOverlay`）在拖拽改窗口
+  大小时，OS 会在右上角绘制一个尺寸提示框（如 "1200 × 800"），与 overlay 的
+  最小化按钮位置重叠。这是 Windows + Chromium 的已知行为
+  ([electron/electron#943](https://github.com/electron/electron/issues/943))，
+  非 React 元素、Electron 亦无 API 可隐藏。如需消除，唯一选项是 `thickFrame: false`，
+  代价是失去拖拽窗口边缘改大小的能力 —— 当前选择保留原生 resize，故仅作记录。
 
 ## Read before editing sensitive areas
 
