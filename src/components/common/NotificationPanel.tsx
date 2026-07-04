@@ -32,7 +32,7 @@ function NotificationPanelComponent({
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
           <motion.div
-            className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl"
+            className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto rounded-xl z-50"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               border: '1px solid var(--border-color)',

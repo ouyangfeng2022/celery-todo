@@ -53,9 +53,20 @@ export function useNotification() {
     (todoList: Todo[]) => {
       if (!settings.notificationsEnabled) return;
 
+      // 已存在到期/过期通知的 todoId 集合（来自数据库，跨重启去重）
+      const alreadyNotified = new Set(
+        useNotificationStore
+          .getState()
+          .notifications.filter((n) => (n.type === 'reminder' || n.type === 'warning') && n.todoId)
+          .map((n) => n.todoId as string),
+      );
+
       for (const todo of todoList) {
         if (todo.completed) continue;
+        // 本会话内已提醒过
         if (checkedRef.current.has(todo.id)) continue;
+        // 之前会话已生成过同类通知（除非用户删除了该通知）
+        if (alreadyNotified.has(todo.id)) continue;
 
         if (isOverdue(todo.dueDate)) {
           checkedRef.current.add(todo.id);
