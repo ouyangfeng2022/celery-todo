@@ -237,38 +237,46 @@ function App() {
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/*
         侧边栏 - 专注模式下完全隐藏
-        渲染策略：侧边栏 <aside> 始终以其固有宽度（w-64）渲染，避免动画期间
-        宽度被裁剪导致背景色只显示一半。开/关通过 AnimatePresence 挂载/卸载控制，
-        仅淡入淡出，不再做 width 动画。
+        动画策略：外层 motion.div 用 width 0 → 16rem 做宽度展开/收起（固定目标值，
+        避免动画到 'auto' 时中间帧计算失真），overflow-hidden 配合实现"揭示式"出现。
+        内层 <aside> 始终保持 w-64 固有宽度，背景色不会因外层裁剪而缺失；
+        叠加一个轻微的 x 位移让内容随宽度展开"滑入"，过渡更连贯。
       */}
       <AnimatePresence initial={false}>
         {sidebarOpen && !focusMode && (
           <motion.div
             key="sidebar"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="group/sidebar relative flex-shrink-0"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 256, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            className="group/sidebar relative flex-shrink-0 overflow-hidden"
           >
-            <ProjectSidebar
-              projects={projects}
-              activeProjectId={activeProjectId}
-              onSwitch={switchProject}
-              onCreate={createProject}
-              onRename={renameProject}
-              onDelete={deleteProject}
-              onExport={handleExportProject}
-              onImport={handleImportProject}
-              onOpenRecycleBin={() => setRecycleBinOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
-              recycleBinCount={deletedTodos.length}
-            />
+            <motion.div
+              initial={{ x: -16 }}
+              animate={{ x: 0 }}
+              exit={{ x: -16 }}
+              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <ProjectSidebar
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSwitch={switchProject}
+                onCreate={createProject}
+                onRename={renameProject}
+                onDelete={deleteProject}
+                onExport={handleExportProject}
+                onImport={handleImportProject}
+                onOpenRecycleBin={() => setRecycleBinOpen(true)}
+                onOpenSettings={() => setSettingsOpen(true)}
+                recycleBinCount={deletedTodos.length}
+              />
+            </motion.div>
 
             {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
             <button
               onClick={() => setSidebarOpen(false)}
-              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 -right-3 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 focus:opacity-100 transition-opacity"
+              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 right-1 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 focus:opacity-100 transition-opacity"
               style={{
                 backgroundColor: 'var(--bg-tertiary)',
                 border: '1px solid var(--border-color)',
@@ -291,31 +299,36 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* 主内容区 - group/main 作为悬停域，控制侧边栏收起态的展开手柄淡入 */}
-      <div className="group/main relative flex-1 flex flex-col min-w-0">
-        {/* 展开手柄：侧边栏收起时贴在主内容区左边缘，鼠标悬浮在主内容区时淡入 */}
+      {/* 主内容区 */}
+      <div className="relative flex-1 flex flex-col min-w-0">
+        {/*
+          展开入口：侧边栏收起时，在主内容区左缘留一条窄的隐形热区（group/expand），
+          鼠标移近左缘即淡入右箭头手柄；不在整个主区悬浮时触发，避免误闪。
+        */}
         {!sidebarOpen && !focusMode && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-1 z-30 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/main:opacity-100 focus:opacity-100 transition-opacity"
-            style={{
-              backgroundColor: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-secondary)',
-            }}
-            aria-label="展开侧边栏"
-            title="展开侧边栏 (Ctrl+B)"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-              e.currentTarget.style.color = 'var(--text-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-              e.currentTarget.style.color = 'var(--text-secondary)';
-            }}
-          >
-            <ChevronRightIcon size={16} />
-          </button>
+          <div className="group/expand absolute inset-y-0 left-0 w-6 z-30" aria-hidden="true">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-1 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/expand:opacity-100 focus:opacity-100 transition-opacity"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-secondary)',
+              }}
+              aria-label="展开侧边栏"
+              title="展开侧边栏 (Ctrl+B)"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
+                e.currentTarget.style.color = 'var(--text-secondary)';
+              }}
+            >
+              <ChevronRightIcon size={16} />
+            </button>
+          </div>
         )}
 
         {/* Header - 专注模式下隐藏，由右上角浮动指示器代替 */}
