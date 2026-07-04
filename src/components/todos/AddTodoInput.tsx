@@ -22,6 +22,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const [showOptions, setShowOptions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
 
   // 快捷键聚焦
   useEffect(() => {
@@ -29,6 +30,18 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
       inputRef.current?.focus();
     }
   }, [focusSignal]);
+
+  // 点击外部收起扩展选项
+  useEffect(() => {
+    if (!showOptions) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setShowOptions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showOptions]);
 
   const handleAdd = useCallback(() => {
     const trimmed = title.trim();
@@ -54,6 +67,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
 
   return (
     <div
+      ref={wrapRef}
       className="claude-card transition-all"
       style={{
         padding: '0.625rem 0.875rem',
@@ -164,16 +178,6 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                   }}
                 />
               </div>
-
-              <button
-                onClick={() => {
-                  setShowOptions(false);
-                  inputRef.current?.blur();
-                }}
-                className="btn-ghost ml-auto text-xs"
-              >
-                收起
-              </button>
             </div>
           </motion.div>
         )}
