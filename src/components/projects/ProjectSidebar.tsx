@@ -252,29 +252,6 @@ function ProjectSidebarComponent({
             );
           })}
         </div>
-
-        {/* 回收站 - 分组带留白 */}
-        <div className="mt-6 pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-          <div className="px-2 mb-2">
-            <span className="claude-eyebrow">已删除</span>
-          </div>
-          <button
-            onClick={onOpenRecycleBin}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            <RecycleIcon size={15} />
-            <span className="flex-1 text-left">回收站</span>
-            {recycleBinCount > 0 && (
-              <span
-                className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
-                style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
-              >
-                {recycleBinCount}
-              </span>
-            )}
-          </button>
-        </div>
       </div>
 
       {/* 底部操作 */}
@@ -289,6 +266,22 @@ function ProjectSidebarComponent({
         >
           <UploadIcon size={15} />
           导入数据
+        </button>
+        <button
+          onClick={onOpenRecycleBin}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <RecycleIcon size={15} />
+          <span className="flex-1 text-left">回收站</span>
+          {recycleBinCount > 0 && (
+            <span
+              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
+              style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
+            >
+              {recycleBinCount}
+            </span>
+          )}
         </button>
         <button
           onClick={onOpenSettings}
