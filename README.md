@@ -125,6 +125,13 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 数据层使用 sql.js 在浏览器/Electron 中运行 SQLite，数据库二进制通过 IndexedDB 持久化，采用 500ms 防抖自动保存，并支持手动 `flushSave()`。
 
+### 已知平台行为
+
+- **Windows 拖拽改窗口大小时右上角出现尺寸数字**：这是 Windows DWM 在无框窗口上
+  绘制的原生尺寸提示，与 Electron 无框 + `titleBarOverlay` 配合时的已知现象
+  （[electron/electron#943](https://github.com/electron/electron/issues/943)）。
+  非 Bug，应用层无法移除，仅影响拖拽改大小期间的视觉。
+
 ## 📸 截图
 
 > 截图待补充。
