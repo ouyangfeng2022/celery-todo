@@ -88,12 +88,12 @@ function ProjectSidebarComponent({
       className="w-64 flex-shrink-0 h-full flex flex-col border-r"
       style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
     >
-      {/* Logo / 标题 - 品牌字，呼吸感 */}
-      <div className="px-5 py-5">
+      {/* Logo / 标题 - 与右侧 Header 项目名保持同字号、同上下间距，视觉对齐 */}
+      <div className="px-5 py-3.5">
         <div className="flex items-center gap-2.5">
           <Logo size={36} className="flex-shrink-0" />
           <h1
-            className="text-lg font-serif tracking-tight"
+            className="text-xl font-serif tracking-tight"
             style={{ color: 'var(--text-primary)' }}
           >
             Celery Todo
