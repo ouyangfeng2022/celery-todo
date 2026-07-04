@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 import { useTodoStore } from './store/useTodoStore';
 import { useProjectStore } from './store/useProjectStore';
@@ -236,41 +236,39 @@ function App() {
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/*
-        侧边栏 - 专注模式下完全隐藏
-        动画策略：外层 motion.div 用 width 0 → 256px 做宽度展开/收起，
-        overflow-hidden 让 <aside> 在收起过程中被"卷起来"。
-        关键：给 <aside> 加上 min-width: 256px（通过 className），确保它在任何
-        容器宽度下都保持固有宽度与完整背景，绝不被父级 flex 收缩，
-        从根本上避免"半边无色"。
+        侧边栏 - 专注模式下完全隐藏（直接不渲染）
+        动画策略：用纯 CSS transition 控制 width 0 ↔ 256px，而不是 framer-motion。
+        - 容器始终挂载，避免挂载/卸载与 exit 动画的协调问题
+        - 内层 .sidebar-inner 固定 256px，<aside> 始终保持完整背景
+        - 外层 transition: width 220ms，浏览器原生实现，行为可预测
+        收起时 overflow-hidden 把固定宽度的内层从右向左裁剪。
       */}
-      <AnimatePresence initial={false}>
-        {sidebarOpen && !focusMode && (
-          <motion.div
-            key="sidebar"
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 256, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            className="group/sidebar relative flex-shrink-0 overflow-hidden"
-            style={{ width: 0 }}
-          >
-            <div style={{ width: '256px', minWidth: '256px' }}>
-              <ProjectSidebar
-                projects={projects}
-                activeProjectId={activeProjectId}
-                onSwitch={switchProject}
-                onCreate={createProject}
-                onRename={renameProject}
-                onDelete={deleteProject}
-                onExport={handleExportProject}
-                onImport={handleImportProject}
-                onOpenRecycleBin={() => setRecycleBinOpen(true)}
-                onOpenSettings={() => setSettingsOpen(true)}
-                recycleBinCount={deletedTodos.length}
-              />
-            </div>
+      {!focusMode && (
+        <div
+          className="group/sidebar relative flex-shrink-0 overflow-hidden"
+          style={{
+            width: sidebarOpen ? '256px' : '0px',
+            transition: 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <div className="sidebar-inner" style={{ width: '256px', minWidth: '256px' }}>
+            <ProjectSidebar
+              projects={projects}
+              activeProjectId={activeProjectId}
+              onSwitch={switchProject}
+              onCreate={createProject}
+              onRename={renameProject}
+              onDelete={deleteProject}
+              onExport={handleExportProject}
+              onImport={handleImportProject}
+              onOpenRecycleBin={() => setRecycleBinOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              recycleBinCount={deletedTodos.length}
+            />
+          </div>
 
-            {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
+          {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
+          {sidebarOpen && (
             <button
               onClick={() => setSidebarOpen(false)}
               className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 right-1 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 focus:opacity-100 transition-opacity"
@@ -292,9 +290,9 @@ function App() {
             >
               <ChevronLeftIcon size={16} />
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </div>
+      )}
 
       {/* 主内容区 */}
       <div className="relative flex-1 flex flex-col min-w-0">
