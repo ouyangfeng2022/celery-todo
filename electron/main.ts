@@ -34,6 +34,12 @@ function createMainWindow(): BrowserWindow {
   const isMac = process.platform === 'darwin';
   const isWin = process.platform === 'win32';
 
+  // 窗口图标：dev/prod 路径不同。Electron 在 Windows/Linux 上需要 PNG/ICO（SVG 不支持），
+  // macOS 由 .icon.icns 在打包时注入，这里给 PNG 也能在 dock 上正常显示。
+  const iconPath = isDev
+    ? path.join(__dirname, '../public/icon.png') // dev: 源仓库 public/
+    : path.join(process.resourcesPath, 'icon.png'); // prod: electron-builder 把 public/* 当作资源打包
+
   const window = new BrowserWindow({
     width: savedBounds?.width ?? 1200,
     height: savedBounds?.height ?? 800,
@@ -44,6 +50,7 @@ function createMainWindow(): BrowserWindow {
     show: false,
     title: 'Celery Todo',
     backgroundColor: '#faf9f7',
+    icon: iconPath,
     // macOS 隐藏标题栏但保留红绿灯按钮；Windows 隐藏标题栏文字 + 自带 overlay 控制按钮
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     // Windows/Linux 通过 overlay 保留原生最小化/最大化/关闭按钮。

@@ -12,10 +12,14 @@ import type { AppWithIsQuitting } from './types';
  * @param mainWindow 主窗口引用
  */
 export function createTray(mainWindow: BrowserWindow): Tray {
-  // 创建托盘图标（使用简单的 1x1 透明图标作为占位）
-  // 实际项目中应使用真实图标文件
+  // 托盘图标：Windows/Linux 上 SVG 经 nativeImage 加载不可靠，必须用 PNG/ICO。
+  // dev: public/ 下；prod: electron-builder 把 public/* 当作资源打包到 resourcesPath 根。
+  const isDev = !!process.env.VITE_DEV_SERVER_URL;
+  const iconPath = isDev
+    ? path.join(__dirname, '../public/icon-32.png')
+    : path.join(process.resourcesPath, 'icon-32.png');
+
   let icon: Electron.NativeImage;
-  const iconPath = path.join(__dirname, '../public/favicon.svg');
 
   try {
     icon = nativeImage.createFromPath(iconPath);
