@@ -109,6 +109,36 @@ notifications:   id, type, title, message, todo_id, created_at, read
   them instead of looping single-item ops.
 - Keyboard shortcuts are centralized in `useKeyboardShortcuts()`.
 
+## Versioning
+
+Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VERSIONING.md).
+
+- **App version** — `package.json` `version` (SemVer). Single source of truth.
+  Renderer reads it via `import { APP_VERSION } from '@/utils/version'`
+  (injected by `vite.config.ts` `define`); Electron main reads `app.getVersion()`.
+  Releases go through `bun run bump -- <patch|minor|major>` (see
+  `scripts/bump-version.mjs`), which also updates `CHANGELOG.md` and creates an
+  annotated `vX.Y.Z` tag. Don't bump `package.json:version` by hand.
+- **DB schema version** — `DB_VERSION` in `src/utils/database.ts`. **Any schema
+  change MUST bump `DB_VERSION` and add a migration row.** Persisted as
+  `settings.dataVersion`. Irreversible migrations require a MAJOR App bump.
+- **Export format version** — `EXPORT_FORMAT_VERSION` in `src/utils/export.ts`.
+  Bump when the JSON export structure changes. Do **not** confuse with
+  `DB_VERSION` (one describes tables, the other describes files).
+
+### GitHub release pipeline
+
+- Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds the
+  NSIS installer on `windows-latest`, extracts the matching section from
+  `CHANGELOG.md` via `scripts/extract-changelog.mjs`, and creates a GitHub
+  Release with those notes + the built artifacts.
+- One-shot release command: `bun run bump -- <patch|minor|major> --push` —
+  bumps version, writes CHANGELOG, commits, tags, pushes both, and CI takes
+  over. Workflow requires repo Settings → Actions → Workflow permissions =
+  "Read and write permissions".
+- The workflow fails fast if `package.json:version` ≠ the pushed tag, so the
+  two cannot drift. See `VERSIONING.md` §8 for the full chain diagram.
+
 ## Electron / build gotchas
 
 - Electron sources compile with a **separate** `electron/tsconfig.json`

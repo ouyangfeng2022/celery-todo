@@ -1,0 +1,120 @@
+# Release 工作流：tag 推送 → 自动构建 NSIS 安装包 → 创建 GitHub Release。
+#
+# 触发条件：推送形如 v* 的 tag（由 `bun run bump -- <kind> --push` 完成的最后一步）。
+# 链路中的版本号一致性来源：
+#   - tag 名称（vX.Y.Z）
+#   - package.json 的 version 字段（bump 脚本已写好）
+#   - electron-builder 生成的安装包元数据（自动读 package.json:version）
+#   - Release 名称（取自 tag）
+#   - Release 正文（从 CHANGELOG.md 抽取对应版本块，scripts/extract-changelog.mjs）
+#
+# 详见仓库根目录 VERSIONING.md「GitHub 全链路」一节。
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: '要发版的 tag 或 ref（默认使用当前分支 HEAD）'
+        required: false
+        default: ''
+
+# 同一 tag 重复触发时取消旧 run，避免并发发布。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # 创建 Release、上传 asset 必需
+
+jobs:
+  release:
+    name: Build & Release (Windows NSIS)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # tag 触发时 ref 已指向 tag commit；workflow_dispatch 时 fallback 到 HEAD。
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Extract version from tag
+        id: ver
+        shell: bash
+        run: |
+          # tag 形如 refs/tags/v1.2.3 → 取 "v1.2.3"
+          TAG="${GITHUB_REF##*/}"
+          # workflow_dispatch 时没有 tag，回退到 package.json
+          if [ -z "$TAG" ] || [ "$TAG" = "HEAD" ]; then
+            TAG="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "正在发版 $TAG"
+
+      - name: Verify package.json version matches tag
+        shell: bash
+        run: |
+          PKG_VER="v$(node -p "require('./package.json').version")"
+          TAG="${{ steps.ver.outputs.tag }}"
+          if [ "$PKG_VER" != "$TAG" ]; then
+            echo "::error::版本不一致：package.json=$PKG_VER 但 tag=$TAG"
+            echo "::error::请确认 bump 脚本是否已写回 package.json，或 tag 是否打错。"
+            exit 1
+          fi
+          echo "✓ package.json ($PKG_VER) 与 tag ($TAG) 一致"
+
+      - name: Build installer (electron-builder)
+        run: bun run electron:build
+        env:
+          # electron-builder 据此决定是否上传到 GitHub Release。
+          # CI: true + GH_TOKEN 会触发 publish:always 行为，但本工作流用独立的
+          # release step 自行创建 Release，所以这里只构建不上传。
+          GH_TOKEN: ''
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        shell: bash
+        run: |
+          # 把对应版本块写到 release-notes.md，供后续 release-create 步骤读取。
+          node scripts/extract-changelog.mjs '${{ steps.ver.outputs.tag }}' > release-notes.md
+          echo "----- release notes 预览 -----"
+          cat release-notes.md
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: celery-todo-${{ steps.ver.outputs.tag }}-installer
+          path: |
+            release/*.exe
+            release/latest*.yml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          # 已存在则跳过（重跑 workflow 时幂等）。
+          if gh release view '${{ steps.ver.outputs.tag }}' >/dev/null 2>&1; then
+            echo "Release ${{ steps.ver.outputs.tag }} 已存在，跳过创建。"
+            exit 0
+          fi
+          gh release create '${{ steps.ver.outputs.tag }}' \
+            --title '${{ steps.ver.outputs.tag }}' \
+            --notes-file release-notes.md \
+            release/*.exe release/latest*.yml
