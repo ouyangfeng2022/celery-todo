@@ -109,6 +109,7 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
+    "artifactName": "Celery-Todo-Setup-${version}.${ext}",
     "publish": {
       "provider": "github",
       "owner": "ouyangfeng2022",
