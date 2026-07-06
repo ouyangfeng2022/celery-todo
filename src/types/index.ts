@@ -146,7 +146,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 /** 导出的项目数据（含其所有 Todo） */
 export interface ProjectExportData {
-  /** 数据格式版本 */
+  /** 导出文件格式版本（见 utils/export.ts 的 EXPORT_FORMAT_VERSION） */
   version: number;
   /** 导出时间 */
   exportedAt: string;
@@ -160,6 +160,7 @@ export interface ProjectExportData {
 
 /** 完整应用数据导出 */
 export interface AppExportData {
+  /** 导出文件格式版本（见 utils/export.ts 的 EXPORT_FORMAT_VERSION） */
   version: number;
   exportedAt: string;
   projects: Project[];

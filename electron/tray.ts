@@ -37,7 +37,8 @@ export function createTray(mainWindow: BrowserWindow): Tray {
   }
 
   const tray = new Tray(icon);
-  tray.setToolTip('Celery Todo');
+  // app.getVersion() 默认读取 package.json 的 version 字段（应用版本号的单一源）。
+  tray.setToolTip(`Celery Todo v${app.getVersion()}`);
 
   // 右键菜单
   const contextMenu = Menu.buildFromTemplate([

@@ -25,6 +25,7 @@ import {
   openStorageInFolder,
   type StorageInfo,
 } from '../../utils/database';
+import { APP_VERSION } from '@/utils/version';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -435,6 +436,24 @@ function SettingsPanelComponent({
                         </kbd>
                       </div>
                     ))}
+                  </div>
+                </section>
+
+                {/* 关于 */}
+                <section>
+                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+                    关于
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <Logo size={40} className="flex-shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        Celery Todo
+                      </span>
+                      <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                        版本 {APP_VERSION || '—'}
+                      </span>
+                    </div>
                   </div>
                 </section>
               </div>

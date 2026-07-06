@@ -6,6 +6,18 @@
 import type { Todo, ProjectExportData, AppExportData } from '../types';
 
 /**
+ * 导出文件格式版本（独立于 DB schema 版本）。
+ *
+ * 语义说明：
+ * - 当且仅当导出/导入文件的结构发生变化（增删字段、改变序列化形态）时递增。
+ * - 与 {@link ../utils/database.ts} 中的 DB_VERSION 相互独立：
+ *   后者描述 SQLite 表结构，由 settings.dataVersion 持久化；
+ *   本常量只描述磁盘上 JSON 文件的兼容性。
+ * - 详见仓库根目录 VERSIONING.md。
+ */
+export const EXPORT_FORMAT_VERSION = 1;
+
+/**
  * 将 Todo 转换为 CSV 行
  */
 function todoToCsvRow(todo: Todo): string {
@@ -48,7 +60,7 @@ export function exportProjectAsJson(
   deletedTodos: import('../types').DeletedTodo[],
 ): string {
   const data: ProjectExportData = {
-    version: 1,
+    version: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     project,
     todos,

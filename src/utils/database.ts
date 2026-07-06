@@ -9,6 +9,7 @@
 // sql.js 浏览器 WASM 构建（Vite 预构建）
 import initSqlJs from 'sql.js/dist/sql-wasm-browser.js';
 import type { Database, SqlJsStatic } from 'sql.js';
+import { EXPORT_FORMAT_VERSION } from './export';
 
 // ============================================
 // 类型定义
@@ -707,7 +708,7 @@ export function clearAllNotifications(): void {
  */
 export function exportAllData(): import('../types').AppExportData {
   return {
-    version: DB_VERSION,
+    version: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     projects: getAllProjects(),
     todos: getAllTodos(),

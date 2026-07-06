@@ -1,6 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+// 读取 package.json 中的 version 字段，作为应用版本号的唯一源。
+// 通过 define 在构建期把 __APP_VERSION__ 注入为字符串常量；
+// 运行时由 src/utils/version.ts 统一对外暴露，避免散落使用全局变量。
+const pkg = JSON.parse(
+  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8'),
+) as { version: string };
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,6 +18,9 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
   },
   base: './',
   build: {
