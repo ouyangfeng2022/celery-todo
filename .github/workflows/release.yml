@@ -78,12 +78,12 @@ jobs:
           echo "✓ package.json ($PKG_VER) 与 tag ($TAG) 一致"
 
       - name: Build installer (electron-builder)
-        run: bun run electron:build
-        env:
-          # electron-builder 据此决定是否上传到 GitHub Release。
-          # CI: true + GH_TOKEN 会触发 publish:always 行为，但本工作流用独立的
-          # release step 自行创建 Release，所以这里只构建不上传。
-          GH_TOKEN: ''
+        # 走完整的 electron:build 流水线（vite build + tsc + fix-cjs + electron-builder），
+        # 但在 electron-builder 阶段用 --publish never 显式禁用上传 ——
+        # package.json 里的 build.publish 配置是给本地手动发布用的；
+        # CI 里 Release 由后续 "Create GitHub Release" 步骤独立完成。
+        # --publish never 是命令行标志，优先级高于 build.publish 配置。
+        run: bun run electron:build -- --publish never
 
       - name: Extract release notes from CHANGELOG
         id: notes
