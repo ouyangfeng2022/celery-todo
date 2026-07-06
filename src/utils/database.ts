@@ -25,6 +25,25 @@ type DbRow = Record<string, unknown>;
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
 const DB_VERSION = 1;
 
+/**
+ * Schema 迁移表。
+ *
+ * 每个条目描述「从 version-1 升到 version」要执行的 SQL。
+ * - 版本 1 是初始 schema（由 createTables 建立），无前置迁移，所以本数组当前为空。
+ * - 新增/修改列时：把 DB_VERSION 递增，并在此处追加一条 entry，例如：
+ *     { version: 2, description: 'todos 增加 tags 列', sql: ['ALTER TABLE todos ADD COLUMN tags TEXT'] }
+ * - 不可逆迁移（删列/改类型）须配套 App MAJOR 版本号 bump，并在 CHANGELOG 写手动恢复步骤。
+ * - migrateDatabase() 会按 version 升序对当前 dataVersion < version 的条目幂等执行。
+ *
+ * 详见仓库根目录 VERSIONING.md 第 3 节。
+ */
+interface SchemaMigration {
+  version: number;
+  description: string;
+  sql: string[];
+}
+const MIGRATIONS: SchemaMigration[] = [];
+
 // ============================================
 // 模块级状态
 // ============================================
@@ -194,6 +213,51 @@ function createTables(database: Database): void {
 }
 
 /**
+ * 按 {@link MIGRATIONS} 阶梯对当前数据库做幂等迁移。
+ *
+ * 规则：
+ * - 读 settings.dataVersion（缺失视为 0），按 version 升序跑所有 version > 当前 的迁移。
+ * - 每条迁移用事务包起来，单条 SQL 失败时回滚并抛出，避免留下半迁移状态。
+ * - 全部跑完后把 dataVersion 写为 DB_VERSION。
+ * - 必须在 createTables 之后调用：新表由 createTables 建，列变更由本函数改。
+ *
+ * 该函数幂等：dataVersion 已等于 DB_VERSION 时直接返回，无副作用。
+ */
+function migrateDatabase(): void {
+  if (!db) throw new Error('migrateDatabase: 数据库未初始化');
+
+  const raw = getSetting('dataVersion');
+  const current = raw === null ? 0 : Number.parseInt(raw, 10);
+  if (Number.isNaN(current)) {
+    throw new Error(`migrateDatabase: dataVersion 值非法 "${raw}"`);
+  }
+
+  // 按 version 升序应用所有未跑过的迁移。
+  const pending = MIGRATIONS.filter((m) => m.version > current).sort(
+    (a, b) => a.version - b.version,
+  );
+  for (const m of pending) {
+    db.run('BEGIN');
+    try {
+      for (const sql of m.sql) {
+        db.run(sql);
+      }
+      db.run('COMMIT');
+    } catch (err) {
+      db.run('ROLLBACK');
+      throw new Error(
+        `迁移到 v${m.version}（${m.description}）失败：${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  // 写回水位线。即便 pending 为空（首次初始化或已是最新），也确保 dataVersion = DB_VERSION。
+  if (pending.length > 0 || current !== DB_VERSION) {
+    setSetting('dataVersion', String(DB_VERSION));
+  }
+}
+
+/**
  * 初始化 SQLite 数据库
  * @returns Promise<Database> 已初始化的数据库实例
  */
@@ -240,6 +304,8 @@ export async function initDatabase(): Promise<Database> {
 
     // 确保表存在（兼容旧数据）
     createTables(db);
+    // 按 MIGRATIONS 阶梯做列变更迁移；首次启动或已是最新时为空操作。
+    migrateDatabase();
     isInitialized = true;
     return db;
   })();
