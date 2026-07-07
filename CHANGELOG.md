@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+## [v1.1.0] - 2026-07-07
+### Added
+- 集成 electron-updater 实现应用内自动升级
+
+### Fixed
+- 批量添加改为仅按换行分隔，标题允许逗号和分号
+- Markdown 描述中的外链改用系统默认浏览器打开
+- 修复新建待办误显示为"昨天创建"
+
 ## [v1.0.3] - 2026-07-07
 ### Fixed
 - 修复生产构建卡在初始界面
@@ -60,3 +69,5 @@
 [v1.0.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.2
 
 [v1.0.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.3
+
+[v1.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.1.0
