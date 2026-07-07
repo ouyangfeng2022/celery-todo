@@ -193,3 +193,31 @@ export function readFileAsText(file: File): Promise<string> {
     reader.readAsText(file);
   });
 }
+
+// ============================================
+// 批量添加：分隔符处理
+// ============================================
+
+/**
+ * 批量分隔符正则：仅按换行（兼容 \r\n / \r / \n）。
+ * 逗号、分号视为普通字符，允许在标题中使用。
+ */
+const BULK_SEPARATOR_REGEX = /\r\n|\r|\n/;
+
+/**
+ * 判断输入文本是否包含批量分隔符（换行）。
+ * 用于在 UI 上切换"批量添加"标签，以及决定走单条/批量路径。
+ */
+export function hasBulkSeparator(text: string): boolean {
+  return BULK_SEPARATOR_REGEX.test(text);
+}
+
+/**
+ * 把多行文本拆分为去空白、去空行的标题数组。
+ */
+export function splitBulkTitles(rawText: string): string[] {
+  return rawText
+    .split(BULK_SEPARATOR_REGEX)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+}

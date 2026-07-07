@@ -5,6 +5,7 @@
 
 import { useCallback } from 'react';
 import { useTodoStore } from '../store/useTodoStore';
+import { hasBulkSeparator } from '../utils/helpers';
 import type { Priority, BatchAction } from '../types';
 
 export function useTodos() {
@@ -12,8 +13,8 @@ export function useTodos() {
 
   const addTodo = useCallback(
     (title: string, priority: Priority = 'medium', dueDate?: string, description?: string) => {
-      // 检查是否包含分隔符，支持批量添加
-      if (/[,，;；\n]/.test(title)) {
+      // 包含换行符时走批量添加（逗号/分号视为普通字符）
+      if (hasBulkSeparator(title)) {
         store.addTodosBulk(title, priority, dueDate);
       } else {
         store.addTodo({ title, priority, dueDate, description });

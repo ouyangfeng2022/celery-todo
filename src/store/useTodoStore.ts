@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import type { Todo, DeletedTodo, Priority, BatchAction } from '../types';
 import * as db from '../utils/database';
-import { generateId } from '../utils/helpers';
+import { generateId, splitBulkTitles } from '../utils/helpers';
 
 // ============================================
 // Store 类型定义
@@ -36,7 +36,7 @@ interface TodoState {
     priority?: Priority;
     dueDate?: string;
   }) => void;
-  /** 批量添加 Todo（用逗号或分号分隔的标题） */
+  /** 批量添加 Todo（用换行分隔的标题） */
   addTodosBulk: (rawText: string, priority?: Priority, dueDate?: string) => void;
   /** 更新 Todo */
   updateTodo: (id: string, updates: Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>>) => void;
@@ -112,11 +112,8 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
   addTodosBulk: (rawText, priority = 'medium', dueDate) => {
     const { currentProjectId, todos } = get();
-    // 按逗号或分号分隔
-    const titles = rawText
-      .split(/[,，;；\n]/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+    // 按换行分隔（逗号/分号视为普通字符）
+    const titles = splitBulkTitles(rawText);
 
     if (titles.length === 0) return;
 

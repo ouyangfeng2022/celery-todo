@@ -12,6 +12,8 @@ import {
   debounce,
   generateId,
   safeJsonParse,
+  hasBulkSeparator,
+  splitBulkTitles,
 } from '../utils/helpers';
 
 describe('helpers', () => {
@@ -130,6 +132,61 @@ describe('helpers', () => {
 
     it('应返回 fallback', () => {
       expect(safeJsonParse('invalid', 'fallback')).toBe('fallback');
+    });
+  });
+
+  describe('hasBulkSeparator', () => {
+    it('换行符应返回 true', () => {
+      expect(hasBulkSeparator('任务一\n任务二')).toBe(true);
+    });
+
+    it('Windows 换行 \\r\\n 应返回 true', () => {
+      expect(hasBulkSeparator('任务一\r\n任务二')).toBe(true);
+    });
+
+    it('孤立的 \\r 应返回 true', () => {
+      expect(hasBulkSeparator('任务一\r任务二')).toBe(true);
+    });
+
+    it('逗号/分号不应被视为分隔符', () => {
+      expect(hasBulkSeparator('买苹果, 香蕉; 橘子')).toBe(false);
+      expect(hasBulkSeparator('5,000 元；项目一')).toBe(false);
+      expect(hasBulkSeparator('单条任务')).toBe(false);
+    });
+  });
+
+  describe('splitBulkTitles', () => {
+    it('按换行拆分并去除空白', () => {
+      expect(splitBulkTitles('任务一\n任务二\n任务三')).toEqual(['任务一', '任务二', '任务三']);
+    });
+
+    it('应去除每行的前后空白', () => {
+      expect(splitBulkTitles('  任务一  \n 任务二 ')).toEqual(['任务一', '任务二']);
+    });
+
+    it('应过滤空行', () => {
+      expect(splitBulkTitles('任务一\n\n  \n任务二')).toEqual(['任务一', '任务二']);
+    });
+
+    it('保留逗号与分号作为普通字符', () => {
+      expect(splitBulkTitles('买 5,000 元东西，去银行；排队')).toEqual([
+        '买 5,000 元东西，去银行；排队',
+      ]);
+    });
+
+    it('多行时每行都可包含逗号/分号', () => {
+      expect(splitBulkTitles('买苹果, 香蕉\n发邮件; 抄送老板')).toEqual([
+        '买苹果, 香蕉',
+        '发邮件; 抄送老板',
+      ]);
+    });
+
+    it('兼容 Windows 换行', () => {
+      expect(splitBulkTitles('任务一\r\n任务二')).toEqual(['任务一', '任务二']);
+    });
+
+    it('空字符串应返回空数组', () => {
+      expect(splitBulkTitles('')).toEqual([]);
     });
   });
 });

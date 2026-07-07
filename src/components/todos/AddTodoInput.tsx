@@ -1,6 +1,6 @@
 /**
  * @file AddTodoInput - 添加事项输入框
- * @description 支持回车添加、批量添加（逗号/分号分隔）、优先级和截止日期设置
+ * @description 支持回车添加、批量添加（Shift+Enter 换行分隔）、优先级和截止日期设置
  */
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react';
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
 import { PRIORITY_LABELS } from '../../types';
 import { PlusIcon } from '../common/Icons';
+import { hasBulkSeparator } from '../../utils/helpers';
 
 interface AddTodoInputProps {
   onAdd: (title: string, priority: Priority, dueDate?: string) => void;
@@ -21,15 +22,29 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const [dueDate, setDueDate] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  // IME 组字状态：组字过程中的 Enter 不应触发添加（中文输入法选词）
+  const isComposingRef = useRef(false);
 
   // 快捷键聚焦
   useEffect(() => {
     if (focusSignal !== undefined && focusSignal > 0) {
-      inputRef.current?.focus();
+      textareaRef.current?.focus();
     }
   }, [focusSignal]);
+
+  // 文本框自适应高度：单行时与原 input 一致，多行时自动撑高
+  const autosize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    autosize();
+  }, [title, autosize]);
 
   // 点击外部收起扩展选项
   useEffect(() => {
@@ -53,8 +68,9 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   }, [title, priority, dueDate, onAdd]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      // Enter 添加；Shift+Enter 换行（用于批量输入）；IME 组字中不拦截
+      if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current && !e.nativeEvent.isComposing) {
         e.preventDefault();
         handleAdd();
       }
@@ -62,8 +78,8 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
     [handleAdd],
   );
 
-  // 检测是否包含分隔符
-  const hasSeparator = /[,，;；\n]/.test(title);
+  // 检测是否包含分隔符（仅换行触发批量，逗号/分号视为普通字符）
+  const hasSeparator = hasBulkSeparator(title);
 
   return (
     <div
@@ -75,11 +91,11 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
         borderColor: isFocused ? 'var(--accent)' : 'var(--border-color)',
       }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <button
           onClick={handleAdd}
           disabled={title.trim().length === 0}
-          className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex-shrink-0 w-7 h-7 mt-px rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           style={{
             backgroundColor: 'var(--accent)',
             color: 'white',
@@ -90,27 +106,37 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
           <PlusIcon size={16} />
         </button>
 
-        <input
-          ref={inputRef}
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={title}
+          rows={1}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => {
+            isComposingRef.current = true;
+          }}
+          onCompositionEnd={() => {
+            isComposingRef.current = false;
+          }}
           onFocus={() => {
             setShowOptions(true);
             setIsFocused(true);
           }}
           onBlur={() => setIsFocused(false)}
-          placeholder="添加待办事项...（用逗号或分号分隔可批量添加）"
-          className="flex-1 bg-transparent border-none outline-none text-base"
-          style={{ color: 'var(--text-primary)' }}
+          placeholder="添加待办事项...（按 Shift+Enter 换行可批量添加）"
+          className="flex-1 bg-transparent border-none outline-none text-base resize-none overflow-hidden leading-6"
+          style={{
+            color: 'var(--text-primary)',
+            minHeight: '1.5rem',
+            maxHeight: '12rem',
+          }}
         />
 
         {hasSeparator && (
           <motion.span
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="claude-tag flex-shrink-0"
+            className="claude-tag flex-shrink-0 mt-0.5"
             style={{ backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)' }}
           >
             批量添加
