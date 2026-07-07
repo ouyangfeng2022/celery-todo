@@ -7,6 +7,7 @@ import { app, BrowserWindow, Menu, Tray, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
+import { initUpdater, registerUpdaterIpc } from './updater';
 import type { AppWithIsQuitting } from './types';
 
 // ============================================
@@ -191,6 +192,9 @@ if (!gotTheLock) {
     mainWindow = createMainWindow();
     tray = createTray(mainWindow);
     registerStorageIpc();
+    registerUpdaterIpc();
+    // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
+    if (mainWindow) initUpdater(mainWindow);
 
     // macOS 激活应用
     app.on('activate', () => {

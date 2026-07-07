@@ -23,6 +23,8 @@ interface SettingsState extends AppSettings {
   setNotificationLeadHours: (hours: number) => void;
   /** 设置专注模式开关 */
   setFocusMode: (enabled: boolean) => void;
+  /** 设置自动检查更新开关 */
+  setAutoUpdateEnabled: (enabled: boolean) => void;
   /** 更新多个设置 */
   updateSettings: (updates: Partial<AppSettings>) => void;
 }
@@ -33,6 +35,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   loadSettings: () => {
     // focusMode 在 settings 表中可能不存在（首次升级的老数据），用 null 判断走默认值
     const storedFocus = db.getSetting('focusMode');
+    // autoUpdateEnabled 同上：老数据无该键时走默认 true
+    const storedAutoUpdate = db.getSetting('autoUpdateEnabled');
     const settings: AppSettings = {
       theme: (db.getSetting('theme') as ThemeMode) ?? DEFAULT_SETTINGS.theme,
       autoStart: db.getSetting('autoStart') === 'true',
@@ -43,6 +47,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ),
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: storedFocus === null ? DEFAULT_SETTINGS.focusMode : storedFocus === 'true',
+      autoUpdateEnabled:
+        storedAutoUpdate === null ? DEFAULT_SETTINGS.autoUpdateEnabled : storedAutoUpdate === 'true',
     };
     set(settings);
   },
@@ -79,6 +85,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setFocusMode: (focusMode) => {
     db.setSetting('focusMode', String(focusMode));
     set({ focusMode });
+  },
+
+  setAutoUpdateEnabled: (autoUpdateEnabled) => {
+    db.setSetting('autoUpdateEnabled', String(autoUpdateEnabled));
+    set({ autoUpdateEnabled });
   },
 
   updateSettings: (updates) => {

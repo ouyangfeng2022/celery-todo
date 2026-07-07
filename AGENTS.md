@@ -171,4 +171,8 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
   filtering, sorting).
 - `electron/main.ts` + `electron/preload.ts` — IPC surface; any change must be
   mirrored on both sides and recompiled via `build:electron` / `electron:dev`.
+- `electron/updater.ts` — auto-update (electron-updater) integration: events
+  broadcast to the renderer, `app.isPackaged` short-circuit for dev, and
+  IPC channels consumed by `src/hooks/useAutoUpdate.ts`. Touching the
+  updater = mirror changes in main, preload, and `src/types/global.d.ts`.
 - `vite.config.ts` — dev server, alias, plugin setup.

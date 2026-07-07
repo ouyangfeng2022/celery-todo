@@ -58,6 +58,51 @@ const electronAPI = {
 
   /** 重置到默认存储位置（同时迁移数据） */
   storageResetToDefault: (): Promise<{ filePath: string }> => ipcRenderer.invoke('storage:reset-to-default'),
+
+  // ===== 自动升级 =====
+
+  /** 检查更新（开发环境下会直接视为"无更新"） */
+  updaterCheck: (): Promise<void> => ipcRenderer.invoke('updater:check'),
+
+  /** 下载已发现的更新 */
+  updaterDownload: (): Promise<void> => ipcRenderer.invoke('updater:download'),
+
+  /** 退出应用并安装已下载的更新 */
+  updaterQuitAndInstall: (): Promise<void> => ipcRenderer.invoke('updater:quit-and-install'),
+
+  /** 获取当前应用版本号 */
+  updaterGetCurrentVersion: (): Promise<string> => ipcRenderer.invoke('updater:get-current-version'),
+
+  /** 获取最近一次发现的更新信息（可空） */
+  updaterGetCachedInfo: (): Promise<{ version: string; releaseName?: string } | null> =>
+    ipcRenderer.invoke('updater:get-cached-info'),
+
+  /** 监听"发现新版本"事件 */
+  onUpdateAvailable: (callback: (info: { version: string; releaseName?: string }) => void): void => {
+    ipcRenderer.on('updater:update-available', (_event, info) => callback(info));
+  },
+
+  /** 监听"已是最新版本"事件 */
+  onUpdateNotAvailable: (callback: () => void): void => {
+    ipcRenderer.on('updater:update-not-available', () => callback());
+  },
+
+  /** 监听下载进度 */
+  onDownloadProgress: (
+    callback: (progress: { percent: number; transferred: number; total: number }) => void,
+  ): void => {
+    ipcRenderer.on('updater:download-progress', (_event, progress) => callback(progress));
+  },
+
+  /** 监听"更新下载完成"事件 */
+  onUpdateDownloaded: (callback: () => void): void => {
+    ipcRenderer.on('updater:update-downloaded', () => callback());
+  },
+
+  /** 监听升级错误 */
+  onUpdaterError: (callback: (message: string) => void): void => {
+    ipcRenderer.on('updater:error', (_event, message) => callback(message));
+  },
 };
 
 // 通过 contextBridge 暴露 API

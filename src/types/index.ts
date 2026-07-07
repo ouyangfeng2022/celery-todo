@@ -126,6 +126,8 @@ export interface AppSettings {
   dataVersion: number;
   /** 是否处于专注模式（隐藏侧边栏 / 统计 / 筛选 / 添加框 / Header 图标） */
   focusMode: boolean;
+  /** 是否在启动时自动检查更新（仅桌面端生效） */
+  autoUpdateEnabled: boolean;
 }
 
 /** 默认设置 */
@@ -138,6 +140,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   dataVersion: 1,
   // 默认启动即进入专注模式
   focusMode: true,
+  // 默认启用自动检查更新
+  autoUpdateEnabled: true,
 };
 
 // ============================================

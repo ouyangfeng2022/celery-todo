@@ -32,6 +32,29 @@ interface ElectronAPI {
   storageOpenInFolder: () => Promise<void>;
   /** 重置到默认存储位置 */
   storageResetToDefault: () => Promise<{ filePath: string }>;
+  // ===== 自动升级 =====
+  /** 检查更新（开发环境直接视为"无更新"） */
+  updaterCheck: () => Promise<void>;
+  /** 下载已发现的更新 */
+  updaterDownload: () => Promise<void>;
+  /** 退出应用并安装已下载的更新 */
+  updaterQuitAndInstall: () => Promise<void>;
+  /** 获取当前应用版本号 */
+  updaterGetCurrentVersion: () => Promise<string>;
+  /** 获取最近一次发现的更新信息（可空） */
+  updaterGetCachedInfo: () => Promise<{ version: string; releaseName?: string } | null>;
+  /** 监听"发现新版本"事件 */
+  onUpdateAvailable: (callback: (info: { version: string; releaseName?: string }) => void) => void;
+  /** 监听"已是最新版本"事件 */
+  onUpdateNotAvailable: (callback: () => void) => void;
+  /** 监听下载进度 */
+  onDownloadProgress: (
+    callback: (progress: { percent: number; transferred: number; total: number }) => void,
+  ) => void;
+  /** 监听"更新下载完成"事件 */
+  onUpdateDownloaded: (callback: () => void) => void;
+  /** 监听升级错误 */
+  onUpdaterError: (callback: (message: string) => void) => void;
 }
 
 /** 扩展 Window 接口以包含 electronAPI */

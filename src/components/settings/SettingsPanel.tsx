@@ -26,6 +26,7 @@ import {
   type StorageInfo,
 } from '../../utils/database';
 import { APP_VERSION } from '@/utils/version';
+import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -36,6 +37,13 @@ interface SettingsPanelProps {
   onExportCsv: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
+  // ===== 自动升级（仅桌面端；Web 下 undefined，UI 不渲染升级行） =====
+  updateStatus?: UpdateStatus;
+  updateInfo?: UpdateInfoLite | null;
+  updateProgress?: DownloadProgress | null;
+  updateError?: string;
+  onCheckUpdates?: () => void;
+  onDownloadUpdate?: () => void;
 }
 
 function SettingsPanelComponent({
@@ -47,6 +55,12 @@ function SettingsPanelComponent({
   onExportCsv,
   onImportAll,
   onResetData,
+  updateStatus = 'idle',
+  updateInfo = null,
+  updateProgress = null,
+  updateError = '',
+  onCheckUpdates,
+  onDownloadUpdate,
 }: SettingsPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -288,6 +302,17 @@ function SettingsPanelComponent({
                         className="w-4 h-4 accent-[var(--accent)]"
                       />
                     </label>
+                    <label className="flex items-center justify-between py-2 cursor-pointer">
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                        启动时自动检查更新
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={settings.autoUpdateEnabled}
+                        onChange={(e) => onUpdateSettings({ autoUpdateEnabled: e.target.checked })}
+                        className="w-4 h-4 accent-[var(--accent)]"
+                      />
+                    </label>
                   </section>
                 )}
 
@@ -455,6 +480,100 @@ function SettingsPanelComponent({
                       </span>
                     </div>
                   </div>
+                  {/* 自动升级（仅桌面端） */}
+                  {window.electronAPI?.updaterCheck && (
+                    <div className="mt-3">
+                      <button
+                        onClick={onCheckUpdates}
+                        disabled={
+                          updateStatus === 'checking' ||
+                          updateStatus === 'downloading' ||
+                          updateStatus === 'downloaded'
+                        }
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                        style={{
+                          color: 'var(--text-primary)',
+                          backgroundColor: 'var(--bg-secondary)',
+                        }}
+                      >
+                        <DownloadIcon size={15} />
+                        {updateStatus === 'checking'
+                          ? '正在检查…'
+                          : updateStatus === 'downloading'
+                            ? '下载中…'
+                            : updateStatus === 'downloaded'
+                              ? '更新已就绪'
+                              : '检查更新'}
+                      </button>
+                      {(() => {
+                        const tertiary: React.CSSProperties = {
+                          color: 'var(--text-tertiary)',
+                        };
+                        if (updateStatus === 'available' && updateInfo) {
+                          return (
+                            <div className="mt-2">
+                              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                                发现新版本 v{updateInfo.version}，点击下方按钮下载。
+                              </p>
+                              <button
+                                onClick={onDownloadUpdate}
+                                className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors"
+                                style={{
+                                  backgroundColor: 'var(--accent)',
+                                  color: '#fff',
+                                }}
+                              >
+                                <DownloadIcon size={15} />
+                                下载并安装
+                              </button>
+                            </div>
+                          );
+                        }
+                        if (updateStatus === 'downloading' && updateProgress) {
+                          const pct = Math.round(updateProgress.percent);
+                          return (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-xs" style={tertiary}>
+                                <span>下载中…</span>
+                                <span>{pct}%</span>
+                              </div>
+                              <div
+                                className="mt-1 h-1.5 rounded-full overflow-hidden"
+                                style={{ backgroundColor: 'var(--bg-secondary)' }}
+                              >
+                                <div
+                                  className="h-full transition-all"
+                                  style={{ width: `${pct}%`, backgroundColor: 'var(--accent)' }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (updateStatus === 'downloaded') {
+                          return (
+                            <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                              ✓ 更新已下载，关闭对话框后将自动提示重启安装。
+                            </p>
+                          );
+                        }
+                        if (updateStatus === 'not-available') {
+                          return (
+                            <p className="mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                              ✓ 已是最新版本
+                            </p>
+                          );
+                        }
+                        if (updateStatus === 'error') {
+                          return (
+                            <p className="mt-2 text-xs" style={{ color: 'var(--danger)' }}>
+                              检查更新失败：{updateError || '未知错误'}
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
                 </section>
               </div>
             </motion.div>

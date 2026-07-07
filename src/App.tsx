@@ -27,8 +27,11 @@ import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
+
+import { useAutoUpdate } from './hooks/useAutoUpdate';
 
 import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
@@ -79,6 +82,18 @@ function App() {
   } = useTodos();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
     useNotification();
+
+  // === 自动升级（仅桌面端） ===
+  const {
+    isDesktop: isAutoUpdateAvailable,
+    status: updateStatus,
+    updateInfo,
+    progress: updateProgress,
+    errorMsg: updateError,
+    checkForUpdates,
+    downloadUpdate,
+    quitAndInstall,
+  } = useAutoUpdate({ dbReady });
 
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
@@ -446,6 +461,31 @@ function App() {
         onExportCsv={handleExportCsv}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
+        updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
+        updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
+        updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
+        updateError={isAutoUpdateAvailable ? updateError : undefined}
+        onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
+        onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
+      />
+
+      {/* 升级已就绪：全局提示重启安装 */}
+      <ConfirmDialog
+        open={isAutoUpdateAvailable && updateStatus === 'downloaded'}
+        title="更新已就绪"
+        message={
+          updateInfo
+            ? `新版本 v${updateInfo.version} 已下载完成，是否立即重启以完成安装？`
+            : '新版本已下载完成，是否立即重启以完成安装？'
+        }
+        confirmText="立即重启"
+        cancelText="稍后"
+        onConfirm={() => void quitAndInstall()}
+        onCancel={() => {
+          // 用户选择稍后：下次退出应用时不会自动安装（autoInstallOnAppQuit 已关闭），
+          // 但 update-downloaded 事件不会再次触发；用户可在设置中重新触发或下次启动检查时重下。
+          // 这里仅关闭对话框——保留 downloaded 状态供下次重启。
+        }}
       />
     </div>
   );
