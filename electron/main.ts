@@ -3,7 +3,7 @@
  * @description 创建窗口、系统托盘、开机自启、窗口位置记忆
  */
 
-import { app, BrowserWindow, Menu, Tray, ipcMain } from 'electron';
+import { app, BrowserWindow, Menu, Tray, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
@@ -114,6 +114,25 @@ function createMainWindow(): BrowserWindow {
   } else {
     window.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // 拦截外部链接：Markdown 描述里的 url 等任何跳转都用系统默认浏览器打开，
+  // 否则会在当前窗口内导航，把整个应用替换成目标页面、无法返回。
+  // target=_blank / window.open 走这里
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+  // 普通 <a href>（同窗口跳转）走这里
+  window.webContents.on('will-navigate', (e, url) => {
+    // 允许应用自身文件加载（dev server / 本地 index.html），仅拦截外链
+    if (url === devServerUrl || url.startsWith('file://')) return;
+    e.preventDefault();
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      shell.openExternal(url);
+    }
+  });
 
   return window;
 }
