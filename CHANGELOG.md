@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+## [v1.0.3] - 2026-07-07
+### Fixed
+- 修复生产构建卡在初始界面
+
+### Internal
+- 默认安装到 Program Files (x86)
+
 ## [v1.0.2] - 2026-07-06
 ### Added
 - 引入 schema 迁移机制 (MIGRATIONS + migrateDatabase)
@@ -51,3 +58,5 @@
 [v1.0.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.1
 
 [v1.0.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.2
+
+[v1.0.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.3
