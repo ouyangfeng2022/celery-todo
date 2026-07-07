@@ -269,15 +269,13 @@ export async function initDatabase(): Promise<Database> {
     // 加载 sql.js WASM
     if (!SQL) {
       SQL = await initSqlJs({
-        // sql.js 请求的文件名是 sql-wasm-browser.wasm，但我们提供的是 sql-wasm.wasm
-        // 这里做名称映射，并使用绝对路径确保正确加载
-        locateFile: (file: string) => {
-          // 将 sql-wasm-browser.wasm 映射到我们 public 目录中的 sql-wasm.wasm
-          if (file.includes('sql-wasm')) {
-            return `${window.location.origin}/sql-wasm.wasm`;
-          }
-          return `${window.location.origin}/${file}`;
-        },
+        // sql.js 默认请求 sql-wasm.wasm，恰好与 public/ 下的文件同名，无需改名。
+        // 必须用相对路径：dev 下相对 http://localhost:5173 解析，
+        // 生产 Electron 下 loadFile 让文档运行在 file:// 协议，
+        // 此时 window.location.origin 是字符串 "null"，用 origin 拼 URL 会得到
+        // "null/sql-wasm.wasm" 导致加载失败 —— 应用卡在初始化界面。
+        // 相对路径在 file:// 下基于文档目录解析，能正确定位到 dist/sql-wasm.wasm。
+        locateFile: () => './sql-wasm.wasm',
       });
     }
 
