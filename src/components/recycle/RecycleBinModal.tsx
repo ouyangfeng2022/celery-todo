@@ -6,7 +6,7 @@
 import { memo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DeletedTodo } from '../../types';
-import { formatDate } from '../../utils/helpers';
+import { formatDate, formatRelativeTime } from '../../utils/helpers';
 import { RestoreIcon, TrashIcon, XIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
@@ -121,7 +121,7 @@ function RecycleBinModalComponent({
                             {todo.title}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                            删除于 {formatDate(todo.deletedAt)} · {formatDate(todo.expiresAt)}{' '}
+                            删除于 {formatRelativeTime(todo.deletedAt)} · {formatDate(todo.expiresAt)}{' '}
                             后自动清除
                           </p>
                         </div>

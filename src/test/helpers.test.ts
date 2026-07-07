@@ -8,6 +8,7 @@ import {
   isDueSoon,
   daysUntil,
   formatDate,
+  formatRelativeTime,
   debounce,
   generateId,
   safeJsonParse,
@@ -65,6 +66,39 @@ describe('helpers', () => {
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       expect(formatDate(tomorrow.toISOString())).toBe('明天');
+    });
+  });
+
+  describe('formatRelativeTime', () => {
+    it('无入参应返回空字符串', () => {
+      expect(formatRelativeTime(undefined)).toBe('');
+    });
+
+    it('1 分钟以内应显示刚刚', () => {
+      const t = new Date(Date.now() - 30 * 1000).toISOString();
+      expect(formatRelativeTime(t)).toBe('刚刚');
+    });
+
+    it('不足 1 小时应显示分钟数', () => {
+      const t = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(t)).toBe('5 分钟前');
+    });
+
+    it('正好 1 小时应显示 1 小时前', () => {
+      const t = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(t)).toBe('1 小时前');
+    });
+
+    it('超过 1 小时应显示小时数', () => {
+      const t = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+      expect(formatRelativeTime(t)).toBe('3 小时前');
+    });
+
+    it('超过 24 小时应显示完整日期', () => {
+      const t = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      // 跨天时不再以“X 小时前”表达，转用绝对日期
+      expect(formatRelativeTime(t)).toMatch(/\d/);
+      expect(formatRelativeTime(t)).not.toContain('小时前');
     });
   });
 

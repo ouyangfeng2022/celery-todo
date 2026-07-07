@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AppNotification } from '../../types';
-import { formatDate } from '../../utils/helpers';
+import { formatRelativeTime } from '../../utils/helpers';
 import { BellIcon, XIcon, CheckIcon } from '../common/Icons';
 
 interface NotificationPanelProps {
@@ -99,7 +99,7 @@ function NotificationPanelComponent({
                           {notification.message}
                         </p>
                         <p className="text-[11px] mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                          {formatDate(notification.createdAt)}
+                          {formatRelativeTime(notification.createdAt)}
                         </p>
                       </div>
                       <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
