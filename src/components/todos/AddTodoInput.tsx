@@ -70,7 +70,12 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // Enter 添加；Shift+Enter 换行（用于批量输入）；IME 组字中不拦截
-      if (e.key === 'Enter' && !e.shiftKey && !isComposingRef.current && !e.nativeEvent.isComposing) {
+      if (
+        e.key === 'Enter' &&
+        !e.shiftKey &&
+        !isComposingRef.current &&
+        !e.nativeEvent.isComposing
+      ) {
         e.preventDefault();
         handleAdd();
       }

@@ -104,6 +104,8 @@ export interface Project {
   createdAt: string;
   /** 更新时间 */
   updatedAt: string;
+  /** 手动排序的顺序值（侧边栏拖拽排序） */
+  order: number;
 }
 
 // ============================================

@@ -48,7 +48,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: storedFocus === null ? DEFAULT_SETTINGS.focusMode : storedFocus === 'true',
       autoUpdateEnabled:
-        storedAutoUpdate === null ? DEFAULT_SETTINGS.autoUpdateEnabled : storedAutoUpdate === 'true',
+        storedAutoUpdate === null
+          ? DEFAULT_SETTINGS.autoUpdateEnabled
+          : storedAutoUpdate === 'true',
     };
     set(settings);
   },

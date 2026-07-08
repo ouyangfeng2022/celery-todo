@@ -121,8 +121,8 @@ function RecycleBinModalComponent({
                             {todo.title}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                            删除于 {formatRelativeTime(todo.deletedAt)} · {formatDate(todo.expiresAt)}{' '}
-                            后自动清除
+                            删除于 {formatRelativeTime(todo.deletedAt)} ·{' '}
+                            {formatDate(todo.expiresAt)} 后自动清除
                           </p>
                         </div>
                         <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">

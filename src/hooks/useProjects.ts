@@ -38,6 +38,13 @@ export function useProjects() {
     [store],
   );
 
+  const reorderProjects = useCallback(
+    (sourceId: string, targetId: string) => {
+      store.reorderProjects(sourceId, targetId);
+    },
+    [store],
+  );
+
   const activeProject: Project | undefined = store.projects.find(
     (p) => p.id === store.activeProjectId,
   );
@@ -50,6 +57,7 @@ export function useProjects() {
     renameProject,
     deleteProject,
     switchProject,
+    reorderProjects,
     loadProjects: store.loadProjects,
   };
 }

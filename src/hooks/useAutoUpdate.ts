@@ -19,13 +19,7 @@ import * as db from '../utils/database';
 
 /** 升级状态 */
 export type UpdateStatus =
-  | 'idle'
-  | 'checking'
-  | 'available'
-  | 'not-available'
-  | 'downloading'
-  | 'downloaded'
-  | 'error';
+  'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
 
 /** 主进程推送的更新信息（简化版） */
 export interface UpdateInfoLite {

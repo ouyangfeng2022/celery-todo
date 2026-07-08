@@ -52,48 +52,49 @@ interface SortableTodoItemProps {
  * 因此这里用 forwardRef 暴露内部 div 的 ref，并把 framer-motion 的 ref 与
  * dnd-kit 的 setNodeRef 合并到同一个 DOM 节点上。
  */
-const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
-  props,
-  externalRef,
-) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: props.todo.id,
-  });
+const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
+  function SortableTodoItem(props, externalRef) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: props.todo.id,
+    });
 
-  // 合并两个 ref：dnd-kit 的 setNodeRef 和外层传入的 ref
-  const setMergedRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      setNodeRef(node);
-      if (typeof externalRef === 'function') {
-        externalRef(node);
-      } else if (externalRef) {
-        externalRef.current = node;
-      }
-    },
-    [setNodeRef, externalRef],
-  );
+    // 合并两个 ref：dnd-kit 的 setNodeRef 和外层传入的 ref
+    const setMergedRef = useCallback(
+      (node: HTMLDivElement | null) => {
+        setNodeRef(node);
+        if (typeof externalRef === 'function') {
+          externalRef(node);
+        } else if (externalRef) {
+          externalRef.current = node;
+        }
+      },
+      [setNodeRef, externalRef],
+    );
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : undefined,
-  };
+    const style: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      zIndex: isDragging ? 50 : undefined,
+    };
 
-  return (
-    <div ref={setMergedRef} style={style}>
-      <TodoItem
-        todo={props.todo}
-        isSelected={props.isSelected}
-        onToggle={props.onToggle}
-        onEdit={props.onEdit}
-        onDelete={props.onDelete}
-        onToggleSelect={props.onToggleSelect}
-        dragHandleProps={{ ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>}
-      />
-    </div>
-  );
-});
+    return (
+      <div ref={setMergedRef} style={style}>
+        <TodoItem
+          todo={props.todo}
+          isSelected={props.isSelected}
+          onToggle={props.onToggle}
+          onEdit={props.onEdit}
+          onDelete={props.onDelete}
+          onToggleSelect={props.onToggleSelect}
+          dragHandleProps={
+            { ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>
+          }
+        />
+      </div>
+    );
+  },
+);
 
 function TodoListComponent({
   todos,

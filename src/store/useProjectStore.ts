@@ -23,6 +23,8 @@ interface ProjectState {
   deleteProject: (id: string) => void;
   /** 切换当前项目 */
   setActiveProject: (id: string) => void;
+  /** 拖拽排序：把 source 移到 target 的位置 */
+  reorderProjects: (sourceId: string, targetId: string) => void;
   /** 获取当前项目 */
   getActiveProject: () => Project | undefined;
 }
@@ -44,6 +46,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         name: '默认项目',
         createdAt: now,
         updatedAt: now,
+        order: 0,
       };
       db.insertProject(defaultProject);
       projects = [defaultProject];
@@ -55,6 +58,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         name: '默认项目',
         createdAt: now,
         updatedAt: now,
+        order: 0,
       };
       db.insertProject(defaultProject);
       projects = [defaultProject, ...projects];
@@ -64,17 +68,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   createProject: (name, color) => {
     const now = new Date().toISOString();
+    // order 传 null：由 db.insertProject 用 MAX(sort_order)+1 自动追加到末尾。
     const project: Project = {
       id: generateId(),
       name: name.trim(),
       color: color || undefined,
       createdAt: now,
       updatedAt: now,
+      order: 0,
     };
     db.insertProject(project);
+    // 重新拉一次以拿到 DB 实际分配的 sort_order，避免本地 order=0 与实际不符。
+    const inserted = db.getProjectById(project.id) ?? project;
     // 创建后自动切换为当前项目，符合「新建即进入」的预期；
     // activeProjectId 变化会驱动 App.tsx 中的 effect 重新 loadProject。
-    set({ projects: [...get().projects, project], activeProjectId: project.id });
+    set({ projects: [...get().projects, inserted], activeProjectId: project.id });
     return project.id;
   },
 
@@ -99,6 +107,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (get().activeProjectId === id) {
       set({ activeProjectId: DEFAULT_PROJECT_ID });
     }
+  },
+
+  reorderProjects: (sourceId, targetId) => {
+    const { projects } = get();
+    if (sourceId === targetId) return;
+    const sourceIdx = projects.findIndex((p) => p.id === sourceId);
+    const targetIdx = projects.findIndex((p) => p.id === targetId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+
+    // 重新排列数组（与 useTodoStore.reorderTodos 一致的算法）
+    const next = [...projects];
+    const [moved] = next.splice(sourceIdx, 1);
+    next.splice(targetIdx, 0, moved);
+
+    // 按数组下标重分配 order 并持久化
+    const reordered = next.map((p, idx) => ({ ...p, order: idx }));
+    db.reorderProjects(reordered.map((p) => p.id));
+    set({ projects: reordered });
   },
 
   setActiveProject: (id) => {

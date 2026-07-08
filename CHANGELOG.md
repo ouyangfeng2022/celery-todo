@@ -7,6 +7,15 @@
 发版流程详见 [VERSIONING.md](./VERSIONING.md)。
 
 ## [Unreleased]
+### Added
+- 项目列表支持拖拽排序（整行可拖，按住任意位置拖动；小于 5px 视为点击切换项目）
+- 设置面板「检查更新」提示加入语义颜色与动画（旋转/弹性打钩/进度过渡/失败抖动）
+
+### Changed
+- 放大侧边栏「项目」标签字号（11px eyebrow → 14px 普通粗体）
+
+### Internal
+- `projects` 表新增 `sort_order` 列，DB_VERSION 1 → 2，迁移按 `created_at` 顺序回填，升级后顺序与升级前一致
 
 ## [v1.1.0] - 2026-07-07
 ### Added

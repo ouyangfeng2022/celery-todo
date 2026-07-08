@@ -51,9 +51,7 @@ export function formatDate(isoString?: string): string {
     x.setHours(0, 0, 0, 0);
     return x.getTime();
   };
-  const diffDays = Math.round(
-    (startOfDay(date) - startOfDay(now)) / (1000 * 60 * 60 * 24),
-  );
+  const diffDays = Math.round((startOfDay(date) - startOfDay(now)) / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) return '今天';
   if (diffDays === 1) return '明天';

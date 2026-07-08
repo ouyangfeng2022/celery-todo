@@ -8,13 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
-import {
-  cn,
-  formatDate,
-  formatRelativeTime,
-  isOverdue,
-  isDueSoon,
-} from '../../utils/helpers';
+import { cn, formatDate, formatRelativeTime, isOverdue, isDueSoon } from '../../utils/helpers';
 import {
   CheckIcon,
   EditIcon,
