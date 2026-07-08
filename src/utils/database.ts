@@ -23,26 +23,59 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 /**
  * Schema 迁移表。
  *
- * 每个条目描述「从 version-1 升到 version」要执行的 SQL。
- * - 版本 1 是初始 schema（由 createTables 建立），无前置迁移，所以本数组当前为空。
+ * 每个条目描述「从 version-1 升到 version」要做的事。
+ * - 版本 1 是初始 schema（由 createTables 建立），无前置迁移。
+ * - 版本 2 给 projects 表加 sort_order 列，并按现有 created_at 顺序回填，
+ *   使升级后侧边栏顺序与升级前视觉一致。
  * - 新增/修改列时：把 DB_VERSION 递增，并在此处追加一条 entry，例如：
- *     { version: 2, description: 'todos 增加 tags 列', sql: ['ALTER TABLE todos ADD COLUMN tags TEXT'] }
+ *     {
+ *       version: 3,
+ *       description: 'todos 增加 tags 列',
+ *       run: (db) => addColumnIfMissing(db, 'todos', 'tags', 'TEXT'),
+ *     }
+ *   createTables() 持有的是「最终 schema」，所以新库 / 导入库可能已经具备
+ *   该列；迁移体内务必用 hasColumn / addColumnIfMissing 之类的判断保证幂等。
  * - 不可逆迁移（删列/改类型）须配套 App MAJOR 版本号 bump，并在 CHANGELOG 写手动恢复步骤。
- * - migrateDatabase() 会按 version 升序对当前 dataVersion < version 的条目幂等执行。
+ * - migrateDatabase() 会按 version 升序对当前 dataVersion < version 的条目执行。
  *
  * 详见仓库根目录 VERSIONING.md 第 3 节。
  */
 interface SchemaMigration {
   version: number;
   description: string;
-  sql: string[];
+  /**
+   * 单条迁移的执行体。由 migrateDatabase() 在事务中调用。
+   * 设计成函数而非纯 SQL 字符串：createTables() 持有的是「最终 schema」，
+   * 新建库 / 导入库 / 升级库三种路径下，某列可能已经存在，迁移需要自行
+   * 通过 PRAGMA table_info 判断后再决定是否改，才能做到真正幂等。
+   */
+  run: (database: Database) => void;
 }
-const MIGRATIONS: SchemaMigration[] = [];
+const MIGRATIONS: SchemaMigration[] = [
+  {
+    version: 2,
+    description: 'projects 表增加 sort_order 列，并按 created_at 顺序回填',
+    run: (database) => {
+      // createTables() 的 projects 定义里已包含 sort_order（最终 schema），
+      // 因此首次建库 / 导入库后该列可能已存在；只有老库升级时才需要 ADD。
+      // addColumnIfMissing 内部用 PRAGMA table_info 做幂等判断。
+      addColumnIfMissing(database, 'projects', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+      // 老库升级或列虽存在但值为 0 时，按 created_at 回填一个稳定顺序。
+      // COALESCE 兜底：无更早项目时取 0，避免 NULL/异常。
+      database.run(`UPDATE projects
+         SET sort_order = COALESCE(
+           (SELECT COUNT(*) FROM projects p2
+             WHERE p2.created_at < projects.created_at),
+           0
+         )`);
+    },
+  },
+];
 
 // ============================================
 // 模块级状态
@@ -151,7 +184,8 @@ function createTables(database: Database): void {
       name TEXT NOT NULL,
       color TEXT,
       created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
+      updated_at TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
     );
 
     -- Todo 事项表
@@ -213,15 +247,51 @@ function createTables(database: Database): void {
 }
 
 /**
+ * 判断某表是否存在指定列（基于 PRAGMA table_info）。
+ * 供迁移逻辑做幂等判断：createTables() 持有的是最终 schema，
+ * 新建 / 导入的库可能已经具备较新的列，迁移要据此跳过 ALTER。
+ */
+function hasColumn(database: Database, table: string, column: string): boolean {
+  const stmt = database.prepare(`PRAGMA table_info(${table})`);
+  let exists = false;
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as { name?: unknown };
+    if (row.name === column) {
+      exists = true;
+      break;
+    }
+  }
+  stmt.free();
+  return exists;
+}
+
+/**
+ * 仅当列不存在时执行 ADD COLUMN，等价于 SQLite 缺失的
+ * `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`。供 MIGRATIONS 使用，保证幂等。
+ */
+function addColumnIfMissing(
+  database: Database,
+  table: string,
+  column: string,
+  definition: string,
+): void {
+  if (!hasColumn(database, table, column)) {
+    database.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+/**
  * 按 {@link MIGRATIONS} 阶梯对当前数据库做幂等迁移。
  *
  * 规则：
  * - 读 settings.dataVersion（缺失视为 0），按 version 升序跑所有 version > 当前 的迁移。
- * - 每条迁移用事务包起来，单条 SQL 失败时回滚并抛出，避免留下半迁移状态。
+ * - 每条迁移用事务包起来，单步失败时回滚并抛出，避免留下半迁移状态。
  * - 全部跑完后把 dataVersion 写为 DB_VERSION。
  * - 必须在 createTables 之后调用：新表由 createTables 建，列变更由本函数改。
  *
  * 该函数幂等：dataVersion 已等于 DB_VERSION 时直接返回，无副作用。
+ * 即便某次迁移因 dataVersion 缺失被重复触发，迁移体内也应通过 hasColumn
+ * 等手段保证重复执行不报错（createTables 已是最终 schema，列可能已存在）。
  */
 function migrateDatabase(): void {
   if (!db) throw new Error('migrateDatabase: 数据库未初始化');
@@ -239,9 +309,7 @@ function migrateDatabase(): void {
   for (const m of pending) {
     db.run('BEGIN');
     try {
-      for (const sql of m.sql) {
-        db.run(sql);
-      }
+      m.run(db);
       db.run('COMMIT');
     } catch (err) {
       db.run('ROLLBACK');
@@ -412,6 +480,7 @@ interface ProjectRow {
   color: string | null;
   created_at: string;
   updated_at: string;
+  sort_order: number;
 }
 
 /** 将数据库行转换为 Project 对象 */
@@ -422,12 +491,15 @@ function rowToProject(row: ProjectRow): import('../types').Project {
     color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    order: row.sort_order,
   };
 }
 
-/** 获取所有项目 */
+/** 获取所有项目（按 sort_order 排序，created_at 仅作兜底次序） */
 export function getAllProjects(): import('../types').Project[] {
-  return queryAll<ProjectRow>('SELECT * FROM projects ORDER BY created_at ASC').map(rowToProject);
+  return queryAll<ProjectRow>('SELECT * FROM projects ORDER BY sort_order ASC, created_at ASC').map(
+    rowToProject,
+  );
 }
 
 /** 根据 ID 获取项目 */
@@ -438,23 +510,42 @@ export function getProjectById(id: string): import('../types').Project | null {
 
 /** 插入项目 */
 export function insertProject(project: import('../types').Project): void {
-  execute(`INSERT INTO projects (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`, [
-    project.id,
-    project.name,
-    project.color ?? null,
-    project.createdAt,
-    project.updatedAt,
-  ]);
+  // 新建项目默认追加到末尾：调用方未指定 order（null）时，由 SQL 子查询取
+  // MAX(sort_order) + 1 自动计算，避免迁移期/导入路径产生重复序号。
+  execute(
+    `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM projects)))`,
+    [
+      project.id,
+      project.name,
+      project.color ?? null,
+      project.createdAt,
+      project.updatedAt,
+      project.order ?? null,
+    ],
+  );
 }
 
 /** 更新项目 */
 export function updateProject(project: import('../types').Project): void {
-  execute(`UPDATE projects SET name = ?, color = ?, updated_at = ? WHERE id = ?`, [
+  execute(`UPDATE projects SET name = ?, color = ?, updated_at = ?, sort_order = ? WHERE id = ?`, [
     project.name,
     project.color ?? null,
     project.updatedAt,
+    project.order,
     project.id,
   ]);
+}
+
+/**
+ * 按给定 id 顺序批量重排项目。
+ * @param ids 目标顺序的项目 ID 列表（应包含当前全部项目）
+ */
+export function reorderProjects(ids: string[]): void {
+  // 按数组下标作为新的 sort_order，与 todos 的 reorder 写法一致。
+  ids.forEach((id, idx) => {
+    execute('UPDATE projects SET sort_order = ? WHERE id = ?', [idx, id]);
+  });
 }
 
 /** 删除项目（同时删除其下所有 Todo） */

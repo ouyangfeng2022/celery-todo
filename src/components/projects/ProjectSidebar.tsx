@@ -1,10 +1,26 @@
 /**
  * @file ProjectSidebar - 项目侧边栏
- * @description 项目列表、创建/删除/重命名项目、导入导出
+ * @description 项目列表、创建/删除/重命名项目、导入导出，支持拖拽排序
  */
 
 import { memo, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Project } from '../../types';
 import {
   PlusIcon,
@@ -27,9 +43,146 @@ interface ProjectSidebarProps {
   onDelete: (id: string) => void;
   onExport: (projectId: string) => void;
   onImport: (file: File) => void;
+  onReorder: (sourceId: string, targetId: string) => void;
   onOpenRecycleBin: () => void;
   onOpenSettings: () => void;
   recycleBinCount: number;
+}
+
+/** 单个项目行（包装为 dnd-kit 可拖动节点） */
+interface SortableProjectItemProps {
+  project: Project;
+  isActive: boolean;
+  isEditing: boolean;
+  editName: string;
+  isDefault: boolean;
+  onSwitch: (id: string) => void;
+  onEditNameChange: (value: string) => void;
+  onConfirmRename: () => void;
+  onCancelRename: () => void;
+  onStartRename: (project: Project) => void;
+  onExport: (id: string) => void;
+  onDelete: (project: Project) => void;
+}
+
+function SortableProjectItem({
+  project,
+  isActive,
+  isEditing,
+  editName,
+  isDefault,
+  onSwitch,
+  onEditNameChange,
+  onConfirmRename,
+  onCancelRename,
+  onStartRename,
+  onExport,
+  onDelete,
+}: SortableProjectItemProps) {
+  // 用 useSortable（而非 useDraggable）：前者同时注册 droppable，
+  // 才能与 SortableContext 配合产出 over≠null，从而触发 onDragEnd 排序。
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: project.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    touchAction: 'none',
+    backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="group relative rounded-md transition-colors">
+      {isEditing ? (
+        <input
+          type="text"
+          value={editName}
+          onChange={(e) => onEditNameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onConfirmRename();
+            if (e.key === 'Escape') onCancelRename();
+          }}
+          onBlur={onConfirmRename}
+          autoFocus
+          className="w-full px-3 py-2 text-sm rounded-md border outline-none"
+          style={{
+            backgroundColor: 'var(--bg-tertiary)',
+            color: 'var(--text-primary)',
+            borderColor: 'var(--accent)',
+          }}
+        />
+      ) : (
+        <button
+          onClick={() => onSwitch(project.id)}
+          {...attributes}
+          {...listeners}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md cursor-grab active:cursor-grabbing"
+          style={{
+            color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: isActive ? 500 : 400,
+          }}
+          aria-label={`${project.name}（拖动以排序）`}
+        >
+          <span className="flex-1 truncate">{project.name}</span>
+          {isDefault && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity font-medium"
+              style={{
+                backgroundColor: 'var(--bg-hover)',
+                color: 'var(--text-tertiary)',
+              }}
+            >
+              默认
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* 悬浮操作按钮 */}
+      {!isEditing && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onExport(project.id);
+            }}
+            className="p-1 rounded hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-tertiary)' }}
+            aria-label="导出项目"
+          >
+            <DownloadIcon size={13} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onStartRename(project);
+            }}
+            className="p-1 rounded hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-tertiary)' }}
+            aria-label="重命名"
+          >
+            <EditIcon size={13} />
+          </button>
+          {!isDefault && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(project);
+              }}
+              className="p-1 rounded hover:bg-[var(--bg-hover)]"
+              style={{ color: 'var(--text-tertiary)' }}
+              aria-label="删除项目"
+            >
+              <TrashIcon size={13} />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ProjectSidebarComponent({
@@ -41,6 +194,7 @@ function ProjectSidebarComponent({
   onDelete,
   onExport,
   onImport,
+  onReorder,
   onOpenRecycleBin,
   onOpenSettings,
   recycleBinCount,
@@ -83,6 +237,26 @@ function ProjectSidebarComponent({
     input.click();
   }, [onImport]);
 
+  // 拖拽排序：distance:5 区分点击与拖拽，避免影响项目切换
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (over && active.id !== over.id) {
+        onReorder(active.id as string, over.id as string);
+      }
+    },
+    [onReorder],
+  );
+
   return (
     <aside
       className="w-64 flex-shrink-0 h-full flex flex-col border-r"
@@ -104,7 +278,9 @@ function ProjectSidebarComponent({
       {/* 项目列表 */}
       <div className="flex-1 overflow-y-auto px-3 py-4">
         <div className="flex items-center justify-between px-2 mb-2">
-          <span className="claude-eyebrow">项目</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+            项目
+          </span>
           <button
             onClick={() => setIsCreating(true)}
             className="btn-ghost p-1"
@@ -151,107 +327,36 @@ function ProjectSidebarComponent({
           )}
         </AnimatePresence>
 
-        {/* 项目项 */}
-        <div className="space-y-0.5 mt-1">
-          {projects.map((project) => {
-            const isActive = project.id === activeProjectId;
-            const isEditing = editingId === project.id;
-            const isDefault = project.id === 'default';
+        {/* 项目项（支持拖拽排序） */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-0.5 mt-1">
+              {projects.map((project) => {
+                const isActive = project.id === activeProjectId;
+                const isEditing = editingId === project.id;
+                const isDefault = project.id === 'default';
 
-            return (
-              <div
-                key={project.id}
-                className="group relative rounded-md transition-colors"
-                style={{
-                  backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
-                }}
-              >
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleConfirmRename();
-                      if (e.key === 'Escape') setEditingId(null);
-                    }}
-                    onBlur={handleConfirmRename}
-                    autoFocus
-                    className="w-full px-3 py-2 text-sm rounded-md border outline-none"
-                    style={{
-                      backgroundColor: 'var(--bg-tertiary)',
-                      color: 'var(--text-primary)',
-                      borderColor: 'var(--accent)',
-                    }}
+                return (
+                  <SortableProjectItem
+                    key={project.id}
+                    project={project}
+                    isActive={isActive}
+                    isEditing={isEditing}
+                    editName={editName}
+                    isDefault={isDefault}
+                    onSwitch={onSwitch}
+                    onEditNameChange={setEditName}
+                    onConfirmRename={handleConfirmRename}
+                    onCancelRename={() => setEditingId(null)}
+                    onStartRename={handleStartRename}
+                    onExport={onExport}
+                    onDelete={setDeleteTarget}
                   />
-                ) : (
-                  <button
-                    onClick={() => onSwitch(project.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md"
-                    style={{
-                      color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-                      fontWeight: isActive ? 500 : 400,
-                    }}
-                  >
-                    <span className="flex-1 truncate">{project.name}</span>
-                    {isDefault && (
-                      <span
-                        className="text-[10px] px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity font-medium"
-                        style={{
-                          backgroundColor: 'var(--bg-hover)',
-                          color: 'var(--text-tertiary)',
-                        }}
-                      >
-                        默认
-                      </span>
-                    )}
-                  </button>
-                )}
-
-                {/* 悬浮操作按钮 */}
-                {!isEditing && (
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExport(project.id);
-                      }}
-                      className="p-1 rounded hover:bg-[var(--bg-hover)]"
-                      style={{ color: 'var(--text-tertiary)' }}
-                      aria-label="导出项目"
-                    >
-                      <DownloadIcon size={13} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartRename(project);
-                      }}
-                      className="p-1 rounded hover:bg-[var(--bg-hover)]"
-                      style={{ color: 'var(--text-tertiary)' }}
-                      aria-label="重命名"
-                    >
-                      <EditIcon size={13} />
-                    </button>
-                    {!isDefault && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteTarget(project);
-                        }}
-                        className="p-1 rounded hover:bg-[var(--bg-hover)]"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        aria-label="删除项目"
-                      >
-                        <TrashIcon size={13} />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
 
       {/* 底部操作 */}
