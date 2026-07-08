@@ -7,6 +7,8 @@
 发版流程详见 [VERSIONING.md](./VERSIONING.md)。
 
 ## [Unreleased]
+
+## [v1.2.0] - 2026-07-08
 ### Added
 - 项目列表支持拖拽排序（整行可拖，按住任意位置拖动；小于 5px 视为点击切换项目）
 - 设置面板「检查更新」提示加入语义颜色与动画（旋转/弹性打钩/进度过渡/失败抖动）
@@ -80,3 +82,5 @@
 [v1.0.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.3
 
 [v1.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.1.0
+
+[v1.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.0
