@@ -27,3 +27,6 @@ skills/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# ZCode agent 本地工作状态
+.zcode/
