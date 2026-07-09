@@ -444,6 +444,7 @@ function App() {
       <RecycleBinModal
         open={recycleBinOpen}
         deletedTodos={deletedTodos}
+        projects={projects}
         onRestore={restoreTodo}
         onPermanentDelete={permanentlyDelete}
         onEmptyAll={emptyRecycleBin}

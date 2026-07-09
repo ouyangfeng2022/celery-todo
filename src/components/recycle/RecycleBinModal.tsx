@@ -3,9 +3,9 @@
  * @description 显示已删除的事项，支持恢复和永久删除
  */
 
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { DeletedTodo } from '../../types';
+import type { DeletedTodo, Project } from '../../types';
 import { formatDate, formatRelativeTime } from '../../utils/helpers';
 import { RestoreIcon, TrashIcon, XIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -13,6 +13,8 @@ import { ConfirmDialog } from '../common/ConfirmDialog';
 interface RecycleBinModalProps {
   open: boolean;
   deletedTodos: DeletedTodo[];
+  /** 全部项目列表（用于按 projectId 解析项目名） */
+  projects: Project[];
   onRestore: (id: string) => void;
   onPermanentDelete: (id: string) => void;
   onEmptyAll: () => void;
@@ -22,12 +24,16 @@ interface RecycleBinModalProps {
 function RecycleBinModalComponent({
   open,
   deletedTodos,
+  projects,
   onRestore,
   onPermanentDelete,
   onEmptyAll,
   onClose,
 }: RecycleBinModalProps) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+
+  // 构建 projectId -> Project 查找表，便于在每一行显示项目名
+  const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
   return (
     <>
@@ -117,9 +123,29 @@ function RecycleBinModalComponent({
                         }}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                            {todo.title}
-                          </p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p
+                              className="text-sm truncate flex-1 min-w-0"
+                              style={{ color: 'var(--text-primary)' }}
+                            >
+                              {todo.title}
+                            </p>
+                            {(() => {
+                              const project = projectNameById.get(todo.projectId);
+                              if (!project) return null;
+                              return (
+                                <span
+                                  className="claude-tag shrink-0"
+                                  style={{
+                                    color: 'var(--text-tertiary)',
+                                    border: '1px solid var(--border-color)',
+                                  }}
+                                >
+                                  {project.name}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
                             删除于 {formatRelativeTime(todo.deletedAt)} ·{' '}
                             {formatDate(todo.expiresAt)} 后自动清除
