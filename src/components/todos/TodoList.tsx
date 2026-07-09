@@ -35,6 +35,8 @@ interface TodoListProps {
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onReorder: (sourceId: string, targetId: string) => void;
+  /** 切换排序方式（拖拽时用于自动切到「手动排序」） */
+  onSortChange: (sort: SortType) => void;
 }
 
 /** 可排序的 TodoItem 包装器 */
@@ -105,6 +107,7 @@ function TodoListComponent({
   onDelete,
   onToggleSelect,
   onReorder,
+  onSortChange,
 }: TodoListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -119,17 +122,19 @@ function TodoListComponent({
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (over && active.id !== over.id) {
+        // 当前非「手动排序」时，先切换到手动排序，让后续 order 重排与显示顺序一致
+        if (sort !== 'manual') {
+          onSortChange('manual');
+        }
         onReorder(active.id as string, over.id as string);
       }
     },
-    [onReorder],
+    [onReorder, onSortChange, sort],
   );
 
   if (todos.length === 0) {
     return <EmptyState />;
   }
-
-  const isManualSort = sort === 'manual';
 
   const listContent = (
     <AnimatePresence mode="popLayout">
@@ -147,18 +152,14 @@ function TodoListComponent({
     </AnimatePresence>
   );
 
-  // 仅在手动排序模式下启用拖拽
-  if (isManualSort) {
-    return (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-1">{listContent}</div>
-        </SortableContext>
-      </DndContext>
-    );
-  }
-
-  return <div className="space-y-1">{listContent}</div>;
+  // 任意排序模式下都允许拖拽；非手动排序时拖拽会自动切到手动排序（见 handleDragEnd）
+  return (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-1">{listContent}</div>
+      </SortableContext>
+    </DndContext>
+  );
 }
 
 export const TodoList = memo(TodoListComponent);

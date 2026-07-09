@@ -425,6 +425,7 @@ function App() {
               onDelete={deleteTodo}
               onToggleSelect={toggleSelected}
               onReorder={reorderTodos}
+              onSortChange={changeSort}
             />
           </div>
         </main>
