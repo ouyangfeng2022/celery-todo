@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v1.2.1] - 2026-07-09
+### Added
+- 显示待办完成时间
+- 非手动排序下拖拽自动切换为手动排序
+- 回收站列表显示项目名
+
 ## [v1.2.0] - 2026-07-08
 ### Added
 - 项目列表支持拖拽排序（整行可拖，按住任意位置拖动；小于 5px 视为点击切换项目）
@@ -84,3 +90,5 @@
 [v1.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.1.0
 
 [v1.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.0
+
+[v1.2.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.1
