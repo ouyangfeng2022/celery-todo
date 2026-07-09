@@ -388,6 +388,13 @@ function TodoItemComponent({
               <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
                 {formatRelativeTime(todo.createdAt)}创建
               </span>
+
+              {/* 完成时间：已完成且记录了完成时间时显示 */}
+              {todo.completedAt && (
+                <span className="text-[11px]" style={{ color: 'var(--success)' }}>
+                  {formatRelativeTime(todo.completedAt)}完成
+                </span>
+              )}
             </div>
           </>
         )}
