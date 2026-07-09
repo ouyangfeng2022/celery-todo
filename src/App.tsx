@@ -3,8 +3,9 @@
  * @description 组合所有组件，管理全局状态和布局
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
+import confetti from 'canvas-confetti';
 
 import { useTodoStore } from './store/useTodoStore';
 import { useProjectStore } from './store/useProjectStore';
@@ -28,6 +29,8 @@ import { BatchToolbar } from './components/todos/BatchToolbar';
 import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
+import { NoProjectsState } from './components/common/NoProjectsState';
+import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 
@@ -37,6 +40,16 @@ import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
 import type { Priority } from './types';
+
+/**
+ * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
+ * canvas-confetti 会自建并自行清理 canvas，无需手动管理。
+ */
+function fireCelebration() {
+  const defaults = { spread: 70, startVelocity: 35, scalar: 0.9, ticks: 120, zIndex: 100 };
+  confetti({ ...defaults, particleCount: 60, origin: { x: 0.2, y: 0.7 }, angle: 60 });
+  confetti({ ...defaults, particleCount: 60, origin: { x: 0.8, y: 0.7 }, angle: 120 });
+}
 
 function App() {
   // === 初始化数据库 ===
@@ -48,6 +61,8 @@ function App() {
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
   const [composerVisible, setComposerVisible] = useState(false);
+  // 主区「请创建项目」按钮触发侧边栏新建输入框聚焦：递增值驱动 ProjectSidebar 的 effect
+  const [createProjectSignal, setCreateProjectSignal] = useState(0);
 
   // === Stores ===
   const settings = useSettingsStore();
@@ -99,6 +114,19 @@ function App() {
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
     useFilter(todos);
+
+  // === 全部完成庆祝 ===
+  // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
+  const allDone = stats.total > 0 && stats.active === 0;
+  // 仅在 false → true 的上升边沿撒花一次，避免每次重渲染重复触发；
+  // 切换项目/新增待办/取消勾选会让 allDone 回落 false，下次达成会再庆祝。
+  const prevAllDoneRef = useRef(false);
+  useEffect(() => {
+    if (allDone && !prevAllDoneRef.current) {
+      fireCelebration();
+    }
+    prevAllDoneRef.current = allDone;
+  }, [allDone]);
 
   // === 初始化 ===
   useEffect(() => {
@@ -197,7 +225,15 @@ function App() {
           await db.importAllData(data);
           loadProjects();
           useSettingsStore.getState().loadSettings();
-          useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+          // 导入后确保 active 指向一个真实存在的项目：原 active 可能指向已不存在的项目
+          // （或首启时为空串），此时回退到导入后的第一个项目
+          const store = useProjectStore.getState();
+          const exists = store.projects.some((p) => p.id === store.activeProjectId);
+          const targetId = exists ? store.activeProjectId : store.projects[0]?.id ?? '';
+          if (!exists && targetId) {
+            store.setActiveProject(targetId);
+          }
+          useTodoStore.getState().loadProject(targetId);
         }
       } catch (err) {
         alert(`导入失败: ${err instanceof Error ? err.message : '未知错误'}`);
@@ -210,7 +246,8 @@ function App() {
     await db.resetDatabase();
     await db.initDatabase();
     useProjectStore.getState().loadProjects();
-    useTodoStore.getState().loadProject('default');
+    // 重置后项目列表为空，activeProjectId 为空串；清空当前 todo 视图
+    useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     useSettingsStore.getState().loadSettings();
     setSettingsOpen(false);
   }, []);
@@ -279,6 +316,7 @@ function App() {
               onOpenRecycleBin={() => setRecycleBinOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
               recycleBinCount={deletedTodos.length}
+              autofocusCreateSignal={createProjectSignal}
             />
           </div>
 
@@ -378,56 +416,72 @@ function App() {
         )}
 
         <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-10">
-          <div className={cn('mx-auto space-y-5', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
-            {/* 添加事项：完整模式始终可见；专注模式仅 Ctrl+N 唤出时可见 */}
-            {(!focusMode || composerVisible) && (
-              <AddTodoInput
-                onAdd={(title, priority, dueDate) => {
-                  addTodo(title, priority, dueDate);
-                  // 专注模式下添加完成后收起 composer
-                  if (focusMode) setComposerVisible(false);
+          {projects.length === 0 ? (
+            // 无项目：引导创建第一个项目（优先于专注模式判断）
+            <div className="mx-auto max-w-3xl">
+              <NoProjectsState
+                onCreate={() => {
+                  // 专注模式下侧边栏被隐藏，先退出专注以露出新建输入框
+                  if (focusMode) useSettingsStore.getState().setFocusMode(false);
+                  setCreateProjectSignal((n) => n + 1);
                 }}
-                focusSignal={newTodoFocusSignal}
               />
-            )}
+            </div>
+          ) : (
+            <div className={cn('mx-auto space-y-5', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
+              {/* 添加事项：完整模式始终可见；专注模式仅 Ctrl+N 唤出时可见 */}
+              {(!focusMode || composerVisible) && (
+                <AddTodoInput
+                  onAdd={(title, priority, dueDate) => {
+                    addTodo(title, priority, dueDate);
+                    // 专注模式下添加完成后收起 composer
+                    if (focusMode) setComposerVisible(false);
+                  }}
+                  focusSignal={newTodoFocusSignal}
+                />
+              )}
 
-            {/* 统计 - 专注模式下隐藏 */}
-            {!focusMode && (
-              <StatsPanel
-                total={stats.total}
-                completed={stats.completed}
-                active={stats.active}
-                overdue={stats.overdue}
-                percentage={stats.percentage}
-              />
-            )}
+              {/* 统计 - 专注模式下隐藏 */}
+              {!focusMode && (
+                <StatsPanel
+                  total={stats.total}
+                  completed={stats.completed}
+                  active={stats.active}
+                  overdue={stats.overdue}
+                  percentage={stats.percentage}
+                />
+              )}
 
-            {/* 筛选栏 - 专注模式下隐藏 */}
-            {!focusMode && (
-              <FilterBar
-                filter={filter}
+              {/* 筛选栏 - 专注模式下隐藏 */}
+              {!focusMode && (
+                <FilterBar
+                  filter={filter}
+                  sort={sort}
+                  activeCount={stats.active}
+                  completedCount={stats.completed}
+                  onFilterChange={changeFilter}
+                  onSortChange={changeSort}
+                  onClearCompleted={clearCompleted}
+                />
+              )}
+
+              {/* 事项列表 */}
+              <TodoList
+                todos={filteredTodos}
+                selectedIds={selectedIds}
                 sort={sort}
-                activeCount={stats.active}
-                completedCount={stats.completed}
-                onFilterChange={changeFilter}
+                onToggle={toggleTodo}
+                onEdit={updateTodo}
+                onDelete={deleteTodo}
+                onToggleSelect={toggleSelected}
+                onReorder={reorderTodos}
                 onSortChange={changeSort}
-                onClearCompleted={clearCompleted}
               />
-            )}
 
-            {/* 事项列表 */}
-            <TodoList
-              todos={filteredTodos}
-              selectedIds={selectedIds}
-              sort={sort}
-              onToggle={toggleTodo}
-              onEdit={updateTodo}
-              onDelete={deleteTodo}
-              onToggleSelect={toggleSelected}
-              onReorder={reorderTodos}
-              onSortChange={changeSort}
-            />
-          </div>
+              {/* 全部完成庆祝卡片：该项目有待办且全部已完成时显示 */}
+              {allDone && <AllDoneCelebration completed={stats.completed} />}
+            </div>
+          )}
         </main>
       </div>
 

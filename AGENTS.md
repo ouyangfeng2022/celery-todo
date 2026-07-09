@@ -67,17 +67,16 @@ Two test layers, kept strictly separate:
 
 ### Run only the specs you need
 
-**Do not run the full E2E suite for every change.** Each E2E test launches a
-fresh Electron process + cold-loads sql-wasm.wasm, so the full suite takes ~6-8
-minutes. Pick the subset that matches the change:
+**严禁运行 `bun run e2e`（完整套件）。** 每个 E2E test 都启动一个独立 Electron 进程并冷加载
+sql-wasm.wasm，完整套件耗时 ~6-8 分钟，严重拖累效率。只跑与改动相关的 spec：
 
 ```bash
-bunx playwright test e2e/todos.spec.ts                  # single file
-bunx playwright test e2e/todos.spec.ts e2e/projects.spec.ts   # related files
-bunx playwright test -g "拖拽"                            # by name keyword (cross-file)
+bunx playwright test e2e/todos.spec.ts                  # 单个文件
+bunx playwright test e2e/todos.spec.ts e2e/projects.spec.ts   # 多个相关文件
+bunx playwright test -g "拖拽"                            # 按名称关键词（跨文件）
 bunx playwright test -g "回收站|删除"                       # regex
-bunx playwright test --last-failed                        # only last run's failures
-bunx playwright test e2e/filters.spec.ts --headed         # watch it run
+bunx playwright test --last-failed                        # 仅上次失败项
+bunx playwright test e2e/filters.spec.ts --headed         # 看显式窗口运行
 ```
 
 ### Change-area → spec map
@@ -94,10 +93,11 @@ bunx playwright test e2e/filters.spec.ts --headed         # watch it run
 | `src/components/common/NotificationPanel.tsx` | `e2e/notifications.spec.ts` |
 | dnd-kit drag-and-drop | `e2e/dnd.spec.ts` |
 | `electron/main.ts` / startup flow | `e2e/app.spec.ts` |
-| Cross-cutting (database.ts, stores, App.tsx, types) | **full suite** `bun run e2e` |
+| Cross-cutting (database.ts, stores, App.tsx, types) | 依次运行最相关的 3-4 个 spec，不要跑全量 |
 
 When in doubt about blast radius (e.g. touching `database.ts`, a Zustand store,
-`App.tsx`, or shared types), run the full suite.
+`App.tsx`, or shared types), 根据改动涉及的功能域选 3-4 个最相关的 spec，
+不要跑全量套件（参见禁止完整套件的规定）。
 
 ## Data flow
 

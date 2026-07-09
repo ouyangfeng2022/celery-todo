@@ -2,7 +2,7 @@
  * Todo 核心 CRUD：添加、批量、完成、编辑、删除、优先级、截止日期、描述 Markdown。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, addTodosBulk, todoRow, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, addTodosBulk, createProject, todoRow, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -10,6 +10,8 @@ let win: Awaited<ReturnType<typeof launchApp>>['window'];
 test.beforeEach(async () => {
   appInfo = await launchApp();
   win = appInfo.window;
+  // 首启无默认项目，每个用例先建一个项目承载 todo
+  await createProject(win, '测试项目');
 });
 
 test.afterEach(async () => {

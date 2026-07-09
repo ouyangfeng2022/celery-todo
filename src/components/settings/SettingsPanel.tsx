@@ -256,6 +256,7 @@ function SettingsPanelComponent({
                         提前提醒时间
                       </span>
                       <select
+                        aria-label="提前提醒时间"
                         value={settings.notificationLeadHours}
                         onChange={(e) =>
                           onUpdateSettings({ notificationLeadHours: Number(e.target.value) })

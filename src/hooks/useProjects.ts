@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import { useProjectStore, DEFAULT_PROJECT_ID } from '../store/useProjectStore';
+import { useProjectStore } from '../store/useProjectStore';
 import type { Project } from '../types';
 
 export function useProjects() {
@@ -25,7 +25,6 @@ export function useProjects() {
 
   const deleteProject = useCallback(
     (id: string) => {
-      if (id === DEFAULT_PROJECT_ID) return;
       store.deleteProject(id);
     },
     [store],

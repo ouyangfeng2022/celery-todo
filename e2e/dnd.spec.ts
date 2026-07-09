@@ -36,6 +36,8 @@ async function todoTitles(win: typeof win): Promise<string[]> {
 }
 
 test('todo 拖拽：把最后一条移到第一位', async () => {
+  // 首启无默认项目，先建一个项目承载 todo
+  await createProject(win, '拖拽测试项目');
   // 需要手动排序模式才能持久化拖拽结果；TodoList onDragEnd 会自动切到 manual
   await addTodo(win, 'T1');
   await addTodo(win, 'T2');
@@ -70,21 +72,23 @@ test('todo 拖拽：把最后一条移到第一位', async () => {
   expect(after[0]).toBe('T3');
 });
 
-test('项目拖拽：把第二个项目移到第一个', async () => {
+test('项目拖拽：把最后一个项目移到第一个', async () => {
+  // 不再有默认项目，建三个项目作为排序基线
   await createProject(win, '项目A');
   await createProject(win, '项目B');
-  // 切回默认项目，避免影响断言
-  await win.getByRole('button', { name: '默认项目（拖动以排序）' }).click();
+  await createProject(win, '项目C');
+  // 切回项目A，避免影响断言
+  await win.getByRole('button', { name: '项目A（拖动以排序）' }).click();
 
-  // 项目顺序：默认项目、项目A、项目B（createProject 末尾 append）
+  // 项目顺序：项目A、项目B、项目C（createProject 末尾 append）
   const beforeButtons = await win
     .getByRole('button', { name: /（拖动以排序）/ })
     .allTextContents();
 
-  // 聚焦"项目B"按钮，键盘拖拽到顶部（用 first 避免潜在重复渲染）
-  const projB = win.getByRole('button', { name: '项目B（拖动以排序）' }).first();
-  await projB.hover();
-  await projB.focus();
+  // 聚焦"项目C"按钮，键盘拖拽到顶部（用 first 避免潜在重复渲染）
+  const projC = win.getByRole('button', { name: '项目C（拖动以排序）' }).first();
+  await projC.hover();
+  await projC.focus();
   await win.waitForTimeout(200);
 
   await win.keyboard.press('Space');
@@ -102,7 +106,7 @@ test('项目拖拽：把第二个项目移到第一个', async () => {
     .allTextContents();
   const afterButtons = [...new Set(allTexts)];
 
-  // 顺序应发生变化（项目B 不再是最后一个）
+  // 顺序应发生变化（项目C 不再是最后一个）
   expect(afterButtons).not.toEqual(beforeButtons);
-  expect(afterButtons[afterButtons.length - 1]).not.toContain('项目B');
+  expect(afterButtons[afterButtons.length - 1]).not.toContain('项目C');
 });

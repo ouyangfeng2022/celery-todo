@@ -2,7 +2,7 @@
  * 应用启动相关 smoke 测试。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, createProject, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 
@@ -26,24 +26,31 @@ test('首屏渲染应用名（侧边栏 logo 区）', async () => {
   ).toBeVisible();
 });
 
-test('首次启动自动创建"默认项目"并切为当前', async () => {
+test('首次启动项目列表为空，主区显示"请创建项目"引导', async () => {
   const win = appInfo.window;
-  // ProjectSidebar 中默认项目作为按钮，name 含"默认项目（拖动以排序）"
-  await expect(
-    win.getByRole('button', { name: '默认项目（拖动以排序）' }),
-  ).toBeVisible();
-  // Header 标题也是它（页面里有两个 level=1 的 heading：侧边栏 logo + Header 项目名）
+  // 不再自动创建默认项目：侧边栏无项目按钮
+  await expect(win.getByRole('button', { name: /（拖动以排序）/ })).toHaveCount(0);
+  // 主区显示「请创建项目」引导
+  await expect(win.getByRole('heading', { name: '还没有项目' })).toBeVisible();
+  // Header 标题降级为应用名（无激活项目）
   const h1s = win.getByRole('heading', { level: 1 });
   const texts = await h1s.allTextContents();
-  expect(texts).toContain('默认项目');
+  expect(texts).toContain('Celery Todo');
 });
 
-test('空列表显示 EmptyState 文案', async () => {
-  await expect(appInfo.window.getByRole('heading', { name: '从一件小事开始' })).toBeVisible();
+test('创建项目后 EmptyState（无待办）引导显示', async () => {
+  const win = appInfo.window;
+  // 首启无项目 → 建第一个项目后，项目为空，todo 列表显示 EmptyState
+  await createProject(win, '第一个项目');
+  // 建项目后自动切换，主区从「请创建项目」变为正常视图，无 todo 时显示 EmptyState
+  await expect(win.getByRole('heading', { name: '从一件小事开始' })).toBeVisible({ timeout: 5_000 });
 });
 
 test('退出专注模式后 Header / 侧边栏 / FilterBar / StatsPanel 均渲染', async () => {
   const win = appInfo.window;
+  // 首启无项目时主区只显示 NoProjectsState，FilterBar/StatsPanel 不渲染；
+  // 先建一个项目，才能验证正常视图的各组件
+  await createProject(win, '渲染检查项目');
   // FilterBar 三个过滤按钮：name 形如 "全部 0" / "进行中 0" / "已完成 0"
   await expect(win.getByRole('button', { name: /全部/ })).toBeVisible();
   await expect(win.getByRole('button', { name: /进行中/ })).toBeVisible();
