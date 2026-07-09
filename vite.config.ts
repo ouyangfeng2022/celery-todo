@@ -36,5 +36,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // 排除 Playwright E2E 测试目录（由 playwright.config.ts 独立驱动真实 Electron，
+    // 不在 jsdom 里跑）。否则 vitest 默认会扫所有 *.spec.ts 导致 e2e 误入。
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules/', 'dist/', 'e2e/'],
   },
 } as any);

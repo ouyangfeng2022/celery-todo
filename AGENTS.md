@@ -21,6 +21,7 @@ src/store/       # Zustand stores: useTodoStore, useProjectStore,
 src/utils/       # database.ts (SQLite layer), export.ts, helpers.ts
 src/types/       # Shared TS types
 src/test/        # Vitest specs + setup
+e2e/             # Playwright Electron E2E specs + helpers + fixtures
 public/          # Static assets incl. sql-wasm.wasm
 scripts/         # Build helpers (fix-electron-cjs.mjs, verify-render.mjs)
 ```
@@ -41,10 +42,62 @@ bun run format              # prettier on src/**/*.{ts,tsx,css}
 bun test                    # vitest watch
 bun run test:run            # vitest run once
 bun run test:coverage       # vitest + coverage
+bun run e2e                 # Playwright Electron E2E (full suite)
+bun run e2e:headed          # ...with visible Electron window
+bun run e2e:debug           # step-through debug
+bun run e2e:report          # open HTML report
+bun run e2e:install         # install Playwright chromium
 ```
 
 There is no standalone `typecheck` script — `bun run build` (and
 `build:electron`) run `tsc -b`, which is the typecheck gate.
+
+## Testing strategy
+
+Two test layers, kept strictly separate:
+
+- **Vitest unit/component tests** (`src/test/`) — fast, run in jsdom, no
+  Electron. `vite.config.ts` scopes vitest to `src/**` and excludes `e2e/`, so
+  the Playwright specs are never picked up by vitest.
+- **Playwright Electron E2E** (`e2e/`) — drives the *real* packaged app via
+  `_electron.launch()`. Each test gets an isolated `userData` dir through the
+  `CELERY_TODO_USERDATA` env hook in `electron/main.ts` (which also disables
+  `requestSingleInstanceLock` and sets a unique `app.name` in test mode). See
+  the "E2E testing" section below.
+
+### Run only the specs you need
+
+**Do not run the full E2E suite for every change.** Each E2E test launches a
+fresh Electron process + cold-loads sql-wasm.wasm, so the full suite takes ~6-8
+minutes. Pick the subset that matches the change:
+
+```bash
+bunx playwright test e2e/todos.spec.ts                  # single file
+bunx playwright test e2e/todos.spec.ts e2e/projects.spec.ts   # related files
+bunx playwright test -g "拖拽"                            # by name keyword (cross-file)
+bunx playwright test -g "回收站|删除"                       # regex
+bunx playwright test --last-failed                        # only last run's failures
+bunx playwright test e2e/filters.spec.ts --headed         # watch it run
+```
+
+### Change-area → spec map
+
+| Changed area | Run this spec |
+|---|---|
+| `src/components/todos/` | `e2e/todos.spec.ts` |
+| `src/components/filters/` | `e2e/filters.spec.ts`, `e2e/search.spec.ts` |
+| `src/components/projects/` | `e2e/projects.spec.ts` |
+| `src/components/recycle/` | `e2e/recycle.spec.ts` |
+| `src/components/settings/` | `e2e/settings.spec.ts` |
+| `src/utils/export.ts` / import-export | `e2e/import-export.spec.ts` |
+| `src/hooks/useKeyboardShortcuts.ts` | `e2e/keyboard.spec.ts` |
+| `src/components/common/NotificationPanel.tsx` | `e2e/notifications.spec.ts` |
+| dnd-kit drag-and-drop | `e2e/dnd.spec.ts` |
+| `electron/main.ts` / startup flow | `e2e/app.spec.ts` |
+| Cross-cutting (database.ts, stores, App.tsx, types) | **full suite** `bun run e2e` |
+
+When in doubt about blast radius (e.g. touching `database.ts`, a Zustand store,
+`App.tsx`, or shared types), run the full suite.
 
 ## Data flow
 
@@ -93,7 +146,10 @@ notifications:   id, type, title, message, todo_id, created_at, read
 - Electron main process (`electron/main.ts`) handles window/tray/auto-start;
   `electron/preload.ts` is the IPC bridge; `electron/tray.ts` the system tray.
   Window position is persisted to `window-state.json` in userData. Touching IPC
-  = touch both preload and main.
+  = touch both preload and main. `main.ts` also has a test-only hook: if
+  `CELERY_TODO_USERDATA` is set (only by E2E), it redirects userData, sets a
+  unique `app.name`, and skips the single-instance lock — production behavior
+  is unchanged. Don't remove this without updating `e2e/helpers.ts`.
 
 ## Conventions
 
@@ -164,6 +220,38 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
   非 React 元素、Electron 亦无 API 可隐藏。如需消除，唯一选项是 `thickFrame: false`，
   代价是失去拖拽窗口边缘改大小的能力 —— 当前选择保留原生 resize，故仅作记录。
 
+## E2E testing (Playwright Electron)
+
+Specs in `e2e/` drive the real packaged Electron app (not a browser). Before
+adding or editing E2E tests, read `e2e/helpers.ts` and keep these conventions:
+
+- **`launchApp()` / `closeApp()`** from `e2e/helpers.ts` are the only sanctioned
+  way to start/stop the app. `beforeEach` → `launchApp()`, `afterEach` →
+  `closeApp()`. Never call `electron.launch` / `app.close()` directly.
+- **Default focus mode**: the app boots into focus mode (sidebar/Header/FilterBar
+  hidden). `launchApp()` already presses `Ctrl+P` to exit it; don't re-exit in
+  tests unless you're specifically testing focus mode.
+- **Selectors**: the app has no `data-testid`. Use semantic locators
+  (`getByRole`, `getByPlaceholderText`, `getByLabel`) and exact text. Many
+  hover-only buttons (row actions, sidebar collapse handle) need `.hover()`
+  first or `{ force: true }`. Scope multi-match locators to their container
+  (e.g. a project row, the settings dialog) with `.filter({ has: ... })`.
+- **ConfirmDialog**: press `Enter` to confirm / `Escape` to cancel (the dialog
+  listens for both). Don't try to click the confirm button — its text collides
+  with row-level buttons.
+- **dnd-kit drag**: use keyboard `Space` (pick up) → `ArrowUp/Down` → `Space`
+  (drop) on the drag handle, not mouse simulation. Switch sort to `manual`
+  first for todos, otherwise the sort algorithm overwrites the reorder.
+- **Exports** (`<a download>` + Blob) don't reliably fire Playwright's download
+  event in Electron. `e2e/import-export.spec.ts` monkey-patches
+  `HTMLAnchorElement.prototype.click` to capture content; reuse that helper.
+- **Persistence**: DB writes are debounced 500ms. Before reloading or asserting
+  cross-restart state, `waitForSave()` or press `Ctrl+S` (`flushSave`).
+- **CI**: `.github/workflows/e2e.yml` runs the full suite on `windows-latest`
+  for PRs. Local cold-start can flake (one known instance: the "首次启动" test
+  when a zombie electron process lingers); `playwright.config.ts` sets
+  `retries: 1` locally / `2` on CI as a safety net.
+
 ## Read before editing sensitive areas
 
 - `src/utils/database.ts` — schema, migrations, and all data access.
@@ -175,4 +263,8 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
   broadcast to the renderer, `app.isPackaged` short-circuit for dev, and
   IPC channels consumed by `src/hooks/useAutoUpdate.ts`. Touching the
   updater = mirror changes in main, preload, and `src/types/global.d.ts`.
-- `vite.config.ts` — dev server, alias, plugin setup.
+- `e2e/helpers.ts` — `launchApp`/`closeApp`, the `CELERY_TODO_USERDATA` env
+  hook contract with `electron/main.ts`, and shared selector/interaction
+  helpers that every spec depends on.
+- `vite.config.ts` — dev server, alias, plugin setup, and the vitest
+  include/exclude that keeps E2E specs out of unit-test runs.

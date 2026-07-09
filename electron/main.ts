@@ -176,8 +176,20 @@ function saveBoundsToStore(bounds: { x: number; y: number; width: number; height
 // 应用生命周期
 // ============================================
 
-// 单实例锁
-const gotTheLock = app.requestSingleInstanceLock();
+// 测试隔离钩子：通过环境变量重定向 userData，使 Playwright E2E 每次启动都用独立目录。
+// 生产环境不设置该变量，userData 仍走默认路径（Windows: %APPDATA%\Celery Todo），零影响。
+// 必须在 requestSingleInstanceLock() 之前调用，否则单实例锁路径不会随之改变。
+const testUserData = process.env.CELERY_TODO_USERDATA;
+if (testUserData) {
+  app.setPath('userData', testUserData);
+  // 用 userData 目录名做 app.name 后缀，确保单实例锁命名管道独立，
+  // 否则多实例共享 app.name 导致第二实例被 quit，测试卡死。
+  app.setName(`celery-todo-e2e-${testUserData.split(/[/\\]/).pop()}`);
+}
+
+// 单实例锁（测试模式下禁用：每个测试实例用独立 userData，无需互斥）
+const isTestMode = !!process.env.CELERY_TODO_USERDATA;
+const gotTheLock = isTestMode || app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
 } else {

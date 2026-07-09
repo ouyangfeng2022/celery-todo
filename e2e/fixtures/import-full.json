@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "projects": [
+    {
+      "id": "default",
+      "name": "默认项目",
+      "color": null,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z",
+      "order": 0
+    },
+    {
+      "id": "imported-proj",
+      "name": "导入的项目",
+      "color": null,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z",
+      "order": 1
+    }
+  ],
+  "todos": [
+    {
+      "id": "t1",
+      "projectId": "default",
+      "title": "全量导入的任务1",
+      "description": null,
+      "completed": false,
+      "priority": "high",
+      "dueDate": null,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z",
+      "completedAt": null,
+      "order": 0
+    },
+    {
+      "id": "t2",
+      "projectId": "imported-proj",
+      "title": "导入项目的任务",
+      "description": null,
+      "completed": false,
+      "priority": "medium",
+      "dueDate": null,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z",
+      "completedAt": null,
+      "order": 0
+    }
+  ],
+  "deletedTodos": [],
+  "settings": {}
+}

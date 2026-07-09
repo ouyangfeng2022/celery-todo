@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "exportedAt": "2025-01-01T00:00:00.000Z",
+  "project": {
+    "id": "single-proj",
+    "name": "单项目导入",
+    "color": null,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "updatedAt": "2025-01-01T00:00:00.000Z",
+    "order": 0
+  },
+  "todos": [
+    {
+      "id": "sp1",
+      "projectId": "single-proj",
+      "title": "单项目导入的任务",
+      "description": null,
+      "completed": false,
+      "priority": "low",
+      "dueDate": null,
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "updatedAt": "2025-01-01T00:00:00.000Z",
+      "completedAt": null,
+      "order": 0
+    }
+  ],
+  "deletedTodos": []
+}
