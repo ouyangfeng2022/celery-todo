@@ -559,7 +559,10 @@ function SettingsPanelComponent({
                                 >
                                   发现新版本 v{updateInfo.version}
                                 </p>
-                                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                <p
+                                  className="text-xs mt-0.5"
+                                  style={{ color: 'var(--text-secondary)' }}
+                                >
                                   点击下方按钮下载。
                                 </p>
                                 <button
