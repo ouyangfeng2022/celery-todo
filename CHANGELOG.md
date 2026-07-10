@@ -7,12 +7,12 @@
 发版流程详见 [VERSIONING.md](./VERSIONING.md)。
 
 ## [Unreleased]
-### Added
-- 设置面板新增「历史记录」Tab，集中管理已归档事项（跨项目）：恢复、永久删除、清空。
 
-### Changed
-- 删除行为由「移入回收站（30 天自动清除）」改为「归档（永久保留）」；归档事项仅在「设置 → 历史记录」中可恢复或永久删除。
-- 侧边栏「回收站」入口改名为「历史记录」，点击直达设置的历史记录 Tab；移除独立的回收站弹窗。
+## [v1.4.0] - 2026-07-10
+### Added
+- 删除改为归档，设置新增历史记录页
+- 关于区块新增 GitHub 仓库链接
+- 侧边栏项目名后显示未完成 todo 数
 
 ## [v1.3.0] - 2026-07-10
 ### Added
@@ -105,3 +105,5 @@
 [v1.2.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.1
 
 [v1.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.3.0
+
+[v1.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.0
