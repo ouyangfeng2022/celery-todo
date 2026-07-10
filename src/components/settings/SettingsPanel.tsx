@@ -16,6 +16,7 @@ import {
   FolderIcon,
   CheckIcon,
   AlertIcon,
+  GithubIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -484,6 +485,16 @@ function SettingsPanelComponent({
                       <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                         版本 {APP_VERSION || '—'}
                       </span>
+                      <a
+                        href="https://github.com/ouyangfeng2022/celery-todo"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs transition-colors hover:underline"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <GithubIcon size={13} />
+                        GitHub
+                      </a>
                     </div>
                   </div>
                   {/* 自动升级（仅桌面端） */}
