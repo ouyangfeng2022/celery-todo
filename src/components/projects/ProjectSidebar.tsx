@@ -3,7 +3,7 @@
  * @description 项目列表、创建/删除/重命名项目、导入导出，支持拖拽排序
  */
 
-import { memo, useState, useCallback } from 'react';
+import { memo, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -47,6 +47,8 @@ interface ProjectSidebarProps {
   onOpenRecycleBin: () => void;
   onOpenSettings: () => void;
   recycleBinCount: number;
+  /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
+  autofocusCreateSignal?: number;
 }
 
 /** 单个项目行（包装为 dnd-kit 可拖动节点） */
@@ -55,7 +57,6 @@ interface SortableProjectItemProps {
   isActive: boolean;
   isEditing: boolean;
   editName: string;
-  isDefault: boolean;
   onSwitch: (id: string) => void;
   onEditNameChange: (value: string) => void;
   onConfirmRename: () => void;
@@ -70,7 +71,6 @@ function SortableProjectItem({
   isActive,
   isEditing,
   editName,
-  isDefault,
   onSwitch,
   onEditNameChange,
   onConfirmRename,
@@ -127,17 +127,6 @@ function SortableProjectItem({
           aria-label={`${project.name}（拖动以排序）`}
         >
           <span className="flex-1 truncate">{project.name}</span>
-          {isDefault && (
-            <span
-              className="text-[10px] px-1.5 py-0.5 rounded group-hover:opacity-0 transition-opacity font-medium"
-              style={{
-                backgroundColor: 'var(--bg-hover)',
-                color: 'var(--text-tertiary)',
-              }}
-            >
-              默认
-            </span>
-          )}
         </button>
       )}
 
@@ -166,19 +155,17 @@ function SortableProjectItem({
           >
             <EditIcon size={13} />
           </button>
-          {!isDefault && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(project);
-              }}
-              className="p-1 rounded hover:bg-[var(--bg-hover)]"
-              style={{ color: 'var(--text-tertiary)' }}
-              aria-label="删除项目"
-            >
-              <TrashIcon size={13} />
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(project);
+            }}
+            className="p-1 rounded hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-tertiary)' }}
+            aria-label="删除项目"
+          >
+            <TrashIcon size={13} />
+          </button>
         </div>
       )}
     </div>
@@ -198,12 +185,23 @@ function ProjectSidebarComponent({
   onOpenRecycleBin,
   onOpenSettings,
   recycleBinCount,
+  autofocusCreateSignal,
 }: ProjectSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const createInputRef = useRef<HTMLInputElement>(null);
+
+  // 外部（主区空状态按钮）触发：唤出新建输入框并聚焦
+  useEffect(() => {
+    if (autofocusCreateSignal) {
+      setIsCreating(true);
+      // 等下一帧 AnimatePresence 把 input 挂载出来再聚焦
+      requestAnimationFrame(() => createInputRef.current?.focus());
+    }
+  }, [autofocusCreateSignal]);
 
   const handleCreate = useCallback(() => {
     const name = newProjectName.trim();
@@ -300,6 +298,7 @@ function ProjectSidebarComponent({
               className="px-1 mb-1 overflow-hidden"
             >
               <input
+                ref={createInputRef}
                 type="text"
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
@@ -334,7 +333,6 @@ function ProjectSidebarComponent({
               {projects.map((project) => {
                 const isActive = project.id === activeProjectId;
                 const isEditing = editingId === project.id;
-                const isDefault = project.id === 'default';
 
                 return (
                   <SortableProjectItem
@@ -343,7 +341,6 @@ function ProjectSidebarComponent({
                     isActive={isActive}
                     isEditing={isEditing}
                     editName={editName}
-                    isDefault={isDefault}
                     onSwitch={onSwitch}
                     onEditNameChange={setEditName}
                     onConfirmRename={handleConfirmRename}

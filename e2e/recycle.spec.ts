@@ -2,7 +2,7 @@
  * 回收站：删除入站、恢复、永久删除、清空、关闭。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, todoRow, openRecycleBin, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, todoRow, openRecycleBin, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -17,6 +17,7 @@ test.afterEach(async () => {
 });
 
 test('删除 todo 后回收站显示该条 + 项目名标签 + 30 天提示', async () => {
+  await createProject(win, '回收测试项目');
   await addTodo(win, '要回收的任务');
   const row = todoRow(win, '要回收的任务');
   await row.hover();
@@ -24,13 +25,14 @@ test('删除 todo 后回收站显示该条 + 项目名标签 + 30 天提示', as
 
   await openRecycleBin(win);
   await expect(win.getByText('要回收的任务', { exact: true })).toBeVisible();
-  // 项目名标签（"默认项目"）也显示在回收站行
-  await expect(win.getByText('默认项目', { exact: true }).first()).toBeVisible();
+  // 项目名标签显示在回收站行（已无「默认项目」，此处为实际项目名）
+  await expect(win.getByText('回收测试项目', { exact: true }).first()).toBeVisible();
   // 副标题提示
   await expect(win.getByText('删除的事项会在此保留 30 天')).toBeVisible();
 });
 
 test('恢复单条 todo 后回到当前项目列表', async () => {
+  await createProject(win, '日常事务');
   await addTodo(win, '待恢复');
   const row = todoRow(win, '待恢复');
   await row.hover();
@@ -46,6 +48,7 @@ test('恢复单条 todo 后回到当前项目列表', async () => {
 });
 
 test('永久删除单条后回收站为空', async () => {
+  await createProject(win, '清理工作');
   await addTodo(win, '永久删除这条');
   const row = todoRow(win, '永久删除这条');
   await row.hover();
@@ -60,6 +63,7 @@ test('永久删除单条后回收站为空', async () => {
 });
 
 test('清空回收站：二次确认后空状态', async () => {
+  await createProject(win, '归档列表');
   // 造两条
   for (const t of ['清空A', '清空B']) {
     await addTodo(win, t);

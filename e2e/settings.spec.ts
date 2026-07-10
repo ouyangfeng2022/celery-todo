@@ -2,7 +2,7 @@
  * 设置：主题、专注模式、通知、数据管理重置。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, openSettings, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -59,12 +59,13 @@ test('切换"启用桌面通知"开关', async () => {
 
 test('"提前提醒时间"select 在启用通知时显示', async () => {
   await openSettings(win);
-  // 默认 notificationsEnabled=true，select 应可见
-  await expect(win.locator('select').nth(1)).toBeVisible();
+  // 默认 notificationsEnabled=true，select 应可见（用 aria-label 精确定位，不依赖页面其它 select）
+  await expect(win.getByLabel('提前提醒时间')).toBeVisible();
 });
 
-test('重置所有数据：二次确认后数据清空但默认项目重建', async () => {
-  // 先造一条 todo
+test('重置所有数据：二次确认后数据清空且项目列表为空', async () => {
+  // 首启无项目，先建一个再加任务
+  await createProject(win, '数据项目');
   await addTodo(win, '重置前任务');
   await expect(win.getByText('重置前任务', { exact: true })).toBeVisible();
 
@@ -76,12 +77,11 @@ test('重置所有数据：二次确认后数据清空但默认项目重建', as
 
   // 设置面板关闭（handleResetData 里 setSettingsOpen(false)）
   await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
-  // 数据清空
+  // 数据清空：任务消失
   await expect(win.getByText('重置前任务', { exact: true })).toHaveCount(0);
-  // 默认项目仍存在
-  await expect(
-    win.getByRole('button', { name: '默认项目（拖动以排序）' }),
-  ).toBeVisible();
+  // 重置后项目列表为空，主区显示无项目引导（不再自动重建默认项目）
+  await expect(win.getByRole('button', { name: '数据项目（拖动以排序）' })).toHaveCount(0);
+  await expect(win.getByRole('heading', { name: '还没有项目' })).toBeVisible();
 });
 
 test('Esc 关闭设置面板', async () => {

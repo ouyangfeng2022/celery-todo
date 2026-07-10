@@ -1,5 +1,5 @@
 /**
- * 项目：新建、重命名、删除、切换、默认项目保护、切换后 todo 列表随之切换。
+ * 项目：新建、重命名、删除、切换、删除最后一个后列表为空、切换后 todo 列表随之切换。
  */
 import { test, expect } from '@playwright/test';
 import { launchApp, closeApp, addTodo, createProject, type LaunchedApp } from './helpers';
@@ -77,28 +77,39 @@ test('删除非默认项目：二次确认后项目消失', async () => {
   ).toHaveCount(0);
 });
 
-test('默认项目不显示删除按钮（保护）', async () => {
+test('删除最后一个项目后列表为空，主区显示"请创建项目"', async () => {
+  await createProject(win, '唯一项目');
+
   const projectRow = win
     .locator('div.group.relative.rounded-md')
-    .filter({ has: win.getByRole('button', { name: '默认项目（拖动以排序）' }) });
+    .filter({ has: win.getByRole('button', { name: '唯一项目（拖动以排序）' }) });
   await projectRow.hover();
-  await expect(projectRow.getByRole('button', { name: '删除项目', exact: true })).toHaveCount(0);
+  await projectRow.getByRole('button', { name: '删除项目', exact: true }).click({ force: true });
+
+  // ConfirmDialog：按 Enter 确认
+  await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();
+  await win.keyboard.press('Enter');
+
+  // 项目列表为空
+  await expect(win.getByRole('button', { name: '唯一项目（拖动以排序）' })).toHaveCount(0);
+  await expect(win.getByRole('button', { name: /（拖动以排序）/ })).toHaveCount(0);
+  // 主区回到无项目引导
+  await expect(win.getByRole('heading', { name: '还没有项目' })).toBeVisible();
 });
 
 test('切换项目后 todo 列表随之切换', async () => {
-  // 在默认项目里加一条
-  await addTodo(win, '默认项目的任务');
+  // 建两个项目，各加一条任务
+  await createProject(win, '项目一');
+  await addTodo(win, '项目一的任务');
+  await createProject(win, '项目二');
+  await addTodo(win, '项目二的任务');
 
-  // 新建项目并加一条
-  await createProject(win, '切换测试');
-  await addTodo(win, '切换测试的任务');
+  // 当前在「项目二」，应能看到项目二的任务，看不到项目一的
+  await expect(win.getByText('项目二的任务', { exact: true })).toBeVisible();
+  await expect(win.getByText('项目一的任务', { exact: true })).toHaveCount(0);
 
-  // 当前在新项目，应能看到新项目任务，看不到默认项目的
-  await expect(win.getByText('切换测试的任务', { exact: true })).toBeVisible();
-  await expect(win.getByText('默认项目的任务', { exact: true })).toHaveCount(0);
-
-  // 切回默认项目
-  await win.getByRole('button', { name: '默认项目（拖动以排序）' }).click();
-  await expect(win.getByText('默认项目的任务', { exact: true })).toBeVisible();
-  await expect(win.getByText('切换测试的任务', { exact: true })).toHaveCount(0);
+  // 切到「项目一」
+  await win.getByRole('button', { name: '项目一（拖动以排序）' }).click();
+  await expect(win.getByText('项目一的任务', { exact: true })).toBeVisible();
+  await expect(win.getByText('项目二的任务', { exact: true })).toHaveCount(0);
 });

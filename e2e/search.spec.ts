@@ -2,7 +2,7 @@
  * 搜索：过滤、清除按钮、Ctrl+F 聚焦、URL 同步。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -10,6 +10,8 @@ let win: Awaited<ReturnType<typeof launchApp>>['window'];
 test.beforeEach(async () => {
   appInfo = await launchApp();
   win = appInfo.window;
+  // 首启无默认项目，先建一个项目再造数据
+  await createProject(win, '测试项目');
   await addTodo(win, '买苹果');
   await addTodo(win, '买香蕉');
   await addTodo(win, '写报告');

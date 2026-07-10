@@ -2,7 +2,7 @@
  * 过滤 / 排序 / 清空已完成 / URL 参数预设。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -10,6 +10,8 @@ let win: Awaited<ReturnType<typeof launchApp>>['window'];
 test.beforeEach(async () => {
   appInfo = await launchApp();
   win = appInfo.window;
+  // 首启无默认项目，先建一个项目再造数据
+  await createProject(win, '测试项目');
   // 造数据：3 条未完成 + 2 条已完成
   await addTodo(win, '进行中1');
   await addTodo(win, '进行中2');

@@ -79,7 +79,7 @@ interface TodoState {
 export const useTodoStore = create<TodoState>((set, get) => ({
   todos: [],
   deletedTodos: [],
-  currentProjectId: 'default',
+  currentProjectId: '',
   loading: false,
   selectedIds: new Set<string>(),
 

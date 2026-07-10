@@ -104,6 +104,7 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
 
 test('导出全部数据为 JSON，文件名含日期', async () => {
   await installDownloadCapture(win);
+  await createProject(win, '全量导出项目');
   await addTodo(win, '全量任务');
   await openSettings(win);
 
@@ -120,13 +121,14 @@ test('导出全部数据为 JSON，文件名含日期', async () => {
 
 test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
   await installDownloadCapture(win);
+  await createProject(win, 'CSV导出项目');
   await addTodo(win, 'CSV任务');
   await openSettings(win);
 
   await win.getByText('导出当前项目 (CSV)', { exact: true }).click();
   const dl = await getLastDownload(win);
 
-  expect(dl.filename).toBe('todos-默认项目.csv');
+  expect(dl.filename).toBe('todos-CSV导出项目.csv');
   // UTF-8 BOM：第一个字节应为 0xEF（BOM = EF BB BF）
   expect(dl.content.charCodeAt(0)).toBe(0xef);
   // 解码后中文表头与任务行

@@ -29,40 +29,14 @@ interface ProjectState {
   getActiveProject: () => Project | undefined;
 }
 
-/** 默认项目 ID */
-export const DEFAULT_PROJECT_ID = 'default';
-
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
-  activeProjectId: DEFAULT_PROJECT_ID,
+  // 空串表示「无激活项目」：首次启动时项目列表为空，不再自动创建默认项目。
+  activeProjectId: '',
 
   loadProjects: () => {
-    let projects = db.getAllProjects();
-    // 确保默认项目存在
-    if (projects.length === 0) {
-      const now = new Date().toISOString();
-      const defaultProject: Project = {
-        id: DEFAULT_PROJECT_ID,
-        name: '默认项目',
-        createdAt: now,
-        updatedAt: now,
-        order: 0,
-      };
-      db.insertProject(defaultProject);
-      projects = [defaultProject];
-    } else if (!projects.find((p) => p.id === DEFAULT_PROJECT_ID)) {
-      // 如果没有默认项目，创建一个
-      const now = new Date().toISOString();
-      const defaultProject: Project = {
-        id: DEFAULT_PROJECT_ID,
-        name: '默认项目',
-        createdAt: now,
-        updatedAt: now,
-        order: 0,
-      };
-      db.insertProject(defaultProject);
-      projects = [defaultProject, ...projects];
-    }
+    // 仅同步 DB 现状，不自动创建任何项目；项目列表允许为空。
+    const projects = db.getAllProjects();
     set({ projects });
   },
 
@@ -99,13 +73,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   deleteProject: (id) => {
-    if (id === DEFAULT_PROJECT_ID) return; // 不能删除默认项目
     db.deleteProject(id);
     const projects = get().projects.filter((p) => p.id !== id);
     set({ projects });
-    // 如果删除的是当前项目，切换到默认项目
+    // 如果删除的是当前项目，回退到剩余项目的第一个（可能为空串，表示无激活项目）
     if (get().activeProjectId === id) {
-      set({ activeProjectId: DEFAULT_PROJECT_ID });
+      set({ activeProjectId: projects[0]?.id ?? '' });
     }
   },
 
