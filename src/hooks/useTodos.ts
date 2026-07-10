@@ -79,6 +79,6 @@ export function useTodos() {
     reorderTodos,
     restoreTodo: store.restoreTodo,
     permanentlyDelete: store.permanentlyDelete,
-    emptyRecycleBin: store.emptyRecycleBin,
+    emptyArchive: store.emptyArchive,
   };
 }

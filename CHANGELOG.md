@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v1.4.0] - 2026-07-10
+### Added
+- 删除改为归档，设置新增历史记录页
+- 关于区块新增 GitHub 仓库链接
+- 侧边栏项目名后显示未完成 todo 数
+
 ## [v1.3.0] - 2026-07-10
 ### Added
 - 彻底移除默认项目概念
@@ -99,3 +105,5 @@
 [v1.2.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.1
 
 [v1.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.3.0
+
+[v1.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.0

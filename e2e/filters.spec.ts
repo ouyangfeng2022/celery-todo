@@ -85,7 +85,7 @@ test('切换排序方式为"优先级"', async () => {
   await expect(win.getByLabel('排序方式')).toHaveValue('priority');
 });
 
-test('"清空已完成"按钮仅在有已完成时显示，点击后移入回收站', async () => {
+test('"清空已完成"按钮仅在有已完成时显示，点击后归档到历史记录', async () => {
   await expect(win.getByRole('button', { name: '清空已完成' })).toBeVisible();
   await win.getByRole('button', { name: '清空已完成' }).click();
   // 已完成的两条从"全部"视图消失

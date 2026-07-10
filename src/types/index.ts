@@ -80,11 +80,11 @@ export interface Todo {
   order: number;
 }
 
-/** 回收站中的已删除事项 */
+/** 已归档事项（历史记录；删除 todo 后归档保留，仅在历史记录页手动删除） */
 export interface DeletedTodo extends Todo {
-  /** 删除时间（ISO 字符串） */
+  /** 归档时间（ISO 字符串） */
   deletedAt: string;
-  /** 预计永久删除时间（ISO 字符串，30 天后） */
+  /** @deprecated 原回收站 30 天自动清除的过期时间；归档模式下已废弃，不再用于自动清除。保留以兼容旧数据/导入导出 */
   expiresAt: string;
 }
 
@@ -160,7 +160,7 @@ export interface ProjectExportData {
   project: Project;
   /** 该项目的所有 Todo */
   todos: Todo[];
-  /** 该项目的回收站事项 */
+  /** 该项目的归档事项（历史记录） */
   deletedTodos: DeletedTodo[];
 }
 
