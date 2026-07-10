@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+## [v1.3.0] - 2026-07-10
+### Added
+- 彻底移除默认项目概念
+- 全部完成时显示庆祝卡片 + confetti 撒花
+
 ## [v1.2.1] - 2026-07-09
 ### Added
 - 显示待办完成时间
@@ -92,3 +97,5 @@
 [v1.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.0
 
 [v1.2.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.1
+
+[v1.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.3.0
