@@ -28,7 +28,7 @@ import {
   EditIcon,
   DownloadIcon,
   UploadIcon,
-  RecycleIcon,
+  InboxIcon,
   SettingsIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -44,9 +44,9 @@ interface ProjectSidebarProps {
   onExport: (projectId: string) => void;
   onImport: (file: File) => void;
   onReorder: (sourceId: string, targetId: string) => void;
-  onOpenRecycleBin: () => void;
+  onOpenHistory: () => void;
   onOpenSettings: () => void;
-  recycleBinCount: number;
+  archiveCount: number;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -195,9 +195,9 @@ function ProjectSidebarComponent({
   onExport,
   onImport,
   onReorder,
-  onOpenRecycleBin,
+  onOpenHistory,
   onOpenSettings,
-  recycleBinCount,
+  archiveCount,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -385,18 +385,19 @@ function ProjectSidebarComponent({
           导入数据
         </button>
         <button
-          onClick={onOpenRecycleBin}
+          onClick={onOpenHistory}
+          aria-label="历史记录"
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-secondary)' }}
         >
-          <RecycleIcon size={15} />
-          <span className="flex-1 text-left">回收站</span>
-          {recycleBinCount > 0 && (
+          <InboxIcon size={15} />
+          <span className="flex-1 text-left">历史记录</span>
+          {archiveCount > 0 && (
             <span
               className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
               style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
             >
-              {recycleBinCount}
+              {archiveCount}
             </span>
           )}
         </button>
@@ -414,7 +415,7 @@ function ProjectSidebarComponent({
       <ConfirmDialog
         open={deleteTarget !== null}
         title="删除项目"
-        message={`确定要删除项目「${deleteTarget?.name}」吗？该项目下的所有事项将移入回收站，30 天后自动清除。`}
+        message={`确定要删除项目「${deleteTarget?.name}」吗？该项目下的所有事项将移入归档（历史记录），可在历史记录页恢复或永久删除。`}
         confirmText="删除"
         danger
         onConfirm={() => {

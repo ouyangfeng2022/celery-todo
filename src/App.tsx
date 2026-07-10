@@ -26,7 +26,6 @@ import { FilterBar } from './components/filters/FilterBar';
 import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
-import { RecycleBinModal } from './components/recycle/RecycleBinModal';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
@@ -55,8 +54,9 @@ function App() {
   // === 初始化数据库 ===
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [recycleBinOpen, setRecycleBinOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 设置面板的初始 Tab：侧栏「历史记录」入口会设为 'history' 以直达历史记录页
+  const [settingsTab, setSettingsTab] = useState<'settings' | 'history'>('settings');
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
@@ -94,7 +94,7 @@ function App() {
     reorderTodos,
     restoreTodo,
     permanentlyDelete,
-    emptyRecycleBin,
+    emptyArchive,
   } = useTodos();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
     useNotification();
@@ -130,6 +130,18 @@ function App() {
     return counts;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
   }, [projects, todos, deletedTodos, dbReady]);
+
+  // === 全部归档事项（历史记录页跨项目展示） ===
+  // useTodoStore.deletedTodos 只含当前项目；历史记录页需展示全部归档，故全量取。
+  // deletedTodos 作为 store 变更信号驱动重算（归档/恢复/清空都会改变其引用）。
+  const allArchivedTodos = useMemo<ReturnType<typeof db.getAllDeletedTodos>>(
+    () => {
+      if (!dbReady) return [];
+      return db.getAllDeletedTodos();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deletedTodos 作为变更信号
+    [deletedTodos, dbReady],
+  );
 
   // === 全部完成庆祝 ===
   // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
@@ -192,7 +204,6 @@ function App() {
     onFilterCompleted: () => changeFilter('completed'),
     onEscape: () => {
       clearSelection();
-      setRecycleBinOpen(false);
       setSettingsOpen(false);
       // 专注模式下 Esc 收起临时唤出的 AddTodoInput
       if (focusMode) setComposerVisible(false);
@@ -245,7 +256,7 @@ function App() {
           // （或首启时为空串），此时回退到导入后的第一个项目
           const store = useProjectStore.getState();
           const exists = store.projects.some((p) => p.id === store.activeProjectId);
-          const targetId = exists ? store.activeProjectId : store.projects[0]?.id ?? '';
+          const targetId = exists ? store.activeProjectId : (store.projects[0]?.id ?? '');
           if (!exists && targetId) {
             store.setActiveProject(targetId);
           }
@@ -329,9 +340,15 @@ function App() {
               onExport={handleExportProject}
               onImport={handleImportProject}
               onReorder={reorderProjects}
-              onOpenRecycleBin={() => setRecycleBinOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
-              recycleBinCount={deletedTodos.length}
+              onOpenHistory={() => {
+                setSettingsTab('history');
+                setSettingsOpen(true);
+              }}
+              onOpenSettings={() => {
+                setSettingsTab('settings');
+                setSettingsOpen(true);
+              }}
+              archiveCount={deletedTodos.length}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
@@ -512,21 +529,16 @@ function App() {
         onBatchSetPriority={(p: Priority) => batchAction('setPriority', p)}
       />
 
-      {/* 回收站 */}
-      <RecycleBinModal
-        open={recycleBinOpen}
-        deletedTodos={deletedTodos}
-        projects={projects}
-        onRestore={restoreTodo}
-        onPermanentDelete={permanentlyDelete}
-        onEmptyAll={emptyRecycleBin}
-        onClose={() => setRecycleBinOpen(false)}
-      />
-
-      {/* 设置面板 */}
+      {/* 设置面板（含「设置」与「历史记录」两个 Tab） */}
       <SettingsPanel
         open={settingsOpen}
         settings={settings}
+        initialTab={settingsTab}
+        archivedTodos={allArchivedTodos}
+        projects={projects}
+        onRestoreTodo={restoreTodo}
+        onPermanentDeleteTodo={permanentlyDelete}
+        onEmptyArchive={emptyArchive}
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
         onExportAll={handleExportAll}

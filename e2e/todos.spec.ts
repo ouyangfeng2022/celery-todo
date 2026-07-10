@@ -102,7 +102,7 @@ test('编辑态可填写描述，渲染 Markdown', async () => {
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
 });
 
-test('删除按钮把 todo 移入回收站（从列表消失）', async () => {
+test('删除按钮把 todo 归档到历史记录（从列表消失）', async () => {
   await addTodo(win, '要删除的任务');
   const row = todoRow(win, '要删除的任务');
   await row.hover();

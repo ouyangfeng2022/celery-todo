@@ -3,7 +3,7 @@
  * @description 使用 sql.js (WebAssembly SQLite) 实现数据持久化
  *              桌面端 (Electron) 通过 IPC 将数据库二进制保存为真实文件，
  *              存储位置可在设置中自定义；Web 端兜底使用 IndexedDB。
- *              数据结构包含: projects, todos, deleted_todos, settings, notifications
+ *              数据结构包含: projects, todos, deleted_todos(归档), settings, notifications
  */
 
 // sql.js 浏览器 WASM 构建（Vite 预构建）
@@ -204,7 +204,8 @@ function createTables(database: Database): void {
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
 
-    -- 回收站表
+    -- 归档表（原回收站，现作为「历史记录」永久保留，仅在历史记录页手动删除）
+    -- expires_at 列保留以兼容旧数据 / 导入导出，但不再用于自动清除
     CREATE TABLE IF NOT EXISTS deleted_todos (
       id TEXT PRIMARY KEY,
       project_id TEXT NOT NULL,
@@ -650,7 +651,7 @@ export function updateTodo(todo: import('../types').Todo): void {
   );
 }
 
-/** 删除 Todo（移入回收站） */
+/** 删除 Todo（从 todos 表移除；调用方负责先插入到归档表） */
 export function deleteTodo(id: string): void {
   execute('DELETE FROM todos WHERE id = ?', [id]);
 }
@@ -663,10 +664,10 @@ export function deleteTodos(ids: string[]): void {
 }
 
 // ============================================
-// 回收站数据访问
+// 归档数据访问（原回收站；现作为「历史记录」永久保留）
 // ============================================
 
-/** 回收站行 */
+/** 归档行 */
 interface DeletedTodoRow extends TodoRow {
   deleted_at: string;
   expires_at: string;
@@ -681,7 +682,7 @@ function rowToDeletedTodo(row: DeletedTodoRow): import('../types').DeletedTodo {
   };
 }
 
-/** 获取指定项目的回收站事项 */
+/** 获取指定项目的归档事项 */
 export function getDeletedTodosByProject(projectId: string): import('../types').DeletedTodo[] {
   return queryAll<DeletedTodoRow>(
     'SELECT * FROM deleted_todos WHERE project_id = ? ORDER BY deleted_at DESC',
@@ -689,14 +690,14 @@ export function getDeletedTodosByProject(projectId: string): import('../types').
   ).map(rowToDeletedTodo);
 }
 
-/** 获取所有回收站事项 */
+/** 获取所有归档事项（用于历史记录页跨项目展示） */
 export function getAllDeletedTodos(): import('../types').DeletedTodo[] {
   return queryAll<DeletedTodoRow>('SELECT * FROM deleted_todos ORDER BY deleted_at DESC').map(
     rowToDeletedTodo,
   );
 }
 
-/** 插入回收站事项 */
+/** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(
     `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, deleted_at, expires_at)
@@ -719,12 +720,12 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   );
 }
 
-/** 从回收站永久删除 */
+/** 从归档永久删除 */
 export function permanentlyDeleteTodo(id: string): void {
   execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
 }
 
-/** 从回收站恢复（重新插入到 todos 表） */
+/** 从归档恢复（重新插入到 todos 表） */
 export function restoreTodo(id: string): void {
   const row = queryOne<DeletedTodoRow>('SELECT * FROM deleted_todos WHERE id = ?', [id]);
   if (!row) return;
@@ -746,28 +747,17 @@ export function restoreTodo(id: string): void {
       row.sort_order,
     ],
   );
-  // 从回收站删除
+  // 从归档删除
   execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
 }
 
-/** 清空回收站 */
-export function emptyRecycleBin(projectId?: string): void {
+/** 清空归档（历史记录）。传 projectId 时只清该项目，否则清全部 */
+export function emptyArchive(projectId?: string): void {
   if (projectId) {
     execute('DELETE FROM deleted_todos WHERE project_id = ?', [projectId]);
   } else {
     execute('DELETE FROM deleted_todos', []);
   }
-}
-
-/** 清理过期回收站事项（30 天前） */
-export function cleanupExpiredDeletedTodos(): number {
-  const now = new Date().toISOString();
-  const before = queryAll<{ count: number }>(
-    'SELECT COUNT(*) as count FROM deleted_todos WHERE expires_at < ?',
-    [now],
-  );
-  execute('DELETE FROM deleted_todos WHERE expires_at < ?', [now]);
-  return before[0]?.count ?? 0;
 }
 
 // ============================================
@@ -907,7 +897,7 @@ export async function importAllData(data: import('../types').AppExportData): Pro
     insertTodo(todo);
   }
 
-  // 插入回收站
+  // 插入归档（历史记录）
   for (const deleted of data.deletedTodos) {
     insertDeletedTodo(deleted);
   }

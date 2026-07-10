@@ -217,10 +217,17 @@ export async function openSettings(win: Page): Promise<void> {
   await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
 }
 
-/** 打开回收站 */
-export async function openRecycleBin(win: Page): Promise<void> {
-  await win.getByRole('button', { name: '回收站' }).click();
-  await win.getByRole('heading', { name: '回收站' }).waitFor({ state: 'visible' });
+/**
+ * 打开「历史记录」（归档）视图：点侧边栏「历史记录」按钮直达设置的历史记录 Tab。
+ * 该按钮会打开设置面板并定位到 history Tab，等历史视图副标题出现即视为加载完成。
+ */
+export async function openHistory(win: Page): Promise<void> {
+  await win.getByRole('button', { name: '历史记录', exact: true }).click();
+  // 设置面板标题 + 历史视图副标题同时可见
+  await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
+  await win
+    .getByText('删除的事项会归档到此处，可在任意时间恢复或永久删除。')
+    .waitFor({ state: 'visible' });
 }
 
 /** 新建项目并自动切换到它 */

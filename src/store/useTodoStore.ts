@@ -1,6 +1,6 @@
 /**
  * @file Todo Store - 基于 Zustand 的事项状态管理
- * @description 管理当前项目的 Todo 列表，包括增删改查、批量操作、回收站等
+ * @description 管理当前项目的 Todo 列表，包括增删改查、批量操作、归档（历史记录）等
  */
 
 import { create } from 'zustand';
@@ -15,7 +15,7 @@ import { generateId, splitBulkTitles } from '../utils/helpers';
 interface TodoState {
   /** 当前项目的 Todo 列表 */
   todos: Todo[];
-  /** 当前项目的回收站事项 */
+  /** 当前项目的归档事项（历史记录） */
   deletedTodos: DeletedTodo[];
   /** 当前项目 ID */
   currentProjectId: string;
@@ -40,7 +40,7 @@ interface TodoState {
   addTodosBulk: (rawText: string, priority?: Priority, dueDate?: string) => void;
   /** 更新 Todo */
   updateTodo: (id: string, updates: Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>>) => void;
-  /** 删除 Todo（移入回收站） */
+  /** 删除 Todo（归档：移入历史记录，可恢复或永久删除） */
   deleteTodo: (id: string) => void;
   /** 切换完成状态 */
   toggleTodo: (id: string) => void;
@@ -59,16 +59,16 @@ interface TodoState {
   /** 更新排序顺序（拖拽后调用） */
   reorderTodos: (sourceId: string, targetId: string) => void;
 
-  // === 回收站 ===
-  /** 恢复回收站事项 */
+  // === 归档 / 历史记录 ===
+  /** 恢复归档事项（重新回到当前项目 todos） */
   restoreTodo: (id: string) => void;
-  /** 永久删除回收站事项 */
+  /** 永久删除归档事项（不可恢复） */
   permanentlyDelete: (id: string) => void;
-  /** 清空回收站 */
-  emptyRecycleBin: () => void;
+  /** 清空当前项目的归档 */
+  emptyArchive: () => void;
 
   // === 清理 ===
-  /** 清空已完成 */
+  /** 清空已完成（归档已完成的 todo） */
   clearCompleted: () => void;
 }
 
@@ -157,12 +157,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
 
+    // 归档模式：归档永久保留，expiresAt 不再有自动清除语义，
+    // 写入与 deletedAt 相同的时间戳作为占位以维持类型契约。
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const archivedAt = now.toISOString();
     const deletedTodo: DeletedTodo = {
       ...todo,
-      deletedAt: now.toISOString(),
-      expiresAt,
+      deletedAt: archivedAt,
+      expiresAt: archivedAt,
     };
 
     db.insertDeletedTodo(deletedTodo);
@@ -255,18 +257,19 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         break;
       }
       case 'delete': {
+        // 归档模式：expiresAt 不再有自动清除语义，用 archivedAt 占位
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        const archivedAt = now.toISOString();
         const toDelete = todos.filter((t) => selectedIds.has(t.id));
         toDelete.forEach((t) => {
-          const deleted: DeletedTodo = { ...t, deletedAt: now.toISOString(), expiresAt };
+          const deleted: DeletedTodo = { ...t, deletedAt: archivedAt, expiresAt: archivedAt };
           db.insertDeletedTodo(deleted);
         });
         db.deleteTodos(ids);
         set({
           todos: todos.filter((t) => !selectedIds.has(t.id)),
           deletedTodos: [
-            ...toDelete.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })),
+            ...toDelete.map((t) => ({ ...t, deletedAt: archivedAt, expiresAt: archivedAt })),
             ...get().deletedTodos,
           ],
           selectedIds: new Set(),
@@ -318,19 +321,20 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ deletedTodos: get().deletedTodos.filter((t) => t.id !== id) });
   },
 
-  emptyRecycleBin: () => {
-    db.emptyRecycleBin(get().currentProjectId);
+  emptyArchive: () => {
+    db.emptyArchive(get().currentProjectId);
     set({ deletedTodos: [] });
   },
 
   clearCompleted: () => {
     const { todos } = get();
     const completed = todos.filter((t) => t.completed);
+    // 归档模式：expiresAt 用 archivedAt 占位（不再有自动清除）
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const archivedAt = now.toISOString();
 
     completed.forEach((t) => {
-      const deleted: DeletedTodo = { ...t, deletedAt: now.toISOString(), expiresAt };
+      const deleted: DeletedTodo = { ...t, deletedAt: archivedAt, expiresAt: archivedAt };
       db.insertDeletedTodo(deleted);
       db.deleteTodo(t.id);
     });
@@ -338,7 +342,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({
       todos: todos.filter((t) => !t.completed),
       deletedTodos: [
-        ...completed.map((t) => ({ ...t, deletedAt: now.toISOString(), expiresAt })),
+        ...completed.map((t) => ({ ...t, deletedAt: archivedAt, expiresAt: archivedAt })),
         ...get().deletedTodos,
       ],
     });
