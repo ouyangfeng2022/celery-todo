@@ -5,7 +5,7 @@
  * 添加"已过期"截止日期的未完成 todo 会生成 warning 通知（无需等 5 分钟轮询）。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -19,16 +19,12 @@ test.afterEach(async () => {
   await closeApp(appInfo);
 });
 
-/** 添加一条已过期的 todo，触发 warning 通知 */
+/** 添加一条已过期的 todo，触发 warning 通知。复用 helpers.addTodo（已稳定工作），仅加截止日期。 */
 async function addOverdueTodo(title: string) {
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
-  await input.click();
-  // 截止日期设为昨天
+  // 应用首次启动时项目列表为空，AddTodoInput 不渲染；需先创建项目
+  await createProject(win, '通知测试项目');
   const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
-  await win.locator('input[type="date"]').first().fill(yesterday);
-  await input.fill(title);
-  await win.keyboard.press('Enter');
-  await win.getByText(title, { exact: true }).waitFor({ state: 'visible' });
+  await addTodo(win, title, { dueDate: yesterday });
 }
 
 test('打开通知面板显示空状态"暂无通知"', async () => {
