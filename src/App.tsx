@@ -3,7 +3,7 @@
  * @description 组合所有组件，管理全局状态和布局
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
@@ -114,6 +114,22 @@ function App() {
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
     useFilter(todos);
+
+  // === 各项目未完成 todo 计数 ===
+  // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，
+  // 故直接从 DB 全量取并按 projectId 聚合。todos/deletedTodos 作为 store 变更信号：
+  // 它们的引用在任意增删改/切换/导入/重置后都会更新，从而驱动重算（body 内并不直接读取）。
+  // dbReady 守卫：useMemo 在首渲染即执行，此时 DB 尚未异步初始化完成，直接查询会抛错。
+  const incompleteCounts = useMemo<Record<string, number>>(() => {
+    if (!dbReady) return {};
+    const counts: Record<string, number> = {};
+    for (const p of projects) counts[p.id] = 0;
+    for (const t of db.getAllTodos()) {
+      if (!t.completed) counts[t.projectId] = (counts[t.projectId] ?? 0) + 1;
+    }
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
+  }, [projects, todos, deletedTodos, dbReady]);
 
   // === 全部完成庆祝 ===
   // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
@@ -316,6 +332,7 @@ function App() {
               onOpenRecycleBin={() => setRecycleBinOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
               recycleBinCount={deletedTodos.length}
+              incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
           </div>

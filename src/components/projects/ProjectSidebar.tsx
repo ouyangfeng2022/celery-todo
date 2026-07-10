@@ -47,6 +47,8 @@ interface ProjectSidebarProps {
   onOpenRecycleBin: () => void;
   onOpenSettings: () => void;
   recycleBinCount: number;
+  /** 各项目未完成 todo 数：projectId → count */
+  incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
   autofocusCreateSignal?: number;
 }
@@ -57,6 +59,7 @@ interface SortableProjectItemProps {
   isActive: boolean;
   isEditing: boolean;
   editName: string;
+  incompleteCount: number;
   onSwitch: (id: string) => void;
   onEditNameChange: (value: string) => void;
   onConfirmRename: () => void;
@@ -71,6 +74,7 @@ function SortableProjectItem({
   isActive,
   isEditing,
   editName,
+  incompleteCount,
   onSwitch,
   onEditNameChange,
   onConfirmRename,
@@ -127,6 +131,15 @@ function SortableProjectItem({
           aria-label={`${project.name}（拖动以排序）`}
         >
           <span className="flex-1 truncate">{project.name}</span>
+          {/* 未完成 todo 计数：悬浮显示操作按钮时淡出，避免位置重叠 */}
+          {incompleteCount > 0 && (
+            <span
+              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center opacity-100 group-hover:opacity-0 transition-opacity"
+              style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
+            >
+              {incompleteCount}
+            </span>
+          )}
         </button>
       )}
 
@@ -185,6 +198,7 @@ function ProjectSidebarComponent({
   onOpenRecycleBin,
   onOpenSettings,
   recycleBinCount,
+  incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -341,6 +355,7 @@ function ProjectSidebarComponent({
                     isActive={isActive}
                     isEditing={isEditing}
                     editName={editName}
+                    incompleteCount={incompleteCounts[project.id] ?? 0}
                     onSwitch={onSwitch}
                     onEditNameChange={setEditName}
                     onConfirmRename={handleConfirmRename}
