@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+## [v1.5.2] - 2026-07-13
+### Added
+- use native context menu for text selection - remove custom copy menu
+- 检查更新使用刷新图标替代下载图标
+
+### Fixed
+- 为历史记录操作按钮添加悬浮提示
+- 重置所有数据使用正确的UploadIcon图标
+- 拖拽自动切入手动排序时不跳序 - 先快照当前显示顺序再切换
+
 ## [v1.5.1] - 2026-07-13
 ### Added
 - 新增仓库健康检查脚本 check-repo-health
@@ -136,3 +146,5 @@
 [v1.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.0
 
 [v1.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.1
+
+[v1.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.2
