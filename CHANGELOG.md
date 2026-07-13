@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+## [v1.5.1] - 2026-07-13
+### Added
+- 新增仓库健康检查脚本 check-repo-health
+- 将事项"删除"按钮统一改为"归档" (#7)
+
+### Fixed
+- 修复快速连续切换筛选时列表卡死 (#6)
+
 ## [v1.5.0] - 2026-07-13
 ### Added
 - 右键标题/描述弹出复制菜单 (#2)
@@ -126,3 +134,5 @@
 [v1.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.1
 
 [v1.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.0
+
+[v1.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.1
