@@ -51,11 +51,15 @@ interface SortableTodoItemProps {
 }
 
 /**
- * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局。
- * 该 ref 必须落在带 `layout` 的 motion 元素上（TodoItem 内部的 <motion.div>），
- * 否则 popLayout 测量/复用布局失败，filter 切换时多个 key 同时进出会卡在
- * transform 中间态（切换列表内容"卡住"）。dnd-kit 的 setNodeRef 与 transform
- * 则需要独占外层 div，两类职责落点不同，故分两个 ref 而不再合并。
+ * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局，
+ * 该 ref 必须能透传到一个 motion 元素（TodoItem 内部的 <motion.div>）。dnd-kit 的
+ * setNodeRef 与 transform 需要独占外层 div，两类职责落点不同，故分两个 ref。
+ *
+ * 注意：子元素【不能】带 `layout` 属性。`popLayout + layout + opacity-exit` 三者
+ * 同时存在会命中 framer-motion 已知 bug motion#2416 ——快速连续切换 filter 时退出
+ * 动画被跳过/卡住，列表内容"切不过去"。popLayout 单独使用（退出元素 position:
+ * absolute 让位 + 淡出）即可，无需 layout 做位移动画。拖拽位移走 dnd-kit 的
+ * transform，不依赖 motion layout。
  */
 const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
   function SortableTodoItem(props, ref) {
