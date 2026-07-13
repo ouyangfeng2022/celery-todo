@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+## [v1.5.0] - 2026-07-13
+### Added
+- 右键标题/描述弹出复制菜单 (#2)
+- 限制拖拽仅竖直方向，列表只能上下重排 (#4)
+
+### Fixed
+- 修复切换筛选时列表卡死 (#3)
+
 ## [v1.4.1] - 2026-07-13
 ### Added
 - 精简打包产物体积
@@ -116,3 +124,5 @@
 [v1.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.0
 
 [v1.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.1
+
+[v1.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.0
