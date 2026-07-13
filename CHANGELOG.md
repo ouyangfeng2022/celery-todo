@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+## [v1.4.1] - 2026-07-13
+### Added
+- 精简打包产物体积
+
+### Fixed
+- notifications.spec.ts 缺少 createProject 导致 AddTodoInput 不渲染
+
 ## [v1.4.0] - 2026-07-10
 ### Added
 - 删除改为归档，设置新增历史记录页
@@ -107,3 +114,5 @@
 [v1.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.3.0
 
 [v1.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.0
+
+[v1.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.1
