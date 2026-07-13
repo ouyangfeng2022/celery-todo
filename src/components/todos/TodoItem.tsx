@@ -3,7 +3,7 @@
  * @description 支持完成切换、编辑、删除、优先级、截止日期、Markdown 渲染
  */
 
-import { memo, useState, useCallback, useRef, useEffect } from 'react';
+import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
@@ -182,7 +182,7 @@ function DueDateButton({ value, onChange }: { value?: string; onChange: (iso?: s
   );
 }
 
-function TodoItemComponent({
+const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent({
   todo,
   isSelected,
   onToggle,
@@ -190,7 +190,7 @@ function TodoItemComponent({
   onDelete,
   onToggleSelect,
   dragHandleProps,
-}: TodoItemProps) {
+}, ref) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
@@ -247,6 +247,7 @@ function TodoItemComponent({
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -443,6 +444,6 @@ function TodoItemComponent({
       )}
     </motion.div>
   );
-}
+});
 
 export const TodoItem = memo(TodoItemComponent);
