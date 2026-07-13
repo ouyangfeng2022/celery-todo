@@ -134,7 +134,7 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 ## 📸 截图
 
-> 截图待补充。
+![Celery Todo 主界面](assets/main.png)
 
 ## 📄 许可证
 
