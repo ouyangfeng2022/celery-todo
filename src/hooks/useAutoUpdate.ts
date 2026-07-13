@@ -7,7 +7,7 @@
  *              - 暴露 actions 供设置面板 / 全局对话框调用
  *
  *              状态迁移：
- *              idle → checking → available → downloading → downloaded
+ *              idle → checking → available → downloading → downloaded → dismissed
  *                           └→ not-available (idle)
  *              任意阶段 → error
  */
@@ -19,7 +19,14 @@ import * as db from '../utils/database';
 
 /** 升级状态 */
 export type UpdateStatus =
-  'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  | 'idle'
+  | 'checking'
+  | 'available'
+  | 'not-available'
+  | 'downloading'
+  | 'downloaded'
+  | 'dismissed'
+  | 'error';
 
 /** 主进程推送的更新信息（简化版） */
 export interface UpdateInfoLite {
@@ -149,6 +156,11 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
     window.electronAPI!.updaterQuitAndInstall();
   }, [isDesktop]);
 
+  /** 用户在"更新已就绪"对话框点击"稍后"：关闭全局弹窗，保留更新包供后续重启 */
+  const dismissDownloaded = useCallback(() => {
+    setStatus('dismissed');
+  }, []);
+
   return {
     isDesktop,
     status,
@@ -158,5 +170,6 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
+    dismissDownloaded,
   };
 }

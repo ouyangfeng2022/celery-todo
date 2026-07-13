@@ -109,6 +109,7 @@ function App() {
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
+    dismissDownloaded,
   } = useAutoUpdate({ dbReady });
 
   // === 筛选 ===
@@ -551,6 +552,7 @@ function App() {
         updateError={isAutoUpdateAvailable ? updateError : undefined}
         onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
         onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
+        onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
       />
 
       {/* 升级已就绪：全局提示重启安装 */}
@@ -566,9 +568,11 @@ function App() {
         cancelText="稍后"
         onConfirm={() => void quitAndInstall()}
         onCancel={() => {
-          // 用户选择稍后：下次退出应用时不会自动安装（autoInstallOnAppQuit 已关闭），
-          // 但 update-downloaded 事件不会再次触发；用户可在设置中重新触发或下次启动检查时重下。
-          // 这里仅关闭对话框——保留 downloaded 状态供下次重启。
+          // 用户选择稍后：切换到 dismissed 状态以关闭全局对话框，
+          // 下次退出应用时不会自动安装（autoInstallOnAppQuit 已关闭），
+          // 但 update-downloaded 事件不会再次触发；
+          // 用户可在设置面板中重新触发重启。
+          dismissDownloaded();
         }}
       />
     </div>
