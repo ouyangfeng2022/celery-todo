@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Todo } from '../../types';
 import { TodoItem } from './TodoItem';
@@ -143,8 +144,14 @@ function TodoListComponent({
   );
 
   // 任意排序模式下都允许拖拽；非手动排序时拖拽会自动切到手动排序（见 handleDragEnd）
+  // restrictToVerticalAxis：拖拽时把位移限制为竖直方向，列表只能上下重排
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+      modifiers={[restrictToVerticalAxis]}
+    >
       <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-1">{listContent}</div>
       </SortableContext>
