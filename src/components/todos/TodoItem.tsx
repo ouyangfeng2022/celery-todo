@@ -18,6 +18,7 @@ import {
   GripIcon,
   FlagIcon,
 } from '../common/Icons';
+import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
 
 /** 优先级对应的圆点颜色（用于动作栏的旗帜图标着色） */
 const PRIORITY_DOT_STYLE: Record<Priority, string> = {
@@ -195,6 +196,8 @@ function TodoItemComponent({
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  // 右键菜单：非编辑态下右键标题/描述弹出"复制"菜单
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   // 进入编辑模式时聚焦
   useEffect(() => {
@@ -228,6 +231,31 @@ function TodoItemComponent({
     setEditTitle(todo.title);
     setEditDescription(todo.description ?? '');
   }, [todo.title, todo.description]);
+
+  // 复制文本到剪贴板（Electron renderer 下 navigator.clipboard 可直接用）
+  const copyText = useCallback((text: string) => {
+    navigator.clipboard.writeText(text).catch(() => {
+      // 写入失败时静默处理（非安全上下文或权限被拒等极端情况）
+    });
+  }, []);
+
+  // 右键标题/描述：弹出复制菜单。e 为 React 合成事件，clientX/Y 已是视口坐标。
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (isEditing) return; // 编辑态下保留原生右键（textarea 内复制/粘贴）
+      e.preventDefault();
+      setMenuPos({ x: e.clientX, y: e.clientY });
+    },
+    [isEditing],
+  );
+
+  // 构造右键菜单项：标题始终可复制；描述仅在有内容时出现（复制原始 Markdown）
+  const contextMenuItems: ContextMenuItem[] = [
+    { label: '复制标题', onClick: () => copyText(todo.title) },
+  ];
+  if (todo.description) {
+    contextMenuItems.push({ label: '复制描述', onClick: () => copyText(todo.description!) });
+  }
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -335,6 +363,7 @@ function TodoItemComponent({
             {/* 标题 */}
             <div
               onDoubleClick={handleStartEdit}
+              onContextMenu={handleContextMenu}
               className={cn(
                 'text-[15px] leading-snug cursor-text break-words text-pretty transition-colors',
                 todo.completed && 'line-through',
@@ -352,6 +381,7 @@ function TodoItemComponent({
                 className="markdown-body mt-1 text-[13px]"
                 style={{ color: 'var(--text-secondary)' }}
                 onDoubleClick={handleStartEdit}
+                onContextMenu={handleContextMenu}
               >
                 <ReactMarkdown>{todo.description}</ReactMarkdown>
               </div>
@@ -440,6 +470,16 @@ function TodoItemComponent({
             />
           </label>
         </div>
+      )}
+
+      {/* 右键菜单：非编辑态下右键标题/描述时弹出（portal 渲染到 body） */}
+      {menuPos && (
+        <ContextMenu
+          x={menuPos.x}
+          y={menuPos.y}
+          items={contextMenuItems}
+          onClose={() => setMenuPos(null)}
+        />
       )}
     </motion.div>
   );
