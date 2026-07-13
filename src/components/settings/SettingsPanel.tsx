@@ -17,6 +17,7 @@ import {
   CheckIcon,
   AlertIcon,
   GithubIcon,
+  RefreshIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -540,12 +541,12 @@ function SettingsPanelComponent({
                               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                               style={{ display: 'inline-flex' }}
                             >
-                              <DownloadIcon size={15} />
+                              <RefreshIcon size={15} />
                             </motion.span>
                           ) : updateStatus === 'downloaded' || updateStatus === 'dismissed' ? (
                             <CheckIcon size={15} />
                           ) : (
-                            <DownloadIcon size={15} />
+                            <RefreshIcon size={15} />
                           )}
                           {updateStatus === 'checking'
                             ? '正在检查…'

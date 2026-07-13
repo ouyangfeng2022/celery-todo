@@ -274,6 +274,15 @@ export const SparkleIcon = memo((props: IconProps) => (
 ));
 
 // GitHub 标志需要 fill 而非 stroke，覆盖 BaseIcon 默认的线条样式
+export const RefreshIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+    <path d="M21 3v5h-5" />
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+    <path d="M3 21v-5h5" />
+  </BaseIcon>
+));
+
 export const GithubIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <path
