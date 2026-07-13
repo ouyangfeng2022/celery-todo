@@ -50,28 +50,17 @@ interface SortableTodoItemProps {
 }
 
 /**
- * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局，
- * 因此这里用 forwardRef 暴露内部 div 的 ref，并把 framer-motion 的 ref 与
- * dnd-kit 的 setNodeRef 合并到同一个 DOM 节点上。
+ * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局。
+ * 该 ref 必须落在带 `layout` 的 motion 元素上（TodoItem 内部的 <motion.div>），
+ * 否则 popLayout 测量/复用布局失败，filter 切换时多个 key 同时进出会卡在
+ * transform 中间态（切换列表内容"卡住"）。dnd-kit 的 setNodeRef 与 transform
+ * 则需要独占外层 div，两类职责落点不同，故分两个 ref 而不再合并。
  */
 const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
-  function SortableTodoItem(props, externalRef) {
+  function SortableTodoItem(props, ref) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: props.todo.id,
     });
-
-    // 合并两个 ref：dnd-kit 的 setNodeRef 和外层传入的 ref
-    const setMergedRef = useCallback(
-      (node: HTMLDivElement | null) => {
-        setNodeRef(node);
-        if (typeof externalRef === 'function') {
-          externalRef(node);
-        } else if (externalRef) {
-          externalRef.current = node;
-        }
-      },
-      [setNodeRef, externalRef],
-    );
 
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
@@ -81,8 +70,9 @@ const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
     };
 
     return (
-      <div ref={setMergedRef} style={style}>
+      <div ref={setNodeRef} style={style}>
         <TodoItem
+          ref={ref}
           todo={props.todo}
           isSelected={props.isSelected}
           onToggle={props.onToggle}
