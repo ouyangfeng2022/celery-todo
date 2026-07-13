@@ -58,6 +58,14 @@ interface TodoState {
   // === 排序 ===
   /** 更新排序顺序（拖拽后调用） */
   reorderTodos: (sourceId: string, targetId: string) => void;
+  /**
+   * 把传入的显示顺序快照为 todo.order（拖拽切入 manual 前调用）。
+   * store.todos 固定按 sort_order ASC（≈创建顺序）排，与用户在
+   * created-desc 等模式下的视图反向；若直接 reorder，splice 的索引
+   * 来自 DB 序而非视图序，结果会跳序。此处先把视图顺序固化到 order，
+   * 让后续 reorder 在与视图一致的数组上执行。
+   */
+  snapshotOrder: (displayedIds: string[]) => void;
 
   // === 归档 / 历史记录 ===
   /** 恢复归档事项（重新回到当前项目 todos） */
@@ -305,6 +313,24 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     // 重新分配 order
     const reordered = newTodos.map((t, idx) => ({ ...t, order: idx + 1 }));
+    reordered.forEach((t) => db.updateTodo(t));
+    set({ todos: reordered });
+  },
+
+  snapshotOrder: (displayedIds: string[]) => {
+    const { todos } = get();
+    if (todos.length === 0) return;
+
+    const displayedSet = new Set(displayedIds);
+    const byId = new Map(todos.map((t) => [t.id, t]));
+    // 显示中的按显示顺序排前面，未显示的（被筛选/搜索剔除的）按原 order 追加后面，
+    // 整体重分配连续的 order，避免与未显示 todo 的旧 order 冲突，也顺带修复老数据
+    // 中 order 不连续的历史问题。
+    const displayed = displayedIds
+      .map((id) => byId.get(id))
+      .filter((t): t is Todo => t !== undefined);
+    const rest = todos.filter((t) => !displayedSet.has(t.id));
+    const reordered = [...displayed, ...rest].map((t, idx) => ({ ...t, order: idx + 1 }));
     reordered.forEach((t) => db.updateTodo(t));
     set({ todos: reordered });
   },

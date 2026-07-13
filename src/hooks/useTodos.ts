@@ -77,6 +77,8 @@ export function useTodos() {
     batchAction,
     clearCompleted,
     reorderTodos,
+    // store action 引用稳定，直接透传
+    snapshotOrder: store.snapshotOrder,
     restoreTodo: store.restoreTodo,
     permanentlyDelete: store.permanentlyDelete,
     emptyArchive: store.emptyArchive,

@@ -93,6 +93,7 @@ function App() {
     batchAction,
     clearCompleted,
     reorderTodos,
+    snapshotOrder,
     restoreTodo,
     permanentlyDelete,
     emptyArchive,
@@ -506,6 +507,7 @@ function App() {
                 onToggleSelect={toggleSelected}
                 onReorder={reorderTodos}
                 onSortChange={changeSort}
+                onSnapshotOrder={snapshotOrder}
               />
 
               {/* 全部完成庆祝卡片：该项目有待办且全部已完成时显示 */}

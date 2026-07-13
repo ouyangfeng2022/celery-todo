@@ -38,6 +38,8 @@ interface TodoListProps {
   onReorder: (sourceId: string, targetId: string) => void;
   /** 切换排序方式（拖拽时用于自动切到「手动排序」） */
   onSortChange: (sort: SortType) => void;
+  /** 拖拽切入 manual 前快照当前显示顺序到 todo.order */
+  onSnapshotOrder: (ids: string[]) => void;
 }
 
 /** 可排序的 TodoItem 包装器 */
@@ -103,6 +105,7 @@ function TodoListComponent({
   onToggleSelect,
   onReorder,
   onSortChange,
+  onSnapshotOrder,
 }: TodoListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -117,14 +120,19 @@ function TodoListComponent({
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (over && active.id !== over.id) {
-        // 当前非「手动排序」时，先切换到手动排序，让后续 order 重排与显示顺序一致
+        // 当前非「手动排序」时，先快照当前显示顺序到 order，再切到手动排序。
+        // 否则 store.todos（DB 序，按 sort_order ASC ≈ 创建顺序）与视图（如
+        // created-desc 是反向的）不一致，reorderTodos 的 splice 索引取自 DB 序，
+        // 切到 manual 后会跳序。快照 + setState 同步生效，紧接着的 onReorder
+        // 读到的 store.todos 已与视图对齐。
         if (sort !== 'manual') {
+          onSnapshotOrder(todos.map((t) => t.id));
           onSortChange('manual');
         }
         onReorder(active.id as string, over.id as string);
       }
     },
-    [onReorder, onSortChange, sort],
+    [onReorder, onSortChange, onSnapshotOrder, sort, todos],
   );
 
   if (todos.length === 0) {
