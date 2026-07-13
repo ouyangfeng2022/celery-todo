@@ -95,3 +95,28 @@ test('"归档已完成"按钮仅在有已完成时显示，点击后归档到历
   // 按钮也随之消失
   await expect(win.getByRole('button', { name: '归档已完成' })).toHaveCount(0);
 });
+
+// 回归：快速连续切换 filter 不应卡死。
+// 触发条件：AnimatePresence popLayout + 子元素 layout + opacity-exit 三者同时存在
+// 命中 framer-motion#2416，退出动画被跳过/滞留，列表内容"切不过去"。
+// 不带 toHaveCount 断言等待会掩盖卡死，故每轮立即断言可见性以暴露问题。
+test('快速连续切换 filter 不卡死（回归 framer-motion#2416）', async () => {
+  const btnAll = win.getByRole('button', { name: /全部/ });
+  const btnActive = win.getByRole('button', { name: /进行中/ });
+  const btnCompleted = win.getByRole('button', { name: /^已完成/ });
+
+  // 连续 5 轮：全部 → 进行中 → 已完成，中间不停顿等待动画
+  for (let i = 0; i < 5; i++) {
+    await btnAll.click();
+    await expect(todoTitle(win, '进行中1')).toBeVisible();
+    await expect(todoTitle(win, '已完成1')).toBeVisible();
+
+    await btnActive.click();
+    await expect(todoTitle(win, '进行中1')).toBeVisible();
+    await expect(todoTitle(win, '已完成1')).toHaveCount(0);
+
+    await btnCompleted.click();
+    await expect(todoTitle(win, '已完成1')).toBeVisible();
+    await expect(todoTitle(win, '进行中1')).toHaveCount(0);
+  }
+});

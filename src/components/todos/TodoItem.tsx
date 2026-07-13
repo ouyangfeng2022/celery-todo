@@ -276,7 +276,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   return (
     <motion.div
       ref={ref}
-      layout
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
