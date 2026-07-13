@@ -38,7 +38,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # v5 默认运行在 Node.js 24 上，消除 Node 20 deprecation 警告
+        uses: actions/checkout@v5
         with:
           # tag 触发时 ref 已指向 tag commit；workflow_dispatch 时 fallback 到 HEAD。
           ref: ${{ inputs.ref || github.ref }}
@@ -95,7 +96,7 @@ jobs:
           cat release-notes.md
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: celery-todo-${{ steps.ver.outputs.tag }}-installer
           path: |
