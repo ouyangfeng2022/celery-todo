@@ -1,6 +1,6 @@
 /**
  * @file TodoItem - 单个事项组件
- * @description 支持完成切换、编辑、删除、优先级、截止日期、Markdown 渲染
+ * @description 支持完成切换、编辑、归档、优先级、截止日期、Markdown 渲染
  */
 
 import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'react';
@@ -12,7 +12,7 @@ import { cn, formatDate, formatRelativeTime, isOverdue, isDueSoon } from '../../
 import {
   CheckIcon,
   EditIcon,
-  TrashIcon,
+  ArchiveIcon,
   CalendarIcon,
   AlertIcon,
   GripIcon,
@@ -183,15 +183,10 @@ function DueDateButton({ value, onChange }: { value?: string; onChange: (iso?: s
   );
 }
 
-const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent({
-  todo,
-  isSelected,
-  onToggle,
-  onEdit,
-  onDelete,
-  onToggleSelect,
-  dragHandleProps,
-}, ref) {
+const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent(
+  { todo, isSelected, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
+  ref,
+) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
@@ -449,8 +444,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           <DockButton label="编辑" onClick={handleStartEdit}>
             <EditIcon size={15} />
           </DockButton>
-          <DockButton label="删除" danger onClick={() => onDelete(todo.id)}>
-            <TrashIcon size={15} />
+          <DockButton label="归档" danger onClick={() => onDelete(todo.id)}>
+            <ArchiveIcon size={15} />
           </DockButton>
           {/* 批量选择：与其它图标同高，但用复选框语义 */}
           <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />

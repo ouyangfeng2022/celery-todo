@@ -40,7 +40,7 @@ function ArchiveHistoryViewComponent({
       {/* 标题行 + 清空按钮 */}
       <div className="flex items-center justify-between">
         <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-          删除的事项会归档到此处，可在任意时间恢复或永久删除。
+          归档的事项会保存在此处，可在任意时间恢复或永久删除。
         </p>
         {archivedTodos.length > 0 && (
           <button
