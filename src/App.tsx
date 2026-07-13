@@ -27,6 +27,7 @@ import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { HistoryPanel } from './components/settings/HistoryPanel';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
@@ -55,8 +56,8 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // 设置面板的初始 Tab：侧栏「历史记录」入口会设为 'history' 以直达历史记录页
-  const [settingsTab, setSettingsTab] = useState<'settings' | 'history'>('settings');
+  // 历史记录独立弹窗（侧栏「历史记录」入口唤出，与「设置」弹窗分离）
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
@@ -341,15 +342,9 @@ function App() {
               onExport={handleExportProject}
               onImport={handleImportProject}
               onReorder={reorderProjects}
-              onOpenHistory={() => {
-                setSettingsTab('history');
-                setSettingsOpen(true);
-              }}
-              onOpenSettings={() => {
-                setSettingsTab('settings');
-                setSettingsOpen(true);
-              }}
-              archiveCount={deletedTodos.length}
+              onOpenHistory={() => setHistoryOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              archiveCount={allArchivedTodos.length}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
@@ -530,16 +525,10 @@ function App() {
         onBatchSetPriority={(p: Priority) => batchAction('setPriority', p)}
       />
 
-      {/* 设置面板（含「设置」与「历史记录」两个 Tab） */}
+      {/* 设置面板 */}
       <SettingsPanel
         open={settingsOpen}
         settings={settings}
-        initialTab={settingsTab}
-        archivedTodos={allArchivedTodos}
-        projects={projects}
-        onRestoreTodo={restoreTodo}
-        onPermanentDeleteTodo={permanentlyDelete}
-        onEmptyArchive={emptyArchive}
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
         onExportAll={handleExportAll}
@@ -553,6 +542,17 @@ function App() {
         onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
         onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
         onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
+      />
+
+      {/* 历史记录弹窗（归档视图，与设置弹窗独立） */}
+      <HistoryPanel
+        open={historyOpen}
+        archivedTodos={allArchivedTodos}
+        projects={projects}
+        onRestoreTodo={restoreTodo}
+        onPermanentDeleteTodo={permanentlyDelete}
+        onEmptyArchive={emptyArchive}
+        onClose={() => setHistoryOpen(false)}
       />
 
       {/* 升级已就绪：全局提示重启安装 */}

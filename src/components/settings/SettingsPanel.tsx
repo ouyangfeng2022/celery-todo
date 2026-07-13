@@ -5,7 +5,7 @@
 
 import { memo, useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { ThemeMode, AppSettings, DeletedTodo, Project } from '../../types';
+import type { ThemeMode, AppSettings } from '../../types';
 import {
   XIcon,
   DownloadIcon,
@@ -20,7 +20,6 @@ import {
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
-import { ArchiveHistoryView } from './ArchiveHistoryView';
 import {
   getStorageInfo,
   chooseStorageDirectory,
@@ -32,9 +31,6 @@ import {
 import { APP_VERSION } from '@/utils/version';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 
-/** 设置面板顶部 Tab：常规设置 / 历史记录（归档） */
-type SettingsTab = 'settings' | 'history';
-
 interface SettingsPanelProps {
   open: boolean;
   settings: AppSettings;
@@ -44,19 +40,6 @@ interface SettingsPanelProps {
   onExportCsv: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
-  // ===== 历史记录（归档）Tab =====
-  /** 打开时定位到的初始 Tab（侧栏「历史记录」入口会传 'history' 直达） */
-  initialTab?: SettingsTab;
-  /** 全部归档事项（跨项目） */
-  archivedTodos: DeletedTodo[];
-  /** 全部项目（历史记录页解析项目名标签） */
-  projects: Project[];
-  /** 恢复归档事项 */
-  onRestoreTodo: (id: string) => void;
-  /** 永久删除归档事项 */
-  onPermanentDeleteTodo: (id: string) => void;
-  /** 清空全部归档 */
-  onEmptyArchive: () => void;
   // ===== 自动升级（仅桌面端；Web 下 undefined，UI 不渲染升级行） =====
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
@@ -77,12 +60,6 @@ function SettingsPanelComponent({
   onExportCsv,
   onImportAll,
   onResetData,
-  initialTab = 'settings',
-  archivedTodos,
-  projects,
-  onRestoreTodo,
-  onPermanentDeleteTodo,
-  onEmptyArchive,
   updateStatus = 'idle',
   updateInfo = null,
   updateProgress = null,
@@ -95,13 +72,10 @@ function SettingsPanelComponent({
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
   const [storageBusy, setStorageBusy] = useState(false);
   const [confirmResetStorage, setConfirmResetStorage] = useState(false);
-  // 当前激活的 Tab。每次面板打开时按 initialTab 重置，保证侧栏「历史记录」入口可直达。
-  const [tab, setTab] = useState<SettingsTab>(initialTab);
 
-  // 面板打开时加载存储位置信息（仅桌面端），并同步初始 Tab
+  // 面板打开时加载存储位置信息（仅桌面端）
   useEffect(() => {
     if (!open) return;
-    setTab(initialTab);
     let cancelled = false;
     (async () => {
       const info = await getStorageInfo();
@@ -110,7 +84,7 @@ function SettingsPanelComponent({
     return () => {
       cancelled = true;
     };
-  }, [open, initialTab]);
+  }, [open]);
 
   const isStorageCustomizable = storageInfo?.mode === 'electron';
 
@@ -211,47 +185,8 @@ function SettingsPanelComponent({
                 </button>
               </div>
 
-              {/* Tab 栏：常规设置 / 历史记录 */}
-              <div className="flex gap-1 px-6 pt-4" role="tablist" aria-label="设置分类">
-                {(
-                  [
-                    { id: 'settings', label: '设置' },
-                    { id: 'history', label: '历史记录' },
-                  ] as const
-                ).map((t) => {
-                  const isActive = tab === t.id;
-                  return (
-                    <button
-                      key={t.id}
-                      role="tab"
-                      aria-selected={isActive}
-                      onClick={() => setTab(t.id)}
-                      className="px-3 py-1.5 text-sm rounded-md transition-colors"
-                      style={{
-                        color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
-                        fontWeight: isActive ? 500 : 400,
-                      }}
-                    >
-                      {t.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* ===== 历史记录 Tab ===== */}
-              {tab === 'history' ? (
-                <div className="p-6 pt-4">
-                  <ArchiveHistoryView
-                    archivedTodos={archivedTodos}
-                    projects={projects}
-                    onRestore={onRestoreTodo}
-                    onPermanentDelete={onPermanentDeleteTodo}
-                    onEmptyAll={onEmptyArchive}
-                  />
-                </div>
-              ) : (
-                <div className="p-6 space-y-7">
+              {/* 常规设置内容 */}
+              <div className="p-6 space-y-7">
                   {/* 主题 */}
                   <section>
                     <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
@@ -828,7 +763,6 @@ function SettingsPanelComponent({
                     )}
                   </section>
                 </div>
-              )}
             </motion.div>
           </motion.div>
         )}

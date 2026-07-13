@@ -1,5 +1,5 @@
 /**
- * @file ArchiveHistoryView - 历史记录视图（设置面板内的「历史记录」Tab）
+ * @file ArchiveHistoryView - 历史记录视图（HistoryPanel 弹窗的正文）
  * @description 展示全部归档事项（跨项目），支持恢复、永久删除、清空全部归档。
  *              归档永久保留，不自动清除——唯一删除途径是本视图的手动操作。
  */

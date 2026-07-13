@@ -1,8 +1,8 @@
 /**
- * 历史记录（归档）：归档入档、在设置的历史记录 Tab 查看、恢复、永久删除、清空、关闭。
+ * 历史记录（归档）：归档入档、在历史记录弹窗查看、恢复、永久删除、清空、关闭。
  *
  * 归档取代了原回收站：归档的事项不再 30 天自动清除，而是永久归档，
- * 仅在「设置 → 历史记录」中可恢复或永久删除。
+ * 仅在侧边栏「历史记录」入口唤出的独立弹窗中可恢复或永久删除。
  */
 import { test, expect } from '@playwright/test';
 import {
@@ -54,7 +54,7 @@ test('恢复单条 todo 后回到当前项目列表', async () => {
   await openHistory(win);
   await win.getByRole('button', { name: '恢复' }).click();
 
-  // 关闭设置面板（Esc），回到项目列表
+  // 关闭历史记录弹窗（Esc），回到项目列表
   await win.keyboard.press('Escape');
   // 当前项目列表重新出现该 todo
   await expect(win.getByText('待恢复', { exact: true })).toBeVisible();
@@ -95,9 +95,9 @@ test('清空归档：二次确认后空状态', async () => {
   await expect(win.getByText('暂无历史记录')).toBeVisible();
 });
 
-test('Esc 关闭设置（含历史记录 Tab）', async () => {
+test('Esc 关闭历史记录弹窗', async () => {
   await openHistory(win);
-  await expect(win.getByRole('heading', { name: '设置' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '历史记录' })).toBeVisible();
   await win.keyboard.press('Escape');
-  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.getByRole('heading', { name: '历史记录' })).toHaveCount(0);
 });
