@@ -20,6 +20,7 @@ import {
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Project } from '../../types';
 import {
@@ -341,7 +342,13 @@ function ProjectSidebarComponent({
         </AnimatePresence>
 
         {/* 项目项（支持拖拽排序） */}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        {/* restrictToVerticalAxis：拖拽时把位移限制为竖直方向，列表只能上下重排 */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis]}
+        >
           <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-0.5 mt-1">
               {projects.map((project) => {
