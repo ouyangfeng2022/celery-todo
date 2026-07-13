@@ -196,9 +196,9 @@ export function toggleButton(row: ReturnType<Page['locator']>) {
   return row.getByRole('button', { name: /标记为/ });
 }
 
-/** 删除按钮（行内动作栏，悬浮显示） */
-export function deleteButton(row: ReturnType<Page['locator']>) {
-  return row.getByRole('button', { name: '删除', exact: true });
+/** 归档按钮（行内动作栏，悬浮显示） */
+export function archiveButton(row: ReturnType<Page['locator']>) {
+  return row.getByRole('button', { name: '归档', exact: true });
 }
 
 /** 编辑按钮 */
@@ -226,7 +226,7 @@ export async function openHistory(win: Page): Promise<void> {
   // 设置面板标题 + 历史视图副标题同时可见
   await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
   await win
-    .getByText('删除的事项会归档到此处，可在任意时间恢复或永久删除。')
+    .getByText('归档的事项会保存在此处，可在任意时间恢复或永久删除。')
     .waitFor({ state: 'visible' });
 }
 

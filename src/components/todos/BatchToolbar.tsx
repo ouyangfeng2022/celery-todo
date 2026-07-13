@@ -1,13 +1,13 @@
 /**
  * @file BatchToolbar - 批量操作工具栏
- * @description 当选中多个事项时显示，支持批量完成/删除/设置优先级
+ * @description 当选中多个事项时显示，支持批量完成/归档/设置优先级
  */
 
 import { memo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
 import { PRIORITY_LABELS } from '../../types';
-import { CheckIcon, TrashIcon, XIcon } from '../common/Icons';
+import { CheckIcon, ArchiveIcon, XIcon } from '../common/Icons';
 
 interface BatchToolbarProps {
   selectedCount: number;
@@ -129,8 +129,8 @@ function BatchToolbarComponent({
               className="btn-ghost text-sm flex items-center gap-1.5"
               style={{ color: 'var(--danger)' }}
             >
-              <TrashIcon size={14} />
-              删除
+              <ArchiveIcon size={14} />
+              归档
             </button>
 
             <div className="w-px h-5 mx-1" style={{ backgroundColor: 'var(--border-color)' }} />

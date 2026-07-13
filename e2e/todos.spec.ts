@@ -102,13 +102,13 @@ test('编辑态可填写描述，渲染 Markdown', async () => {
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
 });
 
-test('删除按钮把 todo 归档到历史记录（从列表消失）', async () => {
-  await addTodo(win, '要删除的任务');
-  const row = todoRow(win, '要删除的任务');
+test('归档按钮把 todo 归档到历史记录（从列表消失）', async () => {
+  await addTodo(win, '要归档的任务');
+  const row = todoRow(win, '要归档的任务');
   await row.hover();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
+  await row.getByRole('button', { name: '归档', exact: true }).click();
 
-  await expect(win.getByText('要删除的任务', { exact: true })).toHaveCount(0);
+  await expect(win.getByText('要归档的任务', { exact: true })).toHaveCount(0);
 });
 
 test('添加时设置优先级（高），列表中显示"高"标签', async () => {

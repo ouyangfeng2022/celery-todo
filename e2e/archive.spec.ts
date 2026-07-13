@@ -1,7 +1,7 @@
 /**
- * 历史记录（归档）：删除入档、在设置的历史记录 Tab 查看、恢复、永久删除、清空、关闭。
+ * 历史记录（归档）：归档入档、在设置的历史记录 Tab 查看、恢复、永久删除、清空、关闭。
  *
- * 归档取代了原回收站：删除的事项不再 30 天自动清除，而是永久归档，
+ * 归档取代了原回收站：归档的事项不再 30 天自动清除，而是永久归档，
  * 仅在「设置 → 历史记录」中可恢复或永久删除。
  */
 import { test, expect } from '@playwright/test';
@@ -27,12 +27,12 @@ test.afterEach(async () => {
   await closeApp(appInfo);
 });
 
-test('删除 todo 后历史记录显示该条 + 项目名标签', async () => {
+test('归档 todo 后历史记录显示该条 + 项目名标签', async () => {
   await createProject(win, '归档测试项目');
   await addTodo(win, '要归档的任务');
   const row = todoRow(win, '要归档的任务');
   await row.hover();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
+  await row.getByRole('button', { name: '归档', exact: true }).click();
 
   await openHistory(win);
   await expect(win.getByText('要归档的任务', { exact: true })).toBeVisible();
@@ -40,7 +40,7 @@ test('删除 todo 后历史记录显示该条 + 项目名标签', async () => {
   await expect(win.getByText('归档测试项目', { exact: true }).first()).toBeVisible();
   // 副标题提示（归档语义，无 30 天字样）
   await expect(
-    win.getByText('删除的事项会归档到此处，可在任意时间恢复或永久删除。'),
+    win.getByText('归档的事项会保存在此处，可在任意时间恢复或永久删除。'),
   ).toBeVisible();
 });
 
@@ -49,7 +49,7 @@ test('恢复单条 todo 后回到当前项目列表', async () => {
   await addTodo(win, '待恢复');
   const row = todoRow(win, '待恢复');
   await row.hover();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
+  await row.getByRole('button', { name: '归档', exact: true }).click();
 
   await openHistory(win);
   await win.getByRole('button', { name: '恢复' }).click();
@@ -65,7 +65,7 @@ test('永久删除单条后历史记录为空', async () => {
   await addTodo(win, '永久删除这条');
   const row = todoRow(win, '永久删除这条');
   await row.hover();
-  await row.getByRole('button', { name: '删除', exact: true }).click();
+  await row.getByRole('button', { name: '归档', exact: true }).click();
 
   await openHistory(win);
   // 行内悬浮「永久删除」按钮：先 hover 行再点
@@ -83,7 +83,7 @@ test('清空归档：二次确认后空状态', async () => {
     await addTodo(win, t);
     const row = todoRow(win, t);
     await row.hover();
-    await row.getByRole('button', { name: '删除', exact: true }).click();
+    await row.getByRole('button', { name: '归档', exact: true }).click();
   }
 
   await openHistory(win);
