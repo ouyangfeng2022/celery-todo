@@ -85,13 +85,13 @@ test('切换排序方式为"优先级"', async () => {
   await expect(win.getByLabel('排序方式')).toHaveValue('priority');
 });
 
-test('"清空已完成"按钮仅在有已完成时显示，点击后归档到历史记录', async () => {
-  await expect(win.getByRole('button', { name: '清空已完成' })).toBeVisible();
-  await win.getByRole('button', { name: '清空已完成' }).click();
+test('"归档已完成"按钮仅在有已完成时显示，点击后归档到历史记录', async () => {
+  await expect(win.getByRole('button', { name: '归档已完成' })).toBeVisible();
+  await win.getByRole('button', { name: '归档已完成' }).click();
   // 已完成的两条从"全部"视图消失
   await win.getByRole('button', { name: /全部/ }).click();
   await expect(win.getByText('已完成1', { exact: true })).toHaveCount(0);
   await expect(win.getByText('已完成2', { exact: true })).toHaveCount(0);
   // 按钮也随之消失
-  await expect(win.getByRole('button', { name: '清空已完成' })).toHaveCount(0);
+  await expect(win.getByRole('button', { name: '归档已完成' })).toHaveCount(0);
 });

@@ -1,13 +1,13 @@
 /**
  * @file FilterBar - 筛选与排序工具栏
- * @description 提供全部/进行中/已完成筛选、排序方式选择、清空已完成
+ * @description 提供全部/进行中/已完成筛选、排序方式选择、归档已完成
  */
 
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import type { FilterType, SortType } from '../../types';
 import { SORT_LABELS } from '../../types';
-import { TrashIcon } from '../common/Icons';
+import { ArchiveIcon } from '../common/Icons';
 
 interface FilterBarProps {
   filter: FilterType;
@@ -106,15 +106,15 @@ function FilterBarComponent({
           ))}
         </select>
 
-        {/* 清空已完成 */}
+        {/* 归档已完成 */}
         {completedCount > 0 && (
           <button
             onClick={onClearCompleted}
             className="btn-ghost text-[13px] flex items-center gap-1.5"
             style={{ color: 'var(--text-tertiary)' }}
           >
-            <TrashIcon size={13} />
-            清空已完成
+            <ArchiveIcon size={13} />
+            归档已完成
           </button>
         )}
       </div>

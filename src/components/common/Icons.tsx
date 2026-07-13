@@ -164,6 +164,14 @@ export const UploadIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+export const ArchiveIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <polyline points="21 8 21 21 3 21 3 8" />
+    <rect x="1" y="3" width="22" height="5" />
+    <line x1="10" y1="12" x2="14" y2="12" />
+  </BaseIcon>
+));
+
 export const RecycleIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <polyline points="3 6 5 6 21 6" />
