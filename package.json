@@ -24,6 +24,7 @@
     "electron:build": "bun run build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && electron-builder",
     "bump": "node scripts/bump-version.mjs",
     "extract-changelog": "node scripts/extract-changelog.mjs",
+    "check-repo": "node scripts/check-repo-health.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
