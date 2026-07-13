@@ -109,6 +109,7 @@ function ArchiveHistoryViewComponent({
                     className="btn-ghost p-1.5"
                     style={{ color: 'var(--accent)' }}
                     aria-label="恢复"
+                    title="恢复"
                   >
                     <RestoreIcon size={15} />
                   </button>
@@ -117,6 +118,7 @@ function ArchiveHistoryViewComponent({
                     className="btn-ghost p-1.5"
                     style={{ color: 'var(--danger)' }}
                     aria-label="永久删除"
+                    title="永久删除"
                   >
                     <TrashIcon size={15} />
                   </button>

@@ -80,7 +80,7 @@ function HistoryPanelComponent({
                   历史记录
                 </h2>
               </div>
-              <button onClick={onClose} className="btn-ghost p-1.5" aria-label="关闭">
+              <button onClick={onClose} className="btn-ghost p-1.5" aria-label="关闭" title="关闭">
                 <XIcon size={18} />
               </button>
             </div>
