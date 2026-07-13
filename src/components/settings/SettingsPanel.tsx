@@ -443,7 +443,7 @@ function SettingsPanelComponent({
                           backgroundColor: 'var(--bg-secondary)',
                         }}
                       >
-                        <DownloadIcon size={15} className="rotate-180" />
+                        <UploadIcon size={15} />
                         重置所有数据
                       </button>
                     </div>
