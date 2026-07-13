@@ -25,7 +25,9 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // 生产构建关闭 sourcemap：体积省 ~2.4MB，避免业务代码暴露。
+    // 需要调试时用 dev server 或单独开启。
+    sourcemap: false,
   },
   // 预构建 sql.js 浏览器 WASM 模块
   optimizeDeps: {
