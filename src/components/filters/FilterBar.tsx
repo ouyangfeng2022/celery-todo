@@ -72,10 +72,10 @@ function FilterBarComponent({
               <span className="relative z-10 flex items-center gap-1.5">
                 {option.label}
                 <span
-                  className="text-[11px] px-1.5 py-0.5 rounded-full tabular-nums font-medium"
+                  className="text-[13px] leading-none px-2 py-0.5 rounded-full tabular-nums font-bold min-w-[22px] text-center"
                   style={{
-                    backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
-                    color: isActive ? 'var(--accent)' : 'var(--text-tertiary)',
+                    backgroundColor: isActive ? 'var(--accent-subtle)' : 'var(--bg-hover)',
+                    color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                   }}
                 >
                   {count}

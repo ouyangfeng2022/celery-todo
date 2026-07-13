@@ -23,16 +23,25 @@ function StatsPanelComponent({ total, completed, active, overdue, percentage }: 
     <div className="px-1 py-2">
       {/* 进度条 - 主视觉 */}
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-sm flex items-baseline gap-1.5" style={{ color: 'var(--text-secondary)' }}>
           {active === 0 ? (
             <span style={{ color: 'var(--success)' }}>全部完成 · 享受此刻</span>
           ) : (
             <>
-              还有{' '}
-              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+              <span>还有</span>
+              <span
+                className="font-serif tabular-nums leading-none select-none"
+                style={{
+                  fontSize: '28px',
+                  fontWeight: 700,
+                  color: 'var(--accent)',
+                  letterSpacing: '-0.02em',
+                  fontFeatureSettings: '"lnum"',
+                }}
+              >
                 {active}
-              </span>{' '}
-              项待完成
+              </span>
+              <span>项待完成</span>
             </>
           )}
         </p>
