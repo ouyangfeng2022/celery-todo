@@ -64,6 +64,8 @@ interface SettingsPanelProps {
   updateError?: string;
   onCheckUpdates?: () => void;
   onDownloadUpdate?: () => void;
+  /** 更新已下载后触发重启安装（downloaded / dismissed 状态共用） */
+  onRestartToUpdate?: () => void;
 }
 
 function SettingsPanelComponent({
@@ -87,6 +89,7 @@ function SettingsPanelComponent({
   updateError = '',
   onCheckUpdates,
   onDownloadUpdate,
+  onRestartToUpdate,
 }: SettingsPanelProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
@@ -581,12 +584,13 @@ function SettingsPanelComponent({
                           disabled={
                             updateStatus === 'checking' ||
                             updateStatus === 'downloading' ||
-                            updateStatus === 'downloaded'
+                            updateStatus === 'downloaded' ||
+                            updateStatus === 'dismissed'
                           }
                           className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{
                             color:
-                              updateStatus === 'downloaded'
+                              updateStatus === 'downloaded' || updateStatus === 'dismissed'
                                 ? 'var(--success)'
                                 : updateStatus === 'available'
                                   ? 'var(--accent)'
@@ -603,7 +607,7 @@ function SettingsPanelComponent({
                             >
                               <DownloadIcon size={15} />
                             </motion.span>
-                          ) : updateStatus === 'downloaded' ? (
+                          ) : updateStatus === 'downloaded' || updateStatus === 'dismissed' ? (
                             <CheckIcon size={15} />
                           ) : (
                             <DownloadIcon size={15} />
@@ -612,7 +616,7 @@ function SettingsPanelComponent({
                             ? '正在检查…'
                             : updateStatus === 'downloading'
                               ? '下载中…'
-                              : updateStatus === 'downloaded'
+                              : updateStatus === 'downloaded' || updateStatus === 'dismissed'
                                 ? '更新已就绪'
                                 : '检查更新'}
                         </button>
@@ -715,13 +719,13 @@ function SettingsPanelComponent({
                               </motion.div>
                             );
                           }
-                          if (updateStatus === 'downloaded') {
+                          if (updateStatus === 'downloaded' || updateStatus === 'dismissed') {
                             return (
                               <motion.div
-                                key="downloaded"
+                                key={updateStatus}
                                 initial={{ opacity: 0, y: -4 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="mt-2 flex items-center gap-2 px-2.5 py-2 rounded-md"
+                                className="mt-2 flex items-start gap-2 px-2.5 py-2 rounded-md"
                                 style={{
                                   backgroundColor: 'var(--accent-subtle)',
                                   border: '1px solid var(--success)',
@@ -735,12 +739,27 @@ function SettingsPanelComponent({
                                 >
                                   <CheckIcon size={14} />
                                 </motion.span>
-                                <p
-                                  className="text-xs"
-                                  style={{ color: 'var(--success)', fontWeight: 500 }}
-                                >
-                                  更新已下载，关闭对话框后将自动提示重启安装。
-                                </p>
+                                <div className="flex-1 min-w-0">
+                                  <p
+                                    className="text-xs"
+                                    style={{ color: 'var(--success)', fontWeight: 500 }}
+                                  >
+                                    {updateStatus === 'dismissed'
+                                      ? '更新已就绪，可随时重启完成安装。'
+                                      : '更新已下载，可立即重启完成安装。'}
+                                  </p>
+                                  <button
+                                    onClick={onRestartToUpdate}
+                                    className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:opacity-90"
+                                    style={{
+                                      backgroundColor: 'var(--success)',
+                                      color: '#fff',
+                                    }}
+                                  >
+                                    <DownloadIcon size={15} />
+                                    立即重启安装
+                                  </button>
+                                </div>
                               </motion.div>
                             );
                           }
