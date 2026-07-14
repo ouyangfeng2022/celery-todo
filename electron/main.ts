@@ -135,6 +135,20 @@ function createMainWindow(): BrowserWindow {
     }
   });
 
+  // 右键菜单：Electron 默认不弹出原生右键菜单，需手动监听 context-menu 事件
+  // 选中文本时提供 复制/剪切/粘贴 等原生菜单项
+  window.webContents.on('context-menu', (_e, params) => {
+    const hasText = Boolean(params.selectionText && params.selectionText.trim().length > 0);
+    const template: Electron.MenuItemConstructorOptions[] = [
+      { role: 'copy', enabled: hasText },
+      { role: 'cut', enabled: hasText && params.isEditable },
+      { role: 'paste', enabled: params.isEditable && params.editFlags.canPaste },
+      { type: 'separator' },
+      { role: 'selectAll' },
+    ];
+    Menu.buildFromTemplate(template).popup({ window });
+  });
+
   return window;
 }
 

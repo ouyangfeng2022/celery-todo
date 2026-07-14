@@ -444,7 +444,7 @@ function SettingsPanelComponent({
                           backgroundColor: 'var(--bg-secondary)',
                         }}
                       >
-                        <UploadIcon size={15} />
+                        <RefreshIcon size={15} />
                         重置所有数据
                       </button>
                     </div>
