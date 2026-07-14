@@ -4,6 +4,7 @@ node_modules/
 # 构建产物
 dist/
 dist-electron/
+dist-cli/
 release/
 
 # TypeScript 增量编译缓存
@@ -12,6 +13,9 @@ release/
 # vite.config.ts 编译产物
 vite.config.js
 vite.config.d.ts
+
+# cli/vitest.config.ts 经 vitest 运行时编译的 CJS 产物
+cli/vitest.config.js
 
 # Claude Code skills
 skills/

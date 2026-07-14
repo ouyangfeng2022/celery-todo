@@ -107,8 +107,13 @@ bun run electron:build
 | `bun run lint` | ESLint 代码检查（`--max-warnings 0`） |
 | `bun run format` | Prettier 格式化代码 |
 | `bun run bump` | 发版：递增版本 + 写 CHANGELOG + 打 tag |
+| `bun run cli` | 直接运行 CLI（tsx 免编译，例 `bun run cli list`） |
+| `bun run build:cli` | 编译 CLI 到 `dist-cli/`（CommonJS） |
+| `bun run test:cli` | 运行 CLI 测试（独立 vitest，临时 DB） |
 
 E2E 测试脚本见 [测试策略](#-测试策略)。
+
+> 💡 命令行工具 `celery` 可在终端直接管理待办（先定位桌面应用数据库）。详见 [`cli/README.md`](./cli/README.md)。
 
 ---
 
