@@ -74,6 +74,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   deleteProject: (id) => {
     db.deleteProject(id);
+    // 清理该项目对应的 per-project settings 键，避免 settings 表长期堆积无主键。
+    // `filter.`/`sort.` 由 useFilter 写入；`celebrated.` 由 App.tsx 庆祝逻辑写入。
+    db.deleteSetting(`filter.${id}`);
+    db.deleteSetting(`sort.${id}`);
+    db.deleteSetting(`celebrated.${id}`);
     const projects = get().projects.filter((p) => p.id !== id);
     set({ projects });
     // 如果删除的是当前项目，回退到剩余项目的第一个（可能为空串，表示无激活项目）

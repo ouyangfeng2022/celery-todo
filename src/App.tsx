@@ -116,7 +116,7 @@ function App() {
 
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
-    useFilter(todos);
+    useFilter(todos, activeProjectId);
 
   // === 各项目未完成 todo 计数 ===
   // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，

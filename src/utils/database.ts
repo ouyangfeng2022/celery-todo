@@ -777,6 +777,11 @@ export function setSetting(key: string, value: string): void {
   execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
 }
 
+/** 删除设置值（不存在时静默忽略） */
+export function deleteSetting(key: string): void {
+  execute('DELETE FROM settings WHERE key = ?', [key]);
+}
+
 // ============================================
 // 通知数据访问
 // ============================================
