@@ -35,6 +35,7 @@ import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/commo
 import { Logo } from './components/common/Logo';
 
 import { useAutoUpdate } from './hooks/useAutoUpdate';
+import { useCliBridge } from './cli-bridge';
 
 import * as db from './utils/database';
 import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
@@ -113,6 +114,9 @@ function App() {
     quitAndInstall,
     dismissDownloaded,
   } = useAutoUpdate({ dbReady });
+
+  // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
+  useCliBridge();
 
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =

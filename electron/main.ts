@@ -8,6 +8,7 @@ import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
 import { initUpdater, registerUpdaterIpc } from './updater';
+import { initCliServer, shutdownCliServer } from './cli-server';
 import type { AppWithIsQuitting } from './types';
 
 // ============================================
@@ -221,6 +222,8 @@ if (!gotTheLock) {
     registerUpdaterIpc();
     // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
     if (mainWindow) initUpdater(mainWindow);
+    // CLI IPC 服务器：监听本地 socket/命名管道，接收 CLI 请求并转发给渲染进程
+    if (mainWindow) initCliServer(mainWindow);
 
     // macOS 激活应用
     app.on('activate', () => {
@@ -243,6 +246,7 @@ app.on('window-all-closed', () => {
 // 应用退出前清理
 app.on('before-quit', () => {
   (app as AppWithIsQuitting).isQuitting = true;
+  shutdownCliServer();
   tray?.destroy();
 });
 

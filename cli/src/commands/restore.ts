@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { restoreFromArchive, resolveDeletedTodo } from '../db';
+import { resolveDeletedTodo, restoreTodo } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, println } from '../render';
 
@@ -12,16 +12,18 @@ export function makeRestoreCommand(): Command {
     .description('从回收站恢复待办')
     .argument('<id...>', '归档项 ID（支持前缀，可多个）')
     .action(
-      withRuntime((ids: string[]) => {
+      withRuntime(async (ids: string[]) => {
         const rt = getRuntime();
         rt.guardWrite();
-        rt.openReadOnly();
+        await rt.openReadOnly();
         // 预解析，全部存在才执行
-        const items = ids.map((input) => resolveDeletedTodo(input));
-        rt.openReadWrite();
-        const now = new Date().toISOString();
+        const items = [];
+        for (const input of ids) {
+          items.push(await resolveDeletedTodo(input));
+        }
+        await rt.openReadWrite();
         for (const it of items) {
-          restoreFromArchive(it.id, now);
+          await restoreTodo(it.id);
         }
         println(color.green(`已恢复 ${items.length} 项`));
       }),

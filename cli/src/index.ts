@@ -13,7 +13,7 @@
 
 import { Command } from 'commander';
 import { APP_PRODUCT_NAME } from './storage';
-import { setGlobalOptions } from './context';
+import { ensureModeResolved, setGlobalOptions } from './context';
 import { makeAddCommand } from './commands/add';
 import { makeArchiveCommand } from './commands/archive';
 import { makeConfigCommand } from './commands/config';
@@ -40,21 +40,22 @@ program
 
 // 在任何 action 执行前，把顶层 program 的选项注入运行时上下文。
 // 这样各子命令通过 getRuntime() 即可拿到 --db/--force/--json。
-program.hook('preAction', (cmd) => {
+program.hook('preAction', async (cmd) => {
   // 沿父链向上找带这些 flag 的 program（子命令自身不重复声明）
   let node: Command | null = cmd;
   let db: string | undefined;
   let force: boolean | undefined;
   let json: boolean | undefined;
   while (node) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const o = (node as any).opts();
+    const o = node.opts();
     if (db === undefined && o.db !== undefined) db = o.db;
     if (force === undefined && o.force !== undefined) force = o.force;
     if (json === undefined && o.json !== undefined) json = o.json;
     node = node.parent;
   }
   setGlobalOptions({ db, force, json });
+  // 探测模式（socket/管道是否可连），缓存结果供所有命令复用
+  await ensureModeResolved();
 });
 
 // 注册所有子命令

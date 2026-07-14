@@ -59,6 +59,27 @@ const electronAPI = {
   /** 重置到默认存储位置（同时迁移数据） */
   storageResetToDefault: (): Promise<{ filePath: string }> => ipcRenderer.invoke('storage:reset-to-default'),
 
+  // ===== CLI IPC 桥接 =====
+
+  /**
+   * 监听来自 CLI 的请求（经主进程转发）。handler 在渲染进程上下文执行，
+   * 处理完后必须调用 cliRespond(id, result) 把结果回传给主进程，最终回到 CLI。
+   * 请求体：{ id: string; method: string; params?: unknown }
+   */
+  onCliRequest: (
+    callback: (req: { id: string; method: string; params?: unknown }) => void,
+  ): void => {
+    ipcRenderer.on('cli:request', (_event, req) => callback(req));
+  },
+
+  /**
+   * 把 CLI 请求的处理结果回传给主进程。无论成功或失败都要回包，
+   * 否则主进程的待决 Promise 会一直挂起直到超时。
+   * payload: { id: string; result?: unknown; error?: { message: string } }
+   */
+  cliRespond: (payload: { id: string; result?: unknown; error?: { message: string } }): Promise<void> =>
+    ipcRenderer.invoke('cli:response', payload),
+
   // ===== 自动升级 =====
 
   /** 检查更新（开发环境下会直接视为"无更新"） */

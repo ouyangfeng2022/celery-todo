@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { resolveTodo, softDeleteTodo } from '../db';
+import { deleteTodo, resolveTodo } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, confirm, println } from '../render';
 
@@ -21,9 +21,12 @@ export function makeDeleteCommand(): Command {
       withRuntime(async (ids: string[], opts: DeleteOpts) => {
         const rt = getRuntime();
         rt.guardWrite();
-        rt.openReadOnly();
-        // 先只读解析全部 id（输出预览）
-        const todos = ids.map((input) => resolveTodo(input));
+        await rt.openReadOnly();
+        // 先解析全部 id（输出预览）
+        const todos = [];
+        for (const input of ids) {
+          todos.push(await resolveTodo(input));
+        }
         println(color.yellow('将删除以下待办：'));
         for (const t of todos) {
           println(color.gray(`  • ${t.title}`));
@@ -36,11 +39,9 @@ export function makeDeleteCommand(): Command {
           }
         }
         // 切到读写模式执行
-        rt.openReadWrite();
-        const now = new Date().toISOString();
-        const expires = new Date(Date.now() + 30 * 86400000).toISOString();
+        await rt.openReadWrite();
         for (const todo of todos) {
-          softDeleteTodo(todo, now, expires);
+          await deleteTodo(todo.id);
         }
         println(
           color.green(

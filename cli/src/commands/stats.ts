@@ -9,11 +9,11 @@ import { color, printJson, println } from '../render';
 
 export function makeStatsCommand(): Command {
   return new Command('stats').description('统计概览：各项目待办/完成/逾期数量').action(
-    withRuntime(() => {
+    withRuntime(async () => {
       const rt = getRuntime();
-      rt.openReadOnly();
-      const projects = getAllProjects();
-      const todos = getAllTodos();
+      await rt.openReadOnly();
+      const projects = await getAllProjects();
+      const todos = await getAllTodos();
       const now = Date.now();
 
       const summary = projects.map((p) => {

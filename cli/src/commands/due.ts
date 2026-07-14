@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { resolveTodo, updateTodo } from '../db';
+import { resolveTodo, updateTodoFields } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, dueLabel, println } from '../render';
 import { parseDueDate } from './add';
@@ -14,18 +14,14 @@ export function makeDueCommand(): Command {
     .argument('<id>', '待办 ID（支持前缀）')
     .argument('[date]', 'YYYY-MM-DD 或 "clear"')
     .action(
-      withRuntime((idInput: string, dateInput: string | undefined) => {
+      withRuntime(async (idInput: string, dateInput: string | undefined) => {
         const rt = getRuntime();
         rt.guardWrite();
-        rt.openReadWrite();
-        const todo = resolveTodo(idInput);
+        await rt.openReadWrite();
+        const todo = await resolveTodo(idInput);
         // parseDueDate('clear') → undefined；无参时视为清除
         const dueDate = parseDueDate(dateInput === undefined ? 'clear' : dateInput);
-        updateTodo({
-          ...todo,
-          dueDate,
-          updatedAt: new Date().toISOString(),
-        });
+        await updateTodoFields(todo.id, { dueDate });
         if (dueDate) {
           println(
             color.green('已设置截止日期 ✓ ') + color.gray(`${todo.title} → ${dueLabel(dueDate)}`),

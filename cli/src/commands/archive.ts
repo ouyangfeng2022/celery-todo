@@ -3,7 +3,7 @@
  */
 
 import { Command } from 'commander';
-import { emptyArchive, getAllDeletedTodos, restoreFromArchive } from '../db';
+import { emptyArchive, getAllDeletedTodos, restoreTodo } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, confirm, printJson, println, renderArchiveTable } from '../render';
 
@@ -28,8 +28,8 @@ export function makeArchiveCommand(): Command {
         // --clean：永久清空
         if (opts.clean) {
           rt.guardWrite();
-          rt.openReadOnly();
-          const count = getAllDeletedTodos().length;
+          await rt.openReadOnly();
+          const count = (await getAllDeletedTodos()).length;
           if (count === 0) {
             println(color.gray('回收站为空'));
             return;
@@ -42,8 +42,8 @@ export function makeArchiveCommand(): Command {
               return;
             }
           }
-          rt.openReadWrite();
-          emptyArchive();
+          await rt.openReadWrite();
+          await emptyArchive('all');
           println(color.green('回收站已清空'));
           return;
         }
@@ -51,24 +51,23 @@ export function makeArchiveCommand(): Command {
         // --restore-all：批量恢复
         if (opts.restoreAll) {
           rt.guardWrite();
-          rt.openReadOnly();
-          const all = getAllDeletedTodos();
+          await rt.openReadOnly();
+          const all = await getAllDeletedTodos();
           if (all.length === 0) {
             println(color.gray('回收站为空'));
             return;
           }
-          rt.openReadWrite();
-          const now = new Date().toISOString();
+          await rt.openReadWrite();
           for (const it of all) {
-            restoreFromArchive(it.id, now);
+            await restoreTodo(it.id);
           }
           println(color.green(`已恢复 ${all.length} 项`));
           return;
         }
 
         // 默认：列出归档
-        rt.openReadOnly();
-        const items = getAllDeletedTodos();
+        await rt.openReadOnly();
+        const items = await getAllDeletedTodos();
         if (rt.json) {
           printJson(items);
           return;

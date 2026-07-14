@@ -12,11 +12,11 @@ export function makeShowCommand(): Command {
     .description('查看一条待办的详情')
     .argument('<id>', '待办 ID（支持前缀）')
     .action(
-      withRuntime((idInput: string) => {
+      withRuntime(async (idInput: string) => {
         const rt = getRuntime();
-        rt.openReadOnly();
-        const todo = resolveTodo(idInput);
-        const project = getProjectById(todo.projectId) ?? undefined;
+        await rt.openReadOnly();
+        const todo = await resolveTodo(idInput);
+        const project = (await getProjectById(todo.projectId)) ?? undefined;
         if (rt.json) {
           printJson(todo);
           return;

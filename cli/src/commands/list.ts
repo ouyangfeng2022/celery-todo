@@ -26,17 +26,17 @@ export function makeListCommand(): Command {
     .option('--active', '仅显示未完成')
     .option('--overdue', '仅显示已逾期且未完成')
     .action(
-      withRuntime((opts: ListOpts) => {
+      withRuntime(async (opts: ListOpts) => {
         const rt = getRuntime();
-        rt.openReadOnly();
-        const projects = getAllProjects();
+        await rt.openReadOnly();
+        const projects = await getAllProjects();
 
         let todos: Todo[];
         if (opts.project) {
-          const project = resolveProject(opts.project);
-          todos = getTodosByProject(project.id);
+          const project = await resolveProject(opts.project);
+          todos = await getTodosByProject(project.id);
         } else {
-          todos = getAllTodos();
+          todos = await getAllTodos();
         }
 
         if (opts.overdue) {

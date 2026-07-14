@@ -5,15 +5,20 @@
 /** Electron 预加载脚本暴露的 API */
 interface ElectronAPI {
   /** 设置开机自启 */
-  setAutoStart: (enabled: boolean) => void;
+  setAutoStart: (enabled: boolean) => Promise<void>;
   /** 获取窗口位置和大小 */
   getWindowBounds: () => Promise<{ x: number; y: number; width: number; height: number }>;
   /** 保存窗口位置和大小 */
-  saveWindowBounds: (bounds: { x: number; y: number; width: number; height: number }) => void;
+  saveWindowBounds: (bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => Promise<void>;
   /** 从托盘快速添加事项 */
   onQuickAdd: (callback: () => void) => void;
   /** 显示托盘通知 */
-  showTrayNotification: (title: string, body: string) => void;
+  showTrayNotification: (title: string, body: string) => Promise<void>;
   /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
   setTitleBarOverlay: (options: { color: string; symbolColor: string }) => Promise<void>;
   /** 平台信息 */
@@ -32,6 +37,15 @@ interface ElectronAPI {
   storageOpenInFolder: () => Promise<void>;
   /** 重置到默认存储位置 */
   storageResetToDefault: () => Promise<{ filePath: string }>;
+  // ===== CLI IPC 桥接 =====
+  /** 监听来自 CLI 的请求（主进程转发） */
+  onCliRequest: (callback: (req: { id: string; method: string; params?: unknown }) => void) => void;
+  /** 把 CLI 请求的处理结果回传给主进程 */
+  cliRespond: (payload: {
+    id: string;
+    result?: unknown;
+    error?: { message: string };
+  }) => Promise<void>;
   // ===== 自动升级 =====
   /** 检查更新（开发环境直接视为"无更新"） */
   updaterCheck: () => Promise<void>;

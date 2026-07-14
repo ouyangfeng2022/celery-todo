@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { resolveTodo, updateTodo } from '../db';
+import { resolveTodo, updateTodoFields } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, priorityLabel, println } from '../render';
-import { normalizePriority, type Priority } from '../types';
+import { type Priority } from '../types';
 
 export function makePriorityCommand(): Command {
   return new Command('priority')
@@ -14,20 +14,16 @@ export function makePriorityCommand(): Command {
     .argument('<id>', '待办 ID（支持前缀）')
     .argument('<level>', 'high | medium | low')
     .action(
-      withRuntime((idInput: string, level: string) => {
+      withRuntime(async (idInput: string, level: string) => {
         const rt = getRuntime();
         if (!['high', 'medium', 'low'].includes(level)) {
           throw new Error('优先级必须是 high / medium / low');
         }
         rt.guardWrite();
-        rt.openReadWrite();
-        const todo = resolveTodo(idInput);
-        const newPriority = normalizePriority(level) as Priority;
-        updateTodo({
-          ...todo,
-          priority: newPriority,
-          updatedAt: new Date().toISOString(),
-        });
+        await rt.openReadWrite();
+        const todo = await resolveTodo(idInput);
+        const newPriority = level as Priority;
+        await updateTodoFields(todo.id, { priority: newPriority });
         println(
           color.green('已更新优先级 ✓ ') +
             color.gray(`${todo.title} → ${priorityLabel(newPriority)}`),

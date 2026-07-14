@@ -1,19 +1,26 @@
 /**
- * @file 命令运行时：全局选项 + 数据库打开/守卫
- * @description index.ts 在 program 解析后调用 setGlobalOptions() 注入；
- *              各命令通过 getRuntime() 取用。这样避免每个子命令动作里
- *              都要穿透 commander 的 options 链。
+ * @file 命令运行时：全局选项 + 模式探测 + 数据库打开/守卫
+ * @description 双模式 CLI 的统一运行时。index.ts 在解析后调用 setGlobalOptions() 注入；
+ *              命令体通过 getRuntime() 取用。
+ *
+ * 模式（mode）：
+ *   - 'ipc'    GUI 运行中，经 socket/管道调用渲染进程 store action（实时刷新 GUI）
+ *   - 'direct' GUI 未运行，用 better-sqlite3 直连文件（离线回退）
+ *
+ * guardWrite 行为：
+ *   - 'ipc' 模式：CLI 不写文件（写入经 GUI），跳过进程检测
+ *   - 'direct' 模式：写文件前 best-effort 检测 GUI 进程，命中则阻止（--force 跳过）
  */
 
-import { closeDatabase, openDatabase } from './db';
+import { closeDatabase, openDatabase, resolveMode, type Mode } from './db';
 import { ensureSafeToWrite } from './process-check';
 import { resolveDbPath } from './storage';
 
 /** 全局选项（定义在顶层 program 上） */
 export interface GlobalOptions {
-  /** 显式 DB 路径覆盖 */
+  /** 显式 DB 路径覆盖（仅 direct 模式用） */
   db?: string;
-  /** 跳过进程检测 */
+  /** 跳过进程检测（仅 direct 模式用） */
   force?: boolean;
   /** 输出 JSON 而非表格 */
   json?: boolean;
@@ -26,31 +33,57 @@ export function setGlobalOptions(opts: GlobalOptions): void {
   current = opts;
 }
 
+/**
+ * 模式探测：在 preAction 钩子调用一次，缓存到 module 变量。
+ * 失败（socket 连不上）静默回退 'direct'，不报错。
+ */
+let resolvedMode: Mode | null = null;
+
+export async function ensureModeResolved(): Promise<Mode> {
+  if (!resolvedMode) {
+    resolvedMode = await resolveMode();
+  }
+  return resolvedMode;
+}
+
+export function getResolvedMode(): Mode | null {
+  return resolvedMode;
+}
+
 /** 运行时：每个命令体内使用 */
 export interface Runtime extends GlobalOptions {
-  /** 以读写模式打开数据库（写入命令用） */
-  openReadWrite(): string;
-  /** 以只读模式打开数据库（查询命令用） */
-  openReadOnly(): string;
-  /** 写前置守卫：检测 App 是否运行，已 --force 则跳过 */
-  guardWrite(): void;
+  /** 当前模式 */
+  mode: Mode;
+  /** 以读写模式打开数据库（direct 模式）；IPC 模式下空操作 */
+  openReadWrite: () => Promise<void>;
+  /** 以只读模式打开数据库（direct 模式）；IPC 模式下空操作 */
+  openReadOnly: () => Promise<void>;
+  /** 写前置守卫：direct 模式检测 GUI 进程，IPC 模式或 --force 跳过 */
+  guardWrite: () => void;
 }
 
 export function getRuntime(): Runtime {
+  if (!resolvedMode) {
+    throw new Error('运行时未初始化：请确保 index.ts 已注册 preAction 钩子调用 ensureModeResolved');
+  }
   const opts = current;
+  const mode = resolvedMode;
   return {
     ...opts,
-    openReadWrite: () => {
-      const p = resolveDbPath(opts.db);
-      openDatabase(p, false);
-      return p;
+    mode,
+    openReadWrite: async () => {
+      if (mode === 'ipc') return;
+      openDatabase(resolveDbPath(opts.db), false);
     },
-    openReadOnly: () => {
-      const p = resolveDbPath(opts.db);
-      openDatabase(p, true);
-      return p;
+    openReadOnly: async () => {
+      if (mode === 'ipc') return;
+      openDatabase(resolveDbPath(opts.db), true);
     },
-    guardWrite: () => ensureSafeToWrite(Boolean(opts.force)),
+    guardWrite: () => {
+      // IPC 模式：CLI 不写文件，无需检测
+      if (mode === 'ipc') return;
+      ensureSafeToWrite(Boolean(opts.force));
+    },
   };
 }
 

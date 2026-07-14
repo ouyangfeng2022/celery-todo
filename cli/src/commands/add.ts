@@ -3,10 +3,10 @@
  */
 
 import { Command } from 'commander';
-import { getAllProjects, generateId, insertTodo, nextSortOrder, resolveProject } from '../db';
+import { addTodo, getAllProjects, resolveProject } from '../db';
 import { getRuntime, withRuntime } from '../context';
-import { color, printJson, println, renderTodoDetail } from '../render';
-import { normalizePriority, type Todo } from '../types';
+import { color, printJson, println } from '../render';
+import { normalizePriority } from '../types';
 
 interface AddOpts {
   project?: string;
@@ -24,22 +24,21 @@ export function makeAddCommand(): Command {
     .option('--due <YYYY-MM-DD>', '截止日期（YYYY-MM-DD 或 ISO）')
     .option('--desc <text>', '描述')
     .action(
-      withRuntime((titleParts: string[], opts: AddOpts) => {
+      withRuntime(async (titleParts: string[], opts: AddOpts) => {
         const rt = getRuntime();
-        rt.guardWrite();
-        rt.openReadWrite();
+        await rt.openReadWrite();
 
         const title = titleParts.join(' ').trim();
         if (!title) throw new Error('标题不能为空');
 
         // 解析项目：未指定时，若仅有一个项目则默认归它，否则要求显式指定
-        const projects = getAllProjects();
+        const projects = await getAllProjects();
         if (projects.length === 0) {
           throw new Error('没有任何项目。请先在 App 中创建项目，或用 `celery projects --add` 新建');
         }
         let projectId: string;
         if (opts.project) {
-          projectId = resolveProject(opts.project).id;
+          projectId = (await resolveProject(opts.project)).id;
         } else if (projects.length === 1) {
           projectId = projects[0].id;
           println(color.gray(`（未指定项目，归入唯一项目「${projects[0].name}」）`));
@@ -50,32 +49,21 @@ export function makeAddCommand(): Command {
         }
 
         const dueDate = parseDueDate(opts.due);
-        const now = new Date().toISOString();
-        const todo: Todo = {
-          id: generateId(),
+        const result = await addTodo({
           projectId,
           title,
           description: opts.desc?.trim() || undefined,
-          completed: false,
           priority: normalizePriority(opts.priority),
           dueDate,
-          createdAt: now,
-          updatedAt: now,
-          order: nextSortOrder(projectId),
-        };
-        insertTodo(todo);
+        });
 
         if (rt.json) {
-          printJson(todo);
+          printJson({ id: result.id, projectId, title, dueDate });
           return;
         }
         println(color.green('已创建 ✓'));
-        println(
-          renderTodoDetail(
-            todo,
-            projects.find((p) => p.id === projectId),
-          ),
-        );
+        println(color.gray(`ID: ${result.id}`));
+        void projects; // 保持 projects 变量引用（详情展示已精简）
       }),
     );
 }

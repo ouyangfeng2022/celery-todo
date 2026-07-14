@@ -3,31 +3,25 @@
  */
 
 import { Command } from 'commander';
-import { resolveTodo, updateTodo } from '../db';
+import { resolveTodo, toggleTodo } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, println } from '../render';
 
 function apply(completed: boolean) {
-  return withRuntime((ids: string[]) => {
+  return withRuntime(async (ids: string[]) => {
     const rt = getRuntime();
     rt.guardWrite();
-    rt.openReadWrite();
-    const now = new Date().toISOString();
+    await rt.openReadWrite();
     let changed = 0;
     let skipped = 0;
     for (const input of ids) {
-      const todo = resolveTodo(input);
-      // 幂等：状态已符合时跳过
+      const todo = await resolveTodo(input);
+      // 幂等：状态已符合时跳过（toggleTodo 会翻转，所以这里先判断）
       if (todo.completed === completed) {
         skipped++;
         continue;
       }
-      updateTodo({
-        ...todo,
-        completed,
-        completedAt: completed ? now : undefined,
-        updatedAt: now,
-      });
+      await toggleTodo(todo.id);
       changed++;
     }
     const verb = completed ? '完成' : '取消完成';

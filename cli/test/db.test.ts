@@ -24,7 +24,7 @@ import {
   restoreFromArchive,
   softDeleteTodo,
   updateTodo,
-} from '../src/db';
+} from '../src/db-direct';
 import type { Todo } from '../src/types';
 import { createSeedDb, readAllRows, type SeedFixture } from './helpers';
 

@@ -3,14 +3,7 @@
  */
 
 import { Command } from 'commander';
-import {
-  deleteProject,
-  generateId,
-  getAllProjects,
-  getAllTodos,
-  insertProject,
-  resolveProject,
-} from '../db';
+import { createProject, deleteProject, getAllProjects, getAllTodos, resolveProject } from '../db';
 import { getRuntime, withRuntime } from '../context';
 import { color, confirm, printJson, println, renderProjectList } from '../render';
 
@@ -38,34 +31,27 @@ export function makeProjectsCommand(): Command {
         // 新增
         if (opts.add) {
           rt.guardWrite();
-          rt.openReadWrite();
+          await rt.openReadWrite();
           if (opts.color && !ALLOWED_COLORS.includes(opts.color)) {
             throw new Error(`颜色必须是 ${ALLOWED_COLORS.join('/')} 之一`);
           }
-          const now = new Date().toISOString();
-          const project = {
-            id: generateId(),
-            name: opts.add.trim(),
-            color: opts.color,
-            createdAt: now,
-            updatedAt: now,
-            // 不指定 order：insertProject 的 COALESCE 会自动追加到末尾
-          };
-          insertProject(project);
+          const result = await createProject(opts.add.trim(), opts.color);
           if (rt.json) {
-            printJson(project);
+            printJson({ id: result.id, name: opts.add.trim(), color: opts.color });
             return;
           }
-          println(color.green(`已创建项目「${project.name}」✓`));
+          println(
+            color.green(`已创建项目「${opts.add.trim()}」✓  `) + color.gray(result.id.slice(0, 8)),
+          );
           return;
         }
 
         // 删除
         if (opts.delete) {
           rt.guardWrite();
-          rt.openReadOnly();
-          const project = resolveProject(opts.delete);
-          const todos = getAllTodos().filter((t) => t.projectId === project.id);
+          await rt.openReadOnly();
+          const project = await resolveProject(opts.delete);
+          const todos = (await getAllTodos()).filter((t) => t.projectId === project.id);
           println(
             color.yellow(`将删除项目「${project.name}」及其 ${todos.length} 个待办（含归档）`),
           );
@@ -76,16 +62,16 @@ export function makeProjectsCommand(): Command {
               return;
             }
           }
-          rt.openReadWrite();
-          deleteProject(project.id);
+          await rt.openReadWrite();
+          await deleteProject(project.id);
           println(color.green('已删除项目 ✓'));
           return;
         }
 
         // 默认：列出
-        rt.openReadOnly();
-        const projects = getAllProjects();
-        const todos = getAllTodos();
+        await rt.openReadOnly();
+        const projects = await getAllProjects();
+        const todos = await getAllTodos();
         const counts = new Map<string, { total: number; active: number; completed: number }>();
         for (const p of projects) counts.set(p.id, { total: 0, active: 0, completed: 0 });
         for (const t of todos) {
