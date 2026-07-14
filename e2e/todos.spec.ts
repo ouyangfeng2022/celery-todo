@@ -38,8 +38,10 @@ test('Shift+Enter 批量添加多行 todo', async () => {
 });
 
 test('点击完成按钮标记完成，再次点击取消', async () => {
-  await addTodo(win, '完成的任务');
-  const row = todoRow(win, '完成的任务');
+  // 用两条 todo：完成其一不会触发「全部搞定」（需要全部完成才庆祝），
+  // 行内完成/取消按钮才始终可见，可验证 toggle 行为。
+  await addTodosBulk(win, ['任务A', '任务B']);
+  const row = todoRow(win, '任务A');
   await row.hover();
 
   // 未完成时按钮文案是"标记为已完成"
@@ -52,6 +54,24 @@ test('点击完成按钮标记完成，再次点击取消', async () => {
   // 再次点击取消
   await row.getByRole('button', { name: '标记为未完成' }).click();
   await expect(row.getByRole('button', { name: '标记为已完成' })).toBeVisible();
+});
+
+test('全部完成后显示「全部搞定」，点击对号归档回到空状态', async () => {
+  await addTodo(win, '唯一的任务');
+  const row = todoRow(win, '唯一的任务');
+  await row.hover();
+
+  // 完成最后一项 → 触发「全部搞定」庆祝卡片（行内 toggle 按钮随列表消失）
+  await row.getByRole('button', { name: '标记为已完成' }).click();
+
+  // 庆祝卡片标题可见，且不再叠加「从一件小事开始」空状态
+  await expect(win.getByRole('heading', { name: '全部搞定' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '从一件小事开始' })).toHaveCount(0);
+
+  // 点击对号徽标 → 归档已完成项 → 项目变空 → 自然回到空状态
+  await win.getByRole('button', { name: '归档已完成事项，返回首页' }).click();
+  await expect(win.getByRole('heading', { name: '从一件小事开始' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '全部搞定' })).toHaveCount(0);
 });
 
 test('双击标题进入编辑，修改后保存生效', async () => {

@@ -149,15 +149,31 @@ function App() {
   // === 全部完成庆祝 ===
   // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
   const allDone = stats.total > 0 && stats.active === 0;
-  // 仅在 false → true 的上升边沿撒花一次，避免每次重渲染重复触发；
-  // 切换项目/新增待办/取消勾选会让 allDone 回落 false，下次达成会再庆祝。
+  // 撒花触发条件（两层防重复）：
+  //   1) prevAllDoneRef —— 防同一 mount 周期内反复重渲染时重复触发（上升边沿）。
+  //   2) celebrated.<projectId> 持久化键（settings 表）—— 防重启/切走再切回时重复撒花。
+  //      每个项目撒花一次；点击对号归档（handleAllDoneRestore）会重置该键，
+  //      下次重新完成全部待办会再次庆祝。
   const prevAllDoneRef = useRef(false);
   useEffect(() => {
-    if (allDone && !prevAllDoneRef.current) {
+    const celebratedKey = activeProjectId ? `celebrated.${activeProjectId}` : '';
+    const alreadyCelebrated = !!celebratedKey && db.getSetting(celebratedKey) === 'true';
+    if (allDone && !prevAllDoneRef.current && !alreadyCelebrated) {
       fireCelebration();
+      if (celebratedKey) db.setSetting(celebratedKey, 'true');
     }
     prevAllDoneRef.current = allDone;
-  }, [allDone]);
+  }, [allDone, activeProjectId]);
+
+  // 点击「全部搞定」对号：归档本项目所有已完成项（进回收站），并重置该项目庆祝键，
+  // 让下次重新完成全部待办时再次撒花。归档后 todos 清空 → allDone 回落 false →
+  // 渲染切回 TodoList，因 filteredTodos 为空而自然显示「从一件小事开始」空状态。
+  const handleAllDoneRestore = useCallback(() => {
+    if (activeProjectId) {
+      db.setSetting(`celebrated.${activeProjectId}`, 'false');
+    }
+    clearCompleted();
+  }, [activeProjectId, clearCompleted]);
 
   // === 初始化 ===
   useEffect(() => {
@@ -496,22 +512,23 @@ function App() {
                 />
               )}
 
-              {/* 事项列表 */}
-              <TodoList
-                todos={filteredTodos}
-                selectedIds={selectedIds}
-                sort={sort}
-                onToggle={toggleTodo}
-                onEdit={updateTodo}
-                onDelete={deleteTodo}
-                onToggleSelect={toggleSelected}
-                onReorder={reorderTodos}
-                onSortChange={changeSort}
-                onSnapshotOrder={snapshotOrder}
-              />
-
-              {/* 全部完成庆祝卡片：该项目有待办且全部已完成时显示 */}
-              {allDone && <AllDoneCelebration completed={stats.completed} />}
+              {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
+              {allDone ? (
+                <AllDoneCelebration completed={stats.completed} onRestore={handleAllDoneRestore} />
+              ) : (
+                <TodoList
+                  todos={filteredTodos}
+                  selectedIds={selectedIds}
+                  sort={sort}
+                  onToggle={toggleTodo}
+                  onEdit={updateTodo}
+                  onDelete={deleteTodo}
+                  onToggleSelect={toggleSelected}
+                  onReorder={reorderTodos}
+                  onSortChange={changeSort}
+                  onSnapshotOrder={snapshotOrder}
+                />
+              )}
             </div>
           )}
         </main>
