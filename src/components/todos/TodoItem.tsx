@@ -7,7 +7,7 @@ import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'reac
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
-import { PRIORITY_LABELS, PRIORITY_COLORS } from '../../types';
+import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatDate, formatRelativeTime, isOverdue, isDueSoon } from '../../utils/helpers';
 import {
   CheckIcon,
@@ -22,9 +22,9 @@ import {
 
 /** 优先级对应的圆点颜色（用于动作栏的旗帜图标着色） */
 const PRIORITY_DOT_STYLE: Record<Priority, string> = {
-  high: 'var(--danger)',
-  medium: 'var(--warning)',
-  low: 'var(--text-quaternary)',
+  high: PRIORITY_SOLID.high,
+  medium: PRIORITY_SOLID.medium,
+  low: PRIORITY_SOLID.low,
 };
 
 export interface TodoItemProps {
@@ -93,9 +93,9 @@ function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Prio
       <DockButton label="设置优先级" onClick={() => setOpen((v) => !v)} active={open}>
         <span className="relative">
           <FlagIcon size={15} />
-          {/* 优先级颜色指示点：右下角 */}
+          {/* 优先级颜色指示点：右下角（放大到 8px 以提升辨识度） */}
           <span
-            className="absolute -bottom-0.5 -right-0.5 w-1.5 h-1.5 rounded-full border border-[var(--bg-tertiary)]"
+            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--bg-tertiary)]"
             style={{ backgroundColor: PRIORITY_DOT_STYLE[value] }}
           />
         </span>
@@ -357,8 +357,11 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
 
             {/* 元信息标签 */}
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              {/* 优先级 - 使用 PRIORITY_COLORS，但配色与品牌协调 */}
-              <span className={cn('claude-tag', PRIORITY_COLORS[todo.priority])}>
+              {/* 优先级 - 左侧 2px 色条 + 加粗字，三档区分明显（todo 领域惯例） */}
+              <span
+                className={cn('claude-tag font-semibold', PRIORITY_COLORS[todo.priority])}
+                style={{ borderLeft: `2px solid ${PRIORITY_SOLID[todo.priority]}` }}
+              >
                 {PRIORITY_LABELS[todo.priority]}
               </span>
 

@@ -6,7 +6,7 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
-import { PRIORITY_LABELS } from '../../types';
+import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { CheckIcon, ArchiveIcon, XIcon } from '../common/Icons';
 
 interface BatchToolbarProps {
@@ -113,9 +113,13 @@ function BatchToolbarComponent({
                           onBatchSetPriority(p);
                           setPriorityOpen(false);
                         }}
-                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] transition-colors"
+                        className="w-full flex items-center gap-2 text-left px-3 py-1.5 text-sm hover:bg-[var(--bg-hover)] transition-colors"
                         style={{ color: 'var(--text-secondary)' }}
                       >
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: PRIORITY_SOLID[p] }}
+                        />
                         {PRIORITY_LABELS[p]}
                       </button>
                     ))}

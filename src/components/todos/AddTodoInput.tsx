@@ -6,7 +6,7 @@
 import { memo, useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
-import { PRIORITY_LABELS } from '../../types';
+import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { PlusIcon } from '../common/Icons';
 import { hasBulkSeparator } from '../../utils/helpers';
 
@@ -176,20 +176,23 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                   className="flex gap-0.5 p-0.5 rounded-md"
                   style={{ backgroundColor: 'var(--bg-secondary)' }}
                 >
-                  {(['high', 'medium', 'low'] as Priority[]).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setPriority(p)}
-                      className="px-2 py-0.5 rounded text-xs font-medium transition-all"
-                      style={{
-                        backgroundColor: priority === p ? 'var(--bg-tertiary)' : 'transparent',
-                        color: priority === p ? 'var(--text-primary)' : 'var(--text-tertiary)',
-                        boxShadow: priority === p ? 'var(--shadow-xs)' : 'none',
-                      }}
-                    >
-                      {PRIORITY_LABELS[p]}
-                    </button>
-                  ))}
+                  {(['high', 'medium', 'low'] as Priority[]).map((p) => {
+                    const selected = priority === p;
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPriority(p)}
+                        className="px-2 py-0.5 rounded text-xs font-semibold transition-all"
+                        style={{
+                          backgroundColor: selected ? `${PRIORITY_SOLID[p]}1f` : 'transparent',
+                          color: selected ? PRIORITY_SOLID[p] : 'var(--text-tertiary)',
+                          boxShadow: selected ? `inset 0 0 0 1px ${PRIORITY_SOLID[p]}40` : 'none',
+                        }}
+                      >
+                        {PRIORITY_LABELS[p]}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

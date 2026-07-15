@@ -17,11 +17,18 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   low: '低',
 };
 
-/** 优先级颜色（Tailwind 类名） */
+/** 优先级颜色（Tailwind 类名）：浅底 + 彩色字，用于列表 tag 主体 */
 export const PRIORITY_COLORS: Record<Priority, string> = {
-  high: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  medium: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-  low: 'bg-sand-100 text-sand-600 dark:bg-sand-800/60 dark:text-sand-300',
+  high: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  low: 'bg-slate-100 text-slate-600 dark:bg-slate-700/40 dark:text-slate-300',
+};
+
+/** 优先级实色（用于左侧色条、圆点、分段控件选中态等需要饱和色的位置） */
+export const PRIORITY_SOLID: Record<Priority, string> = {
+  high: '#ef4444',
+  medium: '#f59e0b',
+  low: '#64748b',
 };
 
 // ============================================
