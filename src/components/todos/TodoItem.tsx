@@ -16,16 +16,8 @@ import {
   CalendarIcon,
   AlertIcon,
   GripIcon,
-  FlagIcon,
   PinIcon,
 } from '../common/Icons';
-
-/** 优先级对应的圆点颜色（用于动作栏的旗帜图标着色） */
-const PRIORITY_DOT_STYLE: Record<Priority, string> = {
-  high: PRIORITY_SOLID.high,
-  medium: PRIORITY_SOLID.medium,
-  low: PRIORITY_SOLID.low,
-};
 
 export interface TodoItemProps {
   todo: Todo;
@@ -70,10 +62,18 @@ function DockButton({
 }
 
 /**
- * 优先级选择弹出菜单：替代原生 <select>，保证与其它图标按钮在动作栏中尺寸一致。
- * 点击旗帜按钮展开三个选项，再次点击或点击外部收起。
+ * 优先级选择弹出菜单：以传入的触发器（元信息行的“高/中/低”标签）展开下拉。
+ * 点击触发器展开三个选项，再次点击或点击外部收起。
  */
-function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Priority) => void }) {
+function PriorityMenu({
+  value,
+  onChange,
+  trigger,
+}: {
+  value: Priority;
+  onChange: (p: Priority) => void;
+  trigger: React.ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -89,25 +89,27 @@ function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Prio
   }, [open]);
 
   return (
-    <div ref={wrapRef} className="relative">
-      <DockButton label="设置优先级" onClick={() => setOpen((v) => !v)} active={open}>
-        <span className="relative">
-          <FlagIcon size={15} />
-          {/* 优先级颜色指示点：右下角（放大到 8px 以提升辨识度） */}
-          <span
-            className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[var(--bg-tertiary)]"
-            style={{ backgroundColor: PRIORITY_DOT_STYLE[value] }}
-          />
-        </span>
-      </DockButton>
+    <div ref={wrapRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="设置优先级"
+        title="设置优先级"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {trigger}
+      </button>
       <AnimatePresence>
         {open && (
           <motion.div
+            role="menu"
+            aria-label="优先级"
             initial={{ opacity: 0, y: -4, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.97 }}
             transition={{ duration: 0.13 }}
-            className="absolute right-0 top-full mt-1 z-30 min-w-[7rem] py-1 rounded-md border"
+            className="absolute left-0 top-full mt-1 z-30 min-w-[7rem] py-1 rounded-md border"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               borderColor: 'var(--border-color)',
@@ -117,6 +119,8 @@ function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Prio
             {(['high', 'medium', 'low'] as Priority[]).map((p) => (
               <button
                 key={p}
+                role="menuitemradio"
+                aria-checked={p === value}
                 onClick={() => {
                   onChange(p);
                   setOpen(false);
@@ -131,10 +135,13 @@ function PriorityMenu({ value, onChange }: { value: Priority; onChange: (p: Prio
               >
                 <span
                   className="w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: PRIORITY_DOT_STYLE[p] }}
+                  style={{ backgroundColor: PRIORITY_SOLID[p] }}
                 />
-                <span className="flex-1">{PRIORITY_LABELS[p]}优先级</span>
-                {p === value && <CheckIcon size={12} className="text-[var(--accent)]" />}
+                <span className="flex-1">{PRIORITY_LABELS[p]}</span>
+                {/* 对勾位固定占位，避免选中态切换导致菜单宽度抖动 */}
+                <span className="w-3 h-3 flex items-center justify-center">
+                  {p === value && <CheckIcon size={12} className="text-[var(--accent)]" />}
+                </span>
               </button>
             ))}
           </motion.div>
@@ -357,13 +364,23 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
 
             {/* 元信息标签 */}
             <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              {/* 优先级 - 左侧 2px 色条 + 加粗字，三档区分明显（todo 领域惯例） */}
-              <span
-                className={cn('claude-tag font-semibold', PRIORITY_COLORS[todo.priority])}
-                style={{ borderLeft: `2px solid ${PRIORITY_SOLID[todo.priority]}` }}
-              >
-                {PRIORITY_LABELS[todo.priority]}
-              </span>
+              {/* 优先级 - 点击“高/中/低”标签展开菜单切换；左侧 2px 色条 + 加粗字 */}
+              <PriorityMenu
+                value={todo.priority}
+                onChange={(p) => onEdit(todo.id, { priority: p })}
+                trigger={
+                  <span
+                    className={cn(
+                      'claude-tag font-semibold cursor-pointer transition-opacity',
+                      PRIORITY_COLORS[todo.priority],
+                      'hover:opacity-80',
+                    )}
+                    style={{ borderLeft: `2px solid ${PRIORITY_SOLID[todo.priority]}` }}
+                  >
+                    {PRIORITY_LABELS[todo.priority]}
+                  </span>
+                }
+              />
 
               {/* 置顶标识 */}
               {todo.pinned && (
@@ -429,7 +446,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           >
             <PinIcon size={15} />
           </DockButton>
-          <PriorityMenu value={todo.priority} onChange={(p) => onEdit(todo.id, { priority: p })} />
           <DueDateButton
             value={todo.dueDate}
             onChange={(iso) => onEdit(todo.id, { dueDate: iso })}

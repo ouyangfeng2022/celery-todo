@@ -149,10 +149,12 @@ test('添加时设置截止日期，列表中显示日期标签', async () => {
 test('行内设置优先级菜单：从"中"切到"高"', async () => {
   await addTodo(win, '行内改优先级');
   const row = todoRow(win, '行内改优先级');
-  await row.hover();
-  // 点击"设置优先级"按钮触发下拉菜单
+  // 点击元信息行的“中”优先级标签触发下拉菜单（标签始终可见，无需 hover）
   await row.getByRole('button', { name: '设置优先级' }).click();
-  await win.getByText('高优先级', { exact: true }).click();
+  // 等待下拉动画完成，再点击菜单项（role=menuitemradio 避免与 AddTodoInput 的“高”按钮歧义）
+  const highItem = win.getByRole('menuitemradio', { name: '高' });
+  await highItem.waitFor({ state: 'visible' });
+  await highItem.click();
   // 列表内出现"高"标签
   await expect(row.locator('.claude-tag', { hasText: '高' })).toBeVisible();
 });
