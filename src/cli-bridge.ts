@@ -75,6 +75,12 @@ async function dispatch(method: string, params: unknown): Promise<unknown> {
     // ===== Todo 写入（经 store，触发重渲染）=====
     case 'addTodo': {
       const p = asRecord(params);
+      // 必须显式指定有效 projectId：addTodo 内部读 todo store 的 currentProjectId，
+      // 若桌面应用未激活任何项目，currentProjectId 为空串，会写入 project_id='' 的孤儿 todo。
+      // 此处前置拦截，避免再产生历史遗留那样的孤儿数据。
+      if (typeof p.projectId !== 'string' || !p.projectId) {
+        throw new Error('addTodo 需要 projectId：桌面应用当前未激活项目，请先指定 --project');
+      }
       const priority: Priority =
         p.priority === 'high' || p.priority === 'medium' || p.priority === 'low'
           ? p.priority
@@ -87,10 +93,8 @@ async function dispatch(method: string, params: unknown): Promise<unknown> {
       };
       // addTodo 读的是 todo store 的 currentProjectId（非 project store 的 activeProjectId）。
       // 故必须先 loadProject 让 todo store 切到目标项目，否则 addTodo 会用空/旧 projectId。
-      if (typeof p.projectId === 'string' && p.projectId) {
-        useTodoStore.getState().loadProject(p.projectId);
-        useProjectStore.getState().setActiveProject(p.projectId);
-      }
+      useTodoStore.getState().loadProject(p.projectId);
+      useProjectStore.getState().setActiveProject(p.projectId);
       useTodoStore.getState().addTodo(todoParams);
       return { ok: true };
     }

@@ -876,6 +876,8 @@ export function exportAllData(): import('../types').AppExportData {
         getSetting('autoUpdateEnabled') === null
           ? true
           : getSetting('autoUpdateEnabled') === 'true',
+      // 与 useSettingsStore.loadSettings 保持一致：缺失键回退空串
+      lastActiveProjectId: getSetting('lastActiveProjectId') ?? '',
     },
   };
 }

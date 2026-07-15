@@ -130,6 +130,8 @@ export interface AppSettings {
   focusMode: boolean;
   /** 是否在启动时自动检查更新（仅桌面端生效） */
   autoUpdateEnabled: boolean;
+  /** 上次激活的项目 ID（启动时恢复；空串表示无激活项目） */
+  lastActiveProjectId: string;
 }
 
 /** 默认设置 */
@@ -144,6 +146,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   focusMode: true,
   // 默认启用自动检查更新
   autoUpdateEnabled: true,
+  // 首次启动无历史激活项目，空串 → 显示「请创建项目」
+  lastActiveProjectId: '',
 };
 
 // ============================================

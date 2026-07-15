@@ -51,6 +51,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         storedAutoUpdate === null
           ? DEFAULT_SETTINGS.autoUpdateEnabled
           : storedAutoUpdate === 'true',
+      // lastActiveProjectId：字符串型，缺失键优雅回退空串（首次启动 / 老数据）
+      lastActiveProjectId:
+        db.getSetting('lastActiveProjectId') ?? DEFAULT_SETTINGS.lastActiveProjectId,
     };
     set(settings);
   },

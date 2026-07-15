@@ -186,15 +186,31 @@ function App() {
       useSettingsStore.getState().loadSettings();
       useProjectStore.getState().loadProjects();
       useNotificationStore.getState().loadNotifications();
+      // 启动时恢复上次激活的项目：
+      //   1) 读持久化的 lastActiveProjectId，若该项目仍在列表中 → 恢复；
+      //   2) 否则回退到列表第一个项目（若有）；
+      //   3) 列表为空时保持初始 ''，主区显示「请创建项目」。
+      // loadSettings 必须在 loadProjects 之前调用，这里才能拿到 lastActiveProjectId。
+      const lastId = useSettingsStore.getState().lastActiveProjectId;
+      const projects = useProjectStore.getState().projects;
+      if (lastId && projects.some((p) => p.id === lastId)) {
+        useProjectStore.getState().setActiveProject(lastId);
+      } else if (projects.length > 0) {
+        useProjectStore.getState().setActiveProject(projects[0].id);
+      }
       const activeId = useProjectStore.getState().activeProjectId;
       useTodoStore.getState().loadProject(activeId);
       setDbReady(true);
     })();
   }, []);
 
-  // === 项目切换时重新加载 ===
+  // === 项目切换时：持久化 + 重新加载 ===
+  // 持久化拆出真值判断之外：删完最后一个项目时 activeProjectId 归空串也要写盘，
+  // 否则下次启动会恢复一个已不存在的 id（虽有存在性校验兜底，但语义不清）。
   useEffect(() => {
-    if (dbReady && activeProjectId) {
+    if (!dbReady) return;
+    db.setSetting('lastActiveProjectId', activeProjectId);
+    if (activeProjectId) {
       useTodoStore.getState().loadProject(activeProjectId);
       clearSelection();
     }
