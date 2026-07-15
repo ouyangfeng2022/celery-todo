@@ -119,6 +119,14 @@ export const FlagIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+/** 置顶图钉图标 */
+export const PinIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <line x1="12" y1="17" x2="7" y2="22" />
+    <path d="M17 3l4 4-4 4-3-1-4 4-2-2 4-4-1-3 6-6z" />
+  </BaseIcon>
+));
+
 export const ClockIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <circle cx="12" cy="12" r="10" />

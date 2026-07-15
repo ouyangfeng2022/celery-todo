@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "projects": [
     {
@@ -31,7 +31,8 @@
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z",
       "completedAt": null,
-      "order": 0
+      "order": 0,
+      "pinned": true
     },
     {
       "id": "t2",
@@ -44,7 +45,8 @@
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z",
       "completedAt": null,
-      "order": 0
+      "order": 0,
+      "pinned": false
     }
   ],
   "deletedTodos": [],

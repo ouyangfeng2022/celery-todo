@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS todos (
   updated_at TEXT NOT NULL,
   completed_at TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  pinned INTEGER NOT NULL DEFAULT 0,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS deleted_todos (
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS deleted_todos (
   updated_at TEXT NOT NULL,
   completed_at TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  pinned INTEGER NOT NULL DEFAULT 0,
   deleted_at TEXT NOT NULL,
   expires_at TEXT NOT NULL
 );

@@ -116,28 +116,36 @@ export function useFilter(todos: Todo[], projectId: string) {
         break;
     }
 
-    // 3. 排序
-    switch (sort) {
-      case 'created-asc':
-        result.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-        break;
-      case 'created-desc':
-        result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-        break;
-      case 'due-date':
-        result.sort((a, b) => {
-          if (!a.dueDate) return 1;
-          if (!b.dueDate) return -1;
-          return a.dueDate.localeCompare(b.dueDate);
-        });
-        break;
-      case 'priority':
-        result.sort((a, b) => PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]);
-        break;
-      case 'manual':
-        result.sort((a, b) => a.order - b.order);
-        break;
-    }
+    // 3. 排序：置顶项始终浮在最前，置顶组与非置顶组各自再按当前排序规则排。
+    //    先按 pinned 分两组，对每组分别排序后拼接，保证置顶稳定居顶。
+    const applySort = (arr: Todo[]) => {
+      switch (sort) {
+        case 'created-asc':
+          arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+          break;
+        case 'created-desc':
+          arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+          break;
+        case 'due-date':
+          arr.sort((a, b) => {
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return a.dueDate.localeCompare(b.dueDate);
+          });
+          break;
+        case 'priority':
+          arr.sort((a, b) => PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]);
+          break;
+        case 'manual':
+          arr.sort((a, b) => a.order - b.order);
+          break;
+      }
+    };
+    const pinned = result.filter((t) => t.pinned);
+    const unpinned = result.filter((t) => !t.pinned);
+    applySort(pinned);
+    applySort(unpinned);
+    result = [...pinned, ...unpinned];
 
     return result;
   }, [todos, filter, sort, search]);

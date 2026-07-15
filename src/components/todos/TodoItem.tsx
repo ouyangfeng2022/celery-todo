@@ -17,6 +17,7 @@ import {
   AlertIcon,
   GripIcon,
   FlagIcon,
+  PinIcon,
 } from '../common/Icons';
 
 /** 优先级对应的圆点颜色（用于动作栏的旗帜图标着色） */
@@ -361,6 +362,17 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 {PRIORITY_LABELS[todo.priority]}
               </span>
 
+              {/* 置顶标识 */}
+              {todo.pinned && (
+                <span
+                  className="claude-tag inline-flex items-center gap-0.5"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  <PinIcon size={11} />
+                  置顶
+                </span>
+              )}
+
               {/* 截止日期 */}
               {todo.dueDate && (
                 <span
@@ -407,6 +419,13 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
               : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
           )}
         >
+          <DockButton
+            label={todo.pinned ? '取消置顶' : '置顶'}
+            active={todo.pinned}
+            onClick={() => onEdit(todo.id, { pinned: !todo.pinned })}
+          >
+            <PinIcon size={15} />
+          </DockButton>
           <PriorityMenu value={todo.priority} onChange={(p) => onEdit(todo.id, { priority: p })} />
           <DueDateButton
             value={todo.dueDate}

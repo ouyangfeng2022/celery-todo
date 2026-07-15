@@ -97,7 +97,7 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   const dl = await getLastDownload(win);
   expect(dl.filename).toBe('导出测试-export.json');
   const data = JSON.parse(decodeUtf8(dl.content));
-  expect(data.version).toBe(1);
+  expect(data.version).toBe(2);
   expect(data.project.name).toBe('导出测试');
   expect(data.todos.some((t: { title: string }) => t.title === '被导出任务')).toBe(true);
 });
@@ -133,7 +133,7 @@ test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
   expect(dl.content.charCodeAt(0)).toBe(0xef);
   // 解码后中文表头与任务行
   const text = decodeUtf8(dl.content);
-  expect(text).toContain('标题,描述,已完成,优先级,截止日期,创建时间,完成时间');
+  expect(text).toContain('标题,描述,已完成,优先级,截止日期,创建时间,完成时间,置顶');
   expect(text).toContain('CSV任务');
 });
 

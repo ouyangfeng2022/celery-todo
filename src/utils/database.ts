@@ -23,7 +23,7 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 /**
  * Schema 迁移表。
@@ -73,6 +73,16 @@ const MIGRATIONS: SchemaMigration[] = [
              WHERE p2.created_at < projects.created_at),
            0
          )`);
+    },
+  },
+  {
+    version: 3,
+    description: 'todos / deleted_todos 增加 pinned 列（置顶功能）',
+    run: (database) => {
+      // createTables() 已包含 pinned（最终 schema），新建/导入库可能已有该列；
+      // 仅老库升级时执行 ADD。addColumnIfMissing 内部幂等。
+      addColumnIfMissing(database, 'todos', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
+      addColumnIfMissing(database, 'deleted_todos', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
     },
   },
 ];
@@ -201,6 +211,7 @@ function createTables(database: Database): void {
       updated_at TEXT NOT NULL,
       completed_at TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
 
@@ -218,6 +229,7 @@ function createTables(database: Database): void {
       updated_at TEXT NOT NULL,
       completed_at TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
       deleted_at TEXT NOT NULL,
       expires_at TEXT NOT NULL
     );
@@ -573,6 +585,7 @@ interface TodoRow {
   updated_at: string;
   completed_at: string | null;
   sort_order: number;
+  pinned: number;
 }
 
 /** 将数据库行转换为 Todo 对象 */
@@ -589,13 +602,14 @@ function rowToTodo(row: TodoRow): import('../types').Todo {
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined,
     order: row.sort_order,
+    pinned: row.pinned === 1,
   };
 }
 
 /** 获取指定项目的所有 Todo */
 export function getTodosByProject(projectId: string): import('../types').Todo[] {
   return queryAll<TodoRow>(
-    'SELECT * FROM todos WHERE project_id = ? ORDER BY sort_order ASC, created_at ASC',
+    'SELECT * FROM todos WHERE project_id = ? ORDER BY pinned DESC, sort_order ASC, created_at ASC',
     [projectId],
   ).map(rowToTodo);
 }
@@ -614,8 +628,8 @@ export function getTodoById(id: string): import('../types').Todo | null {
 /** 插入 Todo */
 export function insertTodo(todo: import('../types').Todo): void {
   execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -628,6 +642,7 @@ export function insertTodo(todo: import('../types').Todo): void {
       todo.updatedAt,
       todo.completedAt ?? null,
       todo.order,
+      todo.pinned ? 1 : 0,
     ],
   );
 }
@@ -635,7 +650,7 @@ export function insertTodo(todo: import('../types').Todo): void {
 /** 更新 Todo */
 export function updateTodo(todo: import('../types').Todo): void {
   execute(
-    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ?, sort_order = ?
+    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
      WHERE id = ?`,
     [
       todo.title,
@@ -646,6 +661,7 @@ export function updateTodo(todo: import('../types').Todo): void {
       todo.updatedAt,
       todo.completedAt ?? null,
       todo.order,
+      todo.pinned ? 1 : 0,
       todo.id,
     ],
   );
@@ -700,8 +716,8 @@ export function getAllDeletedTodos(): import('../types').DeletedTodo[] {
 /** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -714,6 +730,7 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
       todo.updatedAt,
       todo.completedAt ?? null,
       todo.order,
+      todo.pinned ? 1 : 0,
       todo.deletedAt,
       todo.expiresAt,
     ],
@@ -729,10 +746,10 @@ export function permanentlyDeleteTodo(id: string): void {
 export function restoreTodo(id: string): void {
   const row = queryOne<DeletedTodoRow>('SELECT * FROM deleted_todos WHERE id = ?', [id]);
   if (!row) return;
-  // 重新插入到 todos 表
+  // 重新插入到 todos 表（保留归档时的 pinned 状态）
   execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.id,
       row.project_id,
@@ -745,6 +762,7 @@ export function restoreTodo(id: string): void {
       new Date().toISOString(),
       row.completed_at,
       row.sort_order,
+      row.pinned,
     ],
   );
   // 从归档删除
@@ -899,14 +917,14 @@ export async function importAllData(data: import('../types').AppExportData): Pro
     insertProject(project);
   }
 
-  // 插入 Todo
+  // 插入 Todo（旧导出文件可能缺 pinned，兜底为 false 避免写入 NOT NULL 列）
   for (const todo of data.todos) {
-    insertTodo(todo);
+    insertTodo({ ...todo, pinned: todo.pinned ?? false });
   }
 
-  // 插入归档（历史记录）
+  // 插入归档（历史记录；同样兜底 pinned）
   for (const deleted of data.deletedTodos) {
-    insertDeletedTodo(deleted);
+    insertDeletedTodo({ ...deleted, pinned: deleted.pinned ?? false });
   }
 
   await flushSave();

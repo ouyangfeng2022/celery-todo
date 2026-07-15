@@ -113,6 +113,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       order: maxOrder + 1,
+      pinned: false,
     };
     db.insertTodo(newTodo);
     set({ todos: [...todos, newTodo] });
@@ -138,6 +139,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         createdAt: now,
         updatedAt: now,
         order: ++baseOrder,
+        pinned: false,
       };
       db.insertTodo(todo);
       return todo;

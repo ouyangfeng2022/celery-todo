@@ -245,13 +245,13 @@ export async function createProject(win: Page, name: string): Promise<void> {
 
 /** 获取按视觉顺序排列的 todo 标题数组（TodoList 列表项顺序） */
 export async function getTodoTitlesInOrder(win: Page): Promise<string[]> {
-  // 遍历 TodoItem 根 div（class 含 "group"），取其中的标题 div（class="font-medium"）
+  // 遍历 TodoItem 根 div（class 含 "group"），取其中的标题 div（class="text-[15px]"）
   return win.evaluate(() => {
     const rows = Array.from(
       document.querySelectorAll('div.group.relative.flex.items-center.gap-3'),
     );
     return rows.map((row) => {
-      const titleDiv = row.querySelector('div.font-medium') as HTMLElement | null;
+      const titleDiv = row.querySelector('div.text-\\[15px\\]') as HTMLElement | null;
       return titleDiv?.textContent?.trim() ?? '';
     });
   });

@@ -78,6 +78,8 @@ export interface Todo {
   completedAt?: string;
   /** 手动排序的顺序值 */
   order: number;
+  /** 是否置顶（置顶项始终浮在列表最前） */
+  pinned: boolean;
 }
 
 /** 已归档事项（历史记录；删除 todo 后归档保留，仅在历史记录页手动删除） */

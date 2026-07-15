@@ -21,6 +21,8 @@ export interface Todo {
   completedAt?: string;
   /** 对应 DB 的 sort_order */
   order: number;
+  /** 是否置顶（置顶项始终浮在列表最前） */
+  pinned: boolean;
 }
 
 export interface DeletedTodo extends Todo {

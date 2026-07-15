@@ -250,6 +250,7 @@ export async function addTodo(params: {
     createdAt: now,
     updatedAt: now,
     order,
+    pinned: false,
   };
   direct.insertTodo(todo);
   return { id: todo.id };
@@ -263,7 +264,7 @@ export async function addTodo(params: {
 export async function updateTodoFields(
   id: string,
   updates: Partial<
-    Pick<Todo, 'title' | 'description' | 'completed' | 'priority' | 'dueDate' | 'completedAt'>
+    Pick<Todo, 'title' | 'description' | 'completed' | 'priority' | 'dueDate' | 'completedAt' | 'pinned'>
   >,
 ): Promise<void> {
   if (getMode() === 'ipc') {

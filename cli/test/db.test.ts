@@ -64,6 +64,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     const got = getTodoById(todo.id);
@@ -90,6 +91,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     updateTodo({ ...todo, title: '改后', completed: true, completedAt: now, priority: 'high' });
@@ -112,6 +114,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     // 完整
@@ -134,6 +137,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     const t2: Todo = {
       id: 'abc22222-0000-0000-0000-000000000000',
@@ -144,6 +148,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 2,
+      pinned: false,
     };
     insertTodo(t1);
     insertTodo(t2);
@@ -167,6 +172,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     softDeleteTodo(todo, now, now);
@@ -189,6 +195,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     softDeleteTodo(todo, now, now);
@@ -212,6 +219,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(todo);
     softDeleteTodo(todo, now, now);
@@ -230,6 +238,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(t);
     softDeleteTodo(t, now, now);
@@ -249,6 +258,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(t);
     softDeleteTodo(t, now, now);
@@ -299,6 +309,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     insertTodo(t);
     softDeleteTodo(t, now, now);
@@ -328,6 +339,7 @@ describe('db data layer', () => {
       createdAt: now,
       updatedAt: now,
       order: 1,
+      pinned: false,
     };
     expect(() => insertTodo(t)).toThrow();
   });

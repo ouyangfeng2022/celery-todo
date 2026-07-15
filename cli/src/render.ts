@@ -165,11 +165,15 @@ export function renderTodoTable(todos: Todo[], projects: Project[]): string {
     const icon = priorityIcon(todo.priority);
     let title = todo.title;
     if (todo.completed) title = c.strike(c.gray(title));
+    // 置顶项标题前加醒目前缀，便于在列表中识别
+    if (todo.pinned) title = c.yellow('★ ') + title;
     const proj = project ? c.cyan(project.name) : c.gray('?');
     const due = dueLabel(todo.dueDate);
     const id = c.gray(todo.id.slice(0, 8));
-    // 使用固定列宽 + 标题占位补齐，保证多行视觉对齐
-    const titleCol = padEnd(title, Math.max(displayWidth(todo.title), 1));
+    // 使用固定列宽 + 标题占位补齐，保证多行视觉对齐。
+    // 宽度按「原文 + 前缀」计算（不含 ANSI 色码），与已有 completed 着色处理一致。
+    const rawWidth = displayWidth(todo.title) + (todo.pinned ? 2 : 0);
+    const titleCol = padEnd(title, Math.max(rawWidth, 1));
     lines.push(
       [status, ` ${icon}`, ' ', titleCol, '  ', proj, due ? '  ' + due : '', '  ' + id].join(''),
     );
@@ -215,6 +219,7 @@ export function renderTodoDetail(todo: Todo, project?: Project): string {
   lines.push(`${c.gray('ID:')}        ${todo.id}`);
   lines.push(`${c.gray('状态:')}      ${todo.completed ? c.green('已完成') : '未完成'}`);
   lines.push(`${c.gray('优先级:')}    ${priorityLabel(todo.priority)}`);
+  lines.push(`${c.gray('置顶:')}      ${todo.pinned ? c.yellow('是') : '否'}`);
   if (project) lines.push(`${c.gray('项目:')}      ${project.name}`);
   if (todo.dueDate)
     lines.push(`${c.gray('截止:')}      ${todo.dueDate.slice(0, 10)} (${dueLabel(todo.dueDate)})`);

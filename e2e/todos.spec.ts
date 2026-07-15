@@ -2,7 +2,7 @@
  * Todo 核心 CRUD：添加、批量、完成、编辑、删除、优先级、截止日期、描述 Markdown。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, addTodosBulk, createProject, todoRow, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, addTodosBulk, createProject, todoRow, getTodoTitlesInOrder, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -173,4 +173,35 @@ test('右键标题弹出"复制标题"菜单，点击后可粘贴', async () => 
   await input.click();
   await win.keyboard.press('Control+v');
   await expect(input).toHaveValue(title);
+});
+
+test('置顶：点击置顶按钮后该项浮到列表最前，并显示"置顶"标签', async () => {
+  // 默认排序为「创建时间 ↓」（新在上）。先建 A 再建 B，B 自然在前；
+  // 对 A 置顶后期望 A 反超 B 排到第一位，验证置顶优先于默认排序。
+  await addTodo(win, '普通事项A');
+  await addTodo(win, '普通事项B');
+
+  const row = todoRow(win, '普通事项A');
+  await row.hover();
+  await row.getByRole('button', { name: '置顶' }).click();
+
+  // 行内出现"置顶"标签
+  await expect(row.locator('.claude-tag', { hasText: '置顶' })).toBeVisible();
+
+  // 置顶项应反超到列表第一位
+  const order = await getTodoTitlesInOrder(win);
+  expect(order[0]).toBe('普通事项A');
+});
+
+test('取消置顶：再次点击后"置顶"标签消失', async () => {
+  await addTodo(win, '可切换置顶');
+  const row = todoRow(win, '可切换置顶');
+  await row.hover();
+  await row.getByRole('button', { name: '置顶' }).click();
+  await expect(row.locator('.claude-tag', { hasText: '置顶' })).toBeVisible();
+
+  // 再点一次（此时按钮 aria-label 变为「取消置顶」）
+  await row.hover();
+  await row.getByRole('button', { name: '取消置顶' }).click();
+  await expect(row.locator('.claude-tag', { hasText: '置顶' })).toHaveCount(0);
 });
