@@ -260,6 +260,9 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
       className={cn(
         'group relative flex items-center gap-3 pl-3.5 pr-2 py-2.5 rounded-claude transition-colors',
         'hover:bg-[var(--bg-hover)]',
+        // 置顶行：加深底色 + 左侧珊瑚色条，强化置顶信号
+        todo.pinned &&
+          'bg-[var(--pinned-bg)] hover:bg-[var(--pinned-bg)] shadow-[inset_3px_0_var(--accent)]',
         isSelected && 'bg-[var(--accent-subtle)]',
       )}
       style={undefined}

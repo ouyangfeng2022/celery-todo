@@ -32,6 +32,7 @@
     --accent-hover: #c75d3d;
     --accent-subtle: #faf6f3; /* 极浅珊瑚底 */
     --accent-pressed: #a64a2f;
+    --pinned-bg: #f7e3d099; /* 置顶行底色：浅珊瑚 60% 透明，配左侧色条强化置顶信号 */
 
     /* 语义色 */
     --danger: #c0392b;
@@ -79,6 +80,7 @@
     --accent-hover: #e89a7d;
     --accent-subtle: #2a1f18;
     --accent-pressed: #f0a98c;
+    --pinned-bg: #3f241bcc; /* 置顶行底色：暗珊瑚 80% 透明，配左侧色条强化置顶信号 */
 
     --danger: #e57373;
     --danger-subtle: #3a1f1c;
