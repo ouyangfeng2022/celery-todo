@@ -328,10 +328,16 @@ function App() {
           <div className="flex items-center gap-2.5">
             <Logo size={32} />
             <h1
-              className="text-xl font-serif tracking-tight"
+              className="text-xl font-serif font-semibold leading-none whitespace-nowrap flex items-center gap-[0.35em]"
               style={{ color: 'var(--text-primary)' }}
             >
-              Celery Todo
+              <span className="italic">Celery</span>
+              <span
+                aria-hidden="true"
+                className="w-[5px] h-[5px] rounded-full flex-shrink-0"
+                style={{ backgroundColor: 'var(--accent)' }}
+              />
+              <span>Todo</span>
             </h1>
           </div>
           <motion.div

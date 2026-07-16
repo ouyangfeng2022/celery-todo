@@ -275,15 +275,25 @@ function ProjectSidebarComponent({
       className="w-64 flex-shrink-0 h-full flex flex-col border-r"
       style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
     >
-      {/* Logo / 标题 - 与右侧 Header 项目名保持同字号、同上下间距，视觉对齐 */}
+      {/* 品牌标识：编辑性排印 —— "Celery" 衬线斜体传达植物 / 文学性格；
+          中间珊瑚色圆点既是品牌色锚定、又呼应待办列表的 bullet 视觉，
+          形成品牌签名；"Todo" 衬线 roman 收尾。
+          文字全部 text-primary 保证对比度，仅圆点作为非文本色彩装饰。
+          单行、字号、py-3.5 与右侧 Header 项目名对齐。 */}
       <div className="px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <Logo size={36} className="flex-shrink-0" />
+          <Logo size={32} className="flex-shrink-0" />
           <h1
-            className="text-xl font-serif tracking-tight"
+            className="text-xl font-serif font-semibold leading-none whitespace-nowrap flex items-center gap-[0.35em]"
             style={{ color: 'var(--text-primary)' }}
           >
-            Celery Todo
+            <span className="italic">Celery</span>
+            <span
+              aria-hidden="true"
+              className="w-[5px] h-[5px] rounded-full flex-shrink-0"
+              style={{ backgroundColor: 'var(--accent)' }}
+            />
+            <span>Todo</span>
           </h1>
         </div>
       </div>
