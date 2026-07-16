@@ -523,6 +523,8 @@ function App() {
                   todos={filteredTodos}
                   selectedIds={selectedIds}
                   sort={sort}
+                  filter={filter}
+                  hasTodos={stats.total > 0}
                   onToggle={toggleTodo}
                   onEdit={updateTodo}
                   onDelete={deleteTodo}

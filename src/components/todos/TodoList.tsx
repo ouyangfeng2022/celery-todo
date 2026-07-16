@@ -25,12 +25,16 @@ import { CSS } from '@dnd-kit/utilities';
 import type { Todo } from '../../types';
 import { TodoItem } from './TodoItem';
 import { EmptyState } from '../common/EmptyState';
-import type { SortType } from '../../types';
+import type { SortType, FilterType } from '../../types';
 
 interface TodoListProps {
   todos: Todo[];
   selectedIds: Set<string>;
   sort: SortType;
+  /** 当前筛选类型，透传给 EmptyState 用于空态文案分支 */
+  filter?: FilterType;
+  /** 项目本身是否含有任何 todo，透传给 EmptyState 区分真空白与筛不到 */
+  hasTodos?: boolean;
   onToggle: (id: string) => void;
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
@@ -99,6 +103,8 @@ function TodoListComponent({
   todos,
   selectedIds,
   sort,
+  filter,
+  hasTodos,
   onToggle,
   onEdit,
   onDelete,
@@ -136,7 +142,7 @@ function TodoListComponent({
   );
 
   if (todos.length === 0) {
-    return <EmptyState />;
+    return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
 
   const listContent = (
