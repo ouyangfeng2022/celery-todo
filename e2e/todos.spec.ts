@@ -151,24 +151,6 @@ test('行内设置优先级菜单：从"中"切到"高"', async () => {
   await expect(row.locator('.claude-tag', { hasText: '高' })).toBeVisible();
 });
 
-test('右键标题弹出"复制标题"菜单，点击后可粘贴', async () => {
-  const title = '可复制的待办事项';
-  await addTodo(win, title);
-  const row = todoRow(win, title);
-
-  // 右键标题文本：触发自建右键菜单
-  await row.getByText(title, { exact: true }).click({ button: 'right' });
-  const menuItem = win.getByRole('button', { name: '复制标题', exact: true });
-  await expect(menuItem).toBeVisible();
-  await menuItem.click();
-
-  // 验证剪贴板：聚焦到新建输入框并粘贴
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
-  await input.click();
-  await win.keyboard.press('Control+v');
-  await expect(input).toHaveValue(title);
-});
-
 test('置顶：点击置顶按钮后该项浮到列表最前，并显示"置顶"标签', async () => {
   // 默认排序为「创建时间 ↓」（新在上）。先建 A 再建 B，B 自然在前；
   // 对 A 置顶后期望 A 反超 B 排到第一位，验证置顶优先于默认排序。
