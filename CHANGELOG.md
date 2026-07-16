@@ -8,6 +8,25 @@
 
 ## [Unreleased]
 
+## [v2.0.0] - 2026-07-16
+### ⚠️ Breaking
+- 移除事项的截止日期与到期提醒功能（v2.0.0）
+
+### Added
+- 为置顶待办项添加背景色与左侧色条
+- 添加置顶功能
+- 启动时恢复上次激活的项目
+- add dual-mode IPC architecture for CLI↔GUI real-time sync
+- 添加 celery 命令行，直接管理桌面应用 SQLite 数据库
+- add focus mode toggle setting and improve update status display
+
+### Fixed
+- 增强优先级在所有位置的视觉区分度
+- 修复归档按钮导致排序选择框位置偏移的问题
+- 排序方式与状态筛选按项目独立持久化
+- 完成全部待办后只显示「全部搞定」并支持点击对号归档
+- enable native context menu for text selection in todo content
+
 ## [v1.5.2] - 2026-07-13
 ### Added
 - use native context menu for text selection - remove custom copy menu
@@ -148,3 +167,5 @@
 [v1.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.1
 
 [v1.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.2
+
+[v2.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.0.0
