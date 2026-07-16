@@ -110,31 +110,6 @@ function statusMark(todo: Todo): string {
   return todo.completed ? c.green('✔') : c.gray('○');
 }
 
-/** 截止日期相对标签：逾期红、临近黄、未来灰、无空 */
-export function dueLabel(dueDate?: string): string {
-  if (!dueDate) return '';
-  const due = new Date(dueDate);
-  if (Number.isNaN(due.getTime())) return '';
-  const now = new Date();
-  const startOfDay = (d: Date) => {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-    return x.getTime();
-  };
-  const diff = Math.round((startOfDay(due) - startOfDay(now)) / 86400000);
-  let label: string;
-  if (diff === 0) label = '今天';
-  else if (diff === 1) label = '明天';
-  else if (diff === -1) label = '昨天';
-  else if (diff > 0 && diff < 7) label = `${diff}天后`;
-  else if (diff < 0 && diff > -7) label = `${Math.abs(diff)}天前`;
-  else {
-    label = due.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-  }
-  // 逾期染色（今天截止但未完成不算逾期）
-  return diff < 0 ? c.red(label) : diff <= 1 ? c.yellow(label) : c.gray(label);
-}
-
 /** 项目名查找辅助 */
 function buildProjectMap(projects: Project[]): Map<string, Project> {
   return new Map(projects.map((p) => [p.id, p]));
@@ -147,7 +122,7 @@ interface TodoRowView {
 
 /**
  * 渲染 todo 列表为对齐表格。
- * 列：状态 | 优先级 | 标题 | 项目 | 截止 | ID(短)
+ * 列：状态 | 优先级 | 标题 | 项目 | ID(短)
  * 已完成行标题加灰色 + 删除线；非 TTY 关闭颜色后仍可读。
  */
 export function renderTodoTable(todos: Todo[], projects: Project[]): string {
@@ -168,15 +143,12 @@ export function renderTodoTable(todos: Todo[], projects: Project[]): string {
     // 置顶项标题前加醒目前缀，便于在列表中识别
     if (todo.pinned) title = c.yellow('★ ') + title;
     const proj = project ? c.cyan(project.name) : c.gray('?');
-    const due = dueLabel(todo.dueDate);
     const id = c.gray(todo.id.slice(0, 8));
     // 使用固定列宽 + 标题占位补齐，保证多行视觉对齐。
     // 宽度按「原文 + 前缀」计算（不含 ANSI 色码），与已有 completed 着色处理一致。
     const rawWidth = displayWidth(todo.title) + (todo.pinned ? 2 : 0);
     const titleCol = padEnd(title, Math.max(rawWidth, 1));
-    lines.push(
-      [status, ` ${icon}`, ' ', titleCol, '  ', proj, due ? '  ' + due : '', '  ' + id].join(''),
-    );
+    lines.push([status, ` ${icon}`, ' ', titleCol, '  ', proj, '  ' + id].join(''));
   }
   return lines.join('\n');
 }
@@ -191,7 +163,6 @@ export function renderArchiveTable(items: DeletedTodo[]): string {
     const status = it.completed ? c.green('✔') : c.gray('○');
     let title = it.title;
     if (it.completed) title = c.strike(c.gray(title));
-    const due = dueLabel(it.dueDate);
     const id = c.gray(it.id.slice(0, 8));
     const deletedAt = c.gray(formatRelative(it.deletedAt));
     lines.push(
@@ -199,8 +170,6 @@ export function renderArchiveTable(items: DeletedTodo[]): string {
         status,
         ' ',
         padEnd(title, Math.max(displayWidth(it.title), 1)),
-        '  ',
-        due,
         '  ',
         deletedAt,
         '  ' + id,
@@ -221,8 +190,6 @@ export function renderTodoDetail(todo: Todo, project?: Project): string {
   lines.push(`${c.gray('优先级:')}    ${priorityLabel(todo.priority)}`);
   lines.push(`${c.gray('置顶:')}      ${todo.pinned ? c.yellow('是') : '否'}`);
   if (project) lines.push(`${c.gray('项目:')}      ${project.name}`);
-  if (todo.dueDate)
-    lines.push(`${c.gray('截止:')}      ${todo.dueDate.slice(0, 10)} (${dueLabel(todo.dueDate)})`);
   if (todo.description) lines.push(`${c.gray('描述:')}      ${todo.description}`);
   lines.push(`${c.gray('创建于:')}    ${formatAbsolute(todo.createdAt)}`);
   lines.push(`${c.gray('更新于:')}    ${formatAbsolute(todo.updatedAt)}`);

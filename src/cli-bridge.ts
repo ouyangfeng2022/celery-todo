@@ -89,7 +89,6 @@ async function dispatch(method: string, params: unknown): Promise<unknown> {
         title: asString(p.title),
         description: optionalString(p.description),
         priority,
-        dueDate: optionalString(p.dueDate),
       };
       // addTodo 读的是 todo store 的 currentProjectId（非 project store 的 activeProjectId）。
       // 故必须先 loadProject 让 todo store 切到目标项目，否则 addTodo 会用空/旧 projectId。
@@ -183,7 +182,7 @@ function normalizeTodoUpdates(
   updates: Record<string, unknown>,
 ): Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>> {
   const out: Record<string, unknown> = {};
-  const allowed = ['title', 'description', 'completed', 'priority', 'dueDate', 'completedAt'];
+  const allowed = ['title', 'description', 'completed', 'priority', 'completedAt'];
   for (const key of allowed) {
     if (key in updates) {
       const v = updates[key];
@@ -191,9 +190,6 @@ function normalizeTodoUpdates(
         out.completed = Boolean(v);
       } else if (key === 'priority') {
         out.priority = v === 'high' || v === 'medium' || v === 'low' ? v : 'medium';
-      } else if (v === null) {
-        // null 表示清除该字段（如 dueDate: null → 清除截止）
-        out[key] = undefined;
       } else if (typeof v === 'string') {
         out[key] = v || undefined;
       } else {

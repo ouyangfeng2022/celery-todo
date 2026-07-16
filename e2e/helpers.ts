@@ -147,7 +147,7 @@ export async function flushAndSave(win: Page): Promise<void> {
 export async function addTodo(
   win: Page,
   title: string,
-  options?: { priority?: '高' | '中' | '低'; dueDate?: string },
+  options?: { priority?: '高' | '中' | '低' },
 ): Promise<ReturnType<Page['getByText']>> {
   const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
   await input.click();
@@ -155,10 +155,6 @@ export async function addTodo(
   if (options?.priority) {
     // 优先级按钮在 AddTodoInput 的展开区，文案"高/中/低"
     await win.getByText(options.priority, { exact: true }).click();
-  }
-  if (options?.dueDate) {
-    // 展开区的 date input 无 aria-label，用 type 定位
-    await win.locator('input[type="date"]').first().fill(options.dueDate);
   }
 
   await input.fill(title);

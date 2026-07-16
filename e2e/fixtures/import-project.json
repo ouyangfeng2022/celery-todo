@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 3,
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "project": {
     "id": "single-proj",
@@ -17,7 +17,6 @@
       "description": null,
       "completed": false,
       "priority": "low",
-      "dueDate": null,
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z",
       "completedAt": null,

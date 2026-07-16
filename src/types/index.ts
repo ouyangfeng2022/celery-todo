@@ -39,13 +39,12 @@ export const PRIORITY_SOLID: Record<Priority, string> = {
 export type FilterType = 'all' | 'active' | 'completed';
 
 /** 排序方式 */
-export type SortType = 'created-asc' | 'created-desc' | 'due-date' | 'priority' | 'manual';
+export type SortType = 'created-asc' | 'created-desc' | 'priority' | 'manual';
 
 /** 排序选项标签 */
 export const SORT_LABELS: Record<SortType, string> = {
   'created-asc': '创建时间 ↑',
   'created-desc': '创建时间 ↓',
-  'due-date': '截止日期',
   priority: '优先级',
   manual: '手动排序',
 };
@@ -75,8 +74,6 @@ export interface Todo {
   completed: boolean;
   /** 优先级 */
   priority: Priority;
-  /** 截止日期（ISO 字符串） */
-  dueDate?: string;
   /** 创建时间（ISO 字符串） */
   createdAt: string;
   /** 更新时间（ISO 字符串） */
@@ -129,10 +126,6 @@ export interface AppSettings {
   autoStart: boolean;
   /** 是否最小化到托盘 */
   minimizeToTray: boolean;
-  /** 是否启用桌面通知 */
-  notificationsEnabled: boolean;
-  /** 通知提前时间（小时） */
-  notificationLeadHours: number;
   /** 数据版本号（用于迁移） */
   dataVersion: number;
   /** 是否处于专注模式（隐藏侧边栏 / 统计 / 筛选 / 添加框 / Header 图标） */
@@ -148,8 +141,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   autoStart: false,
   minimizeToTray: true,
-  notificationsEnabled: true,
-  notificationLeadHours: 24,
   dataVersion: 1,
   // 默认启动即进入专注模式
   focusMode: true,
@@ -186,21 +177,6 @@ export interface AppExportData {
   todos: Todo[];
   deletedTodos: DeletedTodo[];
   settings: AppSettings;
-}
-
-// ============================================
-// 通知
-// ============================================
-
-/** 应用内通知 */
-export interface AppNotification {
-  id: string;
-  type: 'reminder' | 'info' | 'warning';
-  title: string;
-  message: string;
-  todoId?: string;
-  createdAt: string;
-  read: boolean;
 }
 
 // ============================================

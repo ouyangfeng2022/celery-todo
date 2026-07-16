@@ -38,7 +38,6 @@ interface TodoRow {
   description: string | null;
   completed: number;
   priority: string;
-  due_date: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -74,7 +73,6 @@ function rowToTodo(row: TodoRow): Todo {
     description: row.description ?? undefined,
     completed: row.completed === 1,
     priority: row.priority as Priority,
-    dueDate: row.due_date ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined,
@@ -313,8 +311,8 @@ function escapeLikePrefix(input: string): string {
 
 export function insertTodo(todo: Todo): void {
   exec(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -322,7 +320,6 @@ export function insertTodo(todo: Todo): void {
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.createdAt,
       todo.updatedAt,
       todo.completedAt ?? null,
@@ -334,14 +331,13 @@ export function insertTodo(todo: Todo): void {
 
 export function updateTodo(todo: Todo): void {
   exec(
-    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
+    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
      WHERE id = ?`,
     [
       todo.title,
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.updatedAt,
       todo.completedAt ?? null,
       todo.order,
@@ -396,8 +392,8 @@ export function resolveDeletedTodo(input: string): DeletedTodo {
 
 export function insertDeletedTodo(todo: DeletedTodo): void {
   exec(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -405,7 +401,6 @@ export function insertDeletedTodo(todo: DeletedTodo): void {
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.createdAt,
       todo.updatedAt,
       todo.completedAt ?? null,
@@ -428,8 +423,8 @@ export function restoreFromArchive(id: string, now: string): void {
   const row = queryOne<DeletedTodoRow>('SELECT * FROM deleted_todos WHERE id = ?', [id]);
   if (!row) throw new Error(`归档中不存在 ${id}`);
   exec(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.id,
       row.project_id,
@@ -437,7 +432,6 @@ export function restoreFromArchive(id: string, now: string): void {
       row.description,
       row.completed,
       row.priority,
-      row.due_date,
       row.created_at,
       now,
       row.completed_at,

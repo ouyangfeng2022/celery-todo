@@ -1,6 +1,6 @@
 /**
  * @file TodoItem - 单个事项组件
- * @description 支持完成切换、编辑、归档、优先级、截止日期、Markdown 渲染
+ * @description 支持完成切换、编辑、归档、优先级、Markdown 渲染
  */
 
 import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'react';
@@ -8,16 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
-import { cn, formatDate, formatRelativeTime, isOverdue, isDueSoon } from '../../utils/helpers';
-import {
-  CheckIcon,
-  EditIcon,
-  ArchiveIcon,
-  CalendarIcon,
-  AlertIcon,
-  GripIcon,
-  PinIcon,
-} from '../common/Icons';
+import { cn, formatRelativeTime } from '../../utils/helpers';
+import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
 
 export interface TodoItemProps {
   todo: Todo;
@@ -151,45 +143,6 @@ function PriorityMenu({
   );
 }
 
-/**
- * 截止日期触发器：把原生 date input 折叠为日历图标按钮，点击展开。
- * 与动作栏其它按钮保持一致的 28×28 命中区。
- */
-function DueDateButton({ value, onChange }: { value?: string; onChange: (iso?: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const hasDate = Boolean(value);
-
-  return (
-    <label
-      className={cn(
-        'flex-shrink-0 relative w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
-        'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
-      )}
-      title="设置截止日期"
-    >
-      <CalendarIcon size={15} />
-      {hasDate && (
-        <span
-          className="absolute -bottom-0 -right-0 w-1.5 h-1.5 rounded-full border border-[var(--bg-tertiary)]"
-          style={{ backgroundColor: 'var(--accent)' }}
-        />
-      )}
-      {/* 可见但透明的原生日期控件：点击图标即触发原生选择器，且支持键盘 */}
-      <input
-        ref={inputRef}
-        type="date"
-        value={value?.split('T')[0] ?? ''}
-        onChange={(e) =>
-          onChange(e.target.value ? new Date(e.target.value).toISOString() : undefined)
-        }
-        tabIndex={-1}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        aria-label="设置截止日期"
-      />
-    </label>
-  );
-}
-
 const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent(
   { todo, isSelected, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
   ref,
@@ -246,9 +199,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     },
     [handleSaveEdit, handleCancelEdit],
   );
-
-  const overdue = !todo.completed && isOverdue(todo.dueDate);
-  const dueSoon = !todo.completed && isDueSoon(todo.dueDate);
 
   return (
     <motion.div
@@ -396,26 +346,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 </span>
               )}
 
-              {/* 截止日期 */}
-              {todo.dueDate && (
-                <span
-                  className="claude-tag gap-1"
-                  style={{
-                    backgroundColor: overdue ? 'var(--danger-subtle)' : 'transparent',
-                    color: overdue
-                      ? 'var(--danger)'
-                      : dueSoon
-                        ? 'var(--warning)'
-                        : 'var(--text-tertiary)',
-                    border: overdue || dueSoon ? 'none' : `1px solid var(--border-color)`,
-                  }}
-                >
-                  {overdue ? <AlertIcon size={11} /> : <CalendarIcon size={11} />}
-                  {formatDate(todo.dueDate)}
-                  {overdue && ' · 已过期'}
-                </span>
-              )}
-
               {/* 创建时间 */}
               <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
                 {formatRelativeTime(todo.createdAt)}创建
@@ -449,10 +379,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           >
             <PinIcon size={15} />
           </DockButton>
-          <DueDateButton
-            value={todo.dueDate}
-            onChange={(iso) => onEdit(todo.id, { dueDate: iso })}
-          />
           <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
           <DockButton label="编辑" onClick={handleStartEdit}>
             <EditIcon size={15} />

@@ -3,7 +3,7 @@
  * @description 使用 sql.js (WebAssembly SQLite) 实现数据持久化
  *              桌面端 (Electron) 通过 IPC 将数据库二进制保存为真实文件，
  *              存储位置可在设置中自定义；Web 端兜底使用 IndexedDB。
- *              数据结构包含: projects, todos, deleted_todos(归档), settings, notifications
+ *              数据结构包含: projects, todos, deleted_todos(归档), settings
  */
 
 // sql.js 浏览器 WASM 构建（Vite 预构建）
@@ -23,7 +23,7 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 /**
  * Schema 迁移表。
@@ -83,6 +83,17 @@ const MIGRATIONS: SchemaMigration[] = [
       // 仅老库升级时执行 ADD。addColumnIfMissing 内部幂等。
       addColumnIfMissing(database, 'todos', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
       addColumnIfMissing(database, 'deleted_todos', 'pinned', 'INTEGER NOT NULL DEFAULT 0');
+    },
+  },
+  {
+    version: 4,
+    description:
+      'todos / deleted_todos 移除 due_date 列（截止日期/提醒功能废弃；不可逆，配套 App v2.0.0 MAJOR bump）',
+    run: (database) => {
+      // createTables() 持有的是最终 schema（无 due_date），新建/导入库已无该列；
+      // 仅老库升级时需要重建表删除该列。rebuildTableWithoutDueDate 内部幂等。
+      rebuildTableWithoutDueDate(database, 'todos');
+      rebuildTableWithoutDueDate(database, 'deleted_todos');
     },
   },
 ];
@@ -206,7 +217,6 @@ function createTables(database: Database): void {
       description TEXT,
       completed INTEGER NOT NULL DEFAULT 0,
       priority TEXT NOT NULL DEFAULT 'medium',
-      due_date TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       completed_at TEXT,
@@ -224,7 +234,6 @@ function createTables(database: Database): void {
       description TEXT,
       completed INTEGER NOT NULL DEFAULT 0,
       priority TEXT NOT NULL DEFAULT 'medium',
-      due_date TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       completed_at TEXT,
@@ -238,17 +247,6 @@ function createTables(database: Database): void {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
-    );
-
-    -- 通知表
-    CREATE TABLE IF NOT EXISTS notifications (
-      id TEXT PRIMARY KEY,
-      type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      message TEXT NOT NULL,
-      todo_id TEXT,
-      created_at TEXT NOT NULL,
-      read INTEGER NOT NULL DEFAULT 0
     );
 
     -- 索引
@@ -290,6 +288,79 @@ function addColumnIfMissing(
 ): void {
   if (!hasColumn(database, table, column)) {
     database.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+/**
+ * 重建表以移除 due_date 列（v4 迁移专用）。
+ *
+ * SQLite（sql.js）不支持 `ALTER TABLE ... DROP COLUMN`，因此采用
+ * 标准 12 步表重建流程：建临时新表 → 复制保留列 → 删除旧表 → 重命名。
+ *
+ * 幂等性：若 due_date 列已不存在（新建库 / 已迁移库），直接返回。
+ *
+ * 注意两张表的列结构不同（deleted_todos 多 deleted_at / expires_at），
+ * 因此分别给出列清单，不强行抽象。
+ */
+function rebuildTableWithoutDueDate(database: Database, table: 'todos' | 'deleted_todos'): void {
+  if (!hasColumn(database, table, 'due_date')) return;
+
+  if (table === 'todos') {
+    // 列顺序与 createTables() 的 todos 定义保持一致（去掉 due_date）
+    database.run(`
+      CREATE TABLE todos_new (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        completed INTEGER NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL DEFAULT 'medium',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
+    `);
+    database.run(`
+      INSERT INTO todos_new (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+      SELECT id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned
+      FROM todos;
+    `);
+    database.run('DROP TABLE todos');
+    database.run('ALTER TABLE todos_new RENAME TO todos');
+    // 恢复索引（DROP TABLE 会带走索引）
+    database.run('CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id)');
+    database.run('CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed)');
+  } else {
+    // deleted_todos：多 deleted_at / expires_at 列
+    database.run(`
+      CREATE TABLE deleted_todos_new (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        completed INTEGER NOT NULL DEFAULT 0,
+        priority TEXT NOT NULL DEFAULT 'medium',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        completed_at TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        deleted_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL
+      );
+    `);
+    database.run(`
+      INSERT INTO deleted_todos_new (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
+      SELECT id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at
+      FROM deleted_todos;
+    `);
+    database.run('DROP TABLE deleted_todos');
+    database.run('ALTER TABLE deleted_todos_new RENAME TO deleted_todos');
+    database.run('CREATE INDEX IF NOT EXISTS idx_deleted_project ON deleted_todos(project_id)');
+    database.run('CREATE INDEX IF NOT EXISTS idx_deleted_expires ON deleted_todos(expires_at)');
   }
 }
 
@@ -580,7 +651,6 @@ interface TodoRow {
   description: string | null;
   completed: number;
   priority: string;
-  due_date: string | null;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -597,7 +667,6 @@ function rowToTodo(row: TodoRow): import('../types').Todo {
     description: row.description ?? undefined,
     completed: row.completed === 1,
     priority: row.priority as import('../types').Priority,
-    dueDate: row.due_date ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at ?? undefined,
@@ -628,8 +697,8 @@ export function getTodoById(id: string): import('../types').Todo | null {
 /** 插入 Todo */
 export function insertTodo(todo: import('../types').Todo): void {
   execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -637,7 +706,6 @@ export function insertTodo(todo: import('../types').Todo): void {
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.createdAt,
       todo.updatedAt,
       todo.completedAt ?? null,
@@ -650,14 +718,13 @@ export function insertTodo(todo: import('../types').Todo): void {
 /** 更新 Todo */
 export function updateTodo(todo: import('../types').Todo): void {
   execute(
-    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, due_date = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
+    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
      WHERE id = ?`,
     [
       todo.title,
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.updatedAt,
       todo.completedAt ?? null,
       todo.order,
@@ -716,8 +783,8 @@ export function getAllDeletedTodos(): import('../types').DeletedTodo[] {
 /** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -725,7 +792,6 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
       todo.description ?? null,
       todo.completed ? 1 : 0,
       todo.priority,
-      todo.dueDate ?? null,
       todo.createdAt,
       todo.updatedAt,
       todo.completedAt ?? null,
@@ -748,8 +814,8 @@ export function restoreTodo(id: string): void {
   if (!row) return;
   // 重新插入到 todos 表（保留归档时的 pinned 状态）
   execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, due_date, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.id,
       row.project_id,
@@ -757,7 +823,6 @@ export function restoreTodo(id: string): void {
       row.description,
       row.completed,
       row.priority,
-      row.due_date,
       row.created_at,
       new Date().toISOString(),
       row.completed_at,
@@ -801,73 +866,6 @@ export function deleteSetting(key: string): void {
 }
 
 // ============================================
-// 通知数据访问
-// ============================================
-
-/** 通知行 */
-interface NotificationRow {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  todo_id: string | null;
-  created_at: string;
-  read: number;
-}
-
-/** 将数据库行转换为通知对象 */
-function rowToNotification(row: NotificationRow): import('../types').AppNotification {
-  return {
-    id: row.id,
-    type: row.type as import('../types').AppNotification['type'],
-    title: row.title,
-    message: row.message,
-    todoId: row.todo_id ?? undefined,
-    createdAt: row.created_at,
-    read: row.read === 1,
-  };
-}
-
-/** 获取所有通知 */
-export function getAllNotifications(): import('../types').AppNotification[] {
-  return queryAll<NotificationRow>('SELECT * FROM notifications ORDER BY created_at DESC').map(
-    rowToNotification,
-  );
-}
-
-/** 插入通知 */
-export function insertNotification(notification: import('../types').AppNotification): void {
-  execute(
-    `INSERT INTO notifications (id, type, title, message, todo_id, created_at, read)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      notification.id,
-      notification.type,
-      notification.title,
-      notification.message,
-      notification.todoId ?? null,
-      notification.createdAt,
-      notification.read ? 1 : 0,
-    ],
-  );
-}
-
-/** 标记通知为已读 */
-export function markNotificationRead(id: string): void {
-  execute('UPDATE notifications SET read = 1 WHERE id = ?', [id]);
-}
-
-/** 删除通知 */
-export function deleteNotification(id: string): void {
-  execute('DELETE FROM notifications WHERE id = ?', [id]);
-}
-
-/** 清空所有通知 */
-export function clearAllNotifications(): void {
-  execute('DELETE FROM notifications', []);
-}
-
-// ============================================
 // 数据导出/导入
 // ============================================
 
@@ -885,8 +883,6 @@ export function exportAllData(): import('../types').AppExportData {
       theme: (getSetting('theme') as import('../types').ThemeMode) ?? 'system',
       autoStart: getSetting('autoStart') === 'true',
       minimizeToTray: getSetting('minimizeToTray') !== 'false',
-      notificationsEnabled: getSetting('notificationsEnabled') !== 'false',
-      notificationLeadHours: Number(getSetting('notificationLeadHours') ?? 24),
       dataVersion: DB_VERSION,
       // 与 useSettingsStore.loadSettings 保持一致：未持久化时回退默认值 true
       focusMode: getSetting('focusMode') === null ? true : getSetting('focusMode') === 'true',
@@ -910,7 +906,6 @@ export async function importAllData(data: import('../types').AppExportData): Pro
   db.run('DELETE FROM todos');
   db.run('DELETE FROM deleted_todos');
   db.run('DELETE FROM projects');
-  db.run('DELETE FROM notifications');
 
   // 插入项目
   for (const project of data.projects) {
@@ -938,7 +933,6 @@ export async function resetDatabase(): Promise<void> {
   db.run('DROP TABLE IF EXISTS todos');
   db.run('DROP TABLE IF EXISTS deleted_todos');
   db.run('DROP TABLE IF EXISTS projects');
-  db.run('DROP TABLE IF EXISTS notifications');
   createTables(db);
   await flushSave();
 }

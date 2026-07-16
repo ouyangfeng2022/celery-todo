@@ -3,7 +3,6 @@
  * @description 集中管理渲染进程的升级状态机：
  *              - 订阅主进程的升级事件
  *              - 启动时按设置自动检查（仅桌面端）
- *              - 发现新版本时推送应用内通知（铃铛）
  *              - 暴露 actions 供设置面板 / 全局对话框调用
  *
  *              状态迁移：
@@ -13,7 +12,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNotificationStore } from '../store/useNotificationStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import * as db from '../utils/database';
 
@@ -53,10 +51,7 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const autoUpdateEnabled = useSettingsStore((s) => s.autoUpdateEnabled);
-  const addNotification = useNotificationStore((s) => s.addNotification);
 
-  // 防止同一版本被重复推送通知
-  const notifiedVersionRef = useRef<string | null>(null);
   // 防止启动时重复检查（StrictMode 双重渲染 + 多次 dbReady 变化）
   const autoCheckedRef = useRef(false);
   // 是否在桌面端
@@ -105,18 +100,6 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       void offError;
     };
   }, [isDesktop]);
-
-  // ===== 发现新版本时推送应用内通知（去重） =====
-  useEffect(() => {
-    if (status !== 'available' || !updateInfo) return;
-    if (notifiedVersionRef.current === updateInfo.version) return;
-    notifiedVersionRef.current = updateInfo.version;
-    addNotification({
-      type: 'info',
-      title: '发现新版本',
-      message: `新版本 v${updateInfo.version} 已发布，可在设置中下载并安装。`,
-    });
-  }, [status, updateInfo, addNotification]);
 
   // ===== 启动后自动检查一次 =====
   useEffect(() => {

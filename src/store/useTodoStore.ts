@@ -30,14 +30,9 @@ interface TodoState {
 
   // === 增删改 ===
   /** 添加单个 Todo */
-  addTodo: (params: {
-    title: string;
-    description?: string;
-    priority?: Priority;
-    dueDate?: string;
-  }) => void;
+  addTodo: (params: { title: string; description?: string; priority?: Priority }) => void;
   /** 批量添加 Todo（用换行分隔的标题） */
-  addTodosBulk: (rawText: string, priority?: Priority, dueDate?: string) => void;
+  addTodosBulk: (rawText: string, priority?: Priority) => void;
   /** 更新 Todo */
   updateTodo: (id: string, updates: Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>>) => void;
   /** 删除 Todo（归档：移入历史记录，可恢复或永久删除） */
@@ -98,7 +93,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ todos, deletedTodos, loading: false, selectedIds: new Set() });
   },
 
-  addTodo: ({ title, description, priority = 'medium', dueDate }) => {
+  addTodo: ({ title, description, priority = 'medium' }) => {
     const { currentProjectId, todos } = get();
     const now = new Date().toISOString();
     const maxOrder = todos.length > 0 ? Math.max(...todos.map((t) => t.order)) : 0;
@@ -109,7 +104,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       description: description?.trim() || undefined,
       completed: false,
       priority,
-      dueDate: dueDate || undefined,
       createdAt: now,
       updatedAt: now,
       order: maxOrder + 1,
@@ -119,7 +113,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ todos: [...todos, newTodo] });
   },
 
-  addTodosBulk: (rawText, priority = 'medium', dueDate) => {
+  addTodosBulk: (rawText, priority = 'medium') => {
     const { currentProjectId, todos } = get();
     // 按换行分隔（逗号/分号视为普通字符）
     const titles = splitBulkTitles(rawText);
@@ -135,7 +129,6 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         title,
         completed: false,
         priority,
-        dueDate: dueDate || undefined,
         createdAt: now,
         updatedAt: now,
         order: ++baseOrder,

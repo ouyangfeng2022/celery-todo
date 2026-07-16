@@ -15,7 +15,7 @@ import type { Todo, ProjectExportData, AppExportData } from '../types';
  *   本常量只描述磁盘上 JSON 文件的兼容性。
  * - 详见仓库根目录 VERSIONING.md。
  */
-export const EXPORT_FORMAT_VERSION = 2;
+export const EXPORT_FORMAT_VERSION = 3;
 
 /**
  * 将 Todo 转换为 CSV 行
@@ -35,7 +35,6 @@ function todoToCsvRow(todo: Todo): string {
     escapeCsv(todo.description),
     todo.completed ? '是' : '否',
     todo.priority === 'high' ? '高' : todo.priority === 'medium' ? '中' : '低',
-    escapeCsv(todo.dueDate),
     escapeCsv(todo.createdAt),
     escapeCsv(todo.completedAt),
     todo.pinned ? '是' : '否',
@@ -46,7 +45,7 @@ function todoToCsvRow(todo: Todo): string {
  * 导出 Todo 列表为 CSV 字符串
  */
 export function todosToCsv(todos: Todo[]): string {
-  const header = '标题,描述,已完成,优先级,截止日期,创建时间,完成时间,置顶';
+  const header = '标题,描述,已完成,优先级,创建时间,完成时间,置顶';
   const rows = todos.map(todoToCsvRow);
   // 添加 BOM 以支持 Excel 正确识别 UTF-8
   return '\ufeff' + [header, ...rows].join('\n');

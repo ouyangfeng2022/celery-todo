@@ -9,7 +9,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
 import * as db from '../utils/database';
-import { isOverdue } from '../utils/helpers';
 
 /** URL 参数键（仅用于搜索词的 web 端 reload 恢复） */
 const SEARCH_PARAM = 'q';
@@ -20,13 +19,7 @@ const DEFAULT_SORT: SortType = 'created-desc';
 
 /** 合法值白名单（防 settings 表脏值导致 UI 异常） */
 const FILTER_VALUES: readonly FilterType[] = ['all', 'active', 'completed'];
-const SORT_VALUES: readonly SortType[] = [
-  'created-asc',
-  'created-desc',
-  'due-date',
-  'priority',
-  'manual',
-];
+const SORT_VALUES: readonly SortType[] = ['created-asc', 'created-desc', 'priority', 'manual'];
 
 /** per-project settings 命名键 */
 const filterKey = (pid: string) => `filter.${pid}`;
@@ -126,13 +119,6 @@ export function useFilter(todos: Todo[], projectId: string) {
         case 'created-desc':
           arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
           break;
-        case 'due-date':
-          arr.sort((a, b) => {
-            if (!a.dueDate) return 1;
-            if (!b.dueDate) return -1;
-            return a.dueDate.localeCompare(b.dueDate);
-          });
-          break;
         case 'priority':
           arr.sort((a, b) => PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]);
           break;
@@ -155,9 +141,8 @@ export function useFilter(todos: Todo[], projectId: string) {
     const total = todos.length;
     const completed = todos.filter((t) => t.completed).length;
     const active = total - completed;
-    const overdue = todos.filter((t) => !t.completed && isOverdue(t.dueDate)).length;
     const percentage = total === 0 ? 0 : Math.round((completed / total) * 100);
-    return { total, completed, active, overdue, percentage };
+    return { total, completed, active, percentage };
   }, [todos]);
 
   const changeFilter = useCallback(

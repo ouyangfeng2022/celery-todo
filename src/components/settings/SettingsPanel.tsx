@@ -240,49 +240,6 @@ function SettingsPanelComponent({
                   </label>
                 </section>
 
-                {/* 通知 */}
-                <section>
-                  <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
-                    通知
-                  </h3>
-                  <label className="flex items-center justify-between py-2 cursor-pointer">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      启用桌面通知
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={settings.notificationsEnabled}
-                      onChange={(e) => onUpdateSettings({ notificationsEnabled: e.target.checked })}
-                      className="w-4 h-4 accent-[var(--accent)]"
-                    />
-                  </label>
-                  {settings.notificationsEnabled && (
-                    <div className="flex items-center justify-between py-2">
-                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                        提前提醒时间
-                      </span>
-                      <select
-                        aria-label="提前提醒时间"
-                        value={settings.notificationLeadHours}
-                        onChange={(e) =>
-                          onUpdateSettings({ notificationLeadHours: Number(e.target.value) })
-                        }
-                        className="text-sm px-2 py-1 rounded-md border-none"
-                        style={{
-                          backgroundColor: 'var(--bg-secondary)',
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        <option value={1}>1 小时</option>
-                        <option value={6}>6 小时</option>
-                        <option value={12}>12 小时</option>
-                        <option value={24}>24 小时</option>
-                        <option value={48}>48 小时</option>
-                      </select>
-                    </div>
-                  )}
-                </section>
-
                 {/* Electron 设置（仅在桌面端显示） */}
                 {window.electronAPI && (
                   <section>

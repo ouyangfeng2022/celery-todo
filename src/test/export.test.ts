@@ -12,7 +12,6 @@ const mockTodo: Todo = {
   description: '这是一个测试',
   completed: false,
   priority: 'high',
-  dueDate: '2025-01-01T00:00:00.000Z',
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
   projectId: 'p1',
@@ -33,7 +32,7 @@ describe('export utils', () => {
     it('应生成包含 BOM 的 CSV', () => {
       const csv = todosToCsv([mockTodo]);
       expect(csv.startsWith('\ufeff')).toBe(true);
-      expect(csv).toContain('标题,描述,已完成,优先级,截止日期,创建时间,完成时间,置顶');
+      expect(csv).toContain('标题,描述,已完成,优先级,创建时间,完成时间,置顶');
       expect(csv).toContain('测试事项');
       expect(csv).toContain('高');
     });
@@ -57,7 +56,7 @@ describe('export utils', () => {
     it('应生成有效的 JSON', () => {
       const json = exportProjectAsJson(mockProject, [mockTodo], []);
       const data = JSON.parse(json);
-      expect(data.version).toBe(2);
+      expect(data.version).toBe(3);
       expect(data.project.id).toBe('p1');
       expect(data.todos).toHaveLength(1);
     });

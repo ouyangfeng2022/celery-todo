@@ -13,7 +13,6 @@ interface ListOpts {
   all?: boolean;
   done?: boolean;
   active?: boolean;
-  overdue?: boolean;
 }
 
 export function makeListCommand(): Command {
@@ -24,7 +23,6 @@ export function makeListCommand(): Command {
     .option('-a, --all', '显示包含已完成在内的全部待办')
     .option('--done', '仅显示已完成')
     .option('--active', '仅显示未完成')
-    .option('--overdue', '仅显示已逾期且未完成')
     .action(
       withRuntime(async (opts: ListOpts) => {
         const rt = getRuntime();
@@ -39,12 +37,7 @@ export function makeListCommand(): Command {
           todos = await getAllTodos();
         }
 
-        if (opts.overdue) {
-          const now = Date.now();
-          todos = todos.filter(
-            (t) => !t.completed && !!t.dueDate && new Date(t.dueDate).getTime() < now,
-          );
-        } else if (opts.done) {
+        if (opts.done) {
           todos = todos.filter((t) => t.completed);
         } else if (opts.active) {
           todos = todos.filter((t) => !t.completed);

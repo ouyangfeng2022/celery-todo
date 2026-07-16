@@ -60,7 +60,6 @@ describe('db data layer', () => {
       description: '描述',
       completed: false,
       priority: 'high',
-      dueDate: '2026-12-31T00:00:00.000Z',
       createdAt: now,
       updatedAt: now,
       order: 1,
@@ -76,7 +75,6 @@ describe('db data layer', () => {
       order: 1,
     });
     expect(got?.description).toBe('描述');
-    expect(got?.dueDate).toBe('2026-12-31T00:00:00.000Z');
   });
 
   it('updateTodo 写回字段后持久化', () => {

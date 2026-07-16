@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "exportedAt": "2025-01-01T00:00:00.000Z",
   "projects": [
     {
@@ -27,7 +27,6 @@
       "description": null,
       "completed": false,
       "priority": "high",
-      "dueDate": null,
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z",
       "completedAt": null,
@@ -41,7 +40,6 @@
       "description": null,
       "completed": false,
       "priority": "medium",
-      "dueDate": null,
       "createdAt": "2025-01-01T00:00:00.000Z",
       "updatedAt": "2025-01-01T00:00:00.000Z",
       "completedAt": null,

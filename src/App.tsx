@@ -10,13 +10,11 @@ import confetti from 'canvas-confetti';
 import { useTodoStore } from './store/useTodoStore';
 import { useProjectStore } from './store/useProjectStore';
 import { useSettingsStore } from './store/useSettingsStore';
-import { useNotificationStore } from './store/useNotificationStore';
 
 import { useTodos } from './hooks/useTodos';
 import { useProjects } from './hooks/useProjects';
 import { useFilter } from './hooks/useFilter';
 import { useTheme } from './hooks/useTheme';
-import { useNotification } from './hooks/useNotification';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { Header } from './components/layout/Header';
@@ -99,8 +97,6 @@ function App() {
     permanentlyDelete,
     emptyArchive,
   } = useTodos();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } =
-    useNotification();
 
   // === 自动升级（仅桌面端） ===
   const {
@@ -185,7 +181,6 @@ function App() {
       await db.initDatabase();
       useSettingsStore.getState().loadSettings();
       useProjectStore.getState().loadProjects();
-      useNotificationStore.getState().loadNotifications();
       // 启动时恢复上次激活的项目：
       //   1) 读持久化的 lastActiveProjectId，若该项目仍在列表中 → 恢复；
       //   2) 否则回退到列表第一个项目（若有）；
@@ -453,11 +448,6 @@ function App() {
             search={search}
             onSearchChange={changeSearch}
             searchFocusSignal={searchFocusSignal}
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAsRead={markAsRead}
-            onMarkAllAsRead={markAllAsRead}
-            onDeleteNotification={deleteNotification}
             focusMode={focusMode}
             onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}
           />
@@ -499,8 +489,8 @@ function App() {
               {/* 添加事项：完整模式始终可见；专注模式仅 Ctrl+N 唤出时可见 */}
               {(!focusMode || composerVisible) && (
                 <AddTodoInput
-                  onAdd={(title, priority, dueDate) => {
-                    addTodo(title, priority, dueDate);
+                  onAdd={(title, priority) => {
+                    addTodo(title, priority);
                     // 专注模式下添加完成后收起 composer
                     if (focusMode) setComposerVisible(false);
                   }}
@@ -514,7 +504,6 @@ function App() {
                   total={stats.total}
                   completed={stats.completed}
                   active={stats.active}
-                  overdue={stats.overdue}
                   percentage={stats.percentage}
                 />
               )}

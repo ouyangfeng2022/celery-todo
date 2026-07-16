@@ -14,8 +14,6 @@ export interface Todo {
   description?: string;
   completed: boolean;
   priority: Priority;
-  /** ISO 字符串，可能为空 */
-  dueDate?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;

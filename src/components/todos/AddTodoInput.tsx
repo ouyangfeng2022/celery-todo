@@ -1,6 +1,6 @@
 /**
  * @file AddTodoInput - 添加事项输入框
- * @description 支持回车添加、批量添加（Shift+Enter 换行分隔）、优先级和截止日期设置
+ * @description 支持回车添加、批量添加（Shift+Enter 换行分隔）、优先级设置
  */
 
 import { memo, useState, useCallback, useRef, useEffect } from 'react';
@@ -11,7 +11,7 @@ import { PlusIcon } from '../common/Icons';
 import { hasBulkSeparator } from '../../utils/helpers';
 
 interface AddTodoInputProps {
-  onAdd: (title: string, priority: Priority, dueDate?: string) => void;
+  onAdd: (title: string, priority: Priority, description?: string) => void;
   /** 是否聚焦（由快捷键触发） */
   focusSignal?: number;
 }
@@ -19,7 +19,6 @@ interface AddTodoInputProps {
 function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
-  const [dueDate, setDueDate] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -61,11 +60,10 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const handleAdd = useCallback(() => {
     const trimmed = title.trim();
     if (trimmed.length === 0) return;
-    onAdd(trimmed, priority, dueDate || undefined);
+    onAdd(trimmed, priority);
     setTitle('');
-    setDueDate('');
     // 保持优先级选择不变，方便连续添加
-  }, [title, priority, dueDate, onAdd]);
+  }, [title, priority, onAdd]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -194,23 +192,6 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                     );
                   })}
                 </div>
-              </div>
-
-              {/* 截止日期 */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  截止
-                </span>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="text-xs px-2 py-0.5 rounded-md border-none bg-transparent"
-                  style={{
-                    color: 'var(--text-secondary)',
-                    backgroundColor: 'var(--bg-secondary)',
-                  }}
-                />
               </div>
             </div>
           </motion.div>

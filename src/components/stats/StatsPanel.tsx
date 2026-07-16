@@ -11,11 +11,10 @@ interface StatsPanelProps {
   total: number;
   completed: number;
   active: number;
-  overdue: number;
   percentage: number;
 }
 
-function StatsPanelComponent({ total, completed, active, overdue, percentage }: StatsPanelProps) {
+function StatsPanelComponent({ total, completed, active, percentage }: StatsPanelProps) {
   // 空列表时不渲染，避免空的卡片占位
   if (total === 0) return null;
 
@@ -68,16 +67,6 @@ function StatsPanelComponent({ total, completed, active, overdue, percentage }: 
           transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
         />
       </div>
-
-      {overdue > 0 && (
-        <p className="text-xs mt-2 flex items-center gap-1" style={{ color: 'var(--danger)' }}>
-          <span
-            className="inline-block w-1 h-1 rounded-full"
-            style={{ backgroundColor: 'var(--danger)' }}
-          />
-          {overdue} 项已过期
-        </p>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /**
- * Todo 核心 CRUD：添加、批量、完成、编辑、删除、优先级、截止日期、描述 Markdown。
+ * Todo 核心 CRUD：添加、批量、完成、编辑、删除、优先级、描述 Markdown。
  */
 import { test, expect } from '@playwright/test';
 import { launchApp, closeApp, addTodo, addTodosBulk, createProject, todoRow, getTodoTitlesInOrder, type LaunchedApp } from './helpers';
@@ -136,14 +136,6 @@ test('添加时设置优先级（高），列表中显示"高"标签', async () 
   // claude-tag 文案"高"可见。注意"添加"区也有"高"按钮，但 AddTodoInput 提交后会收起
   // 故列表中应能找到 claude-tag"高"
   await expect(win.locator('.claude-tag', { hasText: '高' }).first()).toBeVisible();
-});
-
-test('添加时设置截止日期，列表中显示日期标签', async () => {
-  const future = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
-  await addTodo(win, '有截止的任务', { dueDate: future });
-  // 截止日期标签内含 CalendarIcon + 格式化日期文案；至少能找到该 todo 行里的 claude-tag
-  const row = todoRow(win, '有截止的任务');
-  await expect(row.locator('.claude-tag').first()).toBeVisible();
 });
 
 test('行内设置优先级菜单：从"中"切到"高"', async () => {

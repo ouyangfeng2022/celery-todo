@@ -26,7 +26,6 @@ CREATE TABLE IF NOT EXISTS todos (
   description TEXT,
   completed INTEGER NOT NULL DEFAULT 0,
   priority TEXT NOT NULL DEFAULT 'medium',
-  due_date TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   completed_at TEXT,
@@ -41,7 +40,6 @@ CREATE TABLE IF NOT EXISTS deleted_todos (
   description TEXT,
   completed INTEGER NOT NULL DEFAULT 0,
   priority TEXT NOT NULL DEFAULT 'medium',
-  due_date TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   completed_at TEXT,
@@ -53,15 +51,6 @@ CREATE TABLE IF NOT EXISTS deleted_todos (
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS notifications (
-  id TEXT PRIMARY KEY,
-  type TEXT NOT NULL,
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  todo_id TEXT,
-  created_at TEXT NOT NULL,
-  read INTEGER NOT NULL DEFAULT 0
 );
 `;
 

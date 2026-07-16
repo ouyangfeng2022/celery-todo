@@ -1,6 +1,6 @@
 /**
  * @file Settings Store - 应用设置状态管理
- * @description 管理主题、通知、Electron 设置等
+ * @description 管理主题、Electron 设置、自动更新等
  */
 
 import { create } from 'zustand';
@@ -17,10 +17,6 @@ interface SettingsState extends AppSettings {
   setAutoStart: (enabled: boolean) => void;
   /** 设置最小化到托盘 */
   setMinimizeToTray: (enabled: boolean) => void;
-  /** 设置通知开关 */
-  setNotificationsEnabled: (enabled: boolean) => void;
-  /** 设置通知提前时间 */
-  setNotificationLeadHours: (hours: number) => void;
   /** 设置专注模式开关 */
   setFocusMode: (enabled: boolean) => void;
   /** 设置自动检查更新开关 */
@@ -41,10 +37,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       theme: (db.getSetting('theme') as ThemeMode) ?? DEFAULT_SETTINGS.theme,
       autoStart: db.getSetting('autoStart') === 'true',
       minimizeToTray: db.getSetting('minimizeToTray') !== 'false',
-      notificationsEnabled: db.getSetting('notificationsEnabled') !== 'false',
-      notificationLeadHours: Number(
-        db.getSetting('notificationLeadHours') ?? DEFAULT_SETTINGS.notificationLeadHours,
-      ),
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: storedFocus === null ? DEFAULT_SETTINGS.focusMode : storedFocus === 'true',
       autoUpdateEnabled:
@@ -75,16 +67,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setMinimizeToTray: (minimizeToTray) => {
     db.setSetting('minimizeToTray', String(minimizeToTray));
     set({ minimizeToTray });
-  },
-
-  setNotificationsEnabled: (notificationsEnabled) => {
-    db.setSetting('notificationsEnabled', String(notificationsEnabled));
-    set({ notificationsEnabled });
-  },
-
-  setNotificationLeadHours: (notificationLeadHours) => {
-    db.setSetting('notificationLeadHours', String(notificationLeadHours));
-    set({ notificationLeadHours });
   },
 
   setFocusMode: (focusMode) => {

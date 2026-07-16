@@ -11,7 +11,6 @@ import { normalizePriority } from '../types';
 interface AddOpts {
   project?: string;
   priority?: string;
-  due?: string;
   desc?: string;
 }
 
@@ -21,7 +20,6 @@ export function makeAddCommand(): Command {
     .argument('<title...>', '待办标题（多段空格会拼为一行）')
     .option('-p, --project <name|id>', '目标项目（名称/id/前缀）')
     .option('--priority <level>', '优先级: high|medium|low（默认 medium）')
-    .option('--due <YYYY-MM-DD>', '截止日期（YYYY-MM-DD 或 ISO）')
     .option('--desc <text>', '描述')
     .action(
       withRuntime(async (titleParts: string[], opts: AddOpts) => {
@@ -48,17 +46,15 @@ export function makeAddCommand(): Command {
           );
         }
 
-        const dueDate = parseDueDate(opts.due);
         const result = await addTodo({
           projectId,
           title,
           description: opts.desc?.trim() || undefined,
           priority: normalizePriority(opts.priority),
-          dueDate,
         });
 
         if (rt.json) {
-          printJson({ id: result.id, projectId, title, dueDate });
+          printJson({ id: result.id, projectId, title });
           return;
         }
         println(color.green('已创建 ✓'));
@@ -66,21 +62,4 @@ export function makeAddCommand(): Command {
         void projects; // 保持 projects 变量引用（详情展示已精简）
       }),
     );
-}
-
-/** 解析 --due：接受 YYYY-MM-DD（按本地时区转为当日 00:00）或完整 ISO；非法时报错 */
-export function parseDueDate(input?: string): string | undefined {
-  if (!input) return undefined;
-  if (input === 'clear') return undefined;
-  // YYYY-MM-DD
-  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(input);
-  if (ymd) {
-    const [, y, m, d] = ymd;
-    return new Date(Number(y), Number(m) - 1, Number(d)).toISOString();
-  }
-  const parsed = new Date(input);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new Error(`无法解析日期 "${input}"，请使用 YYYY-MM-DD 或 ISO 格式`);
-  }
-  return parsed.toISOString();
 }

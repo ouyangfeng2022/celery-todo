@@ -12,12 +12,12 @@ export function useTodos() {
   const store = useTodoStore();
 
   const addTodo = useCallback(
-    (title: string, priority: Priority = 'medium', dueDate?: string, description?: string) => {
+    (title: string, priority: Priority = 'medium', description?: string) => {
       // 包含换行符时走批量添加（逗号/分号视为普通字符）
       if (hasBulkSeparator(title)) {
-        store.addTodosBulk(title, priority, dueDate);
+        store.addTodosBulk(title, priority);
       } else {
-        store.addTodo({ title, priority, dueDate, description });
+        store.addTodo({ title, priority, description });
       }
     },
     [store],

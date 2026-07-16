@@ -225,7 +225,6 @@ export async function addTodo(params: {
   title: string;
   description?: string;
   priority?: import('./types').Priority;
-  dueDate?: string;
 }): Promise<{ id: string }> {
   if (getMode() === 'ipc') {
     await ipcCall('addTodo', params);
@@ -246,7 +245,6 @@ export async function addTodo(params: {
     description: params.description?.trim() || undefined,
     completed: false,
     priority: params.priority ?? 'medium',
-    dueDate: params.dueDate,
     createdAt: now,
     updatedAt: now,
     order,
@@ -264,7 +262,7 @@ export async function addTodo(params: {
 export async function updateTodoFields(
   id: string,
   updates: Partial<
-    Pick<Todo, 'title' | 'description' | 'completed' | 'priority' | 'dueDate' | 'completedAt' | 'pinned'>
+    Pick<Todo, 'title' | 'description' | 'completed' | 'priority' | 'completedAt' | 'pinned'>
   >,
 ): Promise<void> {
   if (getMode() === 'ipc') {

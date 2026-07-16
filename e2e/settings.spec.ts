@@ -1,5 +1,5 @@
 /**
- * 设置：主题、专注模式、通知、数据管理重置。
+ * 设置：主题、专注模式、数据管理重置。
  */
 import { test, expect } from '@playwright/test';
 import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
@@ -46,21 +46,6 @@ test('勾选专注模式 checkbox，侧边栏立即隐藏', async () => {
   await expect(win.getByRole('complementary')).toHaveCount(0);
   // 设置面板本身仍可见（专注模式只隐藏主视图 chrome，不关设置）
   await expect(win.getByRole('heading', { name: '设置' })).toBeVisible();
-});
-
-test('切换"启用桌面通知"开关', async () => {
-  await openSettings(win);
-  const label = win.locator('label', { hasText: '启用桌面通知' }).first();
-  const checkbox = label.locator('input[type="checkbox"]');
-  const before = await checkbox.isChecked();
-  await checkbox.click();
-  await expect(checkbox).toBeChecked({ checked: !before });
-});
-
-test('"提前提醒时间"select 在启用通知时显示', async () => {
-  await openSettings(win);
-  // 默认 notificationsEnabled=true，select 应可见（用 aria-label 精确定位，不依赖页面其它 select）
-  await expect(win.getByLabel('提前提醒时间')).toBeVisible();
 });
 
 test('重置所有数据：二次确认后数据清空且项目列表为空', async () => {
