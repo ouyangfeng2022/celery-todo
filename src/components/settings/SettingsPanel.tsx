@@ -175,7 +175,7 @@ function SettingsPanelComponent({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Logo size={26} className="flex-shrink-0" />
                   <h2
-                    className="text-xl font-serif tracking-tight"
+                    className="text-xl font-serif font-semibold leading-none"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     设置

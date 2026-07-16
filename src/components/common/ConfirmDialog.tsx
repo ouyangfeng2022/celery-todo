@@ -95,7 +95,7 @@ function ConfirmDialogComponent({
               )}
               <div className="flex-1 min-w-0">
                 <h3
-                  className="text-lg font-serif mb-1.5 tracking-tight"
+                  className="text-lg font-serif font-semibold mb-1.5 leading-tight"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {title}
