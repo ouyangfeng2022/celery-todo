@@ -134,18 +134,6 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
   }, [projects, todos, deletedTodos, dbReady]);
 
-  // === 全部归档事项（历史记录页跨项目展示） ===
-  // useTodoStore.deletedTodos 只含当前项目；历史记录页需展示全部归档，故全量取。
-  // deletedTodos 作为 store 变更信号驱动重算（归档/恢复/清空都会改变其引用）。
-  const allArchivedTodos = useMemo<ReturnType<typeof db.getAllDeletedTodos>>(
-    () => {
-      if (!dbReady) return [];
-      return db.getAllDeletedTodos();
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- deletedTodos 作为变更信号
-    [deletedTodos, dbReady],
-  );
-
   // === 全部完成庆祝 ===
   // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
   const allDone = stats.total > 0 && stats.active === 0;
@@ -239,6 +227,7 @@ function App() {
     onEscape: () => {
       clearSelection();
       setSettingsOpen(false);
+      setHistoryOpen(false);
       // 专注模式下 Esc 收起临时唤出的 AddTodoInput
       if (focusMode) setComposerVisible(false);
     },
@@ -382,7 +371,6 @@ function App() {
               onReorder={reorderProjects}
               onOpenHistory={() => setHistoryOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
-              archiveCount={allArchivedTodos.length}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
@@ -581,7 +569,6 @@ function App() {
       {/* 历史记录弹窗（归档视图，与设置弹窗独立） */}
       <HistoryPanel
         open={historyOpen}
-        archivedTodos={allArchivedTodos}
         projects={projects}
         onRestoreTodo={restoreTodo}
         onPermanentDeleteTodo={permanentlyDelete}

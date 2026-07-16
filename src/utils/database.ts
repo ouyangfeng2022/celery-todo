@@ -780,6 +780,23 @@ export function getAllDeletedTodos(): import('../types').DeletedTodo[] {
   );
 }
 
+/** 获取归档总数（用于历史记录页标题显示，避免全量加载） */
+export function getArchivedTodosCount(): number {
+  const row = queryOne<{ count: number }>('SELECT COUNT(*) AS count FROM deleted_todos');
+  return row?.count ?? 0;
+}
+
+/** 分页获取归档事项（历史记录页无限滚动按需加载） */
+export function getDeletedTodosPaged(
+  limit: number,
+  offset: number,
+): import('../types').DeletedTodo[] {
+  return queryAll<DeletedTodoRow>(
+    'SELECT * FROM deleted_todos ORDER BY deleted_at DESC LIMIT ? OFFSET ?',
+    [limit, offset],
+  ).map(rowToDeletedTodo);
+}
+
 /** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(

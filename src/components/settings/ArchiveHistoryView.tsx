@@ -1,18 +1,28 @@
 /**
  * @file ArchiveHistoryView - 历史记录视图（HistoryPanel 弹窗的正文）
- * @description 展示全部归档事项（跨项目），支持恢复、永久删除、清空全部归档。
+ * @description 分页展示归档事项（跨项目），支持恢复、永久删除、清空全部归档。
  *              归档永久保留，不自动清除——唯一删除途径是本视图的手动操作。
+ *              无限滚动：滚动到列表底部附近时通过 IntersectionObserver 自动触发 onLoadMore。
+ *              数据所有权与分页状态由父组件 HistoryPanel 管理，本组件只负责渲染 + 触发加载。
  */
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeletedTodo, Project } from '../../types';
 import { formatRelativeTime } from '../../utils/helpers';
 import { RestoreIcon, TrashIcon, InboxIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ArchiveHistoryViewProps {
-  /** 全部归档事项（跨项目，已按归档时间倒序） */
-  archivedTodos: DeletedTodo[];
+  /** 当前已加载的归档事项（分页累加，非全量） */
+  items: DeletedTodo[];
+  /** 归档总数（跨项目，用于显示与 hasMore 判定） */
+  totalCount: number;
+  /** 是否还有更多可加载 */
+  hasMore: boolean;
+  /** 是否正在加载下一页（用于显示加载态、防重复触发） */
+  isLoadingMore: boolean;
+  /** 加载下一页（由父组件实现分页查询） */
+  onLoadMore: () => void;
   /** 全部项目（用于按 projectId 解析项目名标签） */
   projects: Project[];
   /** 恢复单条归档（重新回到其原属项目） */
@@ -24,7 +34,11 @@ interface ArchiveHistoryViewProps {
 }
 
 function ArchiveHistoryViewComponent({
-  archivedTodos,
+  items,
+  totalCount,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
   projects,
   onRestore,
   onPermanentDelete,
@@ -35,6 +49,32 @@ function ArchiveHistoryViewComponent({
   // projectId -> Project 查找表，用于每行显示项目名标签
   const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
 
+  // === 无限滚动：观察列表末尾哨兵，进入视口即触发加载 ===
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const loadingRef = useRef(isLoadingMore);
+  loadingRef.current = isLoadingMore;
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const root = scrollContainerRef.current;
+    if (!sentinel || !root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !loadingRef.current) {
+          onLoadMore();
+        }
+      },
+      // root 为列表滚动容器；rootMargin 提前 120px 触发，体验更顺滑
+      { root, rootMargin: '120px', threshold: 0 },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, onLoadMore]);
+
+  const isEmpty = items.length === 0 && totalCount === 0;
+
   return (
     <div className="space-y-3">
       {/* 标题行 + 清空按钮 */}
@@ -42,7 +82,7 @@ function ArchiveHistoryViewComponent({
         <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
           归档的事项会保存在此处，可在任意时间恢复或永久删除。
         </p>
-        {archivedTodos.length > 0 && (
+        {totalCount > 0 && (
           <button
             onClick={() => setConfirmEmpty(true)}
             className="btn-ghost text-sm flex-shrink-0"
@@ -54,7 +94,7 @@ function ArchiveHistoryViewComponent({
       </div>
 
       {/* 列表 */}
-      {archivedTodos.length === 0 ? (
+      {isEmpty ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div
             className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
@@ -70,8 +110,11 @@ function ArchiveHistoryViewComponent({
           </p>
         </div>
       ) : (
-        <div className="space-y-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1">
-          {archivedTodos.map((todo) => {
+        <div
+          ref={scrollContainerRef}
+          className="space-y-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1"
+        >
+          {items.map((todo) => {
             const project = projectNameById.get(todo.projectId);
             return (
               <div
@@ -126,6 +169,29 @@ function ArchiveHistoryViewComponent({
               </div>
             );
           })}
+
+          {/* 哨兵 + 加载态：始终渲染哨兵供 Observer 观察加载更多 */}
+          {hasMore && (
+            <div ref={sentinelRef} className="py-3 text-center">
+              {isLoadingMore ? (
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  加载中…
+                </span>
+              ) : (
+                // 占位高度，确保哨兵可被 rootMargin 命中
+                <span className="block h-4" />
+              )}
+            </div>
+          )}
+
+          {/* 兜底：异常情况下 items < totalCount 且无 hasMore（不应出现，仅作容错提示） */}
+          {!hasMore && items.length < totalCount && (
+            <div className="py-3 text-center">
+              <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                已显示 {items.length} / 共 {totalCount} 条
+              </span>
+            </div>
+          )}
         </div>
       )}
 

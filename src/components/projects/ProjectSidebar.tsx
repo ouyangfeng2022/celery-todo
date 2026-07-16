@@ -47,7 +47,6 @@ interface ProjectSidebarProps {
   onReorder: (sourceId: string, targetId: string) => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
-  archiveCount: number;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -198,7 +197,6 @@ function ProjectSidebarComponent({
   onReorder,
   onOpenHistory,
   onOpenSettings,
-  archiveCount,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -409,14 +407,6 @@ function ProjectSidebarComponent({
         >
           <InboxIcon size={15} />
           <span className="flex-1 text-left">历史记录</span>
-          {archiveCount > 0 && (
-            <span
-              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center"
-              style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
-            >
-              {archiveCount}
-            </span>
-          )}
         </button>
         <button
           onClick={onOpenSettings}
