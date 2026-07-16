@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.1.0] - 2026-07-16
+### Added
+- 历史记录数量移至弹窗标题旁，归档列表改为无限滚动分页加载
+
 ## [v2.0.0] - 2026-07-16
 ### ⚠️ Breaking
 - 移除事项的截止日期与到期提醒功能（v2.0.0）
@@ -169,3 +173,5 @@
 [v1.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.2
 
 [v2.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.0.0
+
+[v2.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.1.0
