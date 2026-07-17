@@ -466,10 +466,10 @@ function App() {
           </>
         )}
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-10">
+        <main className="flex-1 overflow-y-auto">
           {projects.length === 0 ? (
             // 无项目：引导创建第一个项目（优先于专注模式判断）
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
               <NoProjectsState
                 onCreate={() => {
                   // 专注模式下侧边栏被隐藏，先退出专注以露出新建输入框
@@ -479,61 +479,98 @@ function App() {
               />
             </div>
           ) : (
-            <div className={cn('mx-auto space-y-5', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
-              {/* 添加事项：完整模式始终可见；专注模式仅 Ctrl+N 唤出时可见 */}
+            <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
+              {/*
+                添加事项吸顶（sticky top-0）：列表过长向下滚动时输入框不再被推出视野。
+                分两层处理遮挡：
+                - 内层不透明（var(--bg-primary)）包住输入框本身，保证可读性；
+                - 外层追加一段 linear-gradient → transparent 的渐变遮罩，遮挡范围
+                  向下延伸超出输入框，但不完全覆盖，滚过来的列表项能柔和透出。
+                拆两层而非单容器 padding 渐变的原因：AddTodoInput 高度动态（focus
+                展开、textarea 多行），单容器渐变的「不透明/透明」分界点无法稳定
+                对齐卡片底边；分两层后渐变永远紧贴卡片底部，与卡片高度无关。
+                z-index 取 z-20 而非 z-10：FilterBar 的 segmented control 文字
+                <span> 用了 relative z-10，而其父 button 未创建堆叠上下文，z-10
+                「逃逸」到滚动区参与竞争。若吸顶也用 z-10，DOM 顺序 FilterBar 在后
+                会反过来盖住吸顶（"全部/进行中/已完成"压在输入框上）。z-20 高过它，
+                同时低于 TodoItem 优先级下拉菜单的 z-30，菜单弹出仍能浮在吸顶之上。
+                完整模式始终可见；专注模式仅 Ctrl+N 唤出（composerVisible）时挂载。
+              */}
               {(!focusMode || composerVisible) && (
-                <AddTodoInput
-                  onAdd={(title, priority) => {
-                    addTodo(title, priority);
-                    // 专注模式下添加完成后收起 composer
-                    if (focusMode) setComposerVisible(false);
-                  }}
-                  focusSignal={newTodoFocusSignal}
-                />
+                <div className="sticky top-0 z-20">
+                  <div
+                    className="px-4 pt-6 pb-3 lg:px-8 lg:pt-10 lg:pb-4"
+                    style={{ backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    <AddTodoInput
+                      onAdd={(title, priority) => {
+                        addTodo(title, priority);
+                        // 专注模式下添加完成后收起 composer
+                        if (focusMode) setComposerVisible(false);
+                      }}
+                      focusSignal={newTodoFocusSignal}
+                    />
+                  </div>
+                  {/*
+                    渐变遮罩：遮挡范围向下延伸超出输入框，但不完全覆盖，滚过来的
+                    列表项能柔和透出。起始点 80% 不透明（color-mix 混入 20% 透明），
+                    让透明感更明显 —— 浅/深色主题都通过 var(--bg-primary) 自动适配。
+                  */}
+                  <div
+                    className="h-10 lg:h-12"
+                    style={{
+                      backgroundImage:
+                        'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary) 80%, transparent), transparent)',
+                    }}
+                  />
+                </div>
               )}
 
-              {/* 统计 - 专注模式下隐藏 */}
-              {!focusMode && (
-                <StatsPanel
-                  total={stats.total}
-                  completed={stats.completed}
-                  active={stats.active}
-                  percentage={stats.percentage}
-                />
-              )}
+              {/* 统计 / 筛选 / 列表 —— 随主区滚动 */}
+              <div className="space-y-5 px-4 pb-6 lg:px-8 lg:pb-10">
+                {/* 统计 - 专注模式下隐藏 */}
+                {!focusMode && (
+                  <StatsPanel
+                    total={stats.total}
+                    completed={stats.completed}
+                    active={stats.active}
+                    percentage={stats.percentage}
+                  />
+                )}
 
-              {/* 筛选栏 - 专注模式下隐藏 */}
-              {!focusMode && (
-                <FilterBar
-                  filter={filter}
-                  sort={sort}
-                  activeCount={stats.active}
-                  completedCount={stats.completed}
-                  onFilterChange={changeFilter}
-                  onSortChange={changeSort}
-                  onClearCompleted={clearCompleted}
-                />
-              )}
+                {/* 筛选栏 - 专注模式下隐藏 */}
+                {!focusMode && (
+                  <FilterBar
+                    filter={filter}
+                    sort={sort}
+                    activeCount={stats.active}
+                    completedCount={stats.completed}
+                    onFilterChange={changeFilter}
+                    onSortChange={changeSort}
+                    onClearCompleted={clearCompleted}
+                  />
+                )}
 
-              {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
-              {allDone ? (
-                <AllDoneCelebration completed={stats.completed} onRestore={handleAllDoneRestore} />
-              ) : (
-                <TodoList
-                  todos={filteredTodos}
-                  selectedIds={selectedIds}
-                  sort={sort}
-                  filter={filter}
-                  hasTodos={stats.total > 0}
-                  onToggle={toggleTodo}
-                  onEdit={updateTodo}
-                  onDelete={deleteTodo}
-                  onToggleSelect={toggleSelected}
-                  onReorder={reorderTodos}
-                  onSortChange={changeSort}
-                  onSnapshotOrder={snapshotOrder}
-                />
-              )}
+                {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
+                {allDone ? (
+                  <AllDoneCelebration completed={stats.completed} onRestore={handleAllDoneRestore} />
+                ) : (
+                  <TodoList
+                    todos={filteredTodos}
+                    selectedIds={selectedIds}
+                    sort={sort}
+                    filter={filter}
+                    hasTodos={stats.total > 0}
+                    onToggle={toggleTodo}
+                    onEdit={updateTodo}
+                    onDelete={deleteTodo}
+                    onToggleSelect={toggleSelected}
+                    onReorder={reorderTodos}
+                    onSortChange={changeSort}
+                    onSnapshotOrder={snapshotOrder}
+                  />
+                )}
+              </div>
             </div>
           )}
         </main>
