@@ -31,6 +31,7 @@ import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
+import { UpdateBadge } from './components/common/UpdateBadge';
 
 import { useAutoUpdate } from './hooks/useAutoUpdate';
 import { useCliBridge } from './cli-bridge';
@@ -105,11 +106,20 @@ function App() {
     updateInfo,
     progress: updateProgress,
     errorMsg: updateError,
+    isNewlyAvailable,
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
     dismissDownloaded,
+    acknowledgeUpdate,
   } = useAutoUpdate({ dbReady });
+
+  // 打开设置面板的「更新」区：同时把当前版本标记为已查看，熄灭 Header 徽标的红点。
+  // 不论从徽标点击还是从侧边栏「设置」入口进入，都视为用户已查看本次更新提示。
+  const openSettingsForUpdate = useCallback(() => {
+    acknowledgeUpdate();
+    setSettingsOpen(true);
+  }, [acknowledgeUpdate]);
 
   // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
   useCliBridge();
@@ -370,7 +380,7 @@ function App() {
               onImport={handleImportProject}
               onReorder={reorderProjects}
               onOpenHistory={() => setHistoryOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenSettings={openSettingsForUpdate}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
@@ -444,6 +454,10 @@ function App() {
             searchFocusSignal={searchFocusSignal}
             focusMode={focusMode}
             onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}
+            hasUpdate={isAutoUpdateAvailable && updateStatus === 'available'}
+            updateVersion={updateInfo?.version}
+            isNewlyAvailable={isNewlyAvailable}
+            onOpenUpdateSettings={openSettingsForUpdate}
           />
         )}
 
@@ -463,6 +477,17 @@ function App() {
               <FocusIcon size={13} />
               <span>专注中</span>
             </button>
+            {/* 专注模式下也保留更新徽标：更新提醒不应被沉浸模式隐藏。
+                位置贴在专注按钮左侧，避开右上角原生窗口控制按钮。 */}
+            {isAutoUpdateAvailable && updateStatus === 'available' && (
+              <div className="titlebar-no-drag absolute top-1.5 right-[230px] z-10">
+                <UpdateBadge
+                  version={updateInfo?.version}
+                  isNewlyAvailable={isNewlyAvailable}
+                  onClick={openSettingsForUpdate}
+                />
+              </div>
+            )}
           </>
         )}
 

@@ -7,6 +7,7 @@ import { memo } from 'react';
 import type { Project } from '../../types';
 import { SearchBar } from '../filters/SearchBar';
 import { FocusIcon, ListIcon } from '../common/Icons';
+import { UpdateBadge } from '../common/UpdateBadge';
 
 interface HeaderProps {
   project: Project | undefined;
@@ -17,6 +18,14 @@ interface HeaderProps {
   focusMode: boolean;
   /** 切换专注 / 完整模式 */
   onToggleFocusMode: () => void;
+  /** 当前是否有可用的更新（available 状态）。undefined 表示非桌面端，不渲染徽标 */
+  hasUpdate?: boolean;
+  /** 可用更新版本号，用于 tooltip */
+  updateVersion?: string;
+  /** 本次启动首次发现该版本时高亮红点 */
+  isNewlyAvailable?: boolean;
+  /** 点击徽标：打开设置面板的更新区 */
+  onOpenUpdateSettings?: () => void;
 }
 
 function HeaderComponent({
@@ -26,6 +35,10 @@ function HeaderComponent({
   searchFocusSignal,
   focusMode,
   onToggleFocusMode,
+  hasUpdate,
+  updateVersion,
+  isNewlyAvailable,
+  onOpenUpdateSettings,
 }: HeaderProps) {
   return (
     <header
@@ -61,8 +74,16 @@ function HeaderComponent({
       {/* 专注模式下用占位把切换按钮推到右侧 */}
       {focusMode && <div className="flex-1" />}
 
-      {/* 右侧操作：仅专注模式切换（紧贴右上角窗口控制按钮）。 */}
+      {/* 右侧操作：专注模式切换 + 更新徽标（紧贴右上角窗口控制按钮）。 */}
       <div className="titlebar-no-drag flex items-center gap-0.5">
+        {/* 更新可用徽标：发现新版本时出现，点击进入设置面板更新区 */}
+        {hasUpdate && onOpenUpdateSettings && (
+          <UpdateBadge
+            version={updateVersion}
+            isNewlyAvailable={isNewlyAvailable}
+            onClick={onOpenUpdateSettings}
+          />
+        )}
         {/* 专注 / 完整 模式切换：专注时显示 ListIcon（切回完整），完整时显示 FocusIcon */}
         <button
           onClick={onToggleFocusMode}

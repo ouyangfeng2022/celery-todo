@@ -49,8 +49,14 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfoLite | null>(null);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  // 当前 available 版本是否尚未被用户「查看过」（即尚未写盘到 NOTIFIED_VERSION_KEY）。
+  // 为 true 时 Header 徽标会高亮提示；用户打开设置面板或点击徽标后通过 acknowledgeUpdate 置 false。
+  const [isNewlyAvailable, setIsNewlyAvailable] = useState<boolean>(false);
 
   const autoUpdateEnabled = useSettingsStore((s) => s.autoUpdateEnabled);
+
+  /** 持久化键：记录最近一次「主动提示过」的更新版本号，避免同一版本每次启动都弹提示 */
+  const NOTIFIED_VERSION_KEY = 'updateNotifiedVersion';
 
   // 防止启动时重复检查（StrictMode 双重渲染 + 多次 dbReady 变化）
   const autoCheckedRef = useRef(false);
@@ -67,6 +73,12 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       setUpdateInfo(info);
       setStatus('available');
       setErrorMsg('');
+      // 同一版本只在首次发现时标记为「新提示」并写盘，避免每次启动重复打扰
+      const alreadyNotified = db.getSetting(NOTIFIED_VERSION_KEY) === info.version;
+      setIsNewlyAvailable(!alreadyNotified);
+      if (!alreadyNotified) {
+        db.setSetting(NOTIFIED_VERSION_KEY, info.version);
+      }
     });
     const offNotAvailable = api.onUpdateNotAvailable(() => {
       setStatus('not-available');
@@ -144,15 +156,28 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
     setStatus('dismissed');
   }, []);
 
+  /**
+   * 用户已查看本次更新提示（点击徽标或打开设置面板）。
+   * 仅清掉「新提示」高亮，status 仍保持 available，更新区在设置面板里依旧可见。
+   */
+  const acknowledgeUpdate = useCallback(() => {
+    setIsNewlyAvailable(false);
+    if (updateInfo) {
+      db.setSetting(NOTIFIED_VERSION_KEY, updateInfo.version);
+    }
+  }, [updateInfo]);
+
   return {
     isDesktop,
     status,
     updateInfo,
     progress,
     errorMsg,
+    isNewlyAvailable,
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
     dismissDownloaded,
+    acknowledgeUpdate,
   };
 }
