@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+## [v2.2.0] - 2026-07-17
+### Added
+- 区分「已完成」与「进行中」的空状态 UI
+
+### Fixed
+- 修复待办列表过长时输入框被滚走的问题
+
 ## [v2.1.0] - 2026-07-16
 ### Added
 - 历史记录数量移至弹窗标题旁，归档列表改为无限滚动分页加载
@@ -175,3 +182,5 @@
 [v2.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.0.0
 
 [v2.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.1.0
+
+[v2.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.2.0
