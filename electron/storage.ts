@@ -95,6 +95,40 @@ function writeDbFile(data: Uint8Array): void {
 // ============================================
 
 /**
+ * 安装时应用的简化版目录切换：不做数据拷贝（首次启动时还没有 db 文件），
+ * 仅校验目标目录可写、无同名 db，然后写入 storage-config.json。
+ *
+ * 与 switchDataDir 的区别：
+ *   - switchDataDir：在运行时由用户通过设置面板切换，假定旧 db 可能存在，需要迁移
+ *   - applyInitialDataDir：在 NSIS 安装后的首次启动调用，没有任何旧数据可迁
+ *
+ * 任何一步失败都抛出，配置不更新（主进程调用方负责 try/catch）。
+ */
+export function applyInitialDataDir(newDir: string): { filePath: string } {
+  const normalized = path.resolve(newDir);
+
+  // 1. 确保目录存在且可写
+  fs.mkdirSync(normalized, { recursive: true });
+  const testFile = path.join(normalized, `.celery-write-test-${process.pid}`);
+  try {
+    fs.writeFileSync(testFile, '');
+    fs.unlinkSync(testFile);
+  } catch {
+    throw new Error(`目标目录不可写: ${normalized}`);
+  }
+
+  // 2. 拒绝覆盖已存在的同名 db（避免吞掉用户其它数据）
+  const newPath = path.join(normalized, DB_FILENAME);
+  if (fs.existsSync(newPath)) {
+    throw new Error('目标目录已存在同名数据文件，请选择空目录或换一个位置。');
+  }
+
+  // 3. 写入配置，使后续 storage:load / storage:save 都落到新目录
+  writeConfig({ dataDir: normalized });
+  return { filePath: newPath };
+}
+
+/**
  * 切换数据存储目录。
  * 流程：创建新目录 → 拷贝旧文件（如果存在）→ 更新配置 → 删除旧文件
  * 任一步失败则抛出，配置不更新，原位置保持可用。

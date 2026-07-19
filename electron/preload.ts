@@ -31,6 +31,16 @@ const electronAPI = {
     ipcRenderer.on('quick-add', () => callback());
   },
 
+  /**
+   * 监听安装阶段勾选了"开机自启"事件（一次性）。
+   * 触发时机：主进程在 NSIS 安装时已通过 app.setLoginItemSettings 写好注册表，
+   * 渲染进程加载完成后主进程会推送此事件，让 store 把 settings.autoStart
+   * 同步进 DB，保持设置面板 UI 与系统状态一致。
+   */
+  onInstallOptionsAutoStart: (callback: (enabled: boolean) => void): void => {
+    ipcRenderer.on('install-options:auto-start', (_event, enabled) => callback(enabled));
+  },
+
   /** 平台信息 */
   platform: process.platform,
 

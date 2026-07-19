@@ -197,6 +197,17 @@ function App() {
     })();
   }, []);
 
+  // === 安装阶段勾选了"开机自启"时的同步 ===
+  // 主进程已在 NSIS 安装时通过 app.setLoginItemSettings 写好注册表，
+  // 通过 IPC 推送这个事实，这里把 settings.autoStart 同步进 DB + store，
+  // 让设置面板的复选框与系统真实状态保持一致。事件是一次性的（主进程仅发一次）。
+  useEffect(() => {
+    if (!window.electronAPI?.onInstallOptionsAutoStart) return;
+    window.electronAPI.onInstallOptionsAutoStart((enabled) => {
+      useSettingsStore.getState().setAutoStart(enabled);
+    });
+  }, []);
+
   // === 项目切换时：持久化 + 重新加载 ===
   // 持久化拆出真值判断之外：删完最后一个项目时 activeProjectId 归空串也要写盘，
   // 否则下次启动会恢复一个已不存在的 id（虽有存在性校验兜底，但语义不清）。
@@ -578,7 +589,10 @@ function App() {
 
                 {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
                 {allDone ? (
-                  <AllDoneCelebration completed={stats.completed} onRestore={handleAllDoneRestore} />
+                  <AllDoneCelebration
+                    completed={stats.completed}
+                    onRestore={handleAllDoneRestore}
+                  />
                 ) : (
                   <TodoList
                     todos={filteredTodos}

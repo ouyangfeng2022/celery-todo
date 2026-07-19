@@ -271,6 +271,13 @@ adding or editing E2E tests, read `e2e/helpers.ts` and keep these conventions:
   filtering, sorting).
 - `electron/main.ts` + `electron/preload.ts` — IPC surface; any change must be
   mirrored on both sides and recompiled via `build:electron` / `electron:dev`.
+- `electron/install-options.ts` + `build/installer.nsh` — NSIS 自定义安装页
+  与主进程的"一次性信箱"协议。`installer.nsh` 在用户勾选「使用自定义设置」
+  时把选择写入 `userData/install-options.json`，`install-options.ts` 在
+  `app.whenReady` 早期读取、应用、删除。**任何字段重命名/增删都要同步两边**，
+  且 NSIS 改动**必须本地 `bun run electron:build` 一次跑通 Setup.exe 才能合**
+  （vitest 无法覆盖 NSIS 脚本本身；只有 `normalizeInstallOptions` 纯函数有单测）。
+  升级场景下 `${isUpdated}` 宏自动跳过自定义页，不要破坏 PRE 函数里的 Abort。
 - `electron/updater.ts` — auto-update (electron-updater) integration: events
   broadcast to the renderer, `app.isPackaged` short-circuit for dev, and
   IPC channels consumed by `src/hooks/useAutoUpdate.ts`. Touching the

@@ -9,6 +9,7 @@ import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
 import { initUpdater, registerUpdaterIpc } from './updater';
 import { initCliServer, shutdownCliServer } from './cli-server';
+import { applyInstallOptionsOnce, consumePendingAutoStartSync } from './install-options';
 import type { AppWithIsQuitting } from './types';
 
 // ============================================
@@ -216,6 +217,11 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(() => {
+    // 应用 NSIS 安装时用户选择的选项（自定义数据目录 / 开机自启）。
+    // 必须在 createMainWindow 之前：storage-config.json 写好后，渲染进程
+    // 首次发 storage:load 时就会落到用户期望的目录。
+    applyInstallOptionsOnce();
+
     mainWindow = createMainWindow();
     tray = createTray(mainWindow);
     registerStorageIpc();
@@ -224,6 +230,16 @@ if (!gotTheLock) {
     if (mainWindow) initUpdater(mainWindow);
     // CLI IPC 服务器：监听本地 socket/命名管道，接收 CLI 请求并转发给渲染进程
     if (mainWindow) initCliServer(mainWindow);
+
+    // 安装阶段勾选了开机自启时，主进程已写注册表；这里在 renderer 加载完成后
+    // 推送一次，让它把 settings.autoStart 同步进 DB（保持设置面板 UI 一致）
+    if (mainWindow) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        if (consumePendingAutoStartSync() && mainWindow) {
+          mainWindow.webContents.send('install-options:auto-start', true);
+        }
+      });
+    }
 
     // macOS 激活应用
     app.on('activate', () => {
