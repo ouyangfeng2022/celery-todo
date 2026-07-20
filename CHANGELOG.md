@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+## [v2.3.0] - 2026-07-20
+### Added
+- 支持安装时自定义开机启动与数据目录
+- 发现新版本时在 Header 主动提示，无需打开设置
+
 ## [v2.2.0] - 2026-07-17
 ### Added
 - 区分「已完成」与「进行中」的空状态 UI
@@ -184,3 +189,5 @@
 [v2.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.1.0
 
 [v2.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.2.0
+
+[v2.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.3.0
