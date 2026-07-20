@@ -99,6 +99,13 @@ function App() {
     emptyArchive,
   } = useTodos();
 
+  // activeProjectId 先于 useEffect 中的 loadProject 更新。渲染端再做一次
+  // projectId 约束，确保这一个提交里绝不会把上一项目的事项交给列表动画树。
+  const activeProjectTodos = useMemo(
+    () => todos.filter((todo) => todo.projectId === activeProjectId),
+    [todos, activeProjectId],
+  );
+
   // === 自动升级（仅桌面端） ===
   const {
     isDesktop: isAutoUpdateAvailable,
@@ -126,7 +133,7 @@ function App() {
 
   // === 筛选 ===
   const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
-    useFilter(todos, activeProjectId);
+    useFilter(activeProjectTodos, activeProjectId);
 
   // === 各项目未完成 todo 计数 ===
   // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，
@@ -595,6 +602,9 @@ function App() {
                   />
                 ) : (
                   <TodoList
+                    // 项目切换不是同一列表内的删除和新增：重置 Presence 边界，
+                    // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
+                    key={activeProjectId}
                     todos={filteredTodos}
                     selectedIds={selectedIds}
                     sort={sort}

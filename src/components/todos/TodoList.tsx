@@ -57,9 +57,10 @@ interface SortableTodoItemProps {
 }
 
 /**
- * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局，
- * 该 ref 必须能透传到一个 motion 元素（TodoItem 内部的 <motion.div>）。dnd-kit 的
- * setNodeRef 与 transform 需要独占外层 div，两类职责落点不同，故分两个 ref。
+ * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局。
+ * 直接子节点的布局盒是本组件返回的外层 div；dnd-kit 也需要同一个节点，因此把
+ * 两个 ref 合并。若把 Presence ref 传给内部 TodoItem，popLayout 测量盒与实际
+ * 占位盒不同，退出时可能造成不稳定的重排。
  *
  * 注意：子元素【不能】带 `layout` 属性。`popLayout + layout + opacity-exit` 三者
  * 同时存在会命中 framer-motion 已知 bug motion#2416 ——快速连续切换 filter 时退出
@@ -80,10 +81,21 @@ const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
       zIndex: isDragging ? 50 : undefined,
     };
 
+    const setRefs = useCallback(
+      (node: HTMLDivElement | null) => {
+        setNodeRef(node);
+        if (typeof ref === 'function') {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref, setNodeRef],
+    );
+
     return (
-      <div ref={setNodeRef} style={style}>
+      <div ref={setRefs} style={style}>
         <TodoItem
-          ref={ref}
           todo={props.todo}
           isSelected={props.isSelected}
           onToggle={props.onToggle}
@@ -146,7 +158,7 @@ function TodoListComponent({
   }
 
   const listContent = (
-    <AnimatePresence mode="popLayout">
+    <AnimatePresence mode="popLayout" initial={false}>
       {todos.map((todo) => (
         <SortableTodoItem
           key={todo.id}
@@ -171,7 +183,7 @@ function TodoListComponent({
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="space-y-1">{listContent}</div>
+        <div className="relative space-y-1">{listContent}</div>
       </SortableContext>
     </DndContext>
   );

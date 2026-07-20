@@ -87,10 +87,17 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   selectedIds: new Set<string>(),
 
   loadProject: (projectId: string) => {
-    set({ currentProjectId: projectId, loading: true });
     const todos = db.getTodosByProject(projectId);
     const deletedTodos = db.getDeletedTodosByProject(projectId);
-    set({ todos, deletedTodos, loading: false, selectedIds: new Set() });
+    // 项目 ID 与列表必须在同一次发布中切换。否则 React 可能短暂渲染出
+    // 「新项目标题 + 旧项目事项」，并被 AnimatePresence 误判为跨列表的逐项变更。
+    set({
+      currentProjectId: projectId,
+      todos,
+      deletedTodos,
+      loading: false,
+      selectedIds: new Set(),
+    });
   },
 
   addTodo: ({ title, description, priority = 'medium' }) => {
