@@ -72,6 +72,9 @@ test('永久删除单条后历史记录为空', async () => {
   const archivedRow = win.locator('div.group', { hasText: '永久删除这条' }).first();
   await archivedRow.hover();
   await archivedRow.getByRole('button', { name: '永久删除' }).click();
+  // ConfirmDialog 需确认后才真正删除。
+  await expect(win.getByRole('heading', { name: '永久删除' })).toBeVisible();
+  await win.keyboard.press('Enter');
   await expect(win.getByText('永久删除这条', { exact: true })).toHaveCount(0);
   await expect(win.getByText('暂无历史记录')).toBeVisible();
 });
