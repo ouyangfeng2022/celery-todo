@@ -3,7 +3,7 @@
  * @description 创建窗口、系统托盘、开机自启、窗口位置记忆
  */
 
-import { app, BrowserWindow, Menu, Tray, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, Menu, Tray, ipcMain, shell, screen } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
@@ -18,6 +18,46 @@ import type { AppWithIsQuitting } from './types';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+const stickerWindows = new Map<string, BrowserWindow>();
+type StickerState = { id: string; projectId: string; bounds?: Electron.Rectangle };
+let stickerStates: StickerState[] = [];
+
+function saveStickerStates(): void {
+  try {
+    const storePath = getStorePath();
+    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    fs.writeFileSync(storePath, JSON.stringify({ ...existing, stickers: stickerStates }, null, 2));
+  } catch {
+    // 写入失败时保留当前会话状态，不中断贴图操作。
+  }
+}
+
+function createStickerWindow(id: string, projectId = ''): void {
+  const existing = stickerWindows.get(id);
+  if (existing) { existing.show(); existing.focus(); return; }
+  const state = stickerStates.find((item) => item.id === id) ?? { id, projectId };
+  if (!stickerStates.some((item) => item.id === id)) stickerStates.push(state);
+  const index = stickerStates.indexOf(state);
+  const display = screen.getPrimaryDisplay().workArea;
+  const bounds = state.bounds;
+  const window = new BrowserWindow({
+    width: bounds?.width ?? 340, height: bounds?.height ?? 460,
+    x: bounds?.x ?? display.x + display.width - 364 - index * 28,
+    y: bounds?.y ?? display.y + display.height - 484 - index * 28,
+    minWidth: 300, minHeight: 380, maxWidth: 420, maxHeight: 620,
+    frame: false, transparent: true, backgroundColor: '#00000000', alwaysOnTop: true,
+    skipTaskbar: true, resizable: true, title: 'Celery Todo 简洁模式', hasShadow: false,
+    vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+  });
+  window.setHasShadow(false);
+  stickerWindows.set(id, window);
+  const persist = () => { state.bounds = window.getBounds(); saveStickerStates(); };
+  window.on('move', persist); window.on('resize', persist);
+  window.on('closed', () => { stickerWindows.delete(id); stickerStates = stickerStates.filter((item) => item.id !== id); saveStickerStates(); });
+  if (isDev) window.loadURL(`${devServerUrl}?sticker=${encodeURIComponent(id)}&project=${encodeURIComponent(state.projectId)}`);
+  else window.loadFile(path.join(__dirname, '../dist/index.html'), { query: { sticker: id, project: state.projectId } });
+}
 
 // ============================================
 // 开发/生产环境判断
@@ -57,7 +97,7 @@ function createMainWindow(): BrowserWindow {
     // macOS 隐藏标题栏但保留红绿灯按钮；Windows 隐藏标题栏文字 + 自带 overlay 控制按钮
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     // Windows/Linux 通过 overlay 保留原生最小化/最大化/关闭按钮。
-    // 应用默认启动即专注模式，初始颜色对齐 --bg-primary（纸色），避免启动瞬间色差。
+    // 初始颜色对齐完整主窗口的标题栏背景。
     titleBarOverlay: !isMac
       ? {
           color: '#faf9f7',
@@ -170,6 +210,7 @@ function getSavedBounds(): { x: number; y: number; width: number; height: number
     const storePath = getStorePath();
     if (fs.existsSync(storePath)) {
       const data = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+      stickerStates = Array.isArray(data.stickers) ? data.stickers : [];
       return data.bounds;
     }
   } catch {
@@ -223,7 +264,10 @@ if (!gotTheLock) {
     applyInstallOptionsOnce();
 
     mainWindow = createMainWindow();
-    tray = createTray(mainWindow);
+    tray = createTray(mainWindow, {
+      createSticker: () => createStickerWindow(crypto.randomUUID()),
+      showStickers: () => stickerWindows.forEach((window) => window.show()),
+    });
     registerStorageIpc();
     registerUpdaterIpc();
     // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
@@ -285,6 +329,22 @@ ipcMain.handle('get-window-bounds', () => {
 /** 保存窗口位置 */
 ipcMain.handle('save-window-bounds', (_event, bounds: { x: number; y: number; width: number; height: number }) => {
   saveBoundsToStore(bounds);
+});
+
+ipcMain.handle('sticker:create', (_event, projectId = '') => {
+  const id = crypto.randomUUID();
+  createStickerWindow(id, projectId);
+  mainWindow?.hide();
+});
+ipcMain.handle('sticker:set-project', (event, id: string, projectId: string) => {
+  const window = stickerWindows.get(id);
+  if (!window || event.sender.id !== window.webContents.id) return;
+  const state = stickerStates.find((item) => item.id === id);
+  if (state) { state.projectId = projectId; saveStickerStates(); }
+});
+ipcMain.handle('sticker:close', (event, id: string) => {
+  const window = stickerWindows.get(id);
+  if (window && event.sender.id === window.webContents.id) window.close();
 });
 
 /** 显示托盘通知 */

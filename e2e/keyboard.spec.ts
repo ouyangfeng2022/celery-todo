@@ -2,7 +2,15 @@
  * 键盘快捷键：Ctrl+N/S/F/B/D/P/1/2/3/Esc。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
+import {
+  launchApp,
+  closeApp,
+  addTodo,
+  createProject,
+  openSettings,
+  todoRow,
+  type LaunchedApp,
+} from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -58,39 +66,33 @@ test('Ctrl+B 切换侧边栏（收起后侧边栏消失）', async () => {
 });
 
 test('Ctrl+D 切换主题（浅色↔深色）', async () => {
-  // 退出专注模式时默认 theme=system，点 Ctrl+D 应切换。先看初始 html 是否有 dark
+  // 默认 theme=system，点 Ctrl+D 应切换。先看初始 html 是否有 dark
   const beforeDark = await win.locator('html').evaluate((el) => el.classList.contains('dark'));
   await win.keyboard.press('Control+d');
   const afterDark = await win.locator('html').evaluate((el) => el.classList.contains('dark'));
   expect(afterDark).toBe(!beforeDark);
 });
 
-test('Ctrl+P 切换专注模式（进入后侧边栏消失）', async () => {
-  // 当前已退出专注模式
-  await expect(win.getByRole('complementary')).toBeVisible();
-  await win.keyboard.press('Control+p');
-  // 进入专注模式后侧边栏不渲染
-  await expect(win.getByRole('complementary')).toHaveCount(0);
-  // 浮动指示器"专注中"可见
-  await expect(win.getByText('专注中', { exact: true })).toBeVisible();
-  // 再切回
-  await win.keyboard.press('Control+p');
-  await expect(win.getByRole('complementary')).toBeVisible();
-});
-
 test('Ctrl+1/2/3 切换筛选视图', async () => {
   await addTodo(win, '未完成项');
+  await addTodo(win, '已完成项');
+  const completedRow = todoRow(win, '已完成项');
+  await completedRow.hover();
+  await completedRow.getByRole('button', { name: '标记为已完成' }).click();
   // Ctrl+1/2/3 仅在非输入框聚焦时生效，addTodo 后 textarea 仍聚焦，先点页面外失焦
   await win.locator('body').click();
   await win.waitForTimeout(200);
 
-  // useFilter 把 filter 同步到 URL ?filter=（filter=all 时不写入）
+  // Electron 打包版通过 file:// 加载，不能依赖 URL 查询参数；直接断言列表状态。
   await win.keyboard.press('Control+3');
-  await expect(win).toHaveURL(/filter=completed/);
+  await expect(win.getByText('已完成项', { exact: true })).toBeVisible();
+  await expect(win.getByText('未完成项', { exact: true })).toHaveCount(0);
   await win.keyboard.press('Control+1');
-  await expect(win).not.toHaveURL(/filter=/);
+  await expect(win.getByText('已完成项', { exact: true })).toBeVisible();
+  await expect(win.getByText('未完成项', { exact: true })).toBeVisible();
   await win.keyboard.press('Control+2');
-  await expect(win).toHaveURL(/filter=active/);
+  await expect(win.getByText('未完成项', { exact: true })).toBeVisible();
+  await expect(win.getByText('已完成项', { exact: true })).toHaveCount(0);
 });
 
 test('Esc 关闭设置面板', async () => {

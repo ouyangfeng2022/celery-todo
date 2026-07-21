@@ -226,18 +226,6 @@ function SettingsPanelComponent({
                     })}
                   </div>
 
-                  {/* 专注模式：隐藏侧边栏 / 统计 / 筛选 / Header 图标，仅保留标题与列表 */}
-                  <label className="flex items-center justify-between py-2 cursor-pointer">
-                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                      专注模式
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={settings.focusMode}
-                      onChange={(e) => onUpdateSettings({ focusMode: e.target.checked })}
-                      className="w-4 h-4 accent-[var(--accent)]"
-                    />
-                  </label>
                 </section>
 
                 {/* Electron 设置（仅在桌面端显示） */}

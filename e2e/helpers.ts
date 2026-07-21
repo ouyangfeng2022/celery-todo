@@ -1,5 +1,5 @@
 /**
- * E2E 公共工具：启动真实 Electron、退出专注模式、通用操作。
+ * E2E 公共工具：启动真实 Electron 和通用操作。
  *
  * 数据隔离：每个 launchApp() 用 fs.mkdtempSync 生成独立临时 userData 目录，
  * 通过 CELERY_TODO_USERDATA 环境变量传给主进程（main.ts 顶部钩子读取）。
@@ -114,20 +114,8 @@ export async function launchApp(): Promise<LaunchedApp> {
   }
   // dbReady 后 React 还要跑 loadProjects/loadTodo 的 effect，再等一拍
   await window.waitForTimeout(800);
-  // 默认 focusMode=true，所有交互都需先退出专注模式
-  await exitFocusMode(window);
 
   return { app, window, userData };
-}
-
-/** 退出专注模式：默认 focusMode=true，不退出侧边栏/Header/FilterBar 均不渲染 */
-export async function exitFocusMode(win: Page): Promise<void> {
-  // 专注模式下浮动指示器存在；按 Ctrl+P 退出（hook 全局监听，输入框中也生效）
-  await win.keyboard.press('Control+p');
-  // 退出后 Header 渲染，可定位 Header 内的"进入专注模式"按钮确认
-  await win
-    .getByRole('button', { name: '进入专注模式' })
-    .waitFor({ state: 'visible', timeout: 5_000 });
 }
 
 /** 等待 SQLite debounce 保存（scheduleSave 500ms）落盘 */

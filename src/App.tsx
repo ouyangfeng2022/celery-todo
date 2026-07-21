@@ -247,8 +247,6 @@ function App() {
       setSidebarOpen((s) => !s);
     },
     onToggleTheme: toggleTheme,
-    onToggleFocusMode: () =>
-      useSettingsStore.getState().setFocusMode(!useSettingsStore.getState().focusMode),
     onFilterAll: () => changeFilter('all'),
     onFilterActive: () => changeFilter('active'),
     onFilterCompleted: () => changeFilter('completed'),
@@ -399,6 +397,7 @@ function App() {
               onReorder={reorderProjects}
               onOpenHistory={() => setHistoryOpen(true)}
               onOpenSettings={openSettingsForUpdate}
+              onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
@@ -470,8 +469,6 @@ function App() {
             search={search}
             onSearchChange={changeSearch}
             searchFocusSignal={searchFocusSignal}
-            focusMode={focusMode}
-            onToggleFocusMode={() => useSettingsStore.getState().setFocusMode(!focusMode)}
             hasUpdate={isAutoUpdateAvailable && updateStatus === 'available'}
             updateVersion={updateInfo?.version}
             isNewlyAvailable={isNewlyAvailable}

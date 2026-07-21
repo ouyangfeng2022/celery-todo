@@ -1,5 +1,5 @@
 /**
- * 设置：主题、专注模式、数据管理重置。
+ * 设置：主题和数据管理重置。
  */
 import { test, expect } from '@playwright/test';
 import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
@@ -32,20 +32,6 @@ test('切换主题为"浅色"，移除 dark class', async () => {
   await openSettings(win);
   await win.getByText('浅色', { exact: true }).click();
   await expect(win.locator('html')).not.toHaveClass(/dark/);
-});
-
-test('勾选专注模式 checkbox，侧边栏立即隐藏', async () => {
-  await openSettings(win);
-  // launchApp 已退出专注模式（focusMode=false），checkbox 未勾选
-  const focusLabel = win.locator('label', { hasText: '专注模式' }).first();
-  const checkbox = focusLabel.locator('input[type="checkbox"]');
-  await expect(checkbox).not.toBeChecked();
-
-  // 勾选 → focusMode=true → 侧边栏不渲染
-  await checkbox.check();
-  await expect(win.getByRole('complementary')).toHaveCount(0);
-  // 设置面板本身仍可见（专注模式只隐藏主视图 chrome，不关设置）
-  await expect(win.getByRole('heading', { name: '设置' })).toBeVisible();
 });
 
 test('重置所有数据：二次确认后数据清空且项目列表为空', async () => {
