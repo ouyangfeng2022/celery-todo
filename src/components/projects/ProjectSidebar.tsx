@@ -401,7 +401,7 @@ function ProjectSidebarComponent({
           style={{ color: 'var(--text-secondary)' }}
         >
           <SparkleIcon size={15} />
-          <span className="flex-1 text-left">进入简洁模式</span>
+          <span className="flex-1 text-left">简洁模式</span>
         </button>
         <button
           onClick={handleImportClick}

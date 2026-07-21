@@ -41,10 +41,10 @@ function createStickerWindow(id: string, projectId = ''): void {
   const display = screen.getPrimaryDisplay().workArea;
   const bounds = state.bounds;
   const window = new BrowserWindow({
-    width: bounds?.width ?? 380, height: bounds?.height ?? 520,
-    x: bounds?.x ?? display.x + display.width - 404 - index * 28,
-    y: bounds?.y ?? display.y + display.height - 544 - index * 28,
-    minWidth: 340, minHeight: 420, maxWidth: 460, maxHeight: 680,
+    width: bounds?.width ?? 340, height: bounds?.height ?? 460,
+    x: bounds?.x ?? display.x + display.width - 364 - index * 28,
+    y: bounds?.y ?? display.y + display.height - 484 - index * 28,
+    minWidth: 300, minHeight: 380, maxWidth: 420, maxHeight: 620,
     frame: false, transparent: true, backgroundColor: '#00000000', alwaysOnTop: true,
     skipTaskbar: true, resizable: true, title: 'Celery Todo 简洁模式', hasShadow: false,
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
