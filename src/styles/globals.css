@@ -120,6 +120,23 @@
       color 0.2s ease;
   }
 
+  html.sticker-page, html.sticker-page body, html.sticker-page #root { background: transparent !important; overflow: hidden; }
+  .sticker-shell { position:relative; height:100%; overflow:hidden; isolation:isolate; border:1px solid rgba(255,255,255,.54); border-radius:22px; background:linear-gradient(138deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.16) 43%, rgba(255,239,228,.25) 100%); box-shadow:0 20px 54px rgba(42,35,26,.20), 0 5px 15px rgba(42,35,26,.12), inset 0 1px 1px rgba(255,255,255,.72), inset 0 -1px rgba(255,255,255,.12); backdrop-filter:blur(38px) saturate(168%) contrast(1.04); -webkit-backdrop-filter:blur(38px) saturate(168%) contrast(1.04); }
+  .dark .sticker-shell { border-color:rgba(255,255,255,.15); background:linear-gradient(135deg, rgba(61,56,49,.72), rgba(34,31,28,.47) 48%, rgba(103,68,54,.42)); box-shadow:0 24px 62px rgba(0,0,0,.42), inset 0 1px rgba(255,255,255,.16); }
+  .sticker-shell::before { content:''; position:absolute; z-index:-1; inset:-30% -20% 40% 12%; pointer-events:none; background:radial-gradient(ellipse, rgba(255,255,255,.62), transparent 67%); filter:blur(12px); transform:rotate(-12deg); }
+  .sticker-shell::after { content:''; position:absolute; z-index:-1; inset:0; pointer-events:none; opacity:.55; background:linear-gradient(115deg, transparent 27%, rgba(255,255,255,.26) 45%, transparent 57%); }
+  .sticker-header { height:48px; display:flex; align-items:center; justify-content:space-between; padding:0 12px 0 16px; border-bottom:1px solid rgba(255,255,255,.22); background:linear-gradient(to bottom, rgba(255,255,255,.13), transparent); }
+  .sticker-project { max-width: 270px; border: 0; outline: 0; background: transparent; color: var(--text-primary); font: 600 15px var(--font-serif); cursor:pointer; }
+  .sticker-close { width: 26px; height: 26px; border: 0; border-radius: 50%; background: color-mix(in srgb, var(--bg-hover) 70%, transparent); color:var(--text-secondary); font-size:18px; cursor:pointer; }
+  .sticker-body { padding: 14px 12px 18px; overflow-y:auto; height:calc(100% - 48px); }
+  .sticker-eyebrow { margin: 0 4px 10px; color:var(--text-tertiary); font-size:11px; letter-spacing:.08em; }
+  .sticker-todo { width:100%; display:flex; align-items:center; gap:10px; text-align:left; padding:11px 8px; border:0; border-radius:12px; color:var(--text-primary); background:transparent; cursor:pointer; font: 14px var(--font-sans); }
+  .sticker-todo:hover { background:color-mix(in srgb, var(--bg-hover) 64%, transparent); }
+  .sticker-check { width:17px; height:17px; flex:none; border:1.5px solid var(--accent); border-radius:50%; box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--bg-tertiary) 65%, transparent); }
+  .sticker-todo i { margin-left:auto; color:var(--accent); font-size:10px; font-style:normal; }
+  .sticker-empty { padding:32px 8px; color:var(--text-secondary); text-align:center; font-family:var(--font-serif); }
+  .sticker-drag { -webkit-app-region: drag; } .sticker-no-drag { -webkit-app-region: no-drag; }
+
   /* 衬线标题：用于品牌字、章节大字 */
   .font-serif {
     font-family: var(--font-serif);

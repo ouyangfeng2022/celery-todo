@@ -29,8 +29,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
 
   loadSettings: () => {
-    // focusMode 在 settings 表中可能不存在（首次升级的老数据），用 null 判断走默认值
-    const storedFocus = db.getSetting('focusMode');
+    // 专注模式已废弃：升级时清理旧键，始终进入完整主窗口。
+    db.deleteSetting('focusMode');
     // autoUpdateEnabled 同上：老数据无该键时走默认 true
     const storedAutoUpdate = db.getSetting('autoUpdateEnabled');
     const settings: AppSettings = {
@@ -38,7 +38,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       autoStart: db.getSetting('autoStart') === 'true',
       minimizeToTray: db.getSetting('minimizeToTray') !== 'false',
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
-      focusMode: storedFocus === null ? DEFAULT_SETTINGS.focusMode : storedFocus === 'true',
+      focusMode: false,
       autoUpdateEnabled:
         storedAutoUpdate === null
           ? DEFAULT_SETTINGS.autoUpdateEnabled

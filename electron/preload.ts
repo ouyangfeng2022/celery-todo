@@ -30,6 +30,11 @@ const electronAPI = {
   onQuickAdd: (callback: () => void): void => {
     ipcRenderer.on('quick-add', () => callback());
   },
+  /** 创建一张桌面贴图；projectId 为空时由贴图自行选择第一个项目 */
+  createSticker: (projectId?: string): Promise<void> => ipcRenderer.invoke('sticker:create', projectId),
+  setStickerProject: (id: string, projectId: string): Promise<void> =>
+    ipcRenderer.invoke('sticker:set-project', id, projectId),
+  closeSticker: (id: string): Promise<void> => ipcRenderer.invoke('sticker:close', id),
 
   /**
    * 监听安装阶段勾选了"开机自启"事件（一次性）。

@@ -17,6 +17,9 @@ interface ElectronAPI {
   }) => Promise<void>;
   /** 从托盘快速添加事项 */
   onQuickAdd: (callback: () => void) => void;
+  createSticker: (projectId?: string) => Promise<void>;
+  setStickerProject: (id: string, projectId: string) => Promise<void>;
+  closeSticker: (id: string) => Promise<void>;
   /** 监听安装阶段勾选了"开机自启"事件（一次性同步用） */
   onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => void;
   /** 显示托盘通知 */

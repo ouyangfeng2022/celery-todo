@@ -31,6 +31,7 @@ import {
   UploadIcon,
   InboxIcon,
   SettingsIcon,
+  SparkleIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -47,6 +48,8 @@ interface ProjectSidebarProps {
   onReorder: (sourceId: string, targetId: string) => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
+  /** 进入简洁模式，并创建当前项目的浮窗 */
+  onEnterCompactMode: () => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -197,6 +200,7 @@ function ProjectSidebarComponent({
   onReorder,
   onOpenHistory,
   onOpenSettings,
+  onEnterCompactMode,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -391,6 +395,14 @@ function ProjectSidebarComponent({
         className="px-3 py-3 border-t space-y-0.5"
         style={{ borderColor: 'var(--border-color)' }}
       >
+        <button
+          onClick={onEnterCompactMode}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          <SparkleIcon size={15} />
+          <span className="flex-1 text-left">进入简洁模式</span>
+        </button>
         <button
           onClick={handleImportClick}
           className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"

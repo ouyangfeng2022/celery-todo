@@ -142,8 +142,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoStart: false,
   minimizeToTray: true,
   dataVersion: 1,
-  // 默认启动即进入专注模式
-  focusMode: true,
+  // 旧版专注模式保留兼容读取；新安装默认完整界面
+  focusMode: false,
   // 默认启用自动检查更新
   autoUpdateEnabled: true,
   // 首次启动无历史激活项目，空串 → 显示「请创建项目」

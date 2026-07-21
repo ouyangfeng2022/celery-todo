@@ -11,7 +11,7 @@ import type { AppWithIsQuitting } from './types';
  * 创建系统托盘
  * @param mainWindow 主窗口引用
  */
-export function createTray(mainWindow: BrowserWindow): Tray {
+export function createTray(mainWindow: BrowserWindow, actions?: { createSticker: () => void; showStickers: () => void }): Tray {
   // 托盘图标：Windows/Linux 上 SVG 经 nativeImage 加载不可靠，必须用 PNG/ICO。
   // dev: public/ 下；prod: electron-builder 把 public/* 当作资源打包到 resourcesPath 根。
   const isDev = !!process.env.VITE_DEV_SERVER_URL;
@@ -53,8 +53,18 @@ export function createTray(mainWindow: BrowserWindow): Tray {
     },
     { type: 'separator' },
     {
+      label: '新建简洁模式浮窗',
+      click: () => actions?.createSticker(),
+    },
+    {
+      label: '显示所有简洁浮窗',
+      click: () => actions?.showStickers(),
+    },
+    { type: 'separator' },
+    {
       label: '显示主窗口',
       click: () => {
+        actions?.showStickers();
         mainWindow.show();
         mainWindow.focus();
       },
