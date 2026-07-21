@@ -45,6 +45,9 @@ function ArchiveHistoryViewComponent({
   onEmptyAll,
 }: ArchiveHistoryViewProps) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
+  // 单条操作的确认目标：null 表示无待确认事项
+  const [restoreTarget, setRestoreTarget] = useState<DeletedTodo | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeletedTodo | null>(null);
 
   // projectId -> Project 查找表，用于每行显示项目名标签
   const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
@@ -148,7 +151,7 @@ function ArchiveHistoryViewComponent({
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={() => onRestore(todo.id)}
+                    onClick={() => setRestoreTarget(todo)}
                     className="btn-ghost p-1.5"
                     style={{ color: 'var(--accent)' }}
                     aria-label="恢复"
@@ -157,7 +160,7 @@ function ArchiveHistoryViewComponent({
                     <RestoreIcon size={15} />
                   </button>
                   <button
-                    onClick={() => onPermanentDelete(todo.id)}
+                    onClick={() => setDeleteTarget(todo)}
                     className="btn-ghost p-1.5"
                     style={{ color: 'var(--danger)' }}
                     aria-label="永久删除"
@@ -206,6 +209,33 @@ function ArchiveHistoryViewComponent({
           setConfirmEmpty(false);
         }}
         onCancel={() => setConfirmEmpty(false)}
+      />
+
+      {/* 单条恢复确认 */}
+      <ConfirmDialog
+        open={restoreTarget !== null}
+        title="恢复事项"
+        message={`确定要恢复「${restoreTarget?.title}」吗？将还原到其原属项目。`}
+        confirmText="恢复"
+        onConfirm={() => {
+          if (restoreTarget) onRestore(restoreTarget.id);
+          setRestoreTarget(null);
+        }}
+        onCancel={() => setRestoreTarget(null)}
+      />
+
+      {/* 单条永久删除确认 */}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="永久删除"
+        message={`此操作将永久删除「${deleteTarget?.title}」，无法恢复。确定继续吗？`}
+        confirmText="永久删除"
+        danger
+        onConfirm={() => {
+          if (deleteTarget) onPermanentDelete(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
       />
     </div>
   );
