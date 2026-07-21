@@ -58,24 +58,11 @@ test('Ctrl+B 切换侧边栏（收起后侧边栏消失）', async () => {
 });
 
 test('Ctrl+D 切换主题（浅色↔深色）', async () => {
-  // 退出专注模式时默认 theme=system，点 Ctrl+D 应切换。先看初始 html 是否有 dark
+  // 默认 theme=system，点 Ctrl+D 应切换。先看初始 html 是否有 dark
   const beforeDark = await win.locator('html').evaluate((el) => el.classList.contains('dark'));
   await win.keyboard.press('Control+d');
   const afterDark = await win.locator('html').evaluate((el) => el.classList.contains('dark'));
   expect(afterDark).toBe(!beforeDark);
-});
-
-test('Ctrl+P 切换专注模式（进入后侧边栏消失）', async () => {
-  // 当前已退出专注模式
-  await expect(win.getByRole('complementary')).toBeVisible();
-  await win.keyboard.press('Control+p');
-  // 进入专注模式后侧边栏不渲染
-  await expect(win.getByRole('complementary')).toHaveCount(0);
-  // 浮动指示器"专注中"可见
-  await expect(win.getByText('专注中', { exact: true })).toBeVisible();
-  // 再切回
-  await win.keyboard.press('Control+p');
-  await expect(win.getByRole('complementary')).toBeVisible();
 });
 
 test('Ctrl+1/2/3 切换筛选视图', async () => {
