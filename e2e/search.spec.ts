@@ -21,8 +21,13 @@ test.afterEach(async () => {
   await closeApp(appInfo);
 });
 
+async function openSearch() {
+  await win.getByRole('button', { name: '搜索事项' }).click();
+  return win.getByPlaceholder('搜索事项...');
+}
+
 test('输入关键词后只显示匹配项', async () => {
-  const search = win.getByPlaceholder('搜索事项...');
+  const search = await openSearch();
   await search.fill('苹果');
   await expect(win.getByText('买苹果', { exact: true })).toBeVisible();
   await expect(win.getByText('买香蕉', { exact: true })).toHaveCount(0);
@@ -30,7 +35,7 @@ test('输入关键词后只显示匹配项', async () => {
 });
 
 test('清除按钮清空搜索', async () => {
-  const search = win.getByPlaceholder('搜索事项...');
+  const search = await openSearch();
   await search.fill('苹果');
   await win.getByRole('button', { name: '清除搜索' }).click();
   await expect(search).toHaveValue('');
@@ -49,7 +54,7 @@ test('Ctrl+F 聚焦搜索框', async () => {
 });
 
 test('搜索状态同步到 URL ?q=', async () => {
-  const search = win.getByPlaceholder('搜索事项...');
+  const search = await openSearch();
   await search.fill('苹果');
   // useFilter 在 effect 里把 search 写入 URL
   await win.waitForTimeout(300);

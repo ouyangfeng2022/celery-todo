@@ -16,6 +16,10 @@ const stickerId = query.get('sticker');
 if (stickerId) document.documentElement.classList.add('sticker-page');
 createRoot(root).render(
   <StrictMode>
-    {stickerId ? <StickerWindow stickerId={stickerId} initialProjectId={query.get('project') ?? ''} /> : <App />}
+    {stickerId ? (
+      <StickerWindow stickerId={stickerId} initialProjectId={query.get('project') ?? ''} />
+    ) : (
+      <App />
+    )}
   </StrictMode>,
 );

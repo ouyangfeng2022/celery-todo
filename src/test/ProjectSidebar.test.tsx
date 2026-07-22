@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { SidebarUpdateCard } from '@/components/projects/ProjectSidebar';
+import { ProjectSidebar, SidebarUpdateCard } from '@/components/projects/ProjectSidebar';
 
 describe('SidebarUpdateCard', () => {
   it('发现新版本时可从侧栏开始下载', () => {
@@ -33,5 +33,29 @@ describe('SidebarUpdateCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /重启完成更新/ }));
     expect(onRestart).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ProjectSidebar 设置菜单', () => {
+  it('从左下角直接进入外观设置', () => {
+    const onOpenSettings = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[]}
+        activeProjectId=""
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={onOpenSettings}
+        incompleteCounts={{}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
+    fireEvent.click(screen.getByRole('button', { name: '外观设置' }));
+    expect(onOpenSettings).toHaveBeenCalledWith('general');
   });
 });

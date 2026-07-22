@@ -195,10 +195,10 @@ export async function hoverRow(row: ReturnType<Page['locator']>): Promise<void> 
   await row.hover();
 }
 
-/** 从侧边栏底部应用菜单进入设置页面。 */
+/** 从侧边栏左下角设置菜单进入设置页面。 */
 export async function openSettings(win: Page): Promise<void> {
-  await win.getByRole('button', { name: '打开应用菜单' }).click();
-  await win.getByRole('button', { name: '设置', exact: true }).click();
+  await win.getByRole('button', { name: '打开设置菜单' }).click();
+  await win.getByRole('button', { name: '外观设置', exact: true }).click();
   await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
 }
 

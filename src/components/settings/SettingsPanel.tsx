@@ -19,10 +19,11 @@ import { ShortcutsSection } from './sections/ShortcutsSection';
 import { AboutSection } from './sections/AboutSection';
 
 /** 子页面 id。desktop 仅在桌面端渲染入口，故路由层 union 包含但导航项条件渲染。 */
-type SectionId = 'general' | 'sticker' | 'desktop' | 'data' | 'shortcuts' | 'about';
+export type SettingsSectionId = 'general' | 'sticker' | 'desktop' | 'data' | 'shortcuts' | 'about';
 
 interface SettingsPanelProps {
   open: boolean;
+  initialSection?: SettingsSectionId;
   settings: AppSettings;
   onClose: () => void;
   onUpdateSettings: (updates: Partial<AppSettings>) => void;
@@ -43,7 +44,7 @@ interface SettingsPanelProps {
 
 // 左侧导航项定义。desktop 仅桌面端渲染，其余始终存在。
 // 图标类型直接借用现有图标的类型，避免 React 19 memo/ComponentType ref 兼容问题。
-const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Icons.SettingsIcon }[] = [
+const NAV_ITEMS: { id: SettingsSectionId; label: string; icon: typeof Icons.SettingsIcon }[] = [
   { id: 'general', label: '通用', icon: Icons.SettingsIcon },
   { id: 'sticker', label: '贴图', icon: Icons.StickerIcon },
   { id: 'desktop', label: '桌面', icon: Icons.MonitorIcon },
@@ -54,6 +55,7 @@ const NAV_ITEMS: { id: SectionId; label: string; icon: typeof Icons.SettingsIcon
 
 function SettingsPanelComponent({
   open,
+  initialSection = 'general',
   settings,
   onClose,
   onUpdateSettings,
@@ -69,12 +71,12 @@ function SettingsPanelComponent({
   onDownloadUpdate,
   onRestartToUpdate,
 }: SettingsPanelProps) {
-  const [activeSection, setActiveSection] = useState<SectionId>('general');
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>('general');
 
-  // 每次打开重置到「通用」子页面，避免上次会话停留在已失效的状态
+  // 左下角设置菜单可以直接打开指定分类；普通入口默认进入「通用」。
   useEffect(() => {
-    if (open) setActiveSection('general');
-  }, [open]);
+    if (open) setActiveSection(initialSection);
+  }, [initialSection, open]);
 
   // Esc 关闭（沿用原行为，ConfirmDialog 内部也会消费 Esc —— 但弹窗未开时这里兜底）
   const handleKeyDown = useCallback(

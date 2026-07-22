@@ -19,16 +19,9 @@ interface UpdateBadgeProps {
 }
 
 function UpdateBadgeComponent({ version, isNewlyAvailable, onClick }: UpdateBadgeProps) {
-  const title = version
-    ? `发现新版本 v${version}，点击查看`
-    : '发现新版本，点击查看';
+  const title = version ? `发现新版本 v${version}，点击查看` : '发现新版本，点击查看';
   return (
-    <button
-      onClick={onClick}
-      className="btn-ghost relative p-2"
-      aria-label={title}
-      title={title}
-    >
+    <button onClick={onClick} className="btn-ghost relative p-2" aria-label={title} title={title}>
       <SparkleIcon size={18} />
       {isNewlyAvailable && (
         // 右上角红点：仅本次启动首次发现时显示，提示用户「还没看过」

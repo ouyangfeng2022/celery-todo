@@ -18,17 +18,18 @@ import { useTheme } from './hooks/useTheme';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { Header } from './components/layout/Header';
+import { AppToolbar } from './components/layout/AppToolbar';
 import { ProjectSidebar } from './components/projects/ProjectSidebar';
 import { AddTodoInput } from './components/todos/AddTodoInput';
 import { FilterBar } from './components/filters/FilterBar';
 import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
-import { SettingsPanel } from './components/settings/SettingsPanel';
+import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
 import { HistoryPanel } from './components/settings/HistoryPanel';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
-import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
+import { FocusIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 import { UpdateBadge } from './components/common/UpdateBadge';
 
@@ -55,6 +56,7 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
   // 历史记录独立弹窗（侧栏「历史记录」入口唤出，与「设置」弹窗分离）
   const [historyOpen, setHistoryOpen] = useState(false);
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
@@ -125,6 +127,11 @@ function App() {
     if (updateStatus === 'available') downloadUpdate();
     if (updateStatus === 'downloaded' || updateStatus === 'dismissed') void quitAndInstall();
   }, [acknowledgeUpdate, downloadUpdate, quitAndInstall, updateStatus]);
+
+  const openSettings = useCallback((section: SettingsSectionId = 'general') => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  }, []);
 
   // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
   useCliBridge();
@@ -366,21 +373,41 @@ function App() {
 
   return (
     <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
+      {!focusMode && (
+        <AppToolbar
+          sidebarOpen={sidebarOpen}
+          search={search}
+          searchFocusSignal={searchFocusSignal}
+          onToggleSidebar={() => setSidebarOpen((value) => !value)}
+          onSearchChange={changeSearch}
+          onOpenHistory={() => setHistoryOpen(true)}
+          onImport={handleImportProject}
+          onExportAll={handleExportAll}
+          onExportCsv={handleExportCsv}
+          onCreateProject={() => {
+            setSidebarOpen(true);
+            setCreateProjectSignal((signal) => signal + 1);
+          }}
+          onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
+          onCloseWindow={() => window.close()}
+          onOpenHelp={() =>
+            window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
+          }
+        />
+      )}
       {/*
         侧边栏 - 专注模式下完全隐藏（直接不渲染）
-        动画策略：用纯 CSS transition 控制 width 0 ↔ 256px，而不是 framer-motion。
+        动画策略：外层只控制 width 0 ↔ 256px，内层用 GPU transform 辅助退场。
         - 容器始终挂载，避免挂载/卸载与 exit 动画的协调问题
         - 内层 .sidebar-inner 固定 256px，<aside> 始终保持完整背景
-        - 外层 transition: width 220ms，浏览器原生实现，行为可预测
+        - 侧栏与 Header 共用同一套 260ms 缓动，避免标题偏移先跳变造成重叠
         收起时 overflow-hidden 把固定宽度的内层从右向左裁剪。
       */}
       {!focusMode && (
         <div
-          className="group/sidebar relative flex-shrink-0 overflow-hidden h-full"
-          style={{
-            width: sidebarOpen ? '256px' : '0px',
-            transition: 'width 220ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
+          className="sidebar-shell group/sidebar relative h-full flex-shrink-0 overflow-hidden"
+          data-open={sidebarOpen}
+          style={{ width: sidebarOpen ? '256px' : '0px' }}
         >
           <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
             <ProjectSidebar
@@ -391,87 +418,27 @@ function App() {
               onRename={renameProject}
               onDelete={deleteProject}
               onExport={handleExportProject}
-              onImport={handleImportProject}
               onReorder={reorderProjects}
-              onOpenHistory={() => setHistoryOpen(true)}
-              onOpenSettings={() => setSettingsOpen(true)}
               updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
               updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
               updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
               onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
               onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
-              onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
+              onOpenSettings={openSettings}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />
           </div>
-
-          {/* 收起手柄：贴在侧边栏右边缘，鼠标悬浮在侧边栏区域时淡入 */}
-          {sidebarOpen && (
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 right-1 z-20 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/sidebar:opacity-100 focus:opacity-100 transition-opacity"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)',
-              }}
-              aria-label="收起侧边栏"
-              title="收起侧边栏 (Ctrl+B)"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-            >
-              <ChevronLeftIcon size={16} />
-            </button>
-          )}
         </div>
       )}
 
       {/* 主内容区 */}
       <div className="relative flex-1 flex flex-col min-w-0">
-        {/*
-          展开入口：侧边栏收起时，在主内容区左缘留一条窄的隐形热区（group/expand），
-          鼠标移近左缘即淡入右箭头手柄；不在整个主区悬浮时触发，避免误闪。
-        */}
-        {!sidebarOpen && !focusMode && (
-          <div className="group/expand absolute inset-y-0 left-0 w-6 z-30" aria-hidden="true">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="titlebar-no-drag absolute top-1/2 -translate-y-1/2 left-1 flex items-center justify-center w-6 h-12 rounded-md opacity-0 group-hover/expand:opacity-100 focus:opacity-100 transition-opacity"
-              style={{
-                backgroundColor: 'var(--bg-tertiary)',
-                border: '1px solid var(--border-color)',
-                color: 'var(--text-secondary)',
-              }}
-              aria-label="展开侧边栏"
-              title="展开侧边栏 (Ctrl+B)"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)';
-                e.currentTarget.style.color = 'var(--text-secondary)';
-              }}
-            >
-              <ChevronRightIcon size={16} />
-            </button>
-          </div>
-        )}
-
         {/* Header - 专注模式下隐藏，由右上角浮动指示器代替 */}
         {!focusMode && (
           <Header
             project={activeProject}
-            search={search}
-            onSearchChange={changeSearch}
-            searchFocusSignal={searchFocusSignal}
+            toolbarInset={!sidebarOpen}
             hasUpdate={isAutoUpdateAvailable && updateStatus === 'available'}
             updateVersion={updateInfo?.version}
             isNewlyAvailable={isNewlyAvailable}
@@ -638,6 +605,7 @@ function App() {
       {/* 设置面板 */}
       <SettingsPanel
         open={settingsOpen}
+        initialSection={settingsSection}
         settings={settings}
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}

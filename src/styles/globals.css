@@ -552,6 +552,45 @@
     -webkit-app-region: no-drag;
   }
 
+  /*
+   * 侧栏折叠动效：宽度变化负责主区布局，固定宽度的内层只做合成层动画。
+   * Header 使用同一时长与曲线，避免其左边距在侧栏动画开始时瞬间跳变。
+   */
+  .sidebar-shell {
+    contain: layout paint;
+    transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: width;
+  }
+
+  .sidebar-inner {
+    transition:
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 160ms ease-out;
+    will-change: transform, opacity;
+  }
+
+  .sidebar-shell[data-open='false'] .sidebar-inner {
+    opacity: 0.72;
+    transform: translate3d(-12px, 0, 0);
+  }
+
+  .sidebar-toolbar-offset {
+    transition: padding-left 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .sidebar-drag-offset {
+    transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-shell,
+    .sidebar-inner,
+    .sidebar-toolbar-offset,
+    .sidebar-drag-offset {
+      transition-duration: 0.01ms;
+    }
+  }
+
   /* Markdown 渲染 */
   .markdown-body {
     font-size: 0.875rem;

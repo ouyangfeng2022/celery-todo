@@ -24,19 +24,21 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Project } from '../../types';
 import type { DownloadProgress, UpdateInfoLite, UpdateStatus } from '../../hooks/useAutoUpdate';
+import type { SettingsSectionId } from '../settings/SettingsPanel';
 import {
   PlusIcon,
   TrashIcon,
   EditIcon,
   DownloadIcon,
-  UploadIcon,
-  InboxIcon,
-  SettingsIcon,
-  SparkleIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   RefreshIcon,
   CheckIcon,
+  ChevronDownIcon,
+  GithubIcon,
+  KeyboardIcon,
+  MonitorIcon,
+  SettingsIcon,
+  StickerIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -49,17 +51,14 @@ interface ProjectSidebarProps {
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onExport: (projectId: string) => void;
-  onImport: (file: File) => void;
   onReorder: (sourceId: string, targetId: string) => void;
-  onOpenHistory: () => void;
-  onOpenSettings: () => void;
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
   updateProgress?: DownloadProgress | null;
   onDownloadUpdate?: () => void;
   onRestartToUpdate?: () => void;
+  onOpenSettings: (section: SettingsSectionId) => void;
   /** 进入简洁模式，并创建当前项目的浮窗 */
-  onEnterCompactMode: () => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -332,16 +331,13 @@ function ProjectSidebarComponent({
   onRename,
   onDelete,
   onExport,
-  onImport,
   onReorder,
-  onOpenHistory,
-  onOpenSettings,
   updateStatus,
   updateInfo,
   updateProgress,
   onDownloadUpdate,
   onRestartToUpdate,
-  onEnterCompactMode,
+  onOpenSettings,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -350,7 +346,7 @@ function ProjectSidebarComponent({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
-  const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const createInputRef = useRef<HTMLInputElement>(null);
 
   // 外部（主区空状态按钮）触发：唤出新建输入框并聚焦
@@ -383,17 +379,6 @@ function ProjectSidebarComponent({
     setEditingId(null);
   }, [editingId, editName, onRename]);
 
-  const handleImportClick = useCallback(() => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) onImport(file);
-    };
-    input.click();
-  }, [onImport]);
-
   // 拖拽排序：distance:5 区分点击与拖拽，避免影响项目切换
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -419,31 +404,8 @@ function ProjectSidebarComponent({
       className="w-64 flex-shrink-0 h-full flex flex-col border-r"
       style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}
     >
-      {/* 品牌标识：编辑性排印 —— "Celery" 衬线斜体传达植物 / 文学性格；
-          中间珊瑚色圆点既是品牌色锚定、又呼应待办列表的 bullet 视觉，
-          形成品牌签名；"Todo" 衬线 roman 收尾。
-          文字全部 text-primary 保证对比度，仅圆点作为非文本色彩装饰。
-          单行、字号、py-3.5 与右侧 Header 项目名对齐。 */}
-      <div className="px-5 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <Logo size={32} className="flex-shrink-0" />
-          <h1
-            className="text-xl font-serif font-semibold leading-none whitespace-nowrap flex items-center gap-[0.35em]"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            <span className="italic">Celery</span>
-            <span
-              aria-hidden="true"
-              className="w-[5px] h-[5px] rounded-full flex-shrink-0"
-              style={{ backgroundColor: 'var(--accent)' }}
-            />
-            <span>Todo</span>
-          </h1>
-        </div>
-      </div>
-
       {/* 项目列表 */}
-      <div className="flex-1 overflow-y-auto px-3 py-4">
+      <div className="flex-1 overflow-y-auto px-3 pb-4 pt-14">
         <div className="flex items-center justify-between px-2 mb-2">
           <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
             项目
@@ -532,7 +494,7 @@ function ProjectSidebarComponent({
         </DndContext>
       </div>
 
-      {/* 底部更新状态与工具菜单 */}
+      {/* 底部更新状态与品牌签名 */}
       <div className="relative px-3 pb-3 pt-2">
         <SidebarUpdateCard
           status={updateStatus}
@@ -543,13 +505,13 @@ function ProjectSidebarComponent({
         />
 
         <AnimatePresence>
-          {utilityMenuOpen && (
+          {settingsMenuOpen && (
             <motion.div
               initial={{ opacity: 0, y: 6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.98 }}
               transition={{ duration: 0.14 }}
-              className="absolute bottom-[52px] left-3 right-3 z-30 overflow-hidden rounded-xl border p-1.5"
+              className="absolute bottom-12 left-3 right-3 z-30 rounded-xl border p-1.5"
               style={{
                 backgroundColor: 'var(--bg-tertiary)',
                 borderColor: 'var(--border-color)',
@@ -557,18 +519,20 @@ function ProjectSidebarComponent({
               }}
             >
               {[
-                { label: '设置', icon: SettingsIcon, action: onOpenSettings },
-                { label: '历史记录', icon: InboxIcon, action: onOpenHistory },
-                { label: '导入数据', icon: UploadIcon, action: handleImportClick },
-                { label: '简洁模式', icon: SparkleIcon, action: onEnterCompactMode },
-              ].map(({ label, icon: Icon, action }) => (
+                { label: '外观设置', icon: SettingsIcon, section: 'general' as const },
+                { label: '贴图设置', icon: StickerIcon, section: 'sticker' as const },
+                ...(window.electronAPI
+                  ? [{ label: '桌面设置', icon: MonitorIcon, section: 'desktop' as const }]
+                  : []),
+                { label: '快捷键', icon: KeyboardIcon, section: 'shortcuts' as const },
+                { label: '关于', icon: GithubIcon, section: 'about' as const },
+              ].map(({ label, icon: Icon, section }) => (
                 <button
-                  key={label}
+                  key={section}
                   onClick={() => {
-                    setUtilityMenuOpen(false);
-                    action();
+                    setSettingsMenuOpen(false);
+                    onOpenSettings(section);
                   }}
-                  aria-label={label}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: 'var(--text-secondary)' }}
                 >
@@ -581,17 +545,19 @@ function ProjectSidebarComponent({
         </AnimatePresence>
 
         <button
-          onClick={() => setUtilityMenuOpen((value) => !value)}
+          onClick={() => setSettingsMenuOpen((value) => !value)}
           className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-primary)' }}
-          aria-label="打开应用菜单"
-          aria-expanded={utilityMenuOpen}
+          aria-label="打开设置菜单"
+          aria-expanded={settingsMenuOpen}
         >
           <Logo size={22} />
-          <span className="flex-1 text-left font-medium">Celery Todo</span>
+          <span className="flex-1 text-left font-medium">设置</span>
           <ChevronDownIcon
             size={14}
-            className={utilityMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'}
+            className={
+              settingsMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'
+            }
           />
         </button>
       </div>

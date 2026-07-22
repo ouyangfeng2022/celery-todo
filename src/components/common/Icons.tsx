@@ -211,6 +211,17 @@ export const MenuIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+/** 左侧栏开关；open 时填充左栏，收起后保留窗口轮廓。 */
+export const SidebarIcon = memo(({ open = true, ...props }: IconProps & { open?: boolean }) => (
+  <BaseIcon {...props}>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <line x1="9" y1="4" x2="9" y2="20" />
+    {open && (
+      <path d="M3 6a2 2 0 0 1 2-2h4v16H5a2 2 0 0 1-2-2Z" fill="currentColor" opacity="0.16" />
+    )}
+  </BaseIcon>
+));
+
 export const ChevronDownIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <polyline points="6 9 12 15 18 9" />

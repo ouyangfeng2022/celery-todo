@@ -220,10 +220,7 @@ function UpdateDialogComponent({
                   <button className="btn-secondary" onClick={onClose}>
                     稍后
                   </button>
-                  <button
-                    className="btn-primary flex items-center gap-1.5"
-                    onClick={onDownload}
-                  >
+                  <button className="btn-primary flex items-center gap-1.5" onClick={onDownload}>
                     <DownloadIcon size={15} />
                     立即更新
                   </button>
@@ -239,10 +236,7 @@ function UpdateDialogComponent({
                   <button className="btn-secondary" onClick={onClose}>
                     稍后
                   </button>
-                  <button
-                    className="btn-primary flex items-center gap-1.5"
-                    onClick={onRestart}
-                  >
+                  <button className="btn-primary flex items-center gap-1.5" onClick={onRestart}>
                     <DownloadIcon size={15} />
                     立即重启
                   </button>
