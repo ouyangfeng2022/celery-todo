@@ -1,5 +1,5 @@
 /**
- * @file SettingsPanel - 设置面板（壳 + 左侧导航 + 右侧内容路由）
+ * @file SettingsPanel - 设置页面（页面壳 + 左侧导航 + 右侧内容路由）
  * @description
  *   v2.5 重构：从单个滚动长列表改为「左侧分类导航 + 右侧子页面」结构。
  *   各分类的具体 UI 拆到 ./sections/ 下，本文件只负责弹窗骨架、导航与子页面分发。
@@ -10,7 +10,6 @@ import { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AppSettings } from '../../types';
 import * as Icons from '../common/Icons';
-import { Logo } from '../common/Logo';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
@@ -92,141 +91,123 @@ function SettingsPanelComponent({
   const navItems = NAV_ITEMS.filter((item) => item.id !== 'desktop' || window.electronAPI);
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        <motion.section
+          className="fixed inset-0 z-50 flex min-h-0 flex-col"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onKeyDown={handleKeyDown}
         >
+          {/* 头部 */}
           <div
-            className="absolute inset-0 backdrop-blur-sm"
-            style={{ backgroundColor: 'rgba(47, 45, 39, 0.4)' }}
-            onClick={onClose}
-          />
-
-          <motion.div
-            className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-claude flex flex-col"
-            style={{
-              backgroundColor: 'var(--bg-tertiary)',
-              border: '1px solid var(--border-color)',
-              boxShadow: 'var(--shadow-lg)',
-            }}
-            initial={{ scale: 0.96, opacity: 0, y: 12 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: 12 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="titlebar-drag flex h-[68px] flex-shrink-0 items-end border-b px-7 pb-3"
+            style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}
           >
-            {/* 头部 */}
-            <div
-              className="flex items-center justify-between px-6 py-4 border-b"
-              style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}
+            <button
+              onClick={onClose}
+              className="titlebar-no-drag flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--bg-hover)]"
+              aria-label="返回待办"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Logo size={26} className="flex-shrink-0" />
-                <h2
-                  className="text-xl font-serif font-semibold leading-none"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  设置
-                </h2>
-              </div>
-              <button onClick={onClose} className="btn-ghost p-1.5" aria-label="关闭">
-                <Icons.XIcon size={18} />
-              </button>
-            </div>
-
-            {/* 主体：左侧导航 + 右侧内容 */}
-            <div className="flex flex-1 min-h-0">
-              {/* 左侧导航 */}
-              <nav
-                className="w-44 flex-shrink-0 p-3 space-y-0.5 border-r overflow-y-auto"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                }}
+              <Icons.ChevronLeftIcon size={17} />
+              <h2
+                className="text-[15px] font-medium leading-none"
+                style={{ color: 'var(--text-primary)' }}
               >
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeSection === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveSection(item.id)}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors text-left"
-                      style={{
-                        color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                        backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
-                        fontWeight: isActive ? 600 : 400,
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <Icon size={16} />
-                      {item.label}
-                    </button>
-                  );
-                })}
-              </nav>
+                设置
+              </h2>
+            </button>
+          </div>
 
-              {/* 右侧内容（子页面） */}
-              <main className="flex-1 min-w-0 overflow-y-auto p-6">
-                {activeSection === 'general' && (
-                  <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
-                )}
+          {/* 主体：左侧导航 + 右侧内容 */}
+          <div className="mx-auto flex w-full max-w-6xl flex-1 min-h-0 px-5 py-6 lg:px-8">
+            {/* 左侧导航 */}
+            <nav
+              className="w-52 flex-shrink-0 space-y-1 overflow-y-auto pr-8"
+              style={{
+                backgroundColor: 'var(--bg-primary)',
+              }}
+            >
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeSection === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveSection(item.id)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg transition-colors text-left"
+                    style={{
+                      color: isActive ? 'var(--accent)' : 'var(--text-primary)',
+                      backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
+                      fontWeight: isActive ? 600 : 400,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <Icon size={16} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </nav>
 
-                {activeSection === 'sticker' && (
-                  <StickerSection
-                    preset={settings.stickerPreset}
-                    radius={settings.stickerRadius}
-                    blur={settings.stickerBlur}
-                    opacity={settings.stickerOpacity}
-                    shadow={settings.stickerShadow}
-                    onUpdateSettings={onUpdateSettings}
-                  />
-                )}
+            {/* 右侧内容（子页面） */}
+            <main className="min-w-0 flex-1 overflow-y-auto pl-3 pr-2">
+              {activeSection === 'general' && (
+                <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
+              )}
 
-                {activeSection === 'desktop' && (
-                  <DesktopSection
-                    autoStart={settings.autoStart}
-                    minimizeToTray={settings.minimizeToTray}
-                    autoUpdateEnabled={settings.autoUpdateEnabled}
-                    onUpdateSettings={onUpdateSettings}
-                  />
-                )}
+              {activeSection === 'sticker' && (
+                <StickerSection
+                  preset={settings.stickerPreset}
+                  radius={settings.stickerRadius}
+                  blur={settings.stickerBlur}
+                  opacity={settings.stickerOpacity}
+                  shadow={settings.stickerShadow}
+                  onUpdateSettings={onUpdateSettings}
+                />
+              )}
 
-                {activeSection === 'data' && (
-                  <DataSection
-                    onExportAll={onExportAll}
-                    onExportCsv={onExportCsv}
-                    onImportAll={onImportAll}
-                    onResetData={onResetData}
-                  />
-                )}
+              {activeSection === 'desktop' && (
+                <DesktopSection
+                  autoStart={settings.autoStart}
+                  minimizeToTray={settings.minimizeToTray}
+                  autoUpdateEnabled={settings.autoUpdateEnabled}
+                  onUpdateSettings={onUpdateSettings}
+                />
+              )}
 
-                {activeSection === 'shortcuts' && <ShortcutsSection />}
+              {activeSection === 'data' && (
+                <DataSection
+                  onExportAll={onExportAll}
+                  onExportCsv={onExportCsv}
+                  onImportAll={onImportAll}
+                  onResetData={onResetData}
+                />
+              )}
 
-                {activeSection === 'about' && (
-                  <AboutSection
-                    updateStatus={updateStatus}
-                    updateInfo={updateInfo}
-                    updateProgress={updateProgress}
-                    updateError={updateError}
-                    onCheckUpdates={onCheckUpdates ?? (() => undefined)}
-                    onDownloadUpdate={onDownloadUpdate ?? (() => undefined)}
-                    onRestartToUpdate={onRestartToUpdate ?? (() => undefined)}
-                  />
-                )}
-              </main>
-            </div>
-          </motion.div>
-        </motion.div>
+              {activeSection === 'shortcuts' && <ShortcutsSection />}
+
+              {activeSection === 'about' && (
+                <AboutSection
+                  updateStatus={updateStatus}
+                  updateInfo={updateInfo}
+                  updateProgress={updateProgress}
+                  updateError={updateError}
+                  onCheckUpdates={onCheckUpdates ?? (() => undefined)}
+                  onDownloadUpdate={onDownloadUpdate ?? (() => undefined)}
+                  onRestartToUpdate={onRestartToUpdate ?? (() => undefined)}
+                />
+              )}
+            </main>
+          </div>
+        </motion.section>
       )}
     </AnimatePresence>
   );

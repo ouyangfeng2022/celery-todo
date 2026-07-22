@@ -23,6 +23,7 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Project } from '../../types';
+import type { DownloadProgress, UpdateInfoLite, UpdateStatus } from '../../hooks/useAutoUpdate';
 import {
   PlusIcon,
   TrashIcon,
@@ -32,6 +33,10 @@ import {
   InboxIcon,
   SettingsIcon,
   SparkleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  RefreshIcon,
+  CheckIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -48,12 +53,143 @@ interface ProjectSidebarProps {
   onReorder: (sourceId: string, targetId: string) => void;
   onOpenHistory: () => void;
   onOpenSettings: () => void;
+  updateStatus?: UpdateStatus;
+  updateInfo?: UpdateInfoLite | null;
+  updateProgress?: DownloadProgress | null;
+  onDownloadUpdate?: () => void;
+  onRestartToUpdate?: () => void;
   /** 进入简洁模式，并创建当前项目的浮窗 */
   onEnterCompactMode: () => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
   autofocusCreateSignal?: number;
+}
+
+interface SidebarUpdateCardProps {
+  status?: UpdateStatus;
+  info?: UpdateInfoLite | null;
+  progress?: DownloadProgress | null;
+  onDownload?: () => void;
+  onRestart?: () => void;
+}
+
+/** 侧栏内的升级状态卡：升级过程始终留在用户视线内，不再打断当前工作。 */
+export function SidebarUpdateCard({
+  status,
+  info,
+  progress,
+  onDownload,
+  onRestart,
+}: SidebarUpdateCardProps) {
+  if (!status || !['available', 'downloading', 'downloaded', 'dismissed'].includes(status)) {
+    return null;
+  }
+
+  const percent = Math.max(0, Math.min(100, Math.round(progress?.percent ?? 0)));
+
+  if (status === 'available') {
+    return (
+      <button
+        onClick={onDownload}
+        className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-y-px"
+        style={{
+          backgroundColor: 'var(--bg-tertiary)',
+          borderColor: 'var(--border-color)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <span className="flex items-center gap-2.5">
+          <span
+            className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+            style={{ backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)' }}
+          >
+            <DownloadIcon size={14} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span
+              className="block text-[13px] font-medium"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              下载新版本{info?.version ? ` v${info.version}` : ''}
+            </span>
+            <span className="block truncate text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+              更新已准备好
+            </span>
+          </span>
+          <ChevronRightIcon size={15} />
+        </span>
+      </button>
+    );
+  }
+
+  if (status === 'downloading') {
+    return (
+      <div
+        className="w-full rounded-xl border px-3 py-2.5"
+        style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }}
+        aria-label={`正在下载更新 ${percent}%`}
+      >
+        <div className="mb-2 flex items-center justify-between gap-2 text-[12px]">
+          <span
+            className="flex items-center gap-2 font-medium"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <RefreshIcon size={14} className="animate-spin" />
+            正在下载更新…
+          </span>
+          <span className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+            {percent}%
+          </span>
+        </div>
+        <div
+          className="h-1.5 overflow-hidden rounded-full"
+          style={{ backgroundColor: 'var(--bg-hover)' }}
+        >
+          <motion.div
+            className="h-full rounded-full"
+            style={{ backgroundColor: 'var(--accent)' }}
+            initial={false}
+            animate={{ width: `${percent}%` }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={onRestart}
+      className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-y-px"
+      style={{
+        backgroundColor: 'var(--bg-tertiary)',
+        borderColor: 'var(--border-color)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <span className="flex items-center gap-2.5">
+        <span
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+          style={{
+            backgroundColor: 'var(--success-subtle, var(--accent-subtle))',
+            color: 'var(--success)',
+          }}
+        >
+          <CheckIcon size={14} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
+            重启完成更新
+          </span>
+          <span className="block truncate text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+            {info?.version ? `v${info.version} 已下载完成` : '新版本已下载完成'}
+          </span>
+        </span>
+        <ChevronRightIcon size={15} />
+      </span>
+    </button>
+  );
 }
 
 /** 单个项目行（包装为 dnd-kit 可拖动节点） */
@@ -200,6 +336,11 @@ function ProjectSidebarComponent({
   onReorder,
   onOpenHistory,
   onOpenSettings,
+  updateStatus,
+  updateInfo,
+  updateProgress,
+  onDownloadUpdate,
+  onRestartToUpdate,
   onEnterCompactMode,
   incompleteCounts,
   autofocusCreateSignal,
@@ -209,6 +350,7 @@ function ProjectSidebarComponent({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
   const createInputRef = useRef<HTMLInputElement>(null);
 
   // 外部（主区空状态按钮）触发：唤出新建输入框并聚焦
@@ -390,43 +532,67 @@ function ProjectSidebarComponent({
         </DndContext>
       </div>
 
-      {/* 底部操作 */}
-      <div
-        className="px-3 py-3 border-t space-y-0.5"
-        style={{ borderColor: 'var(--border-color)' }}
-      >
+      {/* 底部更新状态与工具菜单 */}
+      <div className="relative px-3 pb-3 pt-2">
+        <SidebarUpdateCard
+          status={updateStatus}
+          info={updateInfo}
+          progress={updateProgress}
+          onDownload={onDownloadUpdate}
+          onRestart={onRestartToUpdate}
+        />
+
+        <AnimatePresence>
+          {utilityMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.98 }}
+              transition={{ duration: 0.14 }}
+              className="absolute bottom-[52px] left-3 right-3 z-30 overflow-hidden rounded-xl border p-1.5"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              {[
+                { label: '设置', icon: SettingsIcon, action: onOpenSettings },
+                { label: '历史记录', icon: InboxIcon, action: onOpenHistory },
+                { label: '导入数据', icon: UploadIcon, action: handleImportClick },
+                { label: '简洁模式', icon: SparkleIcon, action: onEnterCompactMode },
+              ].map(({ label, icon: Icon, action }) => (
+                <button
+                  key={label}
+                  onClick={() => {
+                    setUtilityMenuOpen(false);
+                    action();
+                  }}
+                  aria-label={label}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <Icon size={15} />
+                  {label}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <button
-          onClick={onEnterCompactMode}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
+          onClick={() => setUtilityMenuOpen((value) => !value)}
+          className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
+          style={{ color: 'var(--text-primary)' }}
+          aria-label="打开应用菜单"
+          aria-expanded={utilityMenuOpen}
         >
-          <SparkleIcon size={15} />
-          <span className="flex-1 text-left">简洁模式</span>
-        </button>
-        <button
-          onClick={handleImportClick}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <UploadIcon size={15} />
-          导入数据
-        </button>
-        <button
-          onClick={onOpenHistory}
-          aria-label="历史记录"
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <InboxIcon size={15} />
-          <span className="flex-1 text-left">历史记录</span>
-        </button>
-        <button
-          onClick={onOpenSettings}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          <SettingsIcon size={15} />
-          设置
+          <Logo size={22} />
+          <span className="flex-1 text-left font-medium">Celery Todo</span>
+          <ChevronDownIcon
+            size={14}
+            className={utilityMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'}
+          />
         </button>
       </div>
 

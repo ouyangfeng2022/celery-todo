@@ -195,8 +195,9 @@ export async function hoverRow(row: ReturnType<Page['locator']>): Promise<void> 
   await row.hover();
 }
 
-/** 打开设置面板（侧边栏底部"设置"按钮，需 exact 避开行内"设置优先级"按钮） */
+/** 从侧边栏底部应用菜单进入设置页面。 */
 export async function openSettings(win: Page): Promise<void> {
+  await win.getByRole('button', { name: '打开应用菜单' }).click();
   await win.getByRole('button', { name: '设置', exact: true }).click();
   await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
 }
@@ -215,6 +216,7 @@ export async function openSettingsSection(win: Page, section: string): Promise<v
  * 等弹窗标题「历史记录」与副标题同时可见，即视为加载完成。
  */
 export async function openHistory(win: Page): Promise<void> {
+  await win.getByRole('button', { name: '打开应用菜单' }).click();
   await win.getByRole('button', { name: '历史记录', exact: true }).click();
   // 弹窗标题 + 历史视图副标题同时可见
   await win.getByRole('heading', { name: '历史记录' }).waitFor({ state: 'visible' });

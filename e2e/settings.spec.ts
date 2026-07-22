@@ -2,7 +2,15 @@
  * 设置：主题和数据管理重置。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, createProject, openSettings, openSettingsSection, type LaunchedApp } from './helpers';
+import {
+  launchApp,
+  closeApp,
+  addTodo,
+  createProject,
+  openSettings,
+  openSettingsSection,
+  type LaunchedApp,
+} from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -59,4 +67,12 @@ test('Esc 关闭设置面板', async () => {
   await openSettings(win);
   await win.keyboard.press('Escape');
   await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+});
+
+test('设置作为独立页面打开，并可返回待办页', async () => {
+  await openSettings(win);
+  await expect(win.getByRole('button', { name: '返回待办' })).toBeVisible();
+  await win.getByRole('button', { name: '返回待办' }).click();
+  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.locator('main')).toBeVisible();
 });

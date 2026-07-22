@@ -26,7 +26,6 @@ import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel } from './components/settings/SettingsPanel';
 import { HistoryPanel } from './components/settings/HistoryPanel';
-import { UpdateDialog } from './components/common/UpdateDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { FocusIcon, ChevronLeftIcon, ChevronRightIcon } from './components/common/Icons';
@@ -56,9 +55,6 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // 升级流程弹窗显隐：发现新版本时主动弹出，承载「下载→进度→重启」全流程。
-  // 与 settingsOpen 解耦——设置面板仅作「手动检查更新」入口，不负责提示。
-  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   // 历史记录独立弹窗（侧栏「历史记录」入口唤出，与「设置」弹窗分离）
   const [historyOpen, setHistoryOpen] = useState(false);
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
@@ -120,27 +116,15 @@ function App() {
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
-    dismissDownloaded,
     acknowledgeUpdate,
   } = useAutoUpdate({ dbReady });
 
-  // 点击 Header / 专注模式的更新徽标：弹出 UpdateDialog（而非打开设置面板），
-  // 让用户在弹窗内直接完成下载/重启。同时标记为已查看，熄灭徽标红点。
-  const openUpdateDialog = useCallback(() => {
+  // 更新入口不再唤出模态框：下载与重启状态固定显示在侧边栏底部。
+  const handleUpdateAction = useCallback(() => {
     acknowledgeUpdate();
-    setUpdateDialogOpen(true);
-  }, [acknowledgeUpdate]);
-
-  // 发现新版本时自动弹出 UpdateDialog：
-  // isNewlyAvailable 仅在「本次启动首次发现该版本」时为 true（hook 内部已用
-  // updateNotifiedVersion 持久化去重），所以同一版本不会每次启动都打扰用户。
-  // downloaded 状态不依赖此 effect——下载完成后 UpdateDialog 仍保持打开由其内部
-  // 状态分支渲染「立即重启」，无需再次自动唤起。
-  useEffect(() => {
-    if (isNewlyAvailable) {
-      setUpdateDialogOpen(true);
-    }
-  }, [isNewlyAvailable]);
+    if (updateStatus === 'available') downloadUpdate();
+    if (updateStatus === 'downloaded' || updateStatus === 'dismissed') void quitAndInstall();
+  }, [acknowledgeUpdate, downloadUpdate, quitAndInstall, updateStatus]);
 
   // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
   useCliBridge();
@@ -411,6 +395,11 @@ function App() {
               onReorder={reorderProjects}
               onOpenHistory={() => setHistoryOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
+              updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
+              updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
+              updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
+              onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
+              onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
               onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
@@ -486,7 +475,7 @@ function App() {
             hasUpdate={isAutoUpdateAvailable && updateStatus === 'available'}
             updateVersion={updateInfo?.version}
             isNewlyAvailable={isNewlyAvailable}
-            onOpenUpdateDialog={openUpdateDialog}
+            onOpenUpdateDialog={handleUpdateAction}
           />
         )}
 
@@ -513,7 +502,7 @@ function App() {
                 <UpdateBadge
                   version={updateInfo?.version}
                   isNewlyAvailable={isNewlyAvailable}
-                  onClick={openUpdateDialog}
+                  onClick={handleUpdateAction}
                 />
               </div>
             )}
@@ -673,32 +662,6 @@ function App() {
         onPermanentDeleteTodo={permanentlyDelete}
         onEmptyArchive={emptyArchive}
         onClose={() => setHistoryOpen(false)}
-      />
-
-      {/* 升级流程弹窗：发现新版本时自动唤起，承载「下载→进度→重启安装」全流程。
-          open 同时受 updateDialogOpen 控制——首次发现自动打开，用户点「稍后」或
-          「立即重启」之外的关闭路径会把它收起；下载/重启期间由 UpdateDialog 内部
-          根据 status 切换内容。downloaded 状态下若用户已主动关闭过弹窗
-          （updateDialogOpen=false），不会强行再次弹出，用户可从设置面板重新触发。 */}
-      <UpdateDialog
-        open={isAutoUpdateAvailable && updateDialogOpen}
-        status={updateStatus}
-        updateInfo={updateInfo}
-        progress={updateProgress}
-        onDownload={() => {
-          // 进入 downloading 状态：弹窗保持打开，UpdateDialog 切到进度分支
-          downloadUpdate();
-        }}
-        onRestart={() => void quitAndInstall()}
-        onClose={() => {
-          setUpdateDialogOpen(false);
-          // downloaded 阶段选择「稍后」：切到 dismissed，保留更新包供后续重启，
-          // 下次退出应用时不会自动安装（autoInstallOnAppQuit 已关闭）。
-          // available 阶段关闭则仅收起弹窗，状态保持 available，徽标仍在。
-          if (updateStatus === 'downloaded') {
-            dismissDownloaded();
-          }
-        }}
       />
     </div>
   );
