@@ -19,8 +19,8 @@ interface HeaderProps {
   updateVersion?: string;
   /** 本次启动首次发现该版本时高亮红点 */
   isNewlyAvailable?: boolean;
-  /** 点击徽标：打开设置面板的更新区 */
-  onOpenUpdateSettings?: () => void;
+  /** 点击徽标：唤出 UpdateDialog（下载/进度/重启全流程弹窗） */
+  onOpenUpdateDialog?: () => void;
 }
 
 function HeaderComponent({
@@ -31,7 +31,7 @@ function HeaderComponent({
   hasUpdate,
   updateVersion,
   isNewlyAvailable,
-  onOpenUpdateSettings,
+  onOpenUpdateDialog,
 }: HeaderProps) {
   return (
     <header
@@ -64,12 +64,12 @@ function HeaderComponent({
       </div>
       {/* 右侧操作：更新徽标。 */}
       <div className="titlebar-no-drag flex items-center gap-0.5">
-        {/* 更新可用徽标：发现新版本时出现，点击进入设置面板更新区 */}
-        {hasUpdate && onOpenUpdateSettings && (
+        {/* 更新可用徽标：发现新版本时出现，点击唤出 UpdateDialog */}
+        {hasUpdate && onOpenUpdateDialog && (
           <UpdateBadge
             version={updateVersion}
             isNewlyAvailable={isNewlyAvailable}
-            onClick={onOpenUpdateSettings}
+            onClick={onOpenUpdateDialog}
           />
         )}
       </div>

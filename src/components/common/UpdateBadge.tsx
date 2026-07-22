@@ -1,8 +1,9 @@
 /**
  * @file UpdateBadge - 更新可用徽标按钮
  * @description 当检查到新版本（status === 'available'）时在 Header / 专注模式
- *              浮动指示器内显示，点击即打开设置面板的更新区。红点高亮仅在
- *              「本次启动首次发现该版本」时出现（isNewlyAvailable），用户查看后熄灭。
+ *              浮动指示器内显示，点击唤出 UpdateDialog（下载/进度/重启全流程弹窗）。
+ *              红点高亮仅在「本次启动首次发现该版本」时出现（isNewlyAvailable），
+ *              用户查看后熄灭；首次发现时 App.tsx 还会自动弹出 UpdateDialog。
  */
 
 import { memo } from 'react';
@@ -13,7 +14,7 @@ interface UpdateBadgeProps {
   version?: string;
   /** 是否为本次启动首次发现，控制红点高亮 */
   isNewlyAvailable?: boolean;
-  /** 点击：打开设置面板的更新区 */
+  /** 点击：唤出 UpdateDialog */
   onClick: () => void;
 }
 
