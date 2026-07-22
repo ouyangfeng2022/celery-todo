@@ -159,8 +159,9 @@ function SettingsPanelComponent({
               })}
             </nav>
 
-            {/* 右侧内容（子页面） */}
+            {/* 右侧内容（子页面） —— 收窄内容宽度，避免横向铺得太开 */}
             <main className="min-w-0 flex-1 overflow-y-auto pl-3 pr-2">
+              <div className="mx-auto w-full max-w-xl">
               {activeSection === 'general' && (
                 <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
               )}
@@ -207,6 +208,7 @@ function SettingsPanelComponent({
                   onRestartToUpdate={onRestartToUpdate ?? (() => undefined)}
                 />
               )}
+              </div>
             </main>
           </div>
         </motion.section>
