@@ -348,6 +348,35 @@ function ProjectSidebarComponent({
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const createInputRef = useRef<HTMLInputElement>(null);
+  // 设置菜单弹出层与其触发按钮的引用，用于判断点击是否落在设置区域外部
+  const settingsMenuRef = useRef<HTMLDivElement>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 点击设置菜单外部或按下 Escape 时收起菜单（与 AppToolbar / ContextMenu 行为一致）。
+  // 用 mousedown 而非 click，避免先触发其它交互再关菜单。
+  useEffect(() => {
+    if (!settingsMenuOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        settingsMenuRef.current &&
+        !settingsMenuRef.current.contains(target) &&
+        settingsButtonRef.current &&
+        !settingsButtonRef.current.contains(target)
+      ) {
+        setSettingsMenuOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSettingsMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [settingsMenuOpen]);
 
   // 外部（主区空状态按钮）触发：唤出新建输入框并聚焦
   useEffect(() => {
@@ -507,6 +536,7 @@ function ProjectSidebarComponent({
         <AnimatePresence>
           {settingsMenuOpen && (
             <motion.div
+              ref={settingsMenuRef}
               initial={{ opacity: 0, y: 6, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.98 }}
@@ -545,6 +575,7 @@ function ProjectSidebarComponent({
         </AnimatePresence>
 
         <button
+          ref={settingsButtonRef}
           onClick={() => setSettingsMenuOpen((value) => !value)}
           className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
           style={{ color: 'var(--text-primary)' }}

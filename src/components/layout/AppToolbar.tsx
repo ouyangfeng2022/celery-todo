@@ -3,7 +3,7 @@
  * @description 集中承载应用菜单、侧边栏开关与搜索入口，保持主内容标题栏简洁。
  */
 
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   DownloadIcon,
@@ -75,6 +75,8 @@ function AppToolbarComponent({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
+  // 工具带根节点引用，用于判断点击是否落在工具带外部
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Ctrl+F 等外部聚焦信号到来时，同时展开左上角搜索框。
   useEffect(() => {
@@ -83,6 +85,30 @@ function AppToolbarComponent({
       setSearchOpen(true);
     }
   }, [searchFocusSignal]);
+
+  // 点击工具带外部或按下 Escape 时收起菜单/搜索弹层（与 ContextMenu 行为一致）。
+  // 用 mousedown 而非 click，避免先触发其它交互再关弹层。
+  useEffect(() => {
+    if (!menuOpen && !searchOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [menuOpen, searchOpen]);
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -123,7 +149,10 @@ function AppToolbarComponent({
     'titlebar-no-drag flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
   return (
-    <div className="titlebar-no-drag pointer-events-auto absolute left-2 top-2 z-50">
+    <div
+      ref={containerRef}
+      className="titlebar-no-drag pointer-events-auto absolute left-2 top-2 z-50"
+    >
       <div className="titlebar-no-drag flex items-center gap-0.5">
         <button
           className={iconButtonClass}
