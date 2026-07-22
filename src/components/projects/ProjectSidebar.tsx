@@ -583,7 +583,18 @@ function ProjectSidebarComponent({
           aria-expanded={settingsMenuOpen}
         >
           <Logo size={22} />
-          <span className="flex-1 text-left font-medium">设置</span>
+          <span
+            className="flex-1 text-left font-serif font-semibold whitespace-nowrap flex items-center gap-[0.35em]"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span className="italic">Celery</span>
+            <span
+              aria-hidden="true"
+              className="w-[5px] h-[5px] rounded-full flex-shrink-0"
+              style={{ backgroundColor: 'var(--accent)' }}
+            />
+            <span>Todo</span>
+          </span>
           <ChevronDownIcon
             size={14}
             className={
