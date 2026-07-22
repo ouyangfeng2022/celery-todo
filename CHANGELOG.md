@@ -8,6 +8,20 @@
 
 ## [Unreleased]
 
+## [v2.4.0] - 2026-07-22
+### ⚠️ Breaking
+- 移除「专注模式」设置与 `Ctrl+P` 快捷键，改由桌面简洁浮窗贴纸承担
+
+### Added
+- 新增「简洁模式」桌面浮窗贴纸，支持快速查看项目待办并标记完成
+- 侧边栏新增进入简洁模式的快捷按钮
+- 托盘菜单新增「创建浮窗」与「显示所有浮窗」入口
+- 历史记录的恢复与永久删除加二次确认
+
+### Fixed
+- 优化简洁浮窗的窗口边缘与关闭控件
+- 隔离项目切换时待办列表的动画，避免跨项目串扰
+
 ## [v2.3.0] - 2026-07-20
 ### Added
 - 支持安装时自定义开机启动与数据目录
@@ -191,3 +205,5 @@
 [v2.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.2.0
 
 [v2.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.3.0
+
+[v2.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.0
