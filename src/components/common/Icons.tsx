@@ -5,7 +5,7 @@
 
 import { memo, type SVGProps } from 'react';
 
-type IconProps = SVGProps<SVGSVGElement> & { size?: number };
+export type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
 function BaseIcon({ size = 20, children, ...props }: IconProps & { children: React.ReactNode }) {
   return (
@@ -278,6 +278,14 @@ export const KeyboardIcon = memo((props: IconProps) => (
 export const SparkleIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3z" />
+  </BaseIcon>
+));
+
+// 贴图 / 便利贴：带折角的方形标签，对应简洁模式浮窗
+export const StickerIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z" />
+    <path d="M15 3v6h6" />
   </BaseIcon>
 ));
 

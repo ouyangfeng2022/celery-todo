@@ -346,6 +346,13 @@ ipcMain.handle('sticker:close', (event, id: string) => {
   const window = stickerWindows.get(id);
   if (window && event.sender.id === window.webContents.id) window.close();
 });
+// 贴图样式被改动时（主窗口的设置页 → store.updateSettings），向所有已打开的贴图窗口
+// 广播一个事件。贴图是独立 renderer，不共享 React 状态，必须经主进程中转同步。
+ipcMain.handle('sticker:style-changed', () => {
+  for (const window of stickerWindows.values()) {
+    window.webContents.send('sticker:style-changed');
+  }
+});
 
 /** 显示托盘通知 */
 ipcMain.handle('show-tray-notification', (_event, title: string, body: string) => {

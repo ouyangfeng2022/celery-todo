@@ -7,7 +7,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, openSettingsSection, type LaunchedApp } from './helpers';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.resolve(__dirname, 'fixtures');
@@ -106,7 +106,7 @@ test('导出全部数据为 JSON，文件名含日期', async () => {
   await installDownloadCapture(win);
   await createProject(win, '全量导出项目');
   await addTodo(win, '全量任务');
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
 
   await win.getByText('导出全部数据 (JSON)', { exact: true }).click();
   const dl = await getLastDownload(win);
@@ -123,7 +123,7 @@ test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
   await installDownloadCapture(win);
   await createProject(win, 'CSV导出项目');
   await addTodo(win, 'CSV任务');
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
 
   await win.getByText('导出当前项目 (CSV)', { exact: true }).click();
   const dl = await getLastDownload(win);
@@ -138,7 +138,7 @@ test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
 });
 
 test('导入完整应用数据后项目和 todo 都出现', async () => {
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
   const [filechooser] = await Promise.all([
     win.waitForEvent('filechooser'),
     win.getByText('导入数据 (JSON)', { exact: true }).click(),
@@ -156,7 +156,7 @@ test('导入完整应用数据后项目和 todo 都出现', async () => {
 });
 
 test('导入单个项目后新建该项目并自动切换', async () => {
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
   const [filechooser] = await Promise.all([
     win.waitForEvent('filechooser'),
     win.getByText('导入数据 (JSON)', { exact: true }).click(),
@@ -178,7 +178,7 @@ test('导入非法 JSON 弹出 alert 含"导入失败"', async () => {
   // 避免与 afterEach 的 closeApp 竞态。
   const dialogPromise = win.waitForEvent('dialog');
 
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
   const [filechooser] = await Promise.all([
     win.waitForEvent('filechooser'),
     win.getByText('导入数据 (JSON)', { exact: true }).click(),

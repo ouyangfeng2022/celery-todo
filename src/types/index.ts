@@ -57,6 +57,36 @@ export const SORT_LABELS: Record<SortType, string> = {
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 // ============================================
+// 贴图样式（简洁模式浮窗）
+// ============================================
+
+/**
+ * 贴图（简洁模式浮窗）预设风格。
+ * - `custom` 表示用户在高级面板里手动调过细粒度参数，不再与任何预设强绑定。
+ */
+export type StickerPreset = 'glass' | 'pure' | 'card' | 'note' | 'custom';
+
+/** 贴图预设对应的视觉参数快照（点选预设时一次性写入这四个值） */
+export const STICKER_PRESET_VALUES: Record<
+  Exclude<StickerPreset, 'custom'>,
+  {
+    radius: number;
+    blur: number;
+    opacity: number;
+    shadow: boolean;
+  }
+> = {
+  // 玻璃：当前默认观感 —— 大圆角 + 强模糊 + 半透明渐变 + 高光
+  glass: { radius: 22, blur: 38, opacity: 65, shadow: false },
+  // 纯净：无模糊、近实色、中等圆角
+  pure: { radius: 16, blur: 0, opacity: 96, shadow: false },
+  // 卡片：小圆角、实色背景、外阴影、明显描边
+  card: { radius: 12, blur: 0, opacity: 100, shadow: true },
+  // 便利贴：极小圆角、轻微倾斜、纸质感
+  note: { radius: 2, blur: 0, opacity: 100, shadow: true },
+};
+
+// ============================================
 // Todo 事项
 // ============================================
 
@@ -134,6 +164,17 @@ export interface AppSettings {
   autoUpdateEnabled: boolean;
   /** 上次激活的项目 ID（启动时恢复；空串表示无激活项目） */
   lastActiveProjectId: string;
+  // ===== 贴图样式（简洁模式浮窗） =====
+  /** 当前贴图预设风格（custom = 用户自定义过细粒度参数） */
+  stickerPreset: StickerPreset;
+  /** 贴图圆角大小（px，高级设置） */
+  stickerRadius: number;
+  /** 贴图背景模糊强度（px，高级设置） */
+  stickerBlur: number;
+  /** 贴图背景不透明度（0-100，高级设置） */
+  stickerOpacity: number;
+  /** 贴图是否显示外阴影（高级设置） */
+  stickerShadow: boolean;
 }
 
 /** 默认设置 */
@@ -148,6 +189,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdateEnabled: true,
   // 首次启动无历史激活项目，空串 → 显示「请创建项目」
   lastActiveProjectId: '',
+  // 贴图样式默认走「玻璃」预设的当前观感，保证老用户视觉零回归
+  stickerPreset: 'glass',
+  stickerRadius: STICKER_PRESET_VALUES.glass.radius,
+  stickerBlur: STICKER_PRESET_VALUES.glass.blur,
+  stickerOpacity: STICKER_PRESET_VALUES.glass.opacity,
+  stickerShadow: STICKER_PRESET_VALUES.glass.shadow,
 };
 
 // ============================================

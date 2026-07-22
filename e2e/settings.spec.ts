@@ -2,7 +2,7 @@
  * 设置：主题和数据管理重置。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, createProject, openSettings, type LaunchedApp } from './helpers';
+import { launchApp, closeApp, addTodo, createProject, openSettings, openSettingsSection, type LaunchedApp } from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -40,7 +40,7 @@ test('重置所有数据：二次确认后数据清空且项目列表为空', as
   await addTodo(win, '重置前任务');
   await expect(win.getByText('重置前任务', { exact: true })).toBeVisible();
 
-  await openSettings(win);
+  await openSettingsSection(win, '数据');
   await win.getByText('重置所有数据', { exact: true }).click();
   // 确认对话框：按 Enter 确认（ConfirmDialog 监听 Enter）
   await expect(win.getByRole('heading', { name: '重置所有数据' })).toBeVisible();

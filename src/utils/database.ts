@@ -10,6 +10,7 @@
 import initSqlJs from 'sql.js/dist/sql-wasm-browser.js';
 import type { Database, SqlJsStatic } from 'sql.js';
 import { EXPORT_FORMAT_VERSION } from './export';
+import { DEFAULT_SETTINGS, type StickerPreset } from '../types';
 
 // ============================================
 // 类型定义
@@ -909,6 +910,13 @@ export function exportAllData(): import('../types').AppExportData {
           : getSetting('autoUpdateEnabled') === 'true',
       // 与 useSettingsStore.loadSettings 保持一致：缺失键回退空串
       lastActiveProjectId: getSetting('lastActiveProjectId') ?? '',
+      // ===== 贴图样式（缺失时回退玻璃预设默认值，与 loadSettings 对齐） =====
+      stickerPreset:
+        (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
+      stickerRadius: Number(getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
+      stickerBlur: Number(getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
+      stickerOpacity: Number(getSetting('stickerOpacity') ?? DEFAULT_SETTINGS.stickerOpacity),
+      stickerShadow: getSetting('stickerShadow') !== 'false',
     },
   };
 }

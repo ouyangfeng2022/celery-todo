@@ -202,6 +202,15 @@ export async function openSettings(win: Page): Promise<void> {
 }
 
 /**
+ * 打开设置面板并切到指定子页面（左侧分类导航）。默认进入「通用」，
+ * 数据导入/导出/重置等在「数据」下，需先切过去再操作对应按钮/文案。
+ */
+export async function openSettingsSection(win: Page, section: string): Promise<void> {
+  await openSettings(win);
+  await win.getByRole('button', { name: section, exact: true }).click();
+}
+
+/**
  * 打开「历史记录」（归档）弹窗：点侧边栏「历史记录」按钮唤出独立弹窗。
  * 等弹窗标题「历史记录」与副标题同时可见，即视为加载完成。
  */

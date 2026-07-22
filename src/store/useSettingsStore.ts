@@ -5,8 +5,17 @@
 
 import { create } from 'zustand';
 import type { AppSettings, ThemeMode } from '../types';
-import { DEFAULT_SETTINGS } from '../types';
+import { DEFAULT_SETTINGS, type StickerPreset } from '../types';
 import * as db from '../utils/database';
+
+/** 贴图样式相关字段名集合 —— 用于 updateSettings 时判断是否需要广播给贴图窗口 */
+const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
+  'stickerPreset',
+  'stickerRadius',
+  'stickerBlur',
+  'stickerOpacity',
+  'stickerShadow',
+]);
 
 interface SettingsState extends AppSettings {
   /** 加载设置 */
@@ -46,6 +55,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // lastActiveProjectId：字符串型，缺失键优雅回退空串（首次启动 / 老数据）
       lastActiveProjectId:
         db.getSetting('lastActiveProjectId') ?? DEFAULT_SETTINGS.lastActiveProjectId,
+      // ===== 贴图样式（老数据缺失键时整套回退到玻璃预设的默认值） =====
+      stickerPreset:
+        (db.getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
+      stickerRadius: Number(db.getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
+      stickerBlur: Number(db.getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
+      stickerOpacity: Number(db.getSetting('stickerOpacity') ?? DEFAULT_SETTINGS.stickerOpacity),
+      stickerShadow: db.getSetting('stickerShadow') !== 'false',
     };
     set(settings);
   },
@@ -86,5 +102,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       db.setSetting(key, String(value));
     });
     set(newSettings);
+    // 贴图样式相关字段被改动时，通知主进程向所有已打开的贴图窗口广播刷新。
+    // 贴图是独立 renderer 进程，不共享 React 状态，必须经 IPC 同步。
+    const touchesSticker = Object.keys(updates).some((key) => STICKER_SETTING_KEYS.has(key));
+    if (touchesSticker) {
+      window.electronAPI?.notifyStickerStyleChanged?.();
+    }
   },
 }));

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import type { Project, Todo } from '../../types';
 
 interface Props {
@@ -17,6 +18,14 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     () => projects.find((item) => item.id === projectId),
     [projects, projectId],
   );
+  // 贴图样式：从 useSettingsStore 取值。本窗口是独立 renderer，不与主窗口共享状态，
+  // 故启动时 loadSettings()，并在收到主进程广播时再次 loadSettings()。
+  const stickerPreset = useSettingsStore((s) => s.stickerPreset);
+  const stickerRadius = useSettingsStore((s) => s.stickerRadius);
+  const stickerBlur = useSettingsStore((s) => s.stickerBlur);
+  const stickerOpacity = useSettingsStore((s) => s.stickerOpacity);
+  const stickerShadow = useSettingsStore((s) => s.stickerShadow);
+
   const refresh = useCallback(() => {
     const ps = db.getAllProjects();
     setProjects(ps);
@@ -26,10 +35,20 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   }, [projectId]);
   useEffect(() => {
     void db.initDatabase().then(() => {
+      // 同步读取本窗口应有的样式设置（首次加载 / 老数据缺失键时走默认）
+      useSettingsStore.getState().loadSettings();
       refresh();
       setReady(true);
     });
   }, [refresh]);
+
+  // 订阅主窗口发起的"贴图样式已变更"广播 —— 重新读 DB 同步本地状态。
+  useEffect(() => {
+    window.electronAPI?.onStickerStyleChanged?.(() => {
+      useSettingsStore.getState().loadSettings();
+    });
+  }, []);
+
   useEffect(() => {
     if (ready) {
       setTodos(projectId ? db.getTodosByProject(projectId).filter((todo) => !todo.completed) : []);
@@ -47,7 +66,17 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     refresh();
   };
   return (
-    <div className="sticker-shell">
+    <div
+      className={`sticker-shell${stickerShadow ? ' sticker-shadow-on' : ''}`}
+      data-sticker-preset={stickerPreset}
+      style={
+        {
+          '--sticker-radius': `${stickerRadius}px`,
+          '--sticker-blur': `${stickerBlur}px`,
+          '--sticker-opacity': `${stickerOpacity / 100}`,
+        } as React.CSSProperties
+      }
+    >
       <header className="sticker-drag sticker-header">
         <select
           className="sticker-no-drag sticker-project"

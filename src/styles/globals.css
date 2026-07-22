@@ -126,25 +126,43 @@
     background: transparent !important;
     overflow: hidden;
   }
+  /* ===== 贴图外壳（简洁模式浮窗） =====
+   * 视觉参数全部走 CSS 变量（带 fallback），由 StickerWindow / 设置页预览
+   * 通过 inline style 注入，对应 stickerPreset / stickerRadius / stickerBlur /
+   * stickerOpacity / stickerShadow 五个设置项。
+   *
+   * 默认值（玻璃 glass）= 重构前硬编码的观感，保证零回归。
+   */
   .sticker-shell {
     position: relative;
     height: 100%;
     overflow: hidden;
     isolation: isolate;
+    /* 圆角 / 模糊 / 不透明度 / 阴影：均带 fallback，未注入变量时仍是原始玻璃观感 */
+    border-radius: var(--sticker-radius, 22px);
+    clip-path: inset(0 round var(--sticker-radius, 22px));
     border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 22px;
-    clip-path: inset(0 round 22px);
     background: linear-gradient(
       138deg,
       rgba(255, 255, 255, 0.32) 0%,
       rgba(255, 255, 255, 0.1) 43%,
       rgba(255, 239, 228, 0.18) 100%
     );
+    /* 不透明度通过变量叠加在背景之上（不动其它子元素） */
+    opacity: var(--sticker-opacity, 1);
     box-shadow:
       inset 0 1px 1px rgba(255, 255, 255, 0.5),
       inset 0 -1px rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(38px) saturate(168%) contrast(1.04);
-    -webkit-backdrop-filter: blur(38px) saturate(168%) contrast(1.04);
+    backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
+    -webkit-backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
+  }
+  /* 启用外阴影（卡片 / 便利贴预设，或 custom 下勾选「显示外阴影」）。
+   * 由 StickerWindow / 设置页预览在 shadow=true 时追加 .sticker-shadow-on 类。 */
+  .sticker-shell.sticker-shadow-on {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.18),
+      0 2px 6px rgba(0, 0, 0, 0.1),
+      inset 0 1px 1px rgba(255, 255, 255, 0.4);
   }
   .dark .sticker-shell {
     border-color: rgba(255, 255, 255, 0.15);
@@ -156,6 +174,8 @@
     );
     box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
   }
+  /* 玻璃专属的高光层（::before 径向光晕 / ::after 斜向反光）。
+   * 仅 glass 与未指定预设时显示；其它预设通过 display:none 关掉。 */
   .sticker-shell::before {
     content: '';
     position: absolute;
@@ -179,6 +199,56 @@
       rgba(255, 255, 255, 0.26) 45%,
       transparent 57%
     );
+  }
+
+  /* ===== 预设覆盖规则 ===== */
+
+  /* 纯净：近实色、无模糊、无高光 */
+  .sticker-shell[data-sticker-preset='pure'] {
+    background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .dark .sticker-shell[data-sticker-preset='pure'] {
+    background: color-mix(in srgb, var(--bg-tertiary) 92%, transparent);
+  }
+  .sticker-shell[data-sticker-preset='pure']::before,
+  .sticker-shell[data-sticker-preset='pure']::after {
+    display: none;
+  }
+
+  /* 卡片：实色 + 明显描边 + 外阴影 */
+  .sticker-shell[data-sticker-preset='card'] {
+    background: var(--bg-tertiary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--border-color);
+  }
+  .sticker-shell[data-sticker-preset='card']::before,
+  .sticker-shell[data-sticker-preset='card']::after {
+    display: none;
+  }
+
+  /* 便利贴：纸质感、轻微旋转、外阴影；header 底色随预设变暖 */
+  .sticker-shell[data-sticker-preset='note'] {
+    background: linear-gradient(160deg, #fff8e0 0%, #fdecb6 100%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: rgba(0, 0, 0, 0.08);
+    transform: rotate(-1.2deg);
+  }
+  .dark .sticker-shell[data-sticker-preset='note'] {
+    background: linear-gradient(160deg, #5a4a2a 0%, #3d3220 100%);
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+  .sticker-shell[data-sticker-preset='note']::before,
+  .sticker-shell[data-sticker-preset='note']::after {
+    display: none;
+  }
+
+  /* 设置页里的缩略预览：覆盖 height:100% 等全屏规则，让小尺寸卡片能正常渲染 */
+  .sticker-shell.sticker-preview {
+    height: auto;
   }
   .sticker-header {
     height: 48px;

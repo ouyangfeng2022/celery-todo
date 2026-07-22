@@ -20,6 +20,10 @@ interface ElectronAPI {
   createSticker: (projectId?: string) => Promise<void>;
   setStickerProject: (id: string, projectId: string) => Promise<void>;
   closeSticker: (id: string) => Promise<void>;
+  /** 通知所有已打开的贴图窗口：样式设置已变更（主窗口侧调用） */
+  notifyStickerStyleChanged: () => Promise<void>;
+  /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用） */
+  onStickerStyleChanged: (callback: () => void) => void;
   /** 监听安装阶段勾选了"开机自启"事件（一次性同步用） */
   onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => void;
   /** 显示托盘通知 */
