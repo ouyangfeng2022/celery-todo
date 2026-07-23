@@ -2,6 +2,10 @@
  * @file SettingsPanel - 设置页面（页面壳 + 左侧导航 + 右侧内容路由）
  * @description
  *   v2.5 重构：从单个滚动长列表改为「左侧分类导航 + 右侧子页面」结构。
+ *   整体布局与主界面 (App.tsx) 完全一致：
+ *     - 左侧 256px 全高导航栏（border-r、bg-secondary、顶部 pt-14 给浮动按钮让位）
+ *     - 右侧 flex-col：顶部 Header（border-b + 分类标题）+ 下方可滚动 main
+ *     - 返回按钮浮在左上角 (absolute left-2 top-2)，对应主界面 AppToolbar
  *   各分类的具体 UI 拆到 ./sections/ 下，本文件只负责弹窗骨架、导航与子页面分发。
  *   props 契约与之前完全一致，App.tsx 接线无需改动。
  */
@@ -91,125 +95,152 @@ function SettingsPanelComponent({
 
   // 导航项（desktop 仅桌面端可见）
   const navItems = NAV_ITEMS.filter((item) => item.id !== 'desktop' || window.electronAPI);
+  // 当前分类标题：右侧 Header 展示，对应主界面 Header 里展示当前项目名
+  const activeLabel = navItems.find((item) => item.id === activeSection)?.label ?? '设置';
 
   return (
     <AnimatePresence mode="wait">
       {open && (
         <motion.section
-          className="fixed inset-0 z-50 flex min-h-0 flex-col"
+          className="fixed inset-0 z-50 flex min-h-0"
           style={{ backgroundColor: 'var(--bg-primary)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onKeyDown={handleKeyDown}
         >
-          {/* 头部 */}
-          <div
-            className="titlebar-drag flex h-[68px] flex-shrink-0 items-end border-b px-7 pb-3"
-            style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-color)' }}
+          {/*
+            整体结构与主界面 (App.tsx) 完全对齐：
+            ┌──────────┬──────────────────────────────────┐
+            │          │  Header（border-b + 当前分类名）  │
+            │ 左侧栏    ├──────────────────────────────────┤
+            │ (border-r)│  main 可滚动                     │
+            └──────────┴──────────────────────────────────┘
+            左上角返回按钮模仿主界面 AppToolbar（absolute left-2 top-2），
+            左侧栏顶部预留 pt-14 给它，整体不破坏主界面那一套空间感。
+          */}
+          {/* 浮动返回按钮（与主界面 AppToolbar 同位） */}
+          <button
+            onClick={onClose}
+            className="titlebar-no-drag pointer-events-auto absolute left-2 top-2 z-50 flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label="返回待办"
+            title="返回待办 (Esc)"
           >
-            <button
-              onClick={onClose}
-              className="titlebar-no-drag flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-[var(--bg-hover)]"
-              aria-label="返回待办"
-            >
-              <Icons.ChevronLeftIcon size={17} />
-              <h2
-                className="text-[15px] font-medium leading-none"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                设置
-              </h2>
-            </button>
-          </div>
+            <Icons.ChevronLeftIcon size={16} />
+          </button>
 
-          {/* 主体：左侧导航 + 右侧内容。
-              左侧导航不再走 max-w 居中容器 —— 与主界面 ProjectSidebar 对齐，
-              从窗口左缘以 pl-7 起算，导航按钮文字与头部"设置"标题垂直对齐。 */}
-          <div className="flex w-full flex-1 min-h-0 px-5 py-6 lg:pl-7 lg:pr-8">
-            {/* 左侧导航 */}
-            <nav
-              className="w-52 flex-shrink-0 space-y-1 overflow-y-auto"
+          {/* 左侧导航 —— 全高、border-r、bg-secondary，与主界面 ProjectSidebar 一致 */}
+          <nav
+            className="w-64 flex-shrink-0 overflow-y-auto border-r"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              borderColor: 'var(--border-color)',
+            }}
+          >
+            <div className="flex-1 px-3 pb-4 pt-14">
+              <div className="mb-2 flex items-center justify-between px-2">
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                  设置
+                </span>
+              </div>
+              <div className="mt-1 space-y-0.5">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeSection === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveSection(item.id)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md transition-colors"
+                      style={{
+                        color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
+                        backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
+                        fontWeight: isActive ? 500 : 400,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      <Icon size={15} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </nav>
+
+          {/* 右侧主区：Header（border-b + 分类标题）+ 可滚动 main，与主界面 Header/main 一致 */}
+          <div className="relative flex min-w-0 flex-1 flex-col">
+            <header
+              className="flex items-center gap-3 border-b px-5 py-3.5"
               style={{
                 backgroundColor: 'var(--bg-primary)',
+                borderColor: 'var(--border-color)',
               }}
             >
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeSection === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveSection(item.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg transition-colors text-left"
-                    style={{
-                      color: isActive ? 'var(--accent)' : 'var(--text-primary)',
-                      backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
-                      fontWeight: isActive ? 600 : 400,
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <Icon size={16} />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
+              <div className="relative flex min-w-0 items-center gap-2">
+                <h1
+                  className="truncate font-serif text-xl tracking-tight"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {activeLabel}
+                </h1>
+              </div>
+            </header>
 
-            {/* 右侧内容（子页面） —— 收窄内容宽度并在 main 内水平居中，避免横向铺得太开 */}
-            <main className="min-w-0 flex-1 overflow-y-auto pl-8 pr-2">
+            <main className="min-w-0 flex-1 overflow-y-auto px-5 py-6 lg:pr-8">
               <div className="mx-auto w-full max-w-xl">
-              {activeSection === 'general' && (
-                <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
-              )}
+                {activeSection === 'general' && (
+                  <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
+                )}
 
-              {activeSection === 'sticker' && (
-                <StickerSection
-                  preset={settings.stickerPreset}
-                  radius={settings.stickerRadius}
-                  blur={settings.stickerBlur}
-                  opacity={settings.stickerOpacity}
-                  shadow={settings.stickerShadow}
-                  onUpdateSettings={onUpdateSettings}
-                />
-              )}
+                {activeSection === 'sticker' && (
+                  <StickerSection
+                    preset={settings.stickerPreset}
+                    radius={settings.stickerRadius}
+                    blur={settings.stickerBlur}
+                    opacity={settings.stickerOpacity}
+                    shadow={settings.stickerShadow}
+                    onUpdateSettings={onUpdateSettings}
+                  />
+                )}
 
-              {activeSection === 'desktop' && (
-                <DesktopSection
-                  autoStart={settings.autoStart}
-                  minimizeToTray={settings.minimizeToTray}
-                  autoUpdateEnabled={settings.autoUpdateEnabled}
-                  onUpdateSettings={onUpdateSettings}
-                />
-              )}
+                {activeSection === 'desktop' && (
+                  <DesktopSection
+                    autoStart={settings.autoStart}
+                    minimizeToTray={settings.minimizeToTray}
+                    autoUpdateEnabled={settings.autoUpdateEnabled}
+                    onUpdateSettings={onUpdateSettings}
+                  />
+                )}
 
-              {activeSection === 'data' && (
-                <DataSection
-                  onExportAll={onExportAll}
-                  onExportCsv={onExportCsv}
-                  onImportAll={onImportAll}
-                  onResetData={onResetData}
-                />
-              )}
+                {activeSection === 'data' && (
+                  <DataSection
+                    onExportAll={onExportAll}
+                    onExportCsv={onExportCsv}
+                    onImportAll={onImportAll}
+                    onResetData={onResetData}
+                  />
+                )}
 
-              {activeSection === 'shortcuts' && <ShortcutsSection />}
+                {activeSection === 'shortcuts' && <ShortcutsSection />}
 
-              {activeSection === 'about' && (
-                <AboutSection
-                  updateStatus={updateStatus}
-                  updateInfo={updateInfo}
-                  updateProgress={updateProgress}
-                  updateError={updateError}
-                  onCheckUpdates={onCheckUpdates ?? (() => undefined)}
-                  onDownloadUpdate={onDownloadUpdate ?? (() => undefined)}
-                  onRestartToUpdate={onRestartToUpdate ?? (() => undefined)}
-                />
-              )}
+                {activeSection === 'about' && (
+                  <AboutSection
+                    updateStatus={updateStatus}
+                    updateInfo={updateInfo}
+                    updateProgress={updateProgress}
+                    updateError={updateError}
+                    onCheckUpdates={onCheckUpdates ?? (() => undefined)}
+                    onDownloadUpdate={onDownloadUpdate ?? (() => undefined)}
+                    onRestartToUpdate={onRestartToUpdate ?? (() => undefined)}
+                  />
+                )}
               </div>
             </main>
           </div>
