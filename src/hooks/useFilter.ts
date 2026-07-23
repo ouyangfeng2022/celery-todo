@@ -9,40 +9,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
 import * as db from '../utils/database';
+import { DEFAULT_SORT, readProjectSort, sortKey, sortTodos } from '../utils/sortTodos';
 
 /** URL 参数键（仅用于搜索词的 web 端 reload 恢复） */
 const SEARCH_PARAM = 'q';
 
 /** 默认值 */
 const DEFAULT_FILTER: FilterType = 'all';
-const DEFAULT_SORT: SortType = 'created-desc';
 
 /** 合法值白名单（防 settings 表脏值导致 UI 异常） */
 const FILTER_VALUES: readonly FilterType[] = ['all', 'active', 'completed'];
-const SORT_VALUES: readonly SortType[] = ['created-asc', 'created-desc', 'priority', 'manual'];
 
 /** per-project settings 命名键 */
 const filterKey = (pid: string) => `filter.${pid}`;
-const sortKey = (pid: string) => `sort.${pid}`;
 
 /** 从 settings 表读取该项目持久化的筛选值（无值或脏值回退默认） */
 function readFilter(pid: string): FilterType {
   const v = db.getSetting(filterKey(pid));
   return v && (FILTER_VALUES as readonly string[]).includes(v) ? (v as FilterType) : DEFAULT_FILTER;
 }
-
-/** 从 settings 表读取该项目持久化的排序值（无值或脏值回退默认） */
-function readSort(pid: string): SortType {
-  const v = db.getSetting(sortKey(pid));
-  return v && (SORT_VALUES as readonly string[]).includes(v) ? (v as SortType) : DEFAULT_SORT;
-}
-
-/** 优先级排序权重 */
-const PRIORITY_WEIGHT: Record<string, number> = {
-  high: 3,
-  medium: 2,
-  low: 1,
-};
 
 export function useFilter(todos: Todo[], projectId: string) {
   // 初值用默认值兜底；projectId 生效后由下面的 effect 从 settings 读取覆盖。
@@ -59,7 +44,7 @@ export function useFilter(todos: Todo[], projectId: string) {
   useEffect(() => {
     if (!projectId) return;
     setFilter(readFilter(projectId));
-    setSort(readSort(projectId));
+    setSort(readProjectSort(projectId));
     setSearch('');
   }, [projectId]);
 
@@ -109,29 +94,9 @@ export function useFilter(todos: Todo[], projectId: string) {
         break;
     }
 
-    // 3. 排序：置顶项始终浮在最前，置顶组与非置顶组各自再按当前排序规则排。
-    //    先按 pinned 分两组，对每组分别排序后拼接，保证置顶稳定居顶。
-    const applySort = (arr: Todo[]) => {
-      switch (sort) {
-        case 'created-asc':
-          arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-          break;
-        case 'created-desc':
-          arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-          break;
-        case 'priority':
-          arr.sort((a, b) => PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]);
-          break;
-        case 'manual':
-          arr.sort((a, b) => a.order - b.order);
-          break;
-      }
-    };
-    const pinned = result.filter((t) => t.pinned);
-    const unpinned = result.filter((t) => !t.pinned);
-    applySort(pinned);
-    applySort(unpinned);
-    result = [...pinned, ...unpinned];
+    // 3. 排序：置顶项恒居顶 + 按 sort 规则排序（逻辑抽到 sortTodos，
+    //    与贴图窗口共用同一份实现，保证两端排序完全一致）。
+    result = sortTodos(result, sort);
 
     return result;
   }, [todos, filter, sort, search]);

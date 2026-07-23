@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
+import { readProjectSort, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import type { Project, Todo } from '../../types';
+import { PRIORITY_LABELS, PRIORITY_SOLID, type Project, type Todo } from '../../types';
 
 interface Props {
   stickerId: string;
@@ -20,6 +21,16 @@ function sameProjects(a: Project[], b: Project[]): boolean {
     if (x.id !== y.id || x.name !== y.name || x.color !== y.color) return false;
   }
   return true;
+}
+
+/**
+ * 取某项目未完成 todo，并按主窗口该项目持久化的排序方式排序。
+ * 排序逻辑与主窗口 useFilter 共用 sortTodos，确保两端顺序完全一致。
+ */
+function loadActiveTodos(pid: string): Todo[] {
+  if (!pid) return [];
+  const raw = db.getTodosByProject(pid).filter((todo) => !todo.completed);
+  return sortTodos(raw, readProjectSort(pid));
 }
 
 export function StickerWindow({ stickerId, initialProjectId }: Props) {
@@ -50,7 +61,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     const ps = db.getAllProjects();
     setProjects((prev) => (sameProjects(prev, ps) ? prev : ps));
     const id = projectIdRef.current || ps[0]?.id || '';
-    setTodos(id ? db.getTodosByProject(id).filter((todo) => !todo.completed) : []);
+    setTodos(loadActiveTodos(id));
   }, []);
   useEffect(() => {
     void db.initDatabase().then(() => {
@@ -94,7 +105,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
 
   useEffect(() => {
     if (ready) {
-      setTodos(projectId ? db.getTodosByProject(projectId).filter((todo) => !todo.completed) : []);
+      setTodos(loadActiveTodos(projectId));
       void window.electronAPI?.setStickerProject(stickerId, projectId);
     }
   }, [projectId, ready, stickerId]);
@@ -154,8 +165,22 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
               className="sticker-todo"
               onClick={() => void toggle(todo)}
               title="标记为完成"
+              style={
+                {
+                  '--sticker-priority-color': PRIORITY_SOLID[todo.priority],
+                } as React.CSSProperties
+              }
             >
-              <span className="sticker-check" /> <span>{todo.title}</span>
+              <span className="sticker-priority-bar" aria-hidden="true" />
+              <span className="sticker-check" />
+              <span className="sticker-todo-title">{todo.title}</span>
+              <span
+                className="sticker-priority-tag"
+                data-priority={todo.priority}
+                aria-label={`优先级：${PRIORITY_LABELS[todo.priority]}`}
+              >
+                {PRIORITY_LABELS[todo.priority]}
+              </span>
               {todo.pinned && <i>置顶</i>}
             </motion.button>
           ))}

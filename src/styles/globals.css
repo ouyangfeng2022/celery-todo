@@ -307,12 +307,13 @@
     letter-spacing: 0.08em;
   }
   .sticker-todo {
+    position: relative;
     width: 100%;
     display: flex;
     align-items: center;
     gap: 10px;
     text-align: left;
-    padding: 11px 8px;
+    padding: 11px 8px 11px 12px;
     border: 0;
     border-radius: 12px;
     color: var(--text-primary);
@@ -323,6 +324,17 @@
   .sticker-todo:hover {
     background: color-mix(in srgb, var(--bg-hover) 64%, transparent);
   }
+  /* 优先级左侧色条：3px 实色竖条，颜色由每行 inline --sticker-priority-color 注入。
+   * absolute 定位不占布局，叠在行最左侧作视觉锚点（与主页面左侧色条语义一致）。 */
+  .sticker-priority-bar {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--sticker-priority-color, var(--accent));
+  }
   .sticker-check {
     width: 17px;
     height: 17px;
@@ -331,8 +343,52 @@
     border-radius: 50%;
     box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
   }
-  .sticker-todo i {
+  /* 标题占据剩余空间，长标题省略，避免挤压右侧优先级 tag / 置顶标签 */
+  .sticker-todo-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* 优先级文字 tag：紧凑浅底彩字 pill，margin-left:auto 把它顶到行末。
+   * 配色取与主页 PRIORITY_COLORS 同色系但更浅，适配贴图半透明背景。 */
+  .sticker-priority-tag {
+    flex: none;
     margin-left: auto;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+  }
+  .sticker-priority-tag[data-priority='high'] {
+    background: rgba(239, 68, 68, 0.14);
+    color: #dc2626;
+  }
+  .sticker-priority-tag[data-priority='medium'] {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+  }
+  .sticker-priority-tag[data-priority='low'] {
+    background: rgba(100, 116, 139, 0.14);
+    color: #475569;
+  }
+  .dark .sticker-priority-tag[data-priority='high'] {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+  }
+  .dark .sticker-priority-tag[data-priority='medium'] {
+    background: rgba(245, 158, 11, 0.22);
+    color: #fcd34d;
+  }
+  .dark .sticker-priority-tag[data-priority='low'] {
+    background: rgba(148, 163, 184, 0.2);
+    color: #cbd5e1;
+  }
+  .sticker-todo i {
+    margin-left: 4px;
     color: var(--accent);
     font-size: 10px;
     font-style: normal;
