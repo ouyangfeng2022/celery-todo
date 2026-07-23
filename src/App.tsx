@@ -18,7 +18,6 @@ import { useTheme } from './hooks/useTheme';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 import { Header } from './components/layout/Header';
-import { AppToolbar } from './components/layout/AppToolbar';
 import { ProjectSidebar } from './components/projects/ProjectSidebar';
 import { AddTodoInput } from './components/todos/AddTodoInput';
 import { FilterBar } from './components/filters/FilterBar';
@@ -400,80 +399,133 @@ function App() {
   }
 
   return (
-    <div className="h-full flex" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    // 井字形布局(结构 4 象限,视觉 L 形):
+    //   ┌───────────┬──────────────────────────────┐
+    //   │ [菜][侧][搜]│  项目标题          [更新]    │ ← 顶部行
+    //   ├───────────┼──────────────────────────────┤
+    //   │ 项目列表   │                              │
+    //   │ Logo/菜单  │   主内容 (TodoList)          │ ← 底部行
+    //   └───────────┴──────────────────────────────┘
+    // 左上 + 右上 + 左下三象限共享 --bg-secondary(暖米色,比纸色深一档)→ 视觉合成 L;
+    // 右下主区 --bg-primary(暖纸色,Anthropic 风格)。
+    // 左上与左下宽度同步(sidebarOpen),收起时整条左列一起收。
+    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+      {/* 顶部行 - 全宽,专注模式下整行隐藏 */}
       {!focusMode && (
-        <AppToolbar
-          sidebarOpen={sidebarOpen}
-          search={search}
-          searchFocusSignal={searchFocusSignal}
-          onToggleSidebar={() => setSidebarOpen((value) => !value)}
-          onSearchChange={changeSearch}
-          onImport={handleImportProject}
-          onExportAll={handleExportAll}
-          onExportCsv={handleExportCsv}
-          onCreateProject={() => {
-            setSidebarOpen(true);
-            setCreateProjectSignal((signal) => signal + 1);
-          }}
-          onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
-          onCloseWindow={() => window.close()}
-        />
-      )}
-      {/*
-        侧边栏 - 专注模式下完全隐藏（直接不渲染）
-        动画策略：外层只控制 width 0 ↔ 256px，内层用 GPU transform 辅助退场。
-        - 容器始终挂载，避免挂载/卸载与 exit 动画的协调问题
-        - 内层 .sidebar-inner 固定 256px，<aside> 始终保持完整背景
-        - 侧栏与 Header 共用同一套 260ms 缓动，避免标题偏移先跳变造成重叠
-        收起时 overflow-hidden 把固定宽度的内层从右向左裁剪。
-      */}
-      {!focusMode && (
-        <div
-          className="sidebar-shell group/sidebar relative h-full flex-shrink-0 overflow-hidden"
-          data-open={sidebarOpen}
-          style={{ width: sidebarOpen ? '256px' : '0px' }}
-        >
-          <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
-            <ProjectSidebar
-              projects={projects}
-              activeProjectId={activeProjectId}
-              onSwitch={switchProject}
-              onCreate={createProject}
-              onRename={renameProject}
-              onDelete={deleteProject}
-              onExport={handleExportProject}
-              onReorder={reorderProjects}
-              updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
-              updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
-              updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
-              onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
-              onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
-              onOpenSettings={openSettings}
-              onOpenHistory={() => setHistoryOpen(true)}
-              onOpenHelp={() =>
-                window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
-              }
-              incompleteCounts={incompleteCounts}
-              autofocusCreateSignal={createProjectSignal}
+        <div className="flex flex-shrink-0">
+          {/*
+            左上象限:工具组(菜单/侧栏开关/搜索)。宽度随 sidebarOpen 同步收/展(与左下
+            项目栏对齐)。不加 border:整个 L 形仅靠 --bg-secondary 与主区 --bg-primary
+            的颜色差异区分,视觉合成一体。收起时 overflow-hidden 裁掉工具。
+          */}
+          <div
+            className="sidebar-shell relative h-full flex-shrink-0 overflow-hidden"
+            data-open={sidebarOpen}
+            style={{ width: sidebarOpen ? '256px' : '0px' }}
+          >
+            <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
+              <Header
+                sidebarOpen={sidebarOpen}
+                search={search}
+                searchFocusSignal={searchFocusSignal}
+                onToggleSidebar={() => setSidebarOpen((value) => !value)}
+                onSearchChange={changeSearch}
+                onImport={handleImportProject}
+                onExportAll={handleExportAll}
+                onExportCsv={handleExportCsv}
+                onCreateProject={() => {
+                  setSidebarOpen(true);
+                  setCreateProjectSignal((signal) => signal + 1);
+                }}
+                onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
+                onCloseWindow={() => window.close()}
+              />
+            </div>
+          </div>
+
+          {/*
+            右上象限:项目标题 + 更新徽标。flex-1 占满顶部行剩余宽度。
+            标题靠左,徽标靠右(贴 pr-[152px] 给原生 overlay 让位)。
+            背景 --bg-secondary(暖米色),与左上/左下合成 L 形。
+          */}
+          <div
+            className="relative flex h-full flex-1 items-center gap-3 px-5 py-3.5 pr-[152px]"
+            style={{ backgroundColor: 'var(--bg-secondary)' }}
+          >
+            {/* 拖拽区:标题与徽标之间的空白处可拖动整窗。 */}
+            <div
+              aria-hidden="true"
+              className="titlebar-drag pointer-events-auto absolute inset-y-0 right-[152px]"
+              style={{ left: '0px' }}
             />
+            <h1
+              className="titlebar-no-drag relative z-10 truncate text-xl font-serif tracking-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {activeProject?.name ?? 'Celery Todo'}
+            </h1>
+            {/* 更新徽标:固定在最右(贴 pr-[152px] 给原生 overlay 让位)。 */}
+            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5">
+              {isAutoUpdateAvailable && updateStatus === 'available' && (
+                <UpdateBadge
+                  version={updateInfo?.version}
+                  isNewlyAvailable={isNewlyAvailable}
+                  onClick={handleUpdateAction}
+                />
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* 主内容区 */}
-      <div className="relative flex-1 flex flex-col min-w-0">
-        {/* Header - 专注模式下隐藏，由右上角浮动指示器代替 */}
+      {/* 底部行:左下项目栏 + 右下主区。专注模式下只剩主区(全宽)。 */}
+      <div className="flex flex-1 min-h-0">
+        {/*
+          左下项目栏 - 专注模式下完全隐藏(直接不渲染)
+          动画策略:外层只控制 width 0 ↔ 256px,内层用 GPU transform 辅助退场。
+          - 容器始终挂载,避免挂载/卸载与 exit 动画的协调问题
+          - 内层 .sidebar-inner 固定 256px,<aside> 始终保持完整背景
+          - 顶部栏已是独立行,左下栏顶部不再需要为浮动工具让位
+          收起时 overflow-hidden 把固定宽度的内层从右向左裁剪。
+        */}
         {!focusMode && (
-          <Header
-            project={activeProject}
-            toolbarInset={!sidebarOpen}
-            hasUpdate={isAutoUpdateAvailable && updateStatus === 'available'}
-            updateVersion={updateInfo?.version}
-            isNewlyAvailable={isNewlyAvailable}
-            onOpenUpdateDialog={handleUpdateAction}
-          />
+          <div
+            className="sidebar-shell group/sidebar relative h-full flex-shrink-0 overflow-hidden"
+            data-open={sidebarOpen}
+            style={{ width: sidebarOpen ? '256px' : '0px' }}
+          >
+            <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
+              <ProjectSidebar
+                projects={projects}
+                activeProjectId={activeProjectId}
+                onSwitch={switchProject}
+                onCreate={createProject}
+                onRename={renameProject}
+                onDelete={deleteProject}
+                onExport={handleExportProject}
+                onReorder={reorderProjects}
+                updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
+                updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
+                updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
+                onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
+                onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
+                onOpenSettings={openSettings}
+                onOpenHistory={() => setHistoryOpen(true)}
+                onOpenHelp={() =>
+                  window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
+                }
+                incompleteCounts={incompleteCounts}
+                autofocusCreateSignal={createProjectSignal}
+              />
+            </div>
+          </div>
         )}
 
+      {/* 主内容区 - bg-primary(暖纸色,Anthropic 风格),与 L 形(--bg-frame 暖深色)分隔 */}
+      <div
+        className="relative flex-1 flex flex-col min-w-0"
+        style={{ backgroundColor: 'var(--bg-primary)' }}
+      >
         {/* 专注模式浮动指示器：点击退出，避免用户被困住 */}
         {/* 位置避开右上角原生窗口控制按钮（约 152px 宽） */}
         {focusMode && (
@@ -618,6 +670,7 @@ function App() {
             </div>
           )}
         </main>
+      </div>
       </div>
 
       {/* 批量操作工具栏 */}

@@ -12,10 +12,10 @@
   :root {
     /* 背景层：从主到次，逐级抬升 */
     --bg-primary: #faf9f7; /* 应用底色 · 纸 */
-    --bg-secondary: #f3f1ec; /* 侧栏 / 输入填充 */
+    --bg-secondary: #efe9e0; /* L 形框架 / 凹陷控件底 · 暖米色（比纸色深一档，Anthropic 暖调） */
     --bg-tertiary: #ffffff; /* 卡片 / 浮层 */
-    --bg-hover: #f0eee8; /* 悬停反馈 */
-    --bg-active: #ebe8df; /* 按下 / 选中填充 */
+    --bg-hover: #e8e1d4; /* 悬停反馈 */
+    --bg-active: #e0d8c8; /* 按下 / 选中填充 */
 
     /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
     --text-primary: #2f2d27; /* 标题与正文 */
@@ -630,19 +630,9 @@
     transform: translate3d(-12px, 0, 0);
   }
 
-  .sidebar-toolbar-offset {
-    transition: padding-left 260ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .sidebar-drag-offset {
-    transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .sidebar-shell,
-    .sidebar-inner,
-    .sidebar-toolbar-offset,
-    .sidebar-drag-offset {
+    .sidebar-inner {
       transition-duration: 0.01ms;
     }
   }
