@@ -41,17 +41,39 @@ interface ToolMenuItem {
   hint?: string;
   icon: typeof MenuIcon;
   action: ToolAction;
-  dividerBefore?: boolean;
 }
 
-const MENU_ITEMS: ToolMenuItem[] = [
-  { label: '新建项目', icon: FolderPlusIcon, action: 'new-project' },
-  { label: '导入数据…', icon: UploadIcon, action: 'import', dividerBefore: true },
-  { label: '导出全部数据', icon: DownloadIcon, action: 'export-all' },
-  { label: '导出当前列表', icon: DownloadIcon, action: 'export-csv' },
-  { label: '进入简洁模式', icon: FocusIcon, action: 'compact', dividerBefore: true },
-  { label: '关闭窗口', icon: XIcon, action: 'close' },
-  { label: '帮助与反馈', icon: GithubIcon, action: 'help', dividerBefore: true },
+interface ToolMenuGroup {
+  /** 分组标题，提供视觉分层；不参与交互 */
+  title: string;
+  items: ToolMenuItem[];
+}
+
+// 左上角菜单按功能分层：每组带一个小标题，避免 7 项扁平罗列难以扫视。
+const MENU_GROUPS: ToolMenuGroup[] = [
+  {
+    title: '项目',
+    items: [{ label: '新建项目', icon: FolderPlusIcon, action: 'new-project' }],
+  },
+  {
+    title: '数据',
+    items: [
+      { label: '导入数据…', icon: UploadIcon, action: 'import' },
+      { label: '导出全部数据', icon: DownloadIcon, action: 'export-all' },
+      { label: '导出当前列表', icon: DownloadIcon, action: 'export-csv' },
+    ],
+  },
+  {
+    title: '窗口',
+    items: [
+      { label: '进入简洁模式', icon: FocusIcon, action: 'compact' },
+      { label: '关闭窗口', icon: XIcon, action: 'close' },
+    ],
+  },
+  {
+    title: '其他',
+    items: [{ label: '帮助与反馈', icon: GithubIcon, action: 'help' }],
+  },
 ];
 
 function AppToolbarComponent({
@@ -71,8 +93,12 @@ function AppToolbarComponent({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
+  // 当前展开的多级分组（悬停某分组标题时设为该分组标题，离开时清空）
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   // 工具带根节点引用，用于判断点击是否落在工具带外部
   const containerRef = useRef<HTMLDivElement>(null);
+  // 延迟关闭子菜单的计时器：允许鼠标在主菜单与子菜单之间的间隙短暂偏移而不收回
+  const groupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ctrl+F 等外部聚焦信号到来时，同时展开左上角搜索框。
   useEffect(() => {
@@ -82,20 +108,31 @@ function AppToolbarComponent({
     }
   }, [searchFocusSignal]);
 
+  // 关闭主菜单/搜索弹层时一并收起多级子菜单与悬停计时器。
+  const closeAllPanels = useCallback(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+    setOpenGroup(null);
+    if (groupTimerRef.current) {
+      clearTimeout(groupTimerRef.current);
+      groupTimerRef.current = null;
+    }
+  }, []);
+
   // 点击工具带外部或按下 Escape 时收起菜单/搜索弹层（与 ContextMenu 行为一致）。
   // 用 mousedown 而非 click，避免先触发其它交互再关弹层。
   useEffect(() => {
     if (!menuOpen && !searchOpen) return;
     const handlePointerDown = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-        setSearchOpen(false);
+        closeAllPanels();
       }
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setMenuOpen(false);
-        setSearchOpen(false);
+        // 子菜单已展开时先收起子菜单，再次按 Esc 才关主菜单
+        if (openGroup) setOpenGroup(null);
+        else closeAllPanels();
       }
     };
     window.addEventListener('mousedown', handlePointerDown);
@@ -104,7 +141,27 @@ function AppToolbarComponent({
       window.removeEventListener('mousedown', handlePointerDown);
       window.removeEventListener('keydown', handleKey);
     };
-  }, [menuOpen, searchOpen]);
+  }, [menuOpen, searchOpen, openGroup, closeAllPanels]);
+
+  // 悬停某分组：立即展开该子菜单，并取消任何待关闭计时器。
+  const handleGroupEnter = useCallback((title: string) => {
+    if (groupTimerRef.current) {
+      clearTimeout(groupTimerRef.current);
+      groupTimerRef.current = null;
+    }
+    setOpenGroup(title);
+  }, []);
+
+  // 离开分组：延迟收起，给鼠标穿越主/子菜单间隙留出时间。
+  const handleGroupLeave = useCallback(() => {
+    if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
+    groupTimerRef.current = setTimeout(() => setOpenGroup(null), 120);
+  }, []);
+
+  // 卸载时清理计时器，避免泄漏。
+  useEffect(() => () => {
+    if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
+  }, []);
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -119,7 +176,7 @@ function AppToolbarComponent({
 
   const runMenuAction = useCallback(
     (action: ToolAction) => {
-      setMenuOpen(false);
+      closeAllPanels();
       if (action === 'new-project') onCreateProject();
       if (action === 'import') handleImportClick();
       if (action === 'export-all') onExportAll();
@@ -129,6 +186,7 @@ function AppToolbarComponent({
       if (action === 'help') onOpenHelp();
     },
     [
+      closeAllPanels,
       handleImportClick,
       onCloseWindow,
       onCreateProject,
@@ -155,6 +213,7 @@ function AppToolbarComponent({
           aria-expanded={menuOpen}
           onClick={() => {
             setSearchOpen(false);
+            setOpenGroup(null);
             setMenuOpen((value) => !value);
           }}
         >
@@ -190,6 +249,7 @@ function AppToolbarComponent({
       <AnimatePresence>
         {menuOpen && (
           <motion.div
+            key="main-menu"
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
@@ -201,32 +261,78 @@ function AppToolbarComponent({
               boxShadow: 'var(--shadow-lg)',
             }}
           >
-            {MENU_ITEMS.map(({ label, icon: Icon, action, ...item }) => (
-              <div
-                key={action}
-                className={item.dividerBefore ? 'mt-1 border-t pt-1' : undefined}
-                style={item.dividerBefore ? { borderColor: 'var(--border-color)' } : undefined}
-              >
-                <button
-                  onClick={() => runMenuAction(action)}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
-                  style={{ color: 'var(--text-secondary)' }}
+            {MENU_GROUPS.map((group, groupIndex) => {
+              const isOpen = openGroup === group.title;
+              return (
+                <div
+                  key={group.title}
+                  className={groupIndex > 0 ? 'mt-1 border-t pt-1' : undefined}
+                  style={groupIndex > 0 ? { borderColor: 'var(--border-color)' } : undefined}
                 >
-                  <Icon size={15} />
-                  <span className="flex-1">{label}</span>
-                  {item.hint && (
-                    <span className="text-[10px]" style={{ color: 'var(--text-quaternary)' }}>
-                      {item.hint}
-                    </span>
-                  )}
-                </button>
-              </div>
-            ))}
+                  <button
+                    // 悬停即展开子菜单；点击亦可切换，便于触屏/精确操作
+                    onMouseEnter={() => handleGroupEnter(group.title)}
+                    onMouseLeave={handleGroupLeave}
+                    onClick={() => setOpenGroup(isOpen ? null : group.title)}
+                    className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                    style={{
+                      color: isOpen ? 'var(--accent)' : 'var(--text-secondary)',
+                      backgroundColor: isOpen ? 'var(--accent-subtle)' : undefined,
+                    }}
+                    aria-haspopup="menu"
+                    aria-expanded={isOpen}
+                  >
+                    {group.title}
+                  </button>
+                </div>
+              );
+            })}
           </motion.div>
         )}
 
+        {/* 多级子菜单：挂在主菜单右侧，与悬停的分组对齐。 */}
+        <AnimatePresence>
+          {menuOpen && openGroup && (
+            <motion.div
+              key={`submenu-${openGroup}`}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -4 }}
+              transition={{ duration: 0.12 }}
+              onMouseEnter={() => handleGroupEnter(openGroup)}
+              onMouseLeave={handleGroupLeave}
+              className="titlebar-no-drag pointer-events-auto absolute left-[15.125rem] top-10 w-56 rounded-xl border p-1.5"
+              style={{
+                backgroundColor: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
+                boxShadow: 'var(--shadow-lg)',
+              }}
+            >
+              {MENU_GROUPS.find((g) => g.title === openGroup)?.items.map(
+                ({ label, icon: Icon, action, ...item }) => (
+                  <button
+                    key={action}
+                    onClick={() => runMenuAction(action)}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <Icon size={15} />
+                    <span className="flex-1">{label}</span>
+                    {item.hint && (
+                      <span className="text-[10px]" style={{ color: 'var(--text-quaternary)' }}>
+                        {item.hint}
+                      </span>
+                    )}
+                  </button>
+                ),
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {searchOpen && (
           <motion.div
+            key="search-panel"
             initial={{ opacity: 0, y: -4, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}

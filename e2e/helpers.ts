@@ -195,10 +195,10 @@ export async function hoverRow(row: ReturnType<Page['locator']>): Promise<void> 
   await row.hover();
 }
 
-/** 从侧边栏左下角设置菜单进入设置页面。 */
+/** 从侧边栏左下角设置菜单进入设置页面（默认通用分区）。 */
 export async function openSettings(win: Page): Promise<void> {
   await win.getByRole('button', { name: '打开设置菜单' }).click();
-  await win.getByRole('button', { name: '外观设置', exact: true }).click();
+  await win.getByRole('button', { name: '设置', exact: true }).click();
   await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
 }
 
@@ -212,11 +212,11 @@ export async function openSettingsSection(win: Page, section: string): Promise<v
 }
 
 /**
- * 打开「历史记录」（归档）弹窗：点侧边栏「历史记录」按钮唤出独立弹窗。
+ * 打开「历史记录」（归档）弹窗：点侧栏左下角品牌按钮唤出菜单，再点「历史记录」。
  * 等弹窗标题「历史记录」与副标题同时可见，即视为加载完成。
  */
 export async function openHistory(win: Page): Promise<void> {
-  await win.getByRole('button', { name: '打开应用菜单' }).click();
+  await win.getByRole('button', { name: '打开设置菜单' }).click();
   await win.getByRole('button', { name: '历史记录', exact: true }).click();
   // 弹窗标题 + 历史视图副标题同时可见
   await win.getByRole('heading', { name: '历史记录' }).waitFor({ state: 'visible' });

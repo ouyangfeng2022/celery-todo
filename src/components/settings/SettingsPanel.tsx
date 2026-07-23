@@ -95,8 +95,6 @@ function SettingsPanelComponent({
 
   // 导航项（desktop 仅桌面端可见）
   const navItems = NAV_ITEMS.filter((item) => item.id !== 'desktop' || window.electronAPI);
-  // 当前分类标题：右侧 Header 展示，对应主界面 Header 里展示当前项目名
-  const activeLabel = navItems.find((item) => item.id === activeSection)?.label ?? '设置';
 
   return (
     <AnimatePresence mode="wait">
@@ -188,7 +186,7 @@ function SettingsPanelComponent({
                   className="truncate font-serif text-xl tracking-tight"
                   style={{ color: 'var(--text-primary)' }}
                 >
-                  {activeLabel}
+                  设置
                 </h1>
               </div>
             </header>
