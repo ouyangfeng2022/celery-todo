@@ -33,7 +33,6 @@ import {
   ChevronRightIcon,
   RefreshIcon,
   CheckIcon,
-  ChevronDownIcon,
   GithubIcon,
   KeyboardIcon,
   MonitorIcon,
@@ -577,7 +576,7 @@ function ProjectSidebarComponent({
         <button
           ref={settingsButtonRef}
           onClick={() => setSettingsMenuOpen((value) => !value)}
-          className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--bg-hover)]"
+          className="mt-2 flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-[var(--bg-active)]"
           style={{ color: 'var(--text-primary)' }}
           aria-label="打开设置菜单"
           aria-expanded={settingsMenuOpen}
@@ -595,12 +594,6 @@ function ProjectSidebarComponent({
             />
             <span>Todo</span>
           </span>
-          <ChevronDownIcon
-            size={14}
-            className={
-              settingsMenuOpen ? 'rotate-180 transition-transform' : 'transition-transform'
-            }
-          />
         </button>
       </div>
 
