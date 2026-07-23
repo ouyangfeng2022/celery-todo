@@ -123,11 +123,13 @@ function SettingsPanelComponent({
             </button>
           </div>
 
-          {/* 主体：左侧导航 + 右侧内容 */}
-          <div className="mx-auto flex w-full max-w-6xl flex-1 min-h-0 px-5 py-6 lg:px-8">
+          {/* 主体：左侧导航 + 右侧内容。
+              左侧导航不再走 max-w 居中容器 —— 与主界面 ProjectSidebar 对齐，
+              从窗口左缘以 pl-7 起算，导航按钮文字与头部"设置"标题垂直对齐。 */}
+          <div className="flex w-full flex-1 min-h-0 px-5 py-6 lg:pl-7 lg:pr-8">
             {/* 左侧导航 */}
             <nav
-              className="w-52 flex-shrink-0 space-y-1 overflow-y-auto pr-8"
+              className="w-52 flex-shrink-0 space-y-1 overflow-y-auto"
               style={{
                 backgroundColor: 'var(--bg-primary)',
               }}
@@ -159,8 +161,8 @@ function SettingsPanelComponent({
               })}
             </nav>
 
-            {/* 右侧内容（子页面） —— 收窄内容宽度，避免横向铺得太开 */}
-            <main className="min-w-0 flex-1 overflow-y-auto pl-3 pr-2">
+            {/* 右侧内容（子页面） —— 收窄内容宽度并在 main 内水平居中，避免横向铺得太开 */}
+            <main className="min-w-0 flex-1 overflow-y-auto pl-8 pr-2">
               <div className="mx-auto w-full max-w-xl">
               {activeSection === 'general' && (
                 <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
