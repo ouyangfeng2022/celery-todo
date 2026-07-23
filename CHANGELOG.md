@@ -7,15 +7,17 @@
 发版流程详见 [VERSIONING.md](./VERSIONING.md)。
 
 ## [Unreleased]
-### Added
-- 设置页新增「贴图」子页面，可自定义简洁模式浮窗的样式：
-  - 4 个预设风格（玻璃 / 纯净 / 卡片 / 便利贴），一键切换
-  - 「高级设置」可展开调节圆角、背景模糊、不透明度、外阴影
-  - 实时预览，已打开的贴图窗口会跟随设置实时更新
 
-### Changed
-- 设置页重构为「左侧分类导航 + 右侧内容区」的子页面结构
-  （通用 / 贴图 / 桌面 / 数据 / 快捷键 / 关于），替换原滚动长列表
+## [v2.4.1] - 2026-07-23
+### Added
+- refine sidebar navigation and motion
+- redesign sidebar updates and settings page
+- 重构设置页为子页面结构并新增贴图样式设置
+- 发现新版本时主动弹窗，下载/进度/重启在同一弹窗完成
+
+### Fixed
+- 跨窗口数据同步修复贴图完成无效
+- auto-close dropdowns when clicking outside
 
 ## [v2.4.0] - 2026-07-22
 ### ⚠️ Breaking
@@ -216,3 +218,5 @@
 [v2.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.3.0
 
 [v2.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.0
+
+[v2.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.1
