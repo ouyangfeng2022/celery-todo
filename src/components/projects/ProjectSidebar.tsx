@@ -563,7 +563,7 @@ function ProjectSidebarComponent({
                     setSettingsMenuOpen(false);
                     onOpenSettings(section);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: 'var(--text-secondary)' }}
                 >
                   <Icon size={15} />
