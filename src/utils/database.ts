@@ -465,6 +465,30 @@ export async function initDatabase(): Promise<Database> {
 }
 
 /**
+ * 从磁盘重新加载内存数据库。
+ *
+ * 用途：本窗口是独立 renderer，sql.js 内存库是磁盘文件的一份私有副本。
+ * 其它窗口（主窗口 ↔ 贴图窗口）写盘后，本窗口不会自动感知，必须显式重读
+ * 才能看到对方的修改。收到主进程 `data:changed` 广播时调用此函数。
+ *
+ * 实现要点：必须替换 `db` 实例本身（而不是清空再插入），因为对方可能改了
+ * schema / 走过 migration；用 `loadDbBinary` 拿到最新二进制再 new 一个全新实例
+ * 是最稳的做法。SQL / currentStorageMode 复用首次 init 时锁定的值。
+ */
+export async function reloadDatabase(): Promise<void> {
+  if (!SQL) return; // 尚未初始化过，没有重载的必要
+  const data = await loadDbBinary();
+  if (!data) return; // 磁盘空文件，交由 initDatabase 兜底
+  // 关闭旧实例，避免 sql.js 内部资源泄漏
+  db?.close();
+  db = new SQL.Database(data);
+  createTables(db);
+  migrateDatabase();
+  isInitialized = true;
+  initPromise = Promise.resolve(db);
+}
+
+/**
  * 一次性迁移：把旧版本存放在 IndexedDB 中的数据库迁移到 Electron 文件存储。
  * 仅在桌面端、当前文件路径尚无数据、IndexedDB 仍有旧数据时执行。
  * 迁移完成后在 IndexedDB 写入 'migrated' 标记，避免重复迁移。
@@ -493,6 +517,13 @@ async function persistDatabase(): Promise<void> {
   if (!db) return;
   const data = db.export();
   await saveDbBinary(data);
+  // 通知除本窗口外的其它 renderer：磁盘数据已变更，需 reload 内存库。
+  // 这是单一广播点 —— store action / import / reset / 贴图 toggle 全部经
+  // execute() → scheduleSave()（debounce 500ms 合并）或 flushSave() 汇聚到这里，
+  // 自动覆盖所有写路径，无需在每处 mutate action 手动加广播。
+  // Web 端无 electronAPI，可选链安全跳过。catch 兜底：旧版主进程未注册
+  // 'data:changed' handler 时 invoke 会 reject，此时不应让写盘点失败。
+  void window.electronAPI?.notifyDataChanged?.().catch(() => {});
 }
 
 /**

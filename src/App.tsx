@@ -209,6 +209,21 @@ function App() {
     })();
   }, []);
 
+  // === 跨窗口数据同步 ===
+  // 贴图窗口是独立 renderer，各自维护一份 sql.js 内存库。任一窗口写盘后由
+  // database.persistDatabase 触发 notifyDataChanged，主进程转发给除发起者外的
+  // 其它窗口；这里订阅后重读内存库并刷新当前视图，即可看到对方的修改。
+  useEffect(() => {
+    window.electronAPI?.onDataChanged?.(async () => {
+      await db.reloadDatabase();
+      useSettingsStore.getState().loadSettings();
+      useProjectStore.getState().loadProjects();
+      // 用当前 activeProjectId（不是 settings.lastActiveProjectId，
+      // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
+      useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+    });
+  }, []);
+
   // === 安装阶段勾选了"开机自启"时的同步 ===
   // 主进程已在 NSIS 安装时通过 app.setLoginItemSettings 写好注册表，
   // 通过 IPC 推送这个事实，这里把 settings.autoStart 同步进 DB + store，

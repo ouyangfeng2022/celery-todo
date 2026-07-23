@@ -24,6 +24,10 @@ interface ElectronAPI {
   notifyStickerStyleChanged: () => Promise<void>;
   /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用） */
   onStickerStyleChanged: (callback: () => void) => void;
+  /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
+  notifyDataChanged: () => Promise<void>;
+  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图 */
+  onDataChanged: (callback: () => void) => void;
   /** 监听安装阶段勾选了"开机自启"事件（一次性同步用） */
   onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => void;
   /** 显示托盘通知 */

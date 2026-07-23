@@ -41,6 +41,12 @@ const electronAPI = {
   onStickerStyleChanged: (callback: () => void): void => {
     ipcRenderer.on('sticker:style-changed', () => callback());
   },
+  /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
+  notifyDataChanged: (): Promise<void> => ipcRenderer.invoke('data:changed'),
+  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图 */
+  onDataChanged: (callback: () => void): void => {
+    ipcRenderer.on('data:changed', () => callback());
+  },
 
   /**
    * 监听安装阶段勾选了"开机自启"事件（一次性）。

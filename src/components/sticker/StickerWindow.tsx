@@ -49,6 +49,17 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     });
   }, []);
 
+  // 订阅"其它窗口修改了数据库"广播（主窗口的增删改/完成操作）—— 重读内存库
+  // 后刷新当前项目列表，让贴图与主窗口保持一致。本窗口自己 toggle 完成时不会
+  // 收到此广播（主进程按 sender.id 过滤了发起者），故不会触发无谓 reload。
+  useEffect(() => {
+    window.electronAPI?.onDataChanged?.(async () => {
+      await db.reloadDatabase();
+      useSettingsStore.getState().loadSettings();
+      refresh();
+    });
+  }, [refresh]);
+
   useEffect(() => {
     if (ready) {
       setTodos(projectId ? db.getTodosByProject(projectId).filter((todo) => !todo.completed) : []);

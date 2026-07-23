@@ -354,6 +354,22 @@ ipcMain.handle('sticker:style-changed', () => {
   }
 });
 
+// 数据库已落盘：由发起方 renderer（database.persistDatabase 自动调用）触发，
+// 转发给除发起者外的所有 renderer（主窗口 + 已打开贴图），让它们 reload 内存库。
+// 主进程不读文件、不解释数据，仅做事件路由。过滤 event.sender.id 是为了避免
+// 发起者收到自己的广播而做无谓 reload（它本地状态早已更新）。
+ipcMain.handle('data:changed', (event) => {
+  const senderId = event.sender.id;
+  if (mainWindow && mainWindow.webContents.id !== senderId) {
+    mainWindow.webContents.send('data:changed');
+  }
+  for (const window of stickerWindows.values()) {
+    if (window.webContents.id !== senderId) {
+      window.webContents.send('data:changed');
+    }
+  }
+});
+
 /** 显示托盘通知 */
 ipcMain.handle('show-tray-notification', (_event, title: string, body: string) => {
   if (mainWindow) {
