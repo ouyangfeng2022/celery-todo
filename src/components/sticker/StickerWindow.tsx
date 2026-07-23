@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
 import { useSettingsStore } from '../../store/useSettingsStore';
@@ -9,11 +9,28 @@ interface Props {
   initialProjectId: string;
 }
 
+/** 浅比较项目列表（id + name + color），内容相同则视为无需更新，避免 select 抖动 */
+function sameProjects(a: Project[], b: Project[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (!x || !y) return false;
+    if (x.id !== y.id || x.name !== y.name || x.color !== y.color) return false;
+  }
+  return true;
+}
+
 export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(initialProjectId);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [ready, setReady] = useState(false);
+  // 用 ref 持有最新 projectId，让 refresh 引用保持稳定（不依赖 projectId），
+  // 从而订阅 effect 不会因切项目而反复重订阅、泄漏监听器。
+  const projectIdRef = useRef(projectId);
+  projectIdRef.current = projectId;
   const project = useMemo(
     () => projects.find((item) => item.id === projectId),
     [projects, projectId],
@@ -26,38 +43,53 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const stickerOpacity = useSettingsStore((s) => s.stickerOpacity);
   const stickerShadow = useSettingsStore((s) => s.stickerShadow);
 
+  // 仅按"当前 projectId 重读项目列表 + 该项目的未完成 todo"。
+  // 不再回写 setProjectId —— 回写会与 select 受控值互相打架，导致项目反复横跳。
+  // 首次进入且 projectId 为空时，回落到第一个项目（仅在此一处补默认值）。
   const refresh = useCallback(() => {
     const ps = db.getAllProjects();
-    setProjects(ps);
-    const id = projectId || ps[0]?.id || '';
-    if (id !== projectId) setProjectId(id);
+    setProjects((prev) => (sameProjects(prev, ps) ? prev : ps));
+    const id = projectIdRef.current || ps[0]?.id || '';
     setTodos(id ? db.getTodosByProject(id).filter((todo) => !todo.completed) : []);
-  }, [projectId]);
+  }, []);
   useEffect(() => {
     void db.initDatabase().then(() => {
       // 同步读取本窗口应有的样式设置（首次加载 / 老数据缺失键时走默认）
       useSettingsStore.getState().loadSettings();
+      // 首次加载时若 initialProjectId 缺失，回落到第一个项目并持久化，让 select 有值。
+      const ps = db.getAllProjects();
+      if (!projectIdRef.current && ps[0]) {
+        setProjectId(ps[0].id);
+        projectIdRef.current = ps[0].id;
+        void window.electronAPI?.setStickerProject(stickerId, ps[0].id);
+      }
       refresh();
       setReady(true);
     });
-  }, [refresh]);
+  }, [refresh, stickerId]);
 
   // 订阅主窗口发起的"贴图样式已变更"广播 —— 重新读 DB 同步本地状态。
   useEffect(() => {
-    window.electronAPI?.onStickerStyleChanged?.(() => {
+    const off = window.electronAPI?.onStickerStyleChanged?.(() => {
       useSettingsStore.getState().loadSettings();
     });
+    return () => {
+      off?.();
+    };
   }, []);
 
   // 订阅"其它窗口修改了数据库"广播（主窗口的增删改/完成操作）—— 重读内存库
   // 后刷新当前项目列表，让贴图与主窗口保持一致。本窗口自己 toggle 完成时不会
   // 收到此广播（主进程按 sender.id 过滤了发起者），故不会触发无谓 reload。
   useEffect(() => {
-    window.electronAPI?.onDataChanged?.(async () => {
+    const off = window.electronAPI?.onDataChanged?.(async () => {
       await db.reloadDatabase();
       useSettingsStore.getState().loadSettings();
       refresh();
     });
+    return () => {
+      off?.();
+    };
   }, [refresh]);
 
   useEffect(() => {

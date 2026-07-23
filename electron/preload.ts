@@ -26,9 +26,13 @@ const electronAPI = {
   setTitleBarOverlay: (options: { color: string; symbolColor: string }): Promise<void> =>
     ipcRenderer.invoke('set-titlebar-overlay', options),
 
-  /** 监听快速添加事件 */
-  onQuickAdd: (callback: () => void): void => {
-    ipcRenderer.on('quick-add', () => callback());
+  /** 监听快速添加事件，返回取消订阅函数 */
+  onQuickAdd: (callback: () => void): (() => void) => {
+    const listener = (): void => callback();
+    ipcRenderer.on('quick-add', listener);
+    return () => {
+      ipcRenderer.removeListener('quick-add', listener);
+    };
   },
   /** 创建一张桌面贴图；projectId 为空时由贴图自行选择第一个项目 */
   createSticker: (projectId?: string): Promise<void> => ipcRenderer.invoke('sticker:create', projectId),
@@ -37,15 +41,23 @@ const electronAPI = {
   closeSticker: (id: string): Promise<void> => ipcRenderer.invoke('sticker:close', id),
   /** 通知所有已打开的贴图窗口：样式设置已变更，需重新读取并应用 */
   notifyStickerStyleChanged: (): Promise<void> => ipcRenderer.invoke('sticker:style-changed'),
-  /** 监听主进程广播的"贴图样式已变更"事件（仅在贴图 renderer 内使用） */
-  onStickerStyleChanged: (callback: () => void): void => {
-    ipcRenderer.on('sticker:style-changed', () => callback());
+  /** 监听主进程广播的"贴图样式已变更"事件（仅在贴图 renderer 内使用），返回取消订阅函数 */
+  onStickerStyleChanged: (callback: () => void): (() => void) => {
+    const listener = (): void => callback();
+    ipcRenderer.on('sticker:style-changed', listener);
+    return () => {
+      ipcRenderer.removeListener('sticker:style-changed', listener);
+    };
   },
   /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
   notifyDataChanged: (): Promise<void> => ipcRenderer.invoke('data:changed'),
-  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图 */
-  onDataChanged: (callback: () => void): void => {
-    ipcRenderer.on('data:changed', () => callback());
+  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图，返回取消订阅函数 */
+  onDataChanged: (callback: () => void): (() => void) => {
+    const listener = (): void => callback();
+    ipcRenderer.on('data:changed', listener);
+    return () => {
+      ipcRenderer.removeListener('data:changed', listener);
+    };
   },
 
   /**
@@ -53,9 +65,14 @@ const electronAPI = {
    * 触发时机：主进程在 NSIS 安装时已通过 app.setLoginItemSettings 写好注册表，
    * 渲染进程加载完成后主进程会推送此事件，让 store 把 settings.autoStart
    * 同步进 DB，保持设置面板 UI 与系统状态一致。
+   * 返回取消订阅函数。
    */
-  onInstallOptionsAutoStart: (callback: (enabled: boolean) => void): void => {
-    ipcRenderer.on('install-options:auto-start', (_event, enabled) => callback(enabled));
+  onInstallOptionsAutoStart: (callback: (enabled: boolean) => void): (() => void) => {
+    const listener = (_event: unknown, enabled: boolean): void => callback(enabled);
+    ipcRenderer.on('install-options:auto-start', listener);
+    return () => {
+      ipcRenderer.removeListener('install-options:auto-start', listener);
+    };
   },
 
   /** 平台信息 */
@@ -92,11 +109,17 @@ const electronAPI = {
    * 监听来自 CLI 的请求（经主进程转发）。handler 在渲染进程上下文执行，
    * 处理完后必须调用 cliRespond(id, result) 把结果回传给主进程，最终回到 CLI。
    * 请求体：{ id: string; method: string; params?: unknown }
+   * 返回取消订阅函数。
    */
   onCliRequest: (
     callback: (req: { id: string; method: string; params?: unknown }) => void,
-  ): void => {
-    ipcRenderer.on('cli:request', (_event, req) => callback(req));
+  ): (() => void) => {
+    const listener = (_event: unknown, req: { id: string; method: string; params?: unknown }): void =>
+      callback(req);
+    ipcRenderer.on('cli:request', listener);
+    return () => {
+      ipcRenderer.removeListener('cli:request', listener);
+    };
   },
 
   /**
@@ -125,31 +148,57 @@ const electronAPI = {
   updaterGetCachedInfo: (): Promise<{ version: string; releaseName?: string } | null> =>
     ipcRenderer.invoke('updater:get-cached-info'),
 
-  /** 监听"发现新版本"事件 */
-  onUpdateAvailable: (callback: (info: { version: string; releaseName?: string }) => void): void => {
-    ipcRenderer.on('updater:update-available', (_event, info) => callback(info));
+  /** 监听"发现新版本"事件，返回取消订阅函数 */
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseName?: string }) => void,
+  ): (() => void) => {
+    const listener = (_event: unknown, info: { version: string; releaseName?: string }): void =>
+      callback(info);
+    ipcRenderer.on('updater:update-available', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:update-available', listener);
+    };
   },
 
-  /** 监听"已是最新版本"事件 */
-  onUpdateNotAvailable: (callback: () => void): void => {
-    ipcRenderer.on('updater:update-not-available', () => callback());
+  /** 监听"已是最新版本"事件，返回取消订阅函数 */
+  onUpdateNotAvailable: (callback: () => void): (() => void) => {
+    const listener = (): void => callback();
+    ipcRenderer.on('updater:update-not-available', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:update-not-available', listener);
+    };
   },
 
-  /** 监听下载进度 */
+  /** 监听下载进度，返回取消订阅函数 */
   onDownloadProgress: (
     callback: (progress: { percent: number; transferred: number; total: number }) => void,
-  ): void => {
-    ipcRenderer.on('updater:download-progress', (_event, progress) => callback(progress));
+  ): (() => void) => {
+    const listener = (
+      _event: unknown,
+      progress: { percent: number; transferred: number; total: number },
+    ): void => callback(progress);
+    ipcRenderer.on('updater:download-progress', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:download-progress', listener);
+    };
   },
 
-  /** 监听"更新下载完成"事件 */
-  onUpdateDownloaded: (callback: () => void): void => {
-    ipcRenderer.on('updater:update-downloaded', () => callback());
+  /** 监听"更新下载完成"事件，返回取消订阅函数 */
+  onUpdateDownloaded: (callback: () => void): (() => void) => {
+    const listener = (): void => callback();
+    ipcRenderer.on('updater:update-downloaded', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:update-downloaded', listener);
+    };
   },
 
-  /** 监听升级错误 */
-  onUpdaterError: (callback: (message: string) => void): void => {
-    ipcRenderer.on('updater:error', (_event, message) => callback(message));
+  /** 监听升级错误，返回取消订阅函数 */
+  onUpdaterError: (callback: (message: string) => void): (() => void) => {
+    const listener = (_event: unknown, message: string): void => callback(message);
+    ipcRenderer.on('updater:error', listener);
+    return () => {
+      ipcRenderer.removeListener('updater:error', listener);
+    };
   },
 };
 

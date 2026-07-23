@@ -213,8 +213,15 @@ function App() {
   // 贴图窗口是独立 renderer，各自维护一份 sql.js 内存库。任一窗口写盘后由
   // database.persistDatabase 触发 notifyDataChanged，主进程转发给除发起者外的
   // 其它窗口；这里订阅后重读内存库并刷新当前视图，即可看到对方的修改。
+  // 注意：此处不能先 flushSave() 再 reload —— flushSave 会无条件把"本窗口内存库"
+  // 整个写盘，而本窗口的内存库可能尚未看到对方的写（如贴图刚 toggle 完成的那条
+  // 仍是旧值）。那样会用旧内存覆盖磁盘上对方刚写的更新，导致写-写冲突（例如
+  // 贴图完成被主窗口回滚）。收到广播即意味着磁盘已是最新，直接 reload 即可；
+  // 本窗口自己 scheduleSave 的 pending 写属于"旧内存"的一部分，正确语义是
+  // 先让它在下一轮 debounce 落盘，或由 store action 的本地刷新兜底，不能在
+  // 此处与本窗口内存对账。
   useEffect(() => {
-    window.electronAPI?.onDataChanged?.(async () => {
+    const off = window.electronAPI?.onDataChanged?.(async () => {
       await db.reloadDatabase();
       useSettingsStore.getState().loadSettings();
       useProjectStore.getState().loadProjects();
@@ -222,6 +229,9 @@ function App() {
       // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
       useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     });
+    return () => {
+      off?.();
+    };
   }, []);
 
   // === 安装阶段勾选了"开机自启"时的同步 ===
@@ -230,9 +240,12 @@ function App() {
   // 让设置面板的复选框与系统真实状态保持一致。事件是一次性的（主进程仅发一次）。
   useEffect(() => {
     if (!window.electronAPI?.onInstallOptionsAutoStart) return;
-    window.electronAPI.onInstallOptionsAutoStart((enabled) => {
+    const off = window.electronAPI.onInstallOptionsAutoStart((enabled) => {
       useSettingsStore.getState().setAutoStart(enabled);
     });
+    return () => {
+      off?.();
+    };
   }, []);
 
   // === 项目切换时：持久化 + 重新加载 ===

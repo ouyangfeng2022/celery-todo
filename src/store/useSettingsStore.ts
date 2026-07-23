@@ -39,7 +39,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   loadSettings: () => {
     // 专注模式已废弃：升级时清理旧键，始终进入完整主窗口。
-    db.deleteSetting('focusMode');
+    // 仅当该 key 仍存在时才执行删除 —— deleteSetting 内部走 execute() →
+    // scheduleSave()，会在 500ms 后触发 persistDatabase 并向其它窗口广播
+    // data:changed。若每次加载都无条件删除，贴图窗口（每个 reload / refresh
+    // 都会调 loadSettings）会把"自己内存库的旧快照"写盘，覆盖主窗口尚未落盘
+    // 的 addTodo，表现为「主窗口创建待办闪现约 1 秒后消失」。幂等删除让该写
+    // 只在真正需要时发生一次。
+    if (db.getSetting('focusMode') !== null) {
+      db.deleteSetting('focusMode');
+    }
     // autoUpdateEnabled 同上：老数据无该键时走默认 true
     const storedAutoUpdate = db.getSetting('autoUpdateEnabled');
     const settings: AppSettings = {

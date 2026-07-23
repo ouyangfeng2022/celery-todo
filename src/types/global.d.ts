@@ -15,21 +15,21 @@ interface ElectronAPI {
     width: number;
     height: number;
   }) => Promise<void>;
-  /** 从托盘快速添加事项 */
-  onQuickAdd: (callback: () => void) => void;
+  /** 从托盘快速添加事项，返回取消订阅函数 */
+  onQuickAdd: (callback: () => void) => () => void;
   createSticker: (projectId?: string) => Promise<void>;
   setStickerProject: (id: string, projectId: string) => Promise<void>;
   closeSticker: (id: string) => Promise<void>;
   /** 通知所有已打开的贴图窗口：样式设置已变更（主窗口侧调用） */
   notifyStickerStyleChanged: () => Promise<void>;
-  /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用） */
-  onStickerStyleChanged: (callback: () => void) => void;
+  /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用），返回取消订阅函数 */
+  onStickerStyleChanged: (callback: () => void) => () => void;
   /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
   notifyDataChanged: () => Promise<void>;
-  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图 */
-  onDataChanged: (callback: () => void) => void;
-  /** 监听安装阶段勾选了"开机自启"事件（一次性同步用） */
-  onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => void;
+  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图，返回取消订阅函数 */
+  onDataChanged: (callback: () => void) => () => void;
+  /** 监听安装阶段勾选了"开机自启"事件（一次性同步用），返回取消订阅函数 */
+  onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => () => void;
   /** 显示托盘通知 */
   showTrayNotification: (title: string, body: string) => Promise<void>;
   /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
@@ -51,8 +51,10 @@ interface ElectronAPI {
   /** 重置到默认存储位置 */
   storageResetToDefault: () => Promise<{ filePath: string }>;
   // ===== CLI IPC 桥接 =====
-  /** 监听来自 CLI 的请求（主进程转发） */
-  onCliRequest: (callback: (req: { id: string; method: string; params?: unknown }) => void) => void;
+  /** 监听来自 CLI 的请求（主进程转发），返回取消订阅函数 */
+  onCliRequest: (
+    callback: (req: { id: string; method: string; params?: unknown }) => void,
+  ) => () => void;
   /** 把 CLI 请求的处理结果回传给主进程 */
   cliRespond: (payload: {
     id: string;
@@ -70,18 +72,20 @@ interface ElectronAPI {
   updaterGetCurrentVersion: () => Promise<string>;
   /** 获取最近一次发现的更新信息（可空） */
   updaterGetCachedInfo: () => Promise<{ version: string; releaseName?: string } | null>;
-  /** 监听"发现新版本"事件 */
-  onUpdateAvailable: (callback: (info: { version: string; releaseName?: string }) => void) => void;
-  /** 监听"已是最新版本"事件 */
-  onUpdateNotAvailable: (callback: () => void) => void;
-  /** 监听下载进度 */
+  /** 监听"发现新版本"事件，返回取消订阅函数 */
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseName?: string }) => void,
+  ) => () => void;
+  /** 监听"已是最新版本"事件，返回取消订阅函数 */
+  onUpdateNotAvailable: (callback: () => void) => () => void;
+  /** 监听下载进度，返回取消订阅函数 */
   onDownloadProgress: (
     callback: (progress: { percent: number; transferred: number; total: number }) => void,
-  ) => void;
-  /** 监听"更新下载完成"事件 */
-  onUpdateDownloaded: (callback: () => void) => void;
-  /** 监听升级错误 */
-  onUpdaterError: (callback: (message: string) => void) => void;
+  ) => () => void;
+  /** 监听"更新下载完成"事件，返回取消订阅函数 */
+  onUpdateDownloaded: (callback: () => void) => () => void;
+  /** 监听升级错误，返回取消订阅函数 */
+  onUpdaterError: (callback: (message: string) => void) => () => void;
 }
 
 /** 扩展 Window 接口以包含 electronAPI */

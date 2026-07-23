@@ -98,18 +98,14 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       setStatus('error');
     });
 
-    // ipcRenderer.on 没有返回 unsubscribe，这里通过 listener 移除手段不可用；
-    // 由于本 hook 在 App 顶层只挂载一次，生命周期与窗口一致，不卸载也可以接受。
-    // 但为减少 StrictMode 双挂载的影响，仍提供清理逻辑（见下方说明）。
+    // preload 的 onXxx 现已返回 unsubscribe 函数，在 cleanup 里逐个调用，
+    // 避免监听器泄漏（StrictMode 双挂载 / 未来动态挂载都会叠加 listener）。
     return () => {
-      // electron 的 ipcRenderer.on 不能在渲染端精确 remove（除非把 listener 传进去），
-      // 当前 preload 没有暴露 remove 接口，这里不做主动清理。
-      // 多次挂载会叠加 listener，但 StrictMode 仅在开发模式下双挂载，影响有限。
-      void offAvailable;
-      void offNotAvailable;
-      void offProgress;
-      void offDownloaded;
-      void offError;
+      offAvailable();
+      offNotAvailable();
+      offProgress();
+      offDownloaded();
+      offError();
     };
   }, [isDesktop]);
 

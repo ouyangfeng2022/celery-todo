@@ -27,17 +27,19 @@ interface CliRequest {
 
 /**
  * 注册 CLI 请求监听。在 App 顶层挂载一次（useEffect），生命周期与窗口一致。
- * 复用 useAutoUpdate 的模式：preload 的 onXxx 不提供 unsubscribe，这里也不卸载。
+ * preload 的 onCliRequest 现已返回 unsubscribe，在 cleanup 里调用。
  */
 export function useCliBridge(): void {
   useEffect(() => {
     const api = window.electronAPI;
     if (!api?.onCliRequest) return;
-    api.onCliRequest((req) => {
+    const off = api.onCliRequest((req) => {
       // 不 await：handler 内部自处理回包，避免阻塞 ipcRenderer 事件循环
       void handleRequest(req);
     });
-    // 顶层挂载一次，不卸载（与窗口生命周期一致）
+    return () => {
+      off();
+    };
   }, []);
 }
 
