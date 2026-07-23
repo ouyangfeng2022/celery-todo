@@ -37,8 +37,9 @@ describe('SidebarUpdateCard', () => {
 });
 
 describe('ProjectSidebar 设置菜单', () => {
-  it('从左下角直接进入外观设置', () => {
+  it('左下角菜单只有「设置」与「历史记录」两项', () => {
     const onOpenSettings = vi.fn();
+    const onOpenHistory = vi.fn();
     render(
       <ProjectSidebar
         projects={[]}
@@ -50,12 +51,21 @@ describe('ProjectSidebar 设置菜单', () => {
         onExport={vi.fn()}
         onReorder={vi.fn()}
         onOpenSettings={onOpenSettings}
+        onOpenHistory={onOpenHistory}
         incompleteCounts={{}}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
-    fireEvent.click(screen.getByRole('button', { name: '外观设置' }));
+
+    // 「设置」直接进入设置面板（默认通用分区）
+    fireEvent.click(screen.getByRole('button', { name: '设置' }));
     expect(onOpenSettings).toHaveBeenCalledWith('general');
+    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+
+    // 「历史记录」打开归档弹窗
+    fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
+    fireEvent.click(screen.getByRole('button', { name: '历史记录' }));
+    expect(onOpenHistory).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,7 +9,6 @@ function renderToolbar(overrides: Partial<React.ComponentProps<typeof AppToolbar
     searchFocusSignal: 0,
     onToggleSidebar: vi.fn(),
     onSearchChange: vi.fn(),
-    onOpenHistory: vi.fn(),
     onImport: vi.fn(),
     onExportAll: vi.fn(),
     onExportCsv: vi.fn(),

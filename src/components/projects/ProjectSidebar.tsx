@@ -33,11 +33,8 @@ import {
   ChevronRightIcon,
   RefreshIcon,
   CheckIcon,
-  GithubIcon,
-  KeyboardIcon,
-  MonitorIcon,
   SettingsIcon,
-  StickerIcon,
+  InboxIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -57,6 +54,8 @@ interface ProjectSidebarProps {
   onDownloadUpdate?: () => void;
   onRestartToUpdate?: () => void;
   onOpenSettings: (section: SettingsSectionId) => void;
+  /** 打开历史记录（归档）弹窗 */
+  onOpenHistory: () => void;
   /** 进入简洁模式，并创建当前项目的浮窗 */
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
@@ -337,6 +336,7 @@ function ProjectSidebarComponent({
   onDownloadUpdate,
   onRestartToUpdate,
   onOpenSettings,
+  onOpenHistory,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -548,19 +548,22 @@ function ProjectSidebarComponent({
               }}
             >
               {[
-                { label: '外观设置', icon: SettingsIcon, section: 'general' as const },
-                { label: '贴图设置', icon: StickerIcon, section: 'sticker' as const },
-                ...(window.electronAPI
-                  ? [{ label: '桌面设置', icon: MonitorIcon, section: 'desktop' as const }]
-                  : []),
-                { label: '快捷键', icon: KeyboardIcon, section: 'shortcuts' as const },
-                { label: '关于', icon: GithubIcon, section: 'about' as const },
-              ].map(({ label, icon: Icon, section }) => (
+                {
+                  label: '设置',
+                  icon: SettingsIcon,
+                  onSelect: () => onOpenSettings('general'),
+                },
+                {
+                  label: '历史记录',
+                  icon: InboxIcon,
+                  onSelect: () => onOpenHistory(),
+                },
+              ].map(({ label, icon: Icon, onSelect }) => (
                 <button
-                  key={section}
+                  key={label}
                   onClick={() => {
                     setSettingsMenuOpen(false);
-                    onOpenSettings(section);
+                    onSelect();
                   }}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: 'var(--text-secondary)' }}

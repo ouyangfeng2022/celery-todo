@@ -408,7 +408,6 @@ function App() {
           searchFocusSignal={searchFocusSignal}
           onToggleSidebar={() => setSidebarOpen((value) => !value)}
           onSearchChange={changeSearch}
-          onOpenHistory={() => setHistoryOpen(true)}
           onImport={handleImportProject}
           onExportAll={handleExportAll}
           onExportCsv={handleExportCsv}
@@ -453,6 +452,7 @@ function App() {
               onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
               onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
               onOpenSettings={openSettings}
+              onOpenHistory={() => setHistoryOpen(true)}
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />

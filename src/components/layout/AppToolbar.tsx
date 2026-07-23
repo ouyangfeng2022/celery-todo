@@ -10,7 +10,6 @@ import {
   FolderPlusIcon,
   FocusIcon,
   GithubIcon,
-  InboxIcon,
   MenuIcon,
   SearchIcon,
   SidebarIcon,
@@ -25,7 +24,6 @@ interface AppToolbarProps {
   searchFocusSignal: number;
   onToggleSidebar: () => void;
   onSearchChange: (value: string) => void;
-  onOpenHistory: () => void;
   onImport: (file: File) => void;
   onExportAll: () => void;
   onExportCsv: () => void;
@@ -36,7 +34,7 @@ interface AppToolbarProps {
 }
 
 type ToolAction =
-  'new-project' | 'history' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close' | 'help';
+  'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close' | 'help';
 
 interface ToolMenuItem {
   label: string;
@@ -48,7 +46,6 @@ interface ToolMenuItem {
 
 const MENU_ITEMS: ToolMenuItem[] = [
   { label: '新建项目', icon: FolderPlusIcon, action: 'new-project' },
-  { label: '历史记录', icon: InboxIcon, action: 'history' },
   { label: '导入数据…', icon: UploadIcon, action: 'import', dividerBefore: true },
   { label: '导出全部数据', icon: DownloadIcon, action: 'export-all' },
   { label: '导出当前列表', icon: DownloadIcon, action: 'export-csv' },
@@ -63,7 +60,6 @@ function AppToolbarComponent({
   searchFocusSignal,
   onToggleSidebar,
   onSearchChange,
-  onOpenHistory,
   onImport,
   onExportAll,
   onExportCsv,
@@ -125,7 +121,6 @@ function AppToolbarComponent({
     (action: ToolAction) => {
       setMenuOpen(false);
       if (action === 'new-project') onCreateProject();
-      if (action === 'history') onOpenHistory();
       if (action === 'import') handleImportClick();
       if (action === 'export-all') onExportAll();
       if (action === 'export-csv') onExportCsv();
@@ -141,7 +136,6 @@ function AppToolbarComponent({
       onExportAll,
       onExportCsv,
       onOpenHelp,
-      onOpenHistory,
     ],
   );
 
