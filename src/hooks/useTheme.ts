@@ -9,13 +9,13 @@ import type { ThemeMode } from '../types';
 
 /**
  * 标题栏 overlay 颜色（与 globals.css 的 CSS 变量对齐）。
- * 完整模式下 Header 透出 --bg-tertiary；专注模式下 Header 不渲染，
- * 顶部透出 --bg-primary，需用对应背景色避免色差。
+ * 完整模式和专注模式的顶部都使用 --bg-primary，
+ * 让标题栏、正文与右上角原生窗口按钮保持同一纸面底色。
  */
 const OVERLAY_COLORS = {
   full: {
-    light: { color: '#ffffff', symbolColor: '#5c584c' }, // --bg-tertiary
-    dark: { color: '#282723', symbolColor: '#b8b3a4' },
+    light: { color: '#faf9f7', symbolColor: '#5c584c' }, // --bg-primary
+    dark: { color: '#1a1916', symbolColor: '#b8b3a4' },
   },
   focus: {
     light: { color: '#faf9f7', symbolColor: '#5c584c' }, // --bg-primary（纸色）

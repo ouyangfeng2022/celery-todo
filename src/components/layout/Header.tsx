@@ -33,7 +33,7 @@ function HeaderComponent({
     <header
       className="sidebar-toolbar-offset relative flex items-center gap-3 border-b px-5 py-3.5 pr-[152px]"
       style={{
-        backgroundColor: 'var(--bg-tertiary)',
+        backgroundColor: 'var(--bg-primary)',
         borderColor: 'var(--border-color)',
         paddingLeft: toolbarInset ? '132px' : undefined,
       }}
