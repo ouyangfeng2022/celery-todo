@@ -37,9 +37,10 @@ describe('SidebarUpdateCard', () => {
 });
 
 describe('ProjectSidebar 设置菜单', () => {
-  it('左下角菜单只有「设置」与「历史记录」两项', () => {
+  it('左下角菜单包含「设置」「历史记录」「帮助与反馈」', () => {
     const onOpenSettings = vi.fn();
     const onOpenHistory = vi.fn();
+    const onOpenHelp = vi.fn();
     render(
       <ProjectSidebar
         projects={[]}
@@ -52,6 +53,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onReorder={vi.fn()}
         onOpenSettings={onOpenSettings}
         onOpenHistory={onOpenHistory}
+        onOpenHelp={onOpenHelp}
         incompleteCounts={{}}
       />,
     );
@@ -67,5 +69,10 @@ describe('ProjectSidebar 设置菜单', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
     fireEvent.click(screen.getByRole('button', { name: '历史记录' }));
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
+
+    // 「帮助与反馈」打开 GitHub 链接
+    fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
+    fireEvent.click(screen.getByRole('button', { name: '帮助与反馈' }));
+    expect(onOpenHelp).toHaveBeenCalledTimes(1);
   });
 });

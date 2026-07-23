@@ -35,6 +35,7 @@ import {
   CheckIcon,
   SettingsIcon,
   InboxIcon,
+  GithubIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Logo } from '../common/Logo';
@@ -56,6 +57,8 @@ interface ProjectSidebarProps {
   onOpenSettings: (section: SettingsSectionId) => void;
   /** 打开历史记录（归档）弹窗 */
   onOpenHistory: () => void;
+  /** 打开帮助与反馈（GitHub README） */
+  onOpenHelp: () => void;
   /** 进入简洁模式，并创建当前项目的浮窗 */
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
@@ -337,6 +340,7 @@ function ProjectSidebarComponent({
   onRestartToUpdate,
   onOpenSettings,
   onOpenHistory,
+  onOpenHelp,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -557,6 +561,11 @@ function ProjectSidebarComponent({
                   label: '历史记录',
                   icon: InboxIcon,
                   onSelect: () => onOpenHistory(),
+                },
+                {
+                  label: '帮助与反馈',
+                  icon: GithubIcon,
+                  onSelect: () => onOpenHelp(),
                 },
               ].map(({ label, icon: Icon, onSelect }) => (
                 <button

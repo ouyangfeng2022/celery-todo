@@ -9,7 +9,6 @@ import {
   DownloadIcon,
   FolderPlusIcon,
   FocusIcon,
-  GithubIcon,
   MenuIcon,
   SearchIcon,
   SidebarIcon,
@@ -30,11 +29,10 @@ interface AppToolbarProps {
   onCreateProject: () => void;
   onEnterCompactMode: () => void;
   onCloseWindow: () => void;
-  onOpenHelp: () => void;
 }
 
 type ToolAction =
-  'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close' | 'help';
+  'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close';
 
 interface ToolMenuItem {
   label: string;
@@ -70,10 +68,6 @@ const MENU_GROUPS: ToolMenuGroup[] = [
       { label: '关闭窗口', icon: XIcon, action: 'close' },
     ],
   },
-  {
-    title: '其他',
-    items: [{ label: '帮助与反馈', icon: GithubIcon, action: 'help' }],
-  },
 ];
 
 function AppToolbarComponent({
@@ -88,15 +82,18 @@ function AppToolbarComponent({
   onCreateProject,
   onEnterCompactMode,
   onCloseWindow,
-  onOpenHelp,
 }: AppToolbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
   // 当前展开的多级分组（悬停某分组标题时设为该分组标题，离开时清空）
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  // 子菜单顶端纵坐标（相对工具带容器）：让子菜单从悬停的分组行开始，而非主菜单顶部
+  const [submenuTop, setSubmenuTop] = useState<number | null>(null);
   // 工具带根节点引用，用于判断点击是否落在工具带外部
   const containerRef = useRef<HTMLDivElement>(null);
+  // 各分组标题按钮引用：按 title 取其屏幕位置，计算子菜单顶端
+  const groupButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   // 延迟关闭子菜单的计时器：允许鼠标在主菜单与子菜单之间的间隙短暂偏移而不收回
   const groupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -113,6 +110,7 @@ function AppToolbarComponent({
     setMenuOpen(false);
     setSearchOpen(false);
     setOpenGroup(null);
+    setSubmenuTop(null);
     if (groupTimerRef.current) {
       clearTimeout(groupTimerRef.current);
       groupTimerRef.current = null;
@@ -143,11 +141,17 @@ function AppToolbarComponent({
     };
   }, [menuOpen, searchOpen, openGroup, closeAllPanels]);
 
-  // 悬停某分组：立即展开该子菜单，并取消任何待关闭计时器。
+  // 悬停某分组：立即展开该子菜单，按该行顶端定位，并取消任何待关闭计时器。
   const handleGroupEnter = useCallback((title: string) => {
     if (groupTimerRef.current) {
       clearTimeout(groupTimerRef.current);
       groupTimerRef.current = null;
+    }
+    // 子菜单顶端对齐到悬停的分组行（相对工具带容器）
+    const btn = groupButtonRefs.current.get(title);
+    const container = containerRef.current;
+    if (btn && container) {
+      setSubmenuTop(btn.getBoundingClientRect().top - container.getBoundingClientRect().top);
     }
     setOpenGroup(title);
   }, []);
@@ -183,7 +187,6 @@ function AppToolbarComponent({
       if (action === 'export-csv') onExportCsv();
       if (action === 'compact') onEnterCompactMode();
       if (action === 'close') onCloseWindow();
-      if (action === 'help') onOpenHelp();
     },
     [
       closeAllPanels,
@@ -193,7 +196,6 @@ function AppToolbarComponent({
       onEnterCompactMode,
       onExportAll,
       onExportCsv,
-      onOpenHelp,
     ],
   );
 
@@ -254,7 +256,7 @@ function AppToolbarComponent({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.14 }}
-            className="titlebar-no-drag pointer-events-auto absolute left-0 top-10 w-60 rounded-xl border p-1.5"
+            className="titlebar-no-drag pointer-events-auto absolute left-0 top-10 w-36 rounded-xl border p-1.5"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               borderColor: 'var(--border-color)',
@@ -270,6 +272,11 @@ function AppToolbarComponent({
                   style={groupIndex > 0 ? { borderColor: 'var(--border-color)' } : undefined}
                 >
                   <button
+                    // 记录按钮引用，用于子菜单顶端对齐；卸载时清理
+                    ref={(el) => {
+                      if (el) groupButtonRefs.current.set(group.title, el);
+                      else groupButtonRefs.current.delete(group.title);
+                    }}
                     // 悬停即展开子菜单；点击亦可切换，便于触屏/精确操作
                     onMouseEnter={() => handleGroupEnter(group.title)}
                     onMouseLeave={handleGroupLeave}
@@ -301,8 +308,10 @@ function AppToolbarComponent({
               transition={{ duration: 0.12 }}
               onMouseEnter={() => handleGroupEnter(openGroup)}
               onMouseLeave={handleGroupLeave}
-              className="titlebar-no-drag pointer-events-auto absolute left-[15.125rem] top-10 w-56 rounded-xl border p-1.5"
+              className="titlebar-no-drag pointer-events-auto absolute left-[9.125rem] w-56 rounded-xl border p-1.5"
               style={{
+                // 子菜单从悬停的分组行顶端开始，而非主菜单顶部；测量前回退到 top-10
+                top: submenuTop ?? '2.5rem',
                 backgroundColor: 'var(--bg-tertiary)',
                 borderColor: 'var(--border-color)',
                 boxShadow: 'var(--shadow-lg)',

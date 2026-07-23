@@ -417,9 +417,6 @@ function App() {
           }}
           onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
           onCloseWindow={() => window.close()}
-          onOpenHelp={() =>
-            window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
-          }
         />
       )}
       {/*
@@ -453,6 +450,9 @@ function App() {
               onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
               onOpenSettings={openSettings}
               onOpenHistory={() => setHistoryOpen(true)}
+              onOpenHelp={() =>
+                window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
+              }
               incompleteCounts={incompleteCounts}
               autofocusCreateSignal={createProjectSignal}
             />

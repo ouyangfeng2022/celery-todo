@@ -15,7 +15,6 @@ function renderToolbar(overrides: Partial<React.ComponentProps<typeof AppToolbar
     onCreateProject: vi.fn(),
     onEnterCompactMode: vi.fn(),
     onCloseWindow: vi.fn(),
-    onOpenHelp: vi.fn(),
     ...overrides,
   };
   render(<AppToolbar {...props} />);
@@ -63,11 +62,12 @@ describe('AppToolbar', () => {
   it('主菜单按分组分层，项收在子菜单中', () => {
     const props = renderToolbar();
     fireEvent.click(screen.getByRole('button', { name: '打开应用菜单' }));
-    // 主菜单只有四个分组标题，不直接暴露具体操作项
+    // 主菜单只有三个分组标题（项目/数据/窗口），不直接暴露具体操作项
     expect(screen.getByRole('button', { name: '项目' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '数据' })).toBeInTheDocument();
-    // 偏好设置不应混入此菜单
-    expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '窗口' })).toBeInTheDocument();
+    // 帮助与反馈已移至左下角设置菜单，不应出现在这里
+    expect(screen.queryByRole('button', { name: '帮助与反馈' })).not.toBeInTheDocument();
     // 展开数据分组后才能点到「导出全部数据」
     fireEvent.click(screen.getByRole('button', { name: '数据' }));
     fireEvent.click(screen.getByRole('button', { name: '导出全部数据' }));
