@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.5.2] - 2026-07-24
+### Fixed
+- 点击分组时也测量子菜单坐标,修复纯点击场景子菜单不渲染
+
 ## [v2.5.1] - 2026-07-24
 ### Fixed
 - 修复左上角菜单下拉列表被父容器裁切不可见
@@ -235,3 +239,5 @@
 [v2.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.0
 
 [v2.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.1
+
+[v2.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.2
