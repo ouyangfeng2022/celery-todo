@@ -50,18 +50,13 @@ export default {
         },
       },
       fontFamily: {
-        // Anthropic uses a serif/sans combination. We use system fonts that match the feel.
-        serif: ['"Tinos"', 'Georgia', 'Cambria', '"Times New Roman"', 'serif'],
+        // Anthropic 品牌规范：Poppins 标题，Lora 正文。
+        serif: ['"Poppins"', '"Noto Sans SC"', 'Arial', 'sans-serif'],
         sans: [
-          'ui-sans-serif',
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"Segoe UI"',
-          'Roboto',
-          '"Helvetica Neue"',
-          'Arial',
-          'sans-serif',
+          '"Lora"',
+          '"Noto Serif SC"',
+          'Georgia',
+          'serif',
         ],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },

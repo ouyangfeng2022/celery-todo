@@ -60,8 +60,7 @@ function StatsPanelComponent({ total, completed, active, percentage }: StatsPane
         style={{ backgroundColor: 'var(--bg-hover)' }}
       >
         <motion.div
-          className="h-full rounded-full"
-          style={{ backgroundColor: 'var(--accent)' }}
+          className="brand-progress h-full rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}

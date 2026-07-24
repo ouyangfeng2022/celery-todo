@@ -448,18 +448,24 @@ function ProjectSidebarComponent({
 
   return (
     <aside
-      // 不加 border-r:整个 L 形(顶部行 + 左下项目栏)仅靠 --bg-secondary(暖米色)与主区
+      // 不加 border-r:整个 L 形(顶部行 + 左下项目栏)仅靠 --bg-frame(暖陶土橙)与主区
       // --bg-primary(暖纸色)的颜色差异区分,视觉合成一体。
-      className="w-64 flex-shrink-0 h-full flex flex-col"
-      style={{ backgroundColor: 'var(--bg-secondary)' }}
+      className="w-[280px] flex-shrink-0 h-full flex flex-col"
+      style={{ backgroundColor: 'var(--bg-frame)' }}
     >
       {/* 侧边栏标题行：应用名在左，搜索按钮由 Header 定位在右侧，与参考图一致。 */}
       <div className="flex h-12 flex-shrink-0 items-center px-5">
         <span
-          className="truncate font-serif text-sm font-semibold"
+          className="brand-wordmark flex items-center gap-[0.35em] truncate text-base"
           style={{ color: 'var(--text-primary)' }}
         >
-          Celery Todo
+          <span className="italic">Celery</span>
+          <span
+            aria-hidden="true"
+            className="h-[5px] w-[5px] flex-shrink-0 rounded-full"
+            style={{ backgroundColor: 'var(--accent)' }}
+          />
+          <span>Todo</span>
         </span>
       </div>
 
@@ -623,7 +629,7 @@ function ProjectSidebarComponent({
         >
           <Logo size={22} />
           <span
-            className="flex-1 text-left font-serif font-semibold whitespace-nowrap flex items-center gap-[0.35em]"
+            className="brand-wordmark flex flex-1 items-center gap-[0.35em] whitespace-nowrap text-left"
             style={{ color: 'var(--text-primary)' }}
           >
             <span className="italic">Celery</span>

@@ -378,7 +378,7 @@ function App() {
           <div className="flex items-center gap-2.5">
             <Logo size={32} />
             <h1
-              className="text-xl font-serif font-semibold leading-none whitespace-nowrap flex items-center gap-[0.35em]"
+              className="brand-wordmark text-xl leading-none whitespace-nowrap flex items-center gap-[0.35em]"
               style={{ color: 'var(--text-primary)' }}
             >
               <span className="italic">Celery</span>
@@ -411,8 +411,8 @@ function App() {
     //   │ Logo/菜单  │   主内容 (TodoList)          │ ← 仅左侧栏可收起
     //   │ [更新卡片] │                              │
     //   └───────────┴──────────────────────────────┘
-    // 顶部栏与侧栏使用 --bg-secondary(暖米色),主区使用 --bg-primary(暖纸色)。
-    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+    // 顶部栏与侧栏使用 --bg-frame(暖陶土橙),主区使用 --bg-primary(暖纸色)。
+    <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-frame)' }}>
       {/* 顶部行 - 全宽,专注模式下整行隐藏 */}
       {!focusMode && (
         <div className="flex flex-shrink-0">
@@ -421,7 +421,7 @@ function App() {
             因而点击「收起侧边栏」后恢复按钮和应用菜单仍留在顶部原位。
             搜索按钮由 Header 向下定位到侧边栏标题行，位置与参考图一致。
           */}
-          <div className="relative h-full w-64 flex-shrink-0">
+          <div className="relative h-full w-[280px] flex-shrink-0">
             <Header
               sidebarOpen={sidebarOpen}
               search={search}
@@ -443,11 +443,11 @@ function App() {
           {/*
             顶部标题区:项目标题 + 更新徽标。flex-1 占满顶部行剩余宽度。
             标题靠左,徽标靠右(贴 pr-[152px] 给原生 overlay 让位)。
-            背景 --bg-secondary(暖米色),与左侧工具组合成一条完整顶部栏。
+            背景 --bg-frame(暖陶土橙),与左侧工具组合成一条完整顶部栏。
           */}
           <div
-            className="relative flex h-full flex-1 items-center gap-3 px-5 py-3.5 pr-[152px]"
-            style={{ backgroundColor: 'var(--bg-secondary)' }}
+            className="relative flex h-full flex-1 items-center gap-3 px-7 py-3 pr-[152px]"
+            style={{ backgroundColor: 'var(--bg-frame)' }}
           >
             {/* 拖拽区:标题与徽标之间的空白处可拖动整窗。 */}
             <div
@@ -455,12 +455,15 @@ function App() {
               className="titlebar-drag pointer-events-auto absolute inset-y-0 right-[152px]"
               style={{ left: '0px' }}
             />
-            <h1
-              className="titlebar-no-drag relative z-10 truncate text-xl font-serif tracking-tight"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {activeProject?.name ?? 'Celery Todo'}
-            </h1>
+            <div className="titlebar-no-drag relative z-10 min-w-0">
+              <p className="claude-eyebrow mb-0.5">当前项目</p>
+              <h1
+                className="truncate text-lg font-serif font-semibold leading-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {activeProject?.name ?? 'Celery Todo'}
+              </h1>
+            </div>
             {/* 更新提醒已移至左下角侧边栏卡片（SidebarUpdateCard），右上象限不再显示徽标。
                 标题与右侧原生窗口控制按钮之间的空白作为拖拽区使用。 */}
             <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5" />
@@ -472,9 +475,9 @@ function App() {
       <div className="flex flex-1 min-h-0">
         {/*
           左下项目栏 - 专注模式下完全隐藏(直接不渲染)
-          动画策略:外层只控制 width 0 ↔ 256px,内层用 GPU transform 辅助退场。
+          动画策略:外层只控制 width 0 ↔ 280px,内层用 GPU transform 辅助退场。
           - 容器始终挂载,避免挂载/卸载与 exit 动画的协调问题
-          - 内层 .sidebar-inner 固定 256px,<aside> 始终保持完整背景
+          - 内层 .sidebar-inner 固定 280px,<aside> 始终保持完整背景
           - 顶部栏已是独立行,左下栏顶部不再需要为浮动工具让位
           收起时 overflow-hidden 把固定宽度的内层从右向左裁剪。
         */}
@@ -482,9 +485,9 @@ function App() {
           <div
             className="sidebar-shell group/sidebar relative h-full flex-shrink-0 overflow-hidden"
             data-open={sidebarOpen}
-            style={{ width: sidebarOpen ? '256px' : '0px' }}
+            style={{ width: sidebarOpen ? '280px' : '0px' }}
           >
-            <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
+            <div className="sidebar-inner h-full" style={{ width: '280px', minWidth: '280px' }}>
               <ProjectSidebar
                 projects={projects}
                 activeProjectId={activeProjectId}
@@ -514,7 +517,7 @@ function App() {
 
         {/* 主内容区 - bg-primary(暖纸色,Anthropic 风格),与 L 形(--bg-frame 暖深色)分隔 */}
         <div
-          className="relative flex-1 flex flex-col min-w-0"
+          className="workspace-surface relative flex-1 flex flex-col min-w-0"
           style={{ backgroundColor: 'var(--bg-primary)' }}
         >
           {/* 专注模式浮动指示器：点击退出，避免用户被困住 */}
@@ -541,7 +544,7 @@ function App() {
           <main className="flex-1 overflow-y-auto">
             {projects.length === 0 ? (
               // 无项目：引导创建第一个项目（优先于专注模式判断）
-              <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
+              <div className="mx-auto max-w-4xl px-5 py-8 lg:px-10 lg:py-12">
                 <NoProjectsState
                   onCreate={() => {
                     // 专注模式下侧边栏被隐藏，先退出专注以露出新建输入框
@@ -551,7 +554,7 @@ function App() {
                 />
               </div>
             ) : (
-              <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
+              <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-4xl')}>
                 {/*
                 添加事项吸顶（sticky top-0）：列表过长向下滚动时输入框不再被推出视野。
                 分两层处理遮挡：
@@ -571,7 +574,7 @@ function App() {
                 {(!focusMode || composerVisible) && (
                   <div className="sticky top-0 z-20">
                     <div
-                      className="px-4 pt-6 pb-3 lg:px-8 lg:pt-10 lg:pb-4"
+                      className="px-5 pt-7 pb-3 lg:px-10 lg:pt-12 lg:pb-5"
                       style={{ backgroundColor: 'var(--bg-primary)' }}
                     >
                       <AddTodoInput
@@ -599,7 +602,7 @@ function App() {
                 )}
 
                 {/* 统计 / 筛选 / 列表 —— 随主区滚动 */}
-                <div className="space-y-5 px-4 pb-6 lg:px-8 lg:pb-10">
+                <div className="space-y-6 px-5 pb-8 lg:px-10 lg:pb-12">
                   {/* 统计 - 专注模式下隐藏 */}
                   {!focusMode && (
                     <StatsPanel

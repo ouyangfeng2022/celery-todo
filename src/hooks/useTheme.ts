@@ -9,17 +9,17 @@ import type { ThemeMode } from '../types';
 
 /**
  * 标题栏 overlay 颜色（与 globals.css 的 CSS 变量对齐）。
- * 完整模式和专注模式的顶部都使用 --bg-primary，
- * 让标题栏、正文与右上角原生窗口按钮保持同一纸面底色。
+ * 完整模式对齐 T 型品牌框架 --bg-frame；
+ * 专注模式没有顶部栏，因此对齐正文画布 --bg-primary。
  */
 const OVERLAY_COLORS = {
   full: {
-    light: { color: '#faf9f7', symbolColor: '#5c584c' }, // --bg-primary
-    dark: { color: '#1a1916', symbolColor: '#b8b3a4' },
+    light: { color: '#eed9ce', symbolColor: '#141413' }, // --bg-frame / --text-primary
+    dark: { color: '#33251f', symbolColor: '#f3f1ec' },
   },
   focus: {
-    light: { color: '#faf9f7', symbolColor: '#5c584c' }, // --bg-primary（纸色）
-    dark: { color: '#1a1916', symbolColor: '#b8b3a4' },
+    light: { color: '#faf9f5', symbolColor: '#141413' }, // --bg-primary / --text-primary
+    dark: { color: '#1a1916', symbolColor: '#f3f1ec' },
   },
 } as const;
 

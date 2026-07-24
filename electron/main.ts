@@ -92,7 +92,7 @@ function createMainWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     title: 'Celery Todo',
-    backgroundColor: '#faf9f7',
+    backgroundColor: '#eed9ce',
     icon: iconPath,
     // macOS 隐藏标题栏但保留红绿灯按钮；Windows 隐藏标题栏文字 + 自带 overlay 控制按钮
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
@@ -100,8 +100,8 @@ function createMainWindow(): BrowserWindow {
     // 初始颜色对齐完整主窗口的标题栏背景。
     titleBarOverlay: !isMac
       ? {
-          color: '#faf9f7',
-          symbolColor: '#5c584c',
+          color: '#eed9ce',
+          symbolColor: '#141413',
           height: 36,
         }
       : undefined,

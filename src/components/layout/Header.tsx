@@ -256,11 +256,11 @@ function HeaderComponent({
       ref={headerRef}
       // z-50:Header 内的下拉菜单(搜索/菜单/子菜单)需浮于 main 区吸顶 AddTodoInput(z-20)
       // 之上,否则「清除搜索」等按钮会被吸顶容器遮挡、点不到。
-      // 背景 var(--bg-secondary)(暖米色):与标题区、左侧栏同色(主区为暖纸色 --bg-primary)。
+      // 背景 var(--bg-frame)(暖陶土橙):与标题区、左侧栏同色(主区为暖纸色 --bg-primary)。
       // 位于顶部栏左侧(256px 宽),工具组靠左,右侧空白处可拖拽整窗。
       className="relative z-50 flex h-full w-full items-center gap-3 px-3 py-2"
       style={{
-        backgroundColor: 'var(--bg-secondary)',
+        backgroundColor: 'var(--bg-frame)',
       }}
     >
       {/*

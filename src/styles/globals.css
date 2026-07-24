@@ -4,55 +4,61 @@
 
 /* ============================================
    Anthropic / Claude 风格全局样式
-   设计意图：温暖的纸质底色 + 克制的珊瑚强调色，
-   衬线标题与无衬线正文搭配，层级靠排印而非边框。
+   设计意图：Anthropic 暖白纸张 + 深色油墨，
+   Poppins 标题与 Lora 正文搭配，层级靠排印、留白与三色强调建立。
    ============================================ */
 
 @layer base {
   :root {
     /* 背景层：从主到次，逐级抬升 */
-    --bg-primary: #faf9f7; /* 应用底色 · 纸 */
-    --bg-secondary: #efe9e0; /* L 形框架 / 凹陷控件底 · 暖米色（比纸色深一档，Anthropic 暖调） */
-    --bg-tertiary: #ffffff; /* 卡片 / 浮层 */
-    --bg-hover: #e8e1d4; /* 悬停反馈 */
-    --bg-active: #e0d8c8; /* 按下 / 选中填充 */
+    --bg-primary: #faf9f5; /* Anthropic Light · 主画布 */
+    --bg-secondary: #e8e6dc; /* Anthropic Light Gray · 框架 / 凹陷控件 */
+    --bg-tertiary: #fffefa; /* 卡片 / 浮层，保留纸张暖度 */
+    --bg-hover: #dedbd0; /* 悬停反馈 */
+    --bg-active: #d4d1c5; /* 按下 / 选中填充 */
+    --bg-frame: #eed9ce; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
 
     /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
-    --text-primary: #2f2d27; /* 标题与正文 */
-    --text-secondary: #5c584c; /* 次级说明 */
-    --text-tertiary: #8a8576; /* 元信息 / 占位 */
-    --text-quaternary: #b5b0a1; /* 极弱分隔 */
+    --text-primary: #141413; /* Anthropic Dark · 标题与正文 */
+    --text-secondary: #56554f; /* 次级说明 */
+    --text-tertiary: #7f7d75; /* 元信息 / 占位 */
+    --text-quaternary: #b0aea5; /* Anthropic Mid Gray · 极弱分隔 */
 
     /* 描边：弱→强 */
-    --border-color: #e8e6df;
-    --border-strong: #d6d3c8;
+    --border-color: #dedcd3;
+    --border-strong: #b0aea5;
 
     /* 强调：Claude 标志性珊瑚色 */
     --accent: #d97757;
     --accent-hover: #c75d3d;
-    --accent-subtle: #faf6f3; /* 极浅珊瑚底 */
+    --accent-subtle: #f7e8e1; /* 极浅珊瑚底 */
     --accent-pressed: #a64a2f;
+    --accent-blue: #6a9bcc;
+    --accent-blue-subtle: #e8f0f7;
+    --accent-green: #788c5d;
+    --accent-green-subtle: #edf0e8;
     --pinned-bg: #f7e3d099; /* 置顶行底色：浅珊瑚 60% 透明，配左侧色条强化置顶信号 */
 
     /* 语义色 */
     --danger: #c0392b;
     --danger-subtle: #fdf2f0;
-    --success: #2d7a4f;
+    --success: #788c5d;
     --warning: #b8860b;
 
     /* 排印 */
-    --font-serif:
-      'Tinos', 'Source Serif Pro', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-    --font-sans:
-      ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-      'Noto Sans SC', sans-serif;
+    --font-heading: 'Poppins', 'Noto Sans SC', Arial, sans-serif;
+    --font-body: 'Lora', 'Noto Serif SC', Georgia, serif;
+    --font-brand: 'Tinos', 'Source Serif Pro', Georgia, Cambria, 'Times New Roman', Times, serif;
+    /* 保留旧变量名，避免组件类名与贴图样式发生破坏性变更。 */
+    --font-serif: var(--font-heading);
+    --font-sans: var(--font-body);
     --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
 
     /* 阴影：分层、纸质、不喧哗 */
-    --shadow-xs: 0 1px 2px rgba(47, 45, 39, 0.04);
-    --shadow-sm: 0 1px 3px rgba(47, 45, 39, 0.05), 0 1px 2px -1px rgba(47, 45, 39, 0.04);
-    --shadow-md: 0 4px 12px -2px rgba(47, 45, 39, 0.08), 0 2px 6px -2px rgba(47, 45, 39, 0.04);
-    --shadow-lg: 0 12px 32px -8px rgba(47, 45, 39, 0.12), 0 4px 12px -4px rgba(47, 45, 39, 0.06);
+    --shadow-xs: 0 1px 2px rgba(20, 20, 19, 0.04);
+    --shadow-sm: 0 1px 3px rgba(20, 20, 19, 0.06), 0 1px 2px -1px rgba(20, 20, 19, 0.04);
+    --shadow-md: 0 8px 24px -12px rgba(20, 20, 19, 0.2);
+    --shadow-lg: 0 24px 48px -24px rgba(20, 20, 19, 0.3);
 
     /* 圆角节奏 */
     --radius-sm: 0.375rem;
@@ -67,6 +73,7 @@
     --bg-tertiary: #282723;
     --bg-hover: #323130;
     --bg-active: #3a3935;
+    --bg-frame: #33251f;
 
     --text-primary: #f3f1ec;
     --text-secondary: #b8b3a4;
@@ -80,6 +87,10 @@
     --accent-hover: #e89a7d;
     --accent-subtle: #2a1f18;
     --accent-pressed: #f0a98c;
+    --accent-blue: #83add5;
+    --accent-blue-subtle: #202a34;
+    --accent-green: #91a476;
+    --accent-green-subtle: #282d22;
     --pinned-bg: #3f241bcc; /* 置顶行底色：暗珊瑚 80% 透明，配左侧色条强化置顶信号 */
 
     --danger: #e57373;
@@ -106,9 +117,9 @@
   }
 
   body {
-    background-color: var(--bg-primary);
+    background-color: var(--bg-secondary);
     color: var(--text-primary);
-    font-family: var(--font-sans);
+    font-family: var(--font-body);
     font-size: 0.9375rem;
     line-height: 1.65;
     font-feature-settings: 'cv11', 'ss01';
@@ -408,8 +419,18 @@
 
   /* 衬线标题：用于品牌字、章节大字 */
   .font-serif {
-    font-family: var(--font-serif);
-    letter-spacing: -0.012em;
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+    font-feature-settings:
+      'liga' 1,
+      'kern' 1;
+  }
+
+  /* Celery Todo 专用艺术字标：不跟随通用标题字体切换。 */
+  .brand-wordmark {
+    font-family: var(--font-brand);
+    font-weight: 600;
+    letter-spacing: -0.018em;
     font-feature-settings:
       'liga' 1,
       'kern' 1;
@@ -554,11 +575,42 @@
 
   /* 章节小标题：用于设置/分组标题，克制不喧哗 */
   .claude-eyebrow {
+    font-family: var(--font-heading);
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--text-tertiary);
+  }
+
+  /* 主工作区像一张嵌入暖灰框架的纸，强化侧栏 / 内容层级。 */
+  .workspace-surface {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
+    border-radius: 1.25rem 0 0 0;
+    box-shadow:
+      -10px 14px 36px -28px rgba(20, 20, 19, 0.55),
+      inset 0 1px rgba(255, 255, 255, 0.55);
+  }
+
+  /* 设置页沿用主工作区的纸张卡片层级，避免旧版扁平灰色列表割裂视觉。 */
+  .settings-content > section,
+  .settings-content > div > section {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-xs);
+    padding: 1.5rem;
+  }
+
+  .brand-progress {
+    background-image: linear-gradient(
+      90deg,
+      var(--accent) 0%,
+      var(--accent) 48%,
+      var(--accent-blue) 72%,
+      var(--accent-green) 100%
+    );
   }
 }
 
