@@ -596,13 +596,14 @@
     color: var(--text-tertiary);
   }
 
-  /* 主工作区像一张嵌入暖灰框架的纸，强化侧栏 / 内容层级。 */
+  /* 主工作区像一张嵌入暖灰框架的纸，强化侧栏 / 内容层级。
+   * 外阴影主要落在左侧线（offset-x: -10px），保持深度但已收弱避免压迫侧栏。 */
   .workspace-surface {
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
     border-radius: 1.25rem 0 0 0;
     box-shadow:
-      -10px 14px 36px -28px rgba(20, 20, 19, 0.55),
+      -10px 14px 36px -28px rgba(20, 20, 19, 0.32),
       inset 0 1px rgba(255, 255, 255, 0.55);
   }
 
