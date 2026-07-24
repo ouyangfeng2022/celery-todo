@@ -38,16 +38,25 @@ export const PRIORITY_SOLID: Record<Priority, string> = {
 /** 筛选视图类型 */
 export type FilterType = 'all' | 'active' | 'completed';
 
-/** 排序方式 */
-export type SortType = 'created-asc' | 'created-desc' | 'priority' | 'manual';
+/**
+ * 排序方式
+ * - `created-desc`：按 createdAt 降序（新增置顶），用户可选
+ * - `priority`：按优先级排序，用户可选
+ * - `manual`：用户拖拽重排后的内部状态，遵循 `todo.order`。
+ *   不在排序下拉框中作为常规选项暴露——仅在 sort 已为 manual 时
+ *   作为只读指示项渲染，让用户感知到「当前为自定义顺序」，
+ *   再选「创建时间 / 优先级」即可退出该模式。
+ */
+export type SortType = 'created-desc' | 'priority' | 'manual';
 
-/** 排序选项标签 */
-export const SORT_LABELS: Record<SortType, string> = {
-  'created-asc': '创建时间 ↑',
-  'created-desc': '创建时间 ↓',
+/** 用户可在下拉框主动选择的排序选项（manual 不在其中） */
+export const SORT_LABELS: Record<Exclude<SortType, 'manual'>, string> = {
+  'created-desc': '创建时间',
   priority: '优先级',
-  manual: '手动排序',
 };
+
+/** manual 模式下作为下拉框只读指示项出现的文案 */
+export const MANUAL_SORT_LABEL = '手动排序';
 
 // ============================================
 // 主题

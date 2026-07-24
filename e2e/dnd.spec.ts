@@ -38,23 +38,22 @@ async function todoTitles(win: typeof win): Promise<string[]> {
 test('todo 拖拽：把最后一条移到第一位', async () => {
   // 首启无默认项目，先建一个项目承载 todo
   await createProject(win, '拖拽测试项目');
-  // 需要手动排序模式才能持久化拖拽结果；TodoList onDragEnd 会自动切到 manual
   await addTodo(win, 'T1');
   await addTodo(win, 'T2');
   await addTodo(win, 'T3');
 
-  // 切到手动排序（避免排序算法立即覆盖拖拽结果）
-  await win.getByLabel('排序方式').selectOption('manual');
-
+  // 默认 created-desc：列表顺序为 T3, T2, T1（新增置顶）。
+  // 直接拖拽 —— TodoList onDragEnd 会自动 snapshot 当前显示顺序并切到 manual，
+  // 无需（也无法）事先在下拉框选择「手动排序」（它只在拖拽后作为只读指示项出现）。
   const before = await todoTitles(win);
-  expect(before).toEqual(['T1', 'T2', 'T3']);
+  expect(before).toEqual(['T3', 'T2', 'T1']);
 
-  // 聚焦 T3 行的拖拽手柄（aria-label="拖拽排序"），按键盘拖拽
-  const t3Row = win
+  // 聚焦 T1 行（最后一条）的拖拽手柄，按键盘拖到顶部
+  const t1Row = win
     .locator('div.group.relative.flex.items-center.gap-3')
-    .filter({ has: win.getByText('T3', { exact: true }) });
-  await t3Row.hover();
-  const handle = t3Row.getByRole('button', { name: '拖拽排序' });
+    .filter({ has: win.getByText('T1', { exact: true }) });
+  await t1Row.hover();
+  const handle = t1Row.getByRole('button', { name: '拖拽排序' });
   await handle.focus();
   await win.waitForTimeout(200);
 
@@ -69,7 +68,9 @@ test('todo 拖拽：把最后一条移到第一位', async () => {
   await win.waitForTimeout(500);
 
   const after = await todoTitles(win);
-  expect(after[0]).toBe('T3');
+  expect(after[0]).toBe('T1');
+  // 拖拽后下拉框应自动切到 manual（只读指示项出现）
+  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
 });
 
 test('项目拖拽：把最后一个项目移到第一个', async () => {

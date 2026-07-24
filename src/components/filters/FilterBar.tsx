@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import { motion } from 'framer-motion';
 import type { FilterType, SortType } from '../../types';
-import { SORT_LABELS } from '../../types';
+import { MANUAL_SORT_LABEL, SORT_LABELS } from '../../types';
 import { ArchiveIcon } from '../common/Icons';
 
 interface FilterBarProps {
@@ -112,6 +112,10 @@ function FilterBarComponent({
         }}
         aria-label="排序方式"
       >
+        {/* 「手动排序」仅作为只读指示项出现：用户无法主动选中它，
+            仅当 sort 已为 manual（由拖拽触发）时才在下拉框中渲染，
+            让用户感知「当前为自定义顺序」，再选其它项即可退出。 */}
+        {sort === 'manual' && <option value="manual">{MANUAL_SORT_LABEL}</option>}
         {Object.entries(SORT_LABELS).map(([value, label]) => (
           <option key={value} value={value}>
             {label}

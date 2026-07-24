@@ -13,12 +13,7 @@ import * as db from './database';
 export const DEFAULT_SORT: SortType = 'created-desc';
 
 /** 合法值白名单（防 settings 表脏值导致 UI 异常） */
-export const SORT_VALUES: readonly SortType[] = [
-  'created-asc',
-  'created-desc',
-  'priority',
-  'manual',
-];
+export const SORT_VALUES: readonly SortType[] = ['created-desc', 'priority', 'manual'];
 
 /** per-project settings 命名键 */
 export const sortKey = (pid: string) => `sort.${pid}`;
@@ -49,14 +44,21 @@ export function readProjectSort(pid: string): SortType {
 export function sortTodos(todos: Todo[], sort: SortType): Todo[] {
   const applySort = (arr: Todo[]) => {
     switch (sort) {
-      case 'created-asc':
-        arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-        break;
       case 'created-desc':
         arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         break;
       case 'priority':
-        arr.sort((a, b) => PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority]);
+        // 主键：优先级降序（high > medium > low）
+        // 次键：createdAt 降序（新增在前），与 created-desc 全局规则保持一致，
+        //       不依赖 DB 返回顺序，也不受 sort_order 残留（拖拽快照）影响——
+        //       非手动模式下严格按时间排序，绝不被历史拖拽污染。
+        // （createdAt 同毫秒时比较器返回 0，由 sort 稳定性保留 DB 序；此为边界，
+        //   实际 UI 中连续添加间隔远超 1ms，不影响可见顺序。）
+        arr.sort(
+          (a, b) =>
+            PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority] ||
+            b.createdAt.localeCompare(a.createdAt),
+        );
         break;
       case 'manual':
         arr.sort((a, b) => a.order - b.order);
