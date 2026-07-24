@@ -315,7 +315,7 @@ function HeaderComponent({
                 transition={{ duration: 0.14 }}
                 onMouseEnter={() => handleGroupEnter(openGroup)}
                 onMouseLeave={handleGroupLeave}
-                className="titlebar-no-drag pointer-events-auto fixed z-[60] w-56 rounded-xl border p-1.5"
+                className="titlebar-no-drag pointer-events-auto fixed z-[60] min-w-[12rem] py-1 rounded-xl border"
                 style={{
                   left: submenuPos.left,
                   top: submenuPos.top,
@@ -329,8 +329,8 @@ function HeaderComponent({
                     <button
                       key={action}
                       onClick={() => runMenuAction(action)}
-                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
-                      style={{ color: 'var(--text-secondary)' }}
+                      className="flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] transition-colors hover:bg-[var(--bg-hover)]"
+                      style={{ color: 'var(--text-primary)' }}
                     >
                       <Icon size={15} />
                       <span className="flex-1">{label}</span>
