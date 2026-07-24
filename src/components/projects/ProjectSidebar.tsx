@@ -97,7 +97,7 @@ export function SidebarUpdateCard({
     return (
       <button
         onClick={onDownload}
-        className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-y-px"
+        className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
         style={{
           backgroundColor: 'var(--bg-tertiary)',
           borderColor: 'var(--border-color)',
@@ -175,7 +175,7 @@ export function SidebarUpdateCard({
   return (
     <button
       onClick={onRestart}
-      className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-all hover:-translate-y-px"
+      className="group/update w-full rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
       style={{
         backgroundColor: 'var(--bg-tertiary)',
         borderColor: 'var(--border-color)',
