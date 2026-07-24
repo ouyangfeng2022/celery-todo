@@ -258,13 +258,16 @@ function App() {
     }
   }, [activeProjectId, dbReady, clearSelection]);
 
+  // 唤出新建事项输入框并聚焦。供 Ctrl+N 快捷键与托盘「快速添加事项」共用：
+  // 专注模式下 AddTodoInput 默认隐藏，需先把它唤出再触发聚焦信号。
+  const focusNewTodo = useCallback(() => {
+    if (focusMode) setComposerVisible(true);
+    setNewTodoFocusSignal((n) => n + 1);
+  }, [focusMode]);
+
   // === 键盘快捷键 ===
   useKeyboardShortcuts({
-    onNewTodo: () => {
-      // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 先把它唤出再触发聚焦
-      if (focusMode) setComposerVisible(true);
-      setNewTodoFocusSignal((n) => n + 1);
-    },
+    onNewTodo: focusNewTodo,
     onSearch: () => {
       // 搜索入口位于侧边栏标题行；侧边栏收起时先展开，再打开并聚焦搜索。
       setSidebarOpen(true);
@@ -293,6 +296,18 @@ function App() {
       if (focusMode) setComposerVisible(false);
     },
   });
+
+  // === 托盘「快速添加事项」===
+  // tray.ts 在点击该菜单项时已 show+focus 主窗口，并发 'quick-add' 事件；
+  // 这里订阅后走与 Ctrl+N 完全相同的聚焦逻辑（唤出输入框 + 触发聚焦信号）。
+  useEffect(() => {
+    const off = window.electronAPI?.onQuickAdd?.(() => {
+      focusNewTodo();
+    });
+    return () => {
+      off?.();
+    };
+  }, [focusNewTodo]);
 
   // === 导入导出 ===
   const handleExportProject = useCallback(
