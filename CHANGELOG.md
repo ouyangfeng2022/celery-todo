@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.5.1] - 2026-07-24
+### Fixed
+- 修复左上角菜单下拉列表被父容器裁切不可见
+
 ## [v2.5.0] - 2026-07-24
 ### Added
 - 贴图窗口复用主窗口排序逻辑并增加优先级样式
@@ -229,3 +233,5 @@
 [v2.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.1
 
 [v2.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.0
+
+[v2.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.1
