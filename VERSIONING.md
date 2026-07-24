@@ -225,6 +225,7 @@ bun run bump -- <patch|minor|major> --push
 2. **Release 幂等**：`gh release create` 前先 `gh release view`，已存在则跳过。重跑 workflow 不会创建重复 Release。
 3. **CHANGELOG 抽取失败即终止**：`extract-changelog.mjs` 找不到对应版本块时退出码非零，会让 workflow 在创建空 Release 之前就停下。
 4. **不要手动在 GitHub 网页上改 Release 标题/正文**：下次重跑 workflow 会跳过（已存在），不会同步。要修正请 `gh release edit` 或 `gh release delete` 后重跑。
+5. **发版前质量门**（v2.5.1 事故后新增）：`release.yml` 内嵌一个 `quality` job（lint + test + build），`release` job 通过 `needs: [quality]` 依赖它。测试不通过时不会打包发版。这是独立的第二道闸 —— 即便 `ci.yml` 还在跑或被绕过，发版链路自身也会先自检。
 
 ### 8.3 第一次启用前的检查清单
 
