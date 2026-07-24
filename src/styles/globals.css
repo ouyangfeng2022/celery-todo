@@ -16,7 +16,7 @@
     --bg-tertiary: #fffefa; /* 卡片 / 浮层，保留纸张暖度 */
     --bg-hover: #dedbd0; /* 悬停反馈 */
     --bg-active: #d4d1c5; /* 按下 / 选中填充 */
-    --bg-frame: #eed9ce; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
+    --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
 
     /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
     --text-primary: #141413; /* Anthropic Dark · 标题与正文 */

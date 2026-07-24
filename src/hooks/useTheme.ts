@@ -14,7 +14,7 @@ import type { ThemeMode } from '../types';
  */
 const OVERLAY_COLORS = {
   full: {
-    light: { color: '#eed9ce', symbolColor: '#141413' }, // --bg-frame / --text-primary
+    light: { color: '#e3dacc', symbolColor: '#141413' }, // --bg-frame / --text-primary
     dark: { color: '#33251f', symbolColor: '#f3f1ec' },
   },
   focus: {
