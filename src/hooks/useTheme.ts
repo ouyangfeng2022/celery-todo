@@ -1,6 +1,7 @@
 /**
  * @file useTheme - 主题切换 Hook
- * @description 支持 light / dark / system 三种模式，自动监听系统主题变化
+ * @description 支持 light / dark / system / paper 四种模式，自动监听系统主题变化。
+ * paper 为独立浅色外观（无深色变体），不响应 prefers-color-scheme。
  */
 
 import { useCallback, useEffect } from 'react';
@@ -11,15 +12,18 @@ import type { ThemeMode } from '../types';
  * 标题栏 overlay 颜色（与 globals.css 的 CSS 变量对齐）。
  * 完整模式对齐 T 型品牌框架 --bg-frame；
  * 专注模式没有顶部栏，因此对齐正文画布 --bg-primary。
+ * paper 为独立浅色外观，按钮背景对齐其 --bg-frame（rgb(249,249,247)）。
  */
 const OVERLAY_COLORS = {
   full: {
     light: { color: '#e3dacc', symbolColor: '#141413' }, // --bg-frame / --text-primary
     dark: { color: '#33251f', symbolColor: '#f3f1ec' },
+    paper: { color: '#f9f9f7', symbolColor: '#141413' }, // rgb(249,249,247) / --text-primary
   },
   focus: {
     light: { color: '#faf9f5', symbolColor: '#141413' }, // --bg-primary / --text-primary
     dark: { color: '#1a1916', symbolColor: '#f3f1ec' },
+    paper: { color: '#f9f9f7', symbolColor: '#141413' },
   },
 } as const;
 
@@ -27,6 +31,17 @@ const OVERLAY_COLORS = {
 function applyTheme(theme: ThemeMode, focusMode: boolean): void {
   const root = document.documentElement;
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+  // paper 是独立浅色外观：移除 .dark、添加 .theme-paper，并跳过系统主题判定。
+  if (theme === 'paper') {
+    root.classList.remove('dark');
+    root.classList.add('theme-paper');
+    const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
+    window.electronAPI?.setTitleBarOverlay?.(palette.paper);
+    return;
+  }
+
+  root.classList.remove('theme-paper');
 
   const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
 

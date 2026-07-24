@@ -4,7 +4,7 @@
  */
 
 import type { ThemeMode } from '../../../types';
-import { SunIcon, MoonIcon, MonitorIcon } from '../../common/Icons';
+import { SunIcon, MoonIcon, MonitorIcon, PaperIcon } from '../../common/Icons';
 
 interface GeneralSectionProps {
   theme: ThemeMode;
@@ -15,6 +15,7 @@ const themeOptions: { value: ThemeMode; label: string; icon: typeof SunIcon }[] 
   { value: 'light', label: '浅色', icon: SunIcon },
   { value: 'dark', label: '深色', icon: MoonIcon },
   { value: 'system', label: '跟随系统', icon: MonitorIcon },
+  { value: 'paper', label: '纸白', icon: PaperIcon },
 ];
 
 export function GeneralSection({ theme, onUpdateSettings }: GeneralSectionProps) {
@@ -23,7 +24,7 @@ export function GeneralSection({ theme, onUpdateSettings }: GeneralSectionProps)
       <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
         外观
       </h3>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {themeOptions.map((option) => {
           const Icon = option.icon;
           const isActive = theme === option.value;

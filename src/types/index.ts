@@ -54,7 +54,7 @@ export const SORT_LABELS: Record<SortType, string> = {
 // ============================================
 
 /** 主题模式 */
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'paper';
 
 // ============================================
 // 贴图样式（简洁模式浮窗）

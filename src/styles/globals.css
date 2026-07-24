@@ -104,6 +104,19 @@
     --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
   }
 
+  /* 纸白主题：去掉 Anthropic 暖陶土 T 型框，侧栏 / 顶栏 / 主画布统一中性灰白，
+   * 输入框与卡片用纯白拉开层级。仅覆盖背景层 token，文字 / accent / border 等沿用 :root。 */
+  .theme-paper {
+    --bg-primary: rgb(249, 249, 247); /* 主画布：中性灰白 */
+    --bg-secondary: rgb(249, 249, 247); /* 外层框架同色，避免漏出暖灰 */
+    --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
+    --bg-tertiary: rgb(255, 255, 255); /* 卡片 / 浮层 / 输入框：纯白拉开层级 */
+    /* hover/active 需在更浅的新底色上重建中性反馈层级，否则计数徽章、进度条轨道、
+     * 行悬停都会漏出默认暖灰 #dedbd0。用透明黑叠在底色上保证与纸白基调一致。 */
+    --bg-hover: rgba(0, 0, 0, 0.04);
+    --bg-active: rgba(0, 0, 0, 0.08);
+  }
+
   * {
     border-color: var(--border-color);
   }
