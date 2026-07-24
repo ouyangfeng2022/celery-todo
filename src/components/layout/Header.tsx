@@ -1,13 +1,10 @@
 /**
  * @file Header - 顶部导航栏
- * @description 单行顶部栏:左侧 = 应用菜单 / 侧边栏开关 / 搜索(原浮动 AppToolbar 已合并进来),
- * 中部 = 项目标题,右侧 = 更新徽标。右上角原生 overlay 控制按钮占用约 152px,故整条右留白。
+ * @description 顶部工具栏:左侧 = 侧边栏开关 / 应用菜单；搜索入口向下定位到侧边栏标题行。
  *
  * 弹出层定位:主菜单 / 多级子菜单 / 搜索面板均通过 createPortal 渲染到 document.body,
- * 用 fixed + 屏幕坐标(getBoundingClientRect)锚定到对应触发按钮。原因是 Header 位于左上
- * 象限的 .sidebar-shell 容器内,该容器带 overflow-hidden + contain:paint(服务于侧栏折叠
- * 动画),absolute 定位的弹出层会被裁切。portal 让弹出层脱离该裁剪上下文,与 ContextMenu
- * 的处理方式一致。
+ * 用 fixed + 屏幕坐标(getBoundingClientRect)锚定到对应触发按钮。portal 让弹出层脱离
+ * 顶部栏自身的层叠上下文，与 ContextMenu 的处理方式一致。
  */
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -40,13 +37,7 @@ interface HeaderProps {
   onCloseWindow: () => void;
 }
 
-type ToolAction =
-  | 'new-project'
-  | 'import'
-  | 'export-all'
-  | 'export-csv'
-  | 'compact'
-  | 'close';
+type ToolAction = 'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close';
 
 interface ToolMenuItem {
   label: string;
@@ -138,6 +129,14 @@ function HeaderComponent({
       setSearchOpen(true);
     }
   }, [searchFocusSignal]);
+
+  // 搜索入口属于侧边栏；侧边栏收起时同步关闭搜索弹层，避免浮层留在主区。
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setSearchOpen(false);
+      setSearchPos(null);
+    }
+  }, [sidebarOpen]);
 
   // 关闭主菜单/搜索弹层时一并收起多级子菜单、坐标缓存与悬停计时器。
   const closeAllPanels = useCallback(() => {
@@ -257,8 +256,8 @@ function HeaderComponent({
       ref={headerRef}
       // z-50:Header 内的下拉菜单(搜索/菜单/子菜单)需浮于 main 区吸顶 AddTodoInput(z-20)
       // 之上,否则「清除搜索」等按钮会被吸顶容器遮挡、点不到。
-      // 背景 var(--bg-secondary)(暖米色):与右上/左下同色,合成视觉 L 形(主区为暖纸色 --bg-primary)。
-      // 位于左上象限(256px 宽列),工具组靠左,右侧空白处可拖拽整窗。
+      // 背景 var(--bg-secondary)(暖米色):与标题区、左侧栏同色(主区为暖纸色 --bg-primary)。
+      // 位于顶部栏左侧(256px 宽),工具组靠左,右侧空白处可拖拽整窗。
       className="relative z-50 flex h-full w-full items-center gap-3 px-3 py-2"
       style={{
         backgroundColor: 'var(--bg-secondary)',
@@ -275,10 +274,19 @@ function HeaderComponent({
         style={{ left: '124px' }}
       />
 
-      {/* 工具组:菜单 / 侧边栏开关 / 搜索。
+      {/* 工具组:侧边栏开关 / 应用菜单。
           整个 header 已是 z-50(浮于 main 吸顶 AddTodoInput 之上),这里仅需在 header
           内部把下拉菜单钉在拖拽层之上。 */}
       <div className="titlebar-no-drag relative z-30 flex items-center gap-0.5">
+        <button
+          className={iconButtonClass}
+          style={{ color: 'var(--text-secondary)' }}
+          aria-label={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
+          title={`${sidebarOpen ? '收起' : '展开'}侧边栏 (Ctrl+B)`}
+          onClick={onToggleSidebar}
+        >
+          <SidebarIcon size={16} open={sidebarOpen} />
+        </button>
         <button
           ref={menuButtonRef}
           className={iconButtonClass}
@@ -303,45 +311,8 @@ function HeaderComponent({
         >
           <MenuIcon size={16} />
         </button>
-        <button
-          className={iconButtonClass}
-          style={{ color: 'var(--text-secondary)' }}
-          aria-label={sidebarOpen ? '收起侧边栏' : '展开侧边栏'}
-          title={`${sidebarOpen ? '收起' : '展开'}侧边栏 (Ctrl+B)`}
-          onClick={onToggleSidebar}
-        >
-          <SidebarIcon size={16} open={sidebarOpen} />
-        </button>
-        <button
-          ref={searchButtonRef}
-          className={iconButtonClass}
-          style={{ color: searchOpen || search ? 'var(--accent)' : 'var(--text-secondary)' }}
-          aria-label="搜索事项"
-          aria-expanded={searchOpen}
-          title="搜索事项 (Ctrl+F)"
-          onClick={() => {
-            setMenuOpen(false);
-            setMainMenuPos(null);
-            setOpenGroup(null);
-            setSubmenuPos(null);
-            setSearchOpen((value) => {
-              if (!value) {
-                // 即将打开搜索面板时测量按钮屏幕坐标给 portal 用。
-                if (searchButtonRef.current) {
-                  const rect = searchButtonRef.current.getBoundingClientRect();
-                  setSearchPos({ left: rect.left, top: rect.bottom + 4 });
-                }
-                setManualSearchFocusSignal((signal) => signal + 1);
-              }
-              return !value;
-            });
-          }}
-        >
-          <SearchIcon size={16} />
-        </button>
 
-        {/* 三个弹出层均通过 portal 渲染到 document.body,用 fixed + 屏幕坐标锚定,
-            以脱离 .sidebar-shell 的 overflow-hidden + contain:paint 裁剪上下文。
+        {/* 三个弹出层均通过 portal 渲染到 document.body,用 fixed + 屏幕坐标锚定。
             z-[60] 高于 Header 的 z-50,确保浮于所有内容之上(与 ContextMenu 同级)。 */}
         {createPortal(
           <AnimatePresence>
@@ -470,6 +441,38 @@ function HeaderComponent({
           document.body,
         )}
       </div>
+
+      {/* 搜索属于侧边栏标题行，而不是顶部工具组。Header 容器允许溢出，
+          因此可向下定位到下一行；侧边栏收起时随侧边栏内容一起隐藏。 */}
+      {sidebarOpen && (
+        <button
+          ref={searchButtonRef}
+          className={`${iconButtonClass} absolute right-3 top-[calc(100%+8px)] z-40`}
+          style={{ color: searchOpen || search ? 'var(--accent)' : 'var(--text-secondary)' }}
+          aria-label="搜索事项"
+          aria-expanded={searchOpen}
+          title="搜索事项 (Ctrl+F)"
+          onClick={() => {
+            setMenuOpen(false);
+            setMainMenuPos(null);
+            setOpenGroup(null);
+            setSubmenuPos(null);
+            setSearchOpen((value) => {
+              if (!value) {
+                // 即将打开搜索面板时测量按钮屏幕坐标给 portal 用。
+                if (searchButtonRef.current) {
+                  const rect = searchButtonRef.current.getBoundingClientRect();
+                  setSearchPos({ left: rect.left, top: rect.bottom + 4 });
+                }
+                setManualSearchFocusSignal((signal) => signal + 1);
+              }
+              return !value;
+            });
+          }}
+        >
+          <SearchIcon size={16} />
+        </button>
+      )}
     </header>
   );
 }

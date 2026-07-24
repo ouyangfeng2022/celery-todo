@@ -453,8 +453,18 @@ function ProjectSidebarComponent({
       className="w-64 flex-shrink-0 h-full flex flex-col"
       style={{ backgroundColor: 'var(--bg-secondary)' }}
     >
-      {/* 项目列表。顶部不再留白:顶部栏已是独立一行,左下栏顶部直接接项目区。 */}
-      <div className="flex-1 overflow-y-auto px-3 pb-4 pt-3">
+      {/* 侧边栏标题行：应用名在左，搜索按钮由 Header 定位在右侧，与参考图一致。 */}
+      <div className="flex h-12 flex-shrink-0 items-center px-5">
+        <span
+          className="truncate font-serif text-sm font-semibold"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          Celery Todo
+        </span>
+      </div>
+
+      {/* 项目列表 */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4 pt-1">
         <div className="flex items-center justify-between px-2 mb-2">
           <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
             项目

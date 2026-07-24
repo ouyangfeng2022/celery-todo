@@ -28,9 +28,10 @@ describe('Header', () => {
     expect(props.onToggleSidebar).toHaveBeenCalledOnce();
   });
 
-  it('侧边栏收起后仍可恢复，并能操作菜单与搜索', () => {
+  it('侧边栏收起后顶部工具栏仍可恢复侧边栏并操作菜单', () => {
     const props = renderHeader({ sidebarOpen: false });
 
+    expect(screen.queryByRole('button', { name: '搜索事项' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '展开侧边栏' }));
     expect(props.onToggleSidebar).toHaveBeenCalledOnce();
 
@@ -39,9 +40,6 @@ describe('Header', () => {
     fireEvent.click(screen.getByRole('button', { name: '项目' }));
     fireEvent.click(screen.getByRole('button', { name: /新建项目/ }));
     expect(props.onCreateProject).toHaveBeenCalledOnce();
-
-    fireEvent.click(screen.getByRole('button', { name: '搜索事项' }));
-    expect(screen.getByPlaceholderText('搜索事项...')).toHaveFocus();
   });
 
   it('点击搜索按钮后展开并聚焦搜索框', () => {

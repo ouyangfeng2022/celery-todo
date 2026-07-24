@@ -265,7 +265,11 @@ function App() {
       if (focusMode) setComposerVisible(true);
       setNewTodoFocusSignal((n) => n + 1);
     },
-    onSearch: () => setSearchFocusSignal((n) => n + 1),
+    onSearch: () => {
+      // 搜索入口位于侧边栏标题行；侧边栏收起时先展开，再打开并聚焦搜索。
+      setSidebarOpen(true);
+      setSearchFocusSignal((n) => n + 1);
+    },
     onSave: () => {
       db.flushSave();
     },
@@ -398,55 +402,48 @@ function App() {
   }
 
   return (
-    // 井字形布局(结构 4 象限,视觉 L 形):
-    //   ┌───────────┬──────────────────────────────┐
-    //   │ [菜][侧][搜]│  项目标题                    │ ← 顶部行
-    //   ├───────────┼──────────────────────────────┤
+    // 顶部栏 + 下方两栏布局:
+    //   ┌──────────────────────────────────────────┐
+    //   │ [侧][菜单]       项目标题                  │ ← 顶部栏始终保持完整
+    //   ├───────────┬──────────────────────────────┤
+    //   │ Celery  搜索│                              │
     //   │ 项目列表   │                              │
-    //   │ Logo/菜单  │   主内容 (TodoList)          │ ← 底部行
+    //   │ Logo/菜单  │   主内容 (TodoList)          │ ← 仅左侧栏可收起
     //   │ [更新卡片] │                              │
     //   └───────────┴──────────────────────────────┘
-    // 左上 + 右上 + 左下三象限共享 --bg-secondary(暖米色,比纸色深一档)→ 视觉合成 L;
-    // 右下主区 --bg-primary(暖纸色,Anthropic 风格)。
-    // 左上与左下宽度同步(sidebarOpen),收起时整条左列一起收。
+    // 顶部栏与侧栏使用 --bg-secondary(暖米色),主区使用 --bg-primary(暖纸色)。
     <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       {/* 顶部行 - 全宽,专注模式下整行隐藏 */}
       {!focusMode && (
         <div className="flex flex-shrink-0">
           {/*
-            左上象限:工具组(菜单/侧栏开关/搜索)。宽度随 sidebarOpen 同步收/展(与左下
-            项目栏对齐)。不加 border:整个 L 形仅靠 --bg-secondary 与主区 --bg-primary
-            的颜色差异区分,视觉合成一体。收起时 overflow-hidden 裁掉工具。
+            顶部工具组始终占据与展开侧栏相同的宽度。它不参与 sidebarOpen 的宽度动画，
+            因而点击「收起侧边栏」后恢复按钮和应用菜单仍留在顶部原位。
+            搜索按钮由 Header 向下定位到侧边栏标题行，位置与参考图一致。
           */}
-          <div
-            className="sidebar-shell relative h-full flex-shrink-0 overflow-hidden"
-            data-open={sidebarOpen}
-            style={{ width: sidebarOpen ? '256px' : '0px' }}
-          >
-            <div className="sidebar-inner h-full" style={{ width: '256px', minWidth: '256px' }}>
-              <Header
-                sidebarOpen={sidebarOpen}
-                search={search}
-                searchFocusSignal={searchFocusSignal}
-                onToggleSidebar={() => setSidebarOpen((value) => !value)}
-                onSearchChange={changeSearch}
-                onImport={handleImportProject}
-                onExportAll={handleExportAll}
-                onExportCsv={handleExportCsv}
-                onCreateProject={() => {
-                  setSidebarOpen(true);
-                  setCreateProjectSignal((signal) => signal + 1);
-                }}
-                onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
-                onCloseWindow={() => window.close()}
-              />
-            </div>
+          <div className="relative h-full w-64 flex-shrink-0">
+            <Header
+              sidebarOpen={sidebarOpen}
+              search={search}
+              searchFocusSignal={searchFocusSignal}
+              onToggleSidebar={() => setSidebarOpen((value) => !value)}
+              onSearchChange={changeSearch}
+              onImport={handleImportProject}
+              onExportAll={handleExportAll}
+              onExportCsv={handleExportCsv}
+              onCreateProject={() => {
+                setSidebarOpen(true);
+                setCreateProjectSignal((signal) => signal + 1);
+              }}
+              onEnterCompactMode={() => void window.electronAPI?.createSticker(activeProjectId)}
+              onCloseWindow={() => window.close()}
+            />
           </div>
 
           {/*
-            右上象限:项目标题 + 更新徽标。flex-1 占满顶部行剩余宽度。
+            顶部标题区:项目标题 + 更新徽标。flex-1 占满顶部行剩余宽度。
             标题靠左,徽标靠右(贴 pr-[152px] 给原生 overlay 让位)。
-            背景 --bg-secondary(暖米色),与左上/左下合成 L 形。
+            背景 --bg-secondary(暖米色),与左侧工具组合成一条完整顶部栏。
           */}
           <div
             className="relative flex h-full flex-1 items-center gap-3 px-5 py-3.5 pr-[152px]"
@@ -471,7 +468,7 @@ function App() {
         </div>
       )}
 
-      {/* 底部行:左下项目栏 + 右下主区。专注模式下只剩主区(全宽)。 */}
+      {/* 内容行:左侧项目栏 + 右侧主区。专注模式下只剩主区(全宽)。 */}
       <div className="flex flex-1 min-h-0">
         {/*
           左下项目栏 - 专注模式下完全隐藏(直接不渲染)
@@ -515,47 +512,47 @@ function App() {
           </div>
         )}
 
-      {/* 主内容区 - bg-primary(暖纸色,Anthropic 风格),与 L 形(--bg-frame 暖深色)分隔 */}
-      <div
-        className="relative flex-1 flex flex-col min-w-0"
-        style={{ backgroundColor: 'var(--bg-primary)' }}
-      >
-        {/* 专注模式浮动指示器：点击退出，避免用户被困住 */}
-        {/* 位置避开右上角原生窗口控制按钮（约 152px 宽） */}
-        {focusMode && (
-          <>
-            {/* 隐藏的拖动条：专注模式下 Header 不渲染，需要保留拖动整窗能力 */}
-            <div className="titlebar-drag absolute top-0 left-0 right-0 h-9 z-0 pointer-events-auto" />
-            <button
-              onClick={() => useSettingsStore.getState().setFocusMode(false)}
-              className="titlebar-no-drag absolute top-2.5 right-[156px] z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] transition-colors hover:bg-[var(--bg-hover)]"
-              style={{ color: 'var(--text-quaternary)' }}
-              title="退出专注模式 (Ctrl+P)"
-              aria-label="退出专注模式"
-            >
-              <FocusIcon size={13} />
-              <span>专注中</span>
-            </button>
-            {/* 专注模式下不显示更新提醒：沉浸优先，用户退出专注后左下角卡片自然可见。
+        {/* 主内容区 - bg-primary(暖纸色,Anthropic 风格),与 L 形(--bg-frame 暖深色)分隔 */}
+        <div
+          className="relative flex-1 flex flex-col min-w-0"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
+        >
+          {/* 专注模式浮动指示器：点击退出，避免用户被困住 */}
+          {/* 位置避开右上角原生窗口控制按钮（约 152px 宽） */}
+          {focusMode && (
+            <>
+              {/* 隐藏的拖动条：专注模式下 Header 不渲染，需要保留拖动整窗能力 */}
+              <div className="titlebar-drag absolute top-0 left-0 right-0 h-9 z-0 pointer-events-auto" />
+              <button
+                onClick={() => useSettingsStore.getState().setFocusMode(false)}
+                className="titlebar-no-drag absolute top-2.5 right-[156px] z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--text-quaternary)' }}
+                title="退出专注模式 (Ctrl+P)"
+                aria-label="退出专注模式"
+              >
+                <FocusIcon size={13} />
+                <span>专注中</span>
+              </button>
+              {/* 专注模式下不显示更新提醒：沉浸优先，用户退出专注后左下角卡片自然可见。
                 isNewlyAvailable 在此期间仍由 useAutoUpdate 正常维护，信息不丢失。 */}
-          </>
-        )}
+            </>
+          )}
 
-        <main className="flex-1 overflow-y-auto">
-          {projects.length === 0 ? (
-            // 无项目：引导创建第一个项目（优先于专注模式判断）
-            <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
-              <NoProjectsState
-                onCreate={() => {
-                  // 专注模式下侧边栏被隐藏，先退出专注以露出新建输入框
-                  if (focusMode) useSettingsStore.getState().setFocusMode(false);
-                  setCreateProjectSignal((n) => n + 1);
-                }}
-              />
-            </div>
-          ) : (
-            <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
-              {/*
+          <main className="flex-1 overflow-y-auto">
+            {projects.length === 0 ? (
+              // 无项目：引导创建第一个项目（优先于专注模式判断）
+              <div className="mx-auto max-w-3xl px-4 py-6 lg:px-8 lg:py-10">
+                <NoProjectsState
+                  onCreate={() => {
+                    // 专注模式下侧边栏被隐藏，先退出专注以露出新建输入框
+                    if (focusMode) useSettingsStore.getState().setFocusMode(false);
+                    setCreateProjectSignal((n) => n + 1);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-3xl')}>
+                {/*
                 添加事项吸顶（sticky top-0）：列表过长向下滚动时输入框不再被推出视野。
                 分两层处理遮挡：
                 - 内层不透明（var(--bg-primary)）包住输入框本身，保证可读性；
@@ -571,91 +568,91 @@ function App() {
                 同时低于 TodoItem 优先级下拉菜单的 z-30，菜单弹出仍能浮在吸顶之上。
                 完整模式始终可见；专注模式仅 Ctrl+N 唤出（composerVisible）时挂载。
               */}
-              {(!focusMode || composerVisible) && (
-                <div className="sticky top-0 z-20">
-                  <div
-                    className="px-4 pt-6 pb-3 lg:px-8 lg:pt-10 lg:pb-4"
-                    style={{ backgroundColor: 'var(--bg-primary)' }}
-                  >
-                    <AddTodoInput
-                      onAdd={(title, priority) => {
-                        addTodo(title, priority);
-                        // 专注模式下添加完成后收起 composer
-                        if (focusMode) setComposerVisible(false);
-                      }}
-                      focusSignal={newTodoFocusSignal}
-                    />
-                  </div>
-                  {/*
+                {(!focusMode || composerVisible) && (
+                  <div className="sticky top-0 z-20">
+                    <div
+                      className="px-4 pt-6 pb-3 lg:px-8 lg:pt-10 lg:pb-4"
+                      style={{ backgroundColor: 'var(--bg-primary)' }}
+                    >
+                      <AddTodoInput
+                        onAdd={(title, priority) => {
+                          addTodo(title, priority);
+                          // 专注模式下添加完成后收起 composer
+                          if (focusMode) setComposerVisible(false);
+                        }}
+                        focusSignal={newTodoFocusSignal}
+                      />
+                    </div>
+                    {/*
                     渐变遮罩：遮挡范围向下延伸超出输入框，但不完全覆盖，滚过来的
                     列表项能柔和透出。起始点 80% 不透明（color-mix 混入 20% 透明），
                     让透明感更明显 —— 浅/深色主题都通过 var(--bg-primary) 自动适配。
                   */}
-                  <div
-                    className="h-10 lg:h-12"
-                    style={{
-                      backgroundImage:
-                        'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary) 80%, transparent), transparent)',
-                    }}
-                  />
+                    <div
+                      className="h-10 lg:h-12"
+                      style={{
+                        backgroundImage:
+                          'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary) 80%, transparent), transparent)',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* 统计 / 筛选 / 列表 —— 随主区滚动 */}
+                <div className="space-y-5 px-4 pb-6 lg:px-8 lg:pb-10">
+                  {/* 统计 - 专注模式下隐藏 */}
+                  {!focusMode && (
+                    <StatsPanel
+                      total={stats.total}
+                      completed={stats.completed}
+                      active={stats.active}
+                      percentage={stats.percentage}
+                    />
+                  )}
+
+                  {/* 筛选栏 - 专注模式下隐藏 */}
+                  {!focusMode && (
+                    <FilterBar
+                      filter={filter}
+                      sort={sort}
+                      activeCount={stats.active}
+                      completedCount={stats.completed}
+                      onFilterChange={changeFilter}
+                      onSortChange={changeSort}
+                      onClearCompleted={clearCompleted}
+                    />
+                  )}
+
+                  {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
+                  {allDone ? (
+                    <AllDoneCelebration
+                      completed={stats.completed}
+                      onRestore={handleAllDoneRestore}
+                    />
+                  ) : (
+                    <TodoList
+                      // 项目切换不是同一列表内的删除和新增：重置 Presence 边界，
+                      // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
+                      key={activeProjectId}
+                      todos={filteredTodos}
+                      selectedIds={selectedIds}
+                      sort={sort}
+                      filter={filter}
+                      hasTodos={stats.total > 0}
+                      onToggle={toggleTodo}
+                      onEdit={updateTodo}
+                      onDelete={deleteTodo}
+                      onToggleSelect={toggleSelected}
+                      onReorder={reorderTodos}
+                      onSortChange={changeSort}
+                      onSnapshotOrder={snapshotOrder}
+                    />
+                  )}
                 </div>
-              )}
-
-              {/* 统计 / 筛选 / 列表 —— 随主区滚动 */}
-              <div className="space-y-5 px-4 pb-6 lg:px-8 lg:pb-10">
-                {/* 统计 - 专注模式下隐藏 */}
-                {!focusMode && (
-                  <StatsPanel
-                    total={stats.total}
-                    completed={stats.completed}
-                    active={stats.active}
-                    percentage={stats.percentage}
-                  />
-                )}
-
-                {/* 筛选栏 - 专注模式下隐藏 */}
-                {!focusMode && (
-                  <FilterBar
-                    filter={filter}
-                    sort={sort}
-                    activeCount={stats.active}
-                    completedCount={stats.completed}
-                    onFilterChange={changeFilter}
-                    onSortChange={changeSort}
-                    onClearCompleted={clearCompleted}
-                  />
-                )}
-
-                {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
-                {allDone ? (
-                  <AllDoneCelebration
-                    completed={stats.completed}
-                    onRestore={handleAllDoneRestore}
-                  />
-                ) : (
-                  <TodoList
-                    // 项目切换不是同一列表内的删除和新增：重置 Presence 边界，
-                    // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
-                    key={activeProjectId}
-                    todos={filteredTodos}
-                    selectedIds={selectedIds}
-                    sort={sort}
-                    filter={filter}
-                    hasTodos={stats.total > 0}
-                    onToggle={toggleTodo}
-                    onEdit={updateTodo}
-                    onDelete={deleteTodo}
-                    onToggleSelect={toggleSelected}
-                    onReorder={reorderTodos}
-                    onSortChange={changeSort}
-                    onSnapshotOrder={snapshotOrder}
-                  />
-                )}
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+            )}
+          </main>
+        </div>
       </div>
 
       {/* 批量操作工具栏 */}
