@@ -9,9 +9,13 @@ const SHORTCUTS: [string, string][] = [
   ['Ctrl + S', '保存'],
   ['Ctrl + B', '切换侧边栏'],
   ['Ctrl + D', '切换主题'],
-  ['Ctrl + P', '切换专注模式'],
   ['Ctrl + 1/2/3', '切换筛选视图'],
   ['Esc', '取消编辑'],
+  ['Ctrl + Shift + N', '新建项目'],
+  ['Ctrl + Shift + I', '导入数据'],
+  ['Ctrl + Shift + E', '导出全部数据'],
+  ['Ctrl + Shift + L', '导出当前列表'],
+  ['Ctrl + Shift + K', '进入简洁模式'],
 ];
 
 export function ShortcutsSection() {

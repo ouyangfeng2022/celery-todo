@@ -378,6 +378,35 @@ function App() {
     setSettingsOpen(false);
   }, []);
 
+  // 触发原生文件选择框导入（与 Header「数据 → 导入数据」同一条路径）。
+  // Electron 的 <input type=file> 默认弹系统原生文件框，与主进程 dialog 行为等价。
+  const handleImportClick = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (file) void handleImportProject(file);
+    };
+    input.click();
+  }, [handleImportProject]);
+
+  // Ctrl/Cmd + Shift 组合快捷键（项目/数据/窗口操作）。
+  // 与上面首个 useKeyboardShortcuts 调用分离，因为依赖的 handler 在此处才定义完毕。
+  // 多次调用 useKeyboardShortcuts 是安全的：每个调用各自注册独立的 keydown 监听器。
+  useKeyboardShortcuts({
+    onCreateProject: () => {
+      setSidebarOpen(true);
+      setCreateProjectSignal((signal) => signal + 1);
+    },
+    onImport: handleImportClick,
+    onExportAll: handleExportAll,
+    onExportCsv: handleExportCsv,
+    onEnterCompactMode: () => {
+      void window.electronAPI?.createSticker(activeProjectId);
+    },
+  });
+
   // === 加载状态 ===
   if (!dbReady) {
     return (

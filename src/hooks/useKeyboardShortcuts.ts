@@ -11,6 +11,13 @@
  * - Ctrl/Cmd + B: 切换侧边栏
  * - Ctrl/Cmd + D: 切换深色/浅色主题
  * - Esc: 取消编辑/关闭对话框
+ *
+ * 项目/数据/窗口相关（Ctrl/Cmd + Shift 组合，避开上面的单字母）：
+ * - Ctrl/Cmd + Shift + N: 新建项目
+ * - Ctrl/Cmd + Shift + I: 导入数据
+ * - Ctrl/Cmd + Shift + E: 导出全部数据
+ * - Ctrl/Cmd + Shift + L: 导出当前列表
+ * - Ctrl/Cmd + Shift + K: 进入简洁模式（贴图浮窗）
  */
 
 import { useEffect } from 'react';
@@ -26,6 +33,12 @@ export interface ShortcutHandlers {
   onToggleSidebar?: () => void;
   onToggleTheme?: () => void;
   onEscape?: () => void;
+  // === Ctrl/Cmd + Shift 组合：对应顶部「项目/数据/窗口」菜单的操作 ===
+  onCreateProject?: () => void;
+  onImport?: () => void;
+  onExportAll?: () => void;
+  onExportCsv?: () => void;
+  onEnterCompactMode?: () => void;
 }
 
 /** 判断是否在输入框中 */
@@ -51,6 +64,34 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers): void {
 
       // 在输入框中时，只允许部分快捷键
       const inInput = isInputFocused();
+
+      // Ctrl/Cmd + Shift 组合：优先于单字母判断，避免 Ctrl+Shift+N 落到 case 'n'。
+      // 这一组对应顶部「项目/数据/窗口」菜单的操作，在输入框中也允许触发
+      // （导入/导出/新建项目不依赖当前输入焦点）。
+      if (e.shiftKey) {
+        switch (e.key.toLowerCase()) {
+          case 'n':
+            e.preventDefault();
+            handlers.onCreateProject?.();
+            return;
+          case 'i':
+            e.preventDefault();
+            handlers.onImport?.();
+            return;
+          case 'e':
+            e.preventDefault();
+            handlers.onExportAll?.();
+            return;
+          case 'l':
+            e.preventDefault();
+            handlers.onExportCsv?.();
+            return;
+          case 'k':
+            e.preventDefault();
+            handlers.onEnterCompactMode?.();
+            return;
+        }
+      }
 
       switch (e.key.toLowerCase()) {
         case 'n':
