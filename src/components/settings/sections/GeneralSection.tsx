@@ -15,7 +15,7 @@ const themeOptions: { value: ThemeMode; label: string; icon: typeof SunIcon }[] 
   { value: 'light', label: '浅色', icon: SunIcon },
   { value: 'dark', label: '深色', icon: MoonIcon },
   { value: 'system', label: '跟随系统', icon: MonitorIcon },
-  { value: 'paper', label: '纸白', icon: PaperIcon },
+  { value: 'paper', label: '经典', icon: PaperIcon },
 ];
 
 export function GeneralSection({ theme, onUpdateSettings }: GeneralSectionProps) {

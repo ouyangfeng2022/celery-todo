@@ -3,20 +3,22 @@
 @tailwind utilities;
 
 /* ============================================
-   Anthropic / Claude 风格全局样式
-   设计意图：Anthropic 暖白纸张 + 深色油墨，
-   Poppins 标题与 Lora 正文搭配，层级靠排印、留白与三色强调建立。
+   全局样式
+   设计意图：默认浅色（中性纸白）为主画布，
+   Anthropic 暖白纸张 + 暖陶土橙 T 型框作为「经典」备选外观（.theme-paper）。
+   深色油墨、Poppins 标题与 Lora 正文搭配，层级靠排印、留白与三色强调建立。
    ============================================ */
 
 @layer base {
   :root {
-    /* 背景层：从主到次，逐级抬升 */
-    --bg-primary: #faf9f5; /* Anthropic Light · 主画布 */
-    --bg-secondary: #e8e6dc; /* Anthropic Light Gray · 框架 / 凹陷控件 */
-    --bg-tertiary: #fffefa; /* 卡片 / 浮层，保留纸张暖度 */
-    --bg-hover: #dedbd0; /* 悬停反馈 */
-    --bg-active: #d4d1c5; /* 按下 / 选中填充 */
-    --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
+    /* 背景层：中性纸白默认 —— 主画布 / 框架同色，避免漏出暖灰；
+     * 卡片 / 浮层用纯白拉开层级；hover/active 用透明黑叠底保持中性反馈。 */
+    --bg-primary: rgb(249, 249, 247); /* 主画布：中性灰白 */
+    --bg-secondary: rgb(249, 249, 247); /* 外层框架同色，避免漏出暖灰 */
+    --bg-tertiary: rgb(255, 255, 255); /* 卡片 / 浮层 / 输入框：纯白拉开层级 */
+    --bg-hover: rgba(0, 0, 0, 0.04);
+    --bg-active: rgba(0, 0, 0, 0.08);
+    --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
 
     /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
     --text-primary: #141413; /* Anthropic Dark · 标题与正文 */
@@ -104,17 +106,15 @@
     --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
   }
 
-  /* 纸白主题：去掉 Anthropic 暖陶土 T 型框，侧栏 / 顶栏 / 主画布统一中性灰白，
-   * 输入框与卡片用纯白拉开层级。仅覆盖背景层 token，文字 / accent / border 等沿用 :root。 */
+  /* 经典主题（原默认浅色）：Anthropic 暖白纸张 + 暖陶土橙 T 型品牌框架。
+   * 仅覆盖背景层 token，文字 / accent / border / 阴影 / 圆角 等沿用 :root。 */
   .theme-paper {
-    --bg-primary: rgb(249, 249, 247); /* 主画布：中性灰白 */
-    --bg-secondary: rgb(249, 249, 247); /* 外层框架同色，避免漏出暖灰 */
-    --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
-    --bg-tertiary: rgb(255, 255, 255); /* 卡片 / 浮层 / 输入框：纯白拉开层级 */
-    /* hover/active 需在更浅的新底色上重建中性反馈层级，否则计数徽章、进度条轨道、
-     * 行悬停都会漏出默认暖灰 #dedbd0。用透明黑叠在底色上保证与纸白基调一致。 */
-    --bg-hover: rgba(0, 0, 0, 0.04);
-    --bg-active: rgba(0, 0, 0, 0.08);
+    --bg-primary: #faf9f5; /* Anthropic Light · 主画布 */
+    --bg-secondary: #e8e6dc; /* Anthropic Light Gray · 框架 / 凹陷控件 */
+    --bg-tertiary: #fffefa; /* 卡片 / 浮层，保留纸张暖度 */
+    --bg-hover: #dedbd0; /* 悬停反馈 */
+    --bg-active: #d4d1c5; /* 按下 / 选中填充 */
+    --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
   }
 
   * {

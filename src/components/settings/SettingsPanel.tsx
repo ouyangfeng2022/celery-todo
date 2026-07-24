@@ -107,9 +107,11 @@ function SettingsPanelComponent({
           exit={{ opacity: 0 }}
           onKeyDown={handleKeyDown}
         >
-          {/* 顶部品牌栏：宽度、底色和原生窗口按钮留白均与主页面一致。 */}
+          {/* 顶部品牌栏：宽度、底色和原生窗口按钮留白均与主页面一致。
+              左侧 280px 品牌入口(返回 + wordmark) 与右侧分类标题同高(≈ 48px),
+              与主页面顶部栏对齐 —— 单行标题,无 eyebrow 小标。 */}
           <div className="flex flex-shrink-0">
-            <div className="relative flex h-[60px] w-[280px] flex-shrink-0 items-center px-3">
+            <div className="relative flex h-12 w-[280px] flex-shrink-0 items-center px-3">
               <button
                 onClick={onClose}
                 className="titlebar-no-drag flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-active)]"
@@ -133,20 +135,17 @@ function SettingsPanelComponent({
               </span>
             </div>
 
-            <header className="relative flex min-w-0 flex-1 items-center px-7 pr-[152px]">
+            <header className="relative flex h-12 min-w-0 flex-1 items-center px-7 pr-[152px]">
               <div
                 aria-hidden="true"
                 className="titlebar-drag pointer-events-auto absolute inset-y-0 left-0 right-[152px]"
               />
-              <div className="titlebar-no-drag relative z-10 min-w-0">
-                <p className="claude-eyebrow mb-0.5">偏好设置</p>
-                <h1
-                  className="truncate text-lg font-serif font-semibold leading-tight"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {activeNavItem.label}
-                </h1>
-              </div>
+              <h1
+                className="titlebar-no-drag relative z-10 min-w-0 truncate text-lg font-serif font-semibold leading-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {activeNavItem.label}
+              </h1>
             </header>
           </div>
 

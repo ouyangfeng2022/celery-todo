@@ -485,12 +485,12 @@ function App() {
           </div>
 
           {/*
-            顶部标题区:项目标题 + 更新徽标。flex-1 占满顶部行剩余宽度。
-            标题靠左,徽标靠右(贴 pr-[152px] 给原生 overlay 让位)。
-            背景 --bg-frame(暖陶土橙),与左侧工具组合成一条完整顶部栏。
+            顶部标题区:仅显示当前项目名(单行),与左侧 Header 工具组(py-2 + h-8 ≈ 48px)
+            通过 flex stretch 对齐成同一高度的顶部栏。pr-[152px] 给原生 overlay 让位。
+            背景 --bg-frame,与左侧工具组合成一条完整顶部栏。
           */}
           <div
-            className="relative flex h-full flex-1 items-center gap-3 px-7 py-3 pr-[152px]"
+            className="relative flex h-full flex-1 items-center gap-3 px-7 pr-[152px]"
             style={{ backgroundColor: 'var(--bg-frame)' }}
           >
             {/* 拖拽区:标题与徽标之间的空白处可拖动整窗。 */}
@@ -500,7 +500,6 @@ function App() {
               style={{ left: '0px' }}
             />
             <div className="titlebar-no-drag relative z-10 min-w-0">
-              <p className="claude-eyebrow mb-0.5">当前项目</p>
               <h1
                 className="truncate text-lg font-serif font-semibold leading-tight"
                 style={{ color: 'var(--text-primary)' }}
