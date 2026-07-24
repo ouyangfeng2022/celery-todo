@@ -30,7 +30,6 @@ import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { FocusIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
-import { UpdateBadge } from './components/common/UpdateBadge';
 
 import { useAutoUpdate } from './hooks/useAutoUpdate';
 import { useCliBridge } from './cli-bridge';
@@ -401,10 +400,11 @@ function App() {
   return (
     // 井字形布局(结构 4 象限,视觉 L 形):
     //   ┌───────────┬──────────────────────────────┐
-    //   │ [菜][侧][搜]│  项目标题          [更新]    │ ← 顶部行
+    //   │ [菜][侧][搜]│  项目标题                    │ ← 顶部行
     //   ├───────────┼──────────────────────────────┤
     //   │ 项目列表   │                              │
     //   │ Logo/菜单  │   主内容 (TodoList)          │ ← 底部行
+    //   │ [更新卡片] │                              │
     //   └───────────┴──────────────────────────────┘
     // 左上 + 右上 + 左下三象限共享 --bg-secondary(暖米色,比纸色深一档)→ 视觉合成 L;
     // 右下主区 --bg-primary(暖纸色,Anthropic 风格)。
@@ -464,16 +464,9 @@ function App() {
             >
               {activeProject?.name ?? 'Celery Todo'}
             </h1>
-            {/* 更新徽标:固定在最右(贴 pr-[152px] 给原生 overlay 让位)。 */}
-            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5">
-              {isAutoUpdateAvailable && updateStatus === 'available' && (
-                <UpdateBadge
-                  version={updateInfo?.version}
-                  isNewlyAvailable={isNewlyAvailable}
-                  onClick={handleUpdateAction}
-                />
-              )}
-            </div>
+            {/* 更新提醒已移至左下角侧边栏卡片（SidebarUpdateCard），右上象限不再显示徽标。
+                标题与右侧原生窗口控制按钮之间的空白作为拖拽区使用。 */}
+            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5" />
           </div>
         </div>
       )}
@@ -507,6 +500,7 @@ function App() {
                 updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
                 updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
+                isNewlyAvailable={isAutoUpdateAvailable ? isNewlyAvailable : undefined}
                 onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onOpenSettings={openSettings}
@@ -542,17 +536,8 @@ function App() {
               <FocusIcon size={13} />
               <span>专注中</span>
             </button>
-            {/* 专注模式下也保留更新徽标：更新提醒不应被沉浸模式隐藏。
-                位置贴在专注按钮左侧，避开右上角原生窗口控制按钮。 */}
-            {isAutoUpdateAvailable && updateStatus === 'available' && (
-              <div className="titlebar-no-drag absolute top-1.5 right-[230px] z-10">
-                <UpdateBadge
-                  version={updateInfo?.version}
-                  isNewlyAvailable={isNewlyAvailable}
-                  onClick={handleUpdateAction}
-                />
-              </div>
-            )}
+            {/* 专注模式下不显示更新提醒：沉浸优先，用户退出专注后左下角卡片自然可见。
+                isNewlyAvailable 在此期间仍由 useAutoUpdate 正常维护，信息不丢失。 */}
           </>
         )}
 

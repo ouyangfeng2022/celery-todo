@@ -52,6 +52,8 @@ interface ProjectSidebarProps {
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
   updateProgress?: DownloadProgress | null;
+  /** 本次启动首次发现该版本且未查看 —— 驱动卡片上的「未读」红点 */
+  isNewlyAvailable?: boolean;
   onDownloadUpdate?: () => void;
   onRestartToUpdate?: () => void;
   onOpenSettings: (section: SettingsSectionId) => void;
@@ -70,6 +72,8 @@ interface SidebarUpdateCardProps {
   status?: UpdateStatus;
   info?: UpdateInfoLite | null;
   progress?: DownloadProgress | null;
+  /** 本次启动首次发现该版本且未查看 —— 仅在 available 分支显示红点 */
+  isNewlyAvailable?: boolean;
   onDownload?: () => void;
   onRestart?: () => void;
 }
@@ -79,6 +83,7 @@ export function SidebarUpdateCard({
   status,
   info,
   progress,
+  isNewlyAvailable,
   onDownload,
   onRestart,
 }: SidebarUpdateCardProps) {
@@ -108,10 +113,19 @@ export function SidebarUpdateCard({
           </span>
           <span className="min-w-0 flex-1">
             <span
-              className="block text-[13px] font-medium"
+              className="flex items-center gap-1.5 text-[13px] font-medium"
               style={{ color: 'var(--text-primary)' }}
             >
-              下载新版本{info?.version ? ` v${info.version}` : ''}
+              <span className="truncate">下载新版本{info?.version ? ` v${info.version}` : ''}</span>
+              {isNewlyAvailable && (
+                // 「本次启动首次发现该版本且未查看」红点：点击卡片即触发 acknowledgeUpdate 熄灭。
+                <span
+                  className="pointer-events-none inline-flex h-2 w-2 flex-shrink-0 rounded-full"
+                  style={{ backgroundColor: 'var(--danger)' }}
+                  aria-label="未查看"
+                  title="未查看"
+                />
+              )}
             </span>
             <span className="block truncate text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
               更新已准备好
@@ -336,6 +350,7 @@ function ProjectSidebarComponent({
   updateStatus,
   updateInfo,
   updateProgress,
+  isNewlyAvailable,
   onDownloadUpdate,
   onRestartToUpdate,
   onOpenSettings,
@@ -534,6 +549,7 @@ function ProjectSidebarComponent({
           status={updateStatus}
           info={updateInfo}
           progress={updateProgress}
+          isNewlyAvailable={isNewlyAvailable}
           onDownload={onDownloadUpdate}
           onRestart={onRestartToUpdate}
         />
