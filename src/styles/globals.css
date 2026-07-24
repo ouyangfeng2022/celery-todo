@@ -274,6 +274,18 @@
   .sticker-shell.sticker-preview {
     height: auto;
   }
+  /* 缩略预览（4 个预设按钮）：禁用 backdrop-filter 与 ::before 高光层，
+   * 避免首次进入「设置 → 贴图」时主窗口首次遭遇 backdrop-filter 触发
+   * GPU shader 编译 + 4 个合成层同时创建，叠加 tab 进入动画导致掉帧。
+   * 120×72 小尺寸下背景几乎纯色，禁用后视觉差异极小；
+   * large 预览（高级设置里的实时预览）仍保留真实玻璃效果。 */
+  .sticker-shell.sticker-preview-mini {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .sticker-shell.sticker-preview-mini::before {
+    display: none;
+  }
   .sticker-header {
     height: 48px;
     display: flex;

@@ -256,11 +256,15 @@ interface StickerPreviewProps {
 /**
  * 贴图缩略预览。复用 globals.css 里 .sticker-shell 的整套视觉规则，
  * 通过 data-sticker-preset + CSS 变量驱动，确保与真实贴图窗口一致。
+ *
+ * 性能注意：小尺寸预览（large=false）追加 sticker-preview-mini 类，禁用
+ * backdrop-filter 与 ::before 高光，避免 4 个预设按钮首次挂载时同时触发
+ * GPU shader 编译造成卡顿。large 预览保留真实玻璃效果。
  */
 function StickerPreview({ preset, radius, blur, opacity, shadow, large }: StickerPreviewProps) {
   return (
     <div
-      className={`sticker-shell sticker-preview${shadow ? ' sticker-shadow-on' : ''}`}
+      className={`sticker-shell sticker-preview${large ? '' : ' sticker-preview-mini'}${shadow ? ' sticker-shadow-on' : ''}`}
       data-sticker-preset={preset}
       style={
         {
