@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+## [v2.6.0] - 2026-07-24
+### Added
+- 为项目/数据/窗口操作新增 Ctrl+Shift 快捷键
+- 重构排序逻辑、顶部导航栏并新增主题系统
+- 新增纸白(paper)主题模式
+
+### Fixed
+- 修复托盘「快速添加事项」事件无人订阅的死代码
+- update background color for consistency across UI components
+- align sidebar and toolbar layout
+
 ## [v2.5.2] - 2026-07-24
 ### Fixed
 - 点击分组时也测量子菜单坐标,修复纯点击场景子菜单不渲染
@@ -241,3 +252,5 @@
 [v2.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.1
 
 [v2.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.2
+
+[v2.6.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.6.0
