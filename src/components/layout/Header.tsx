@@ -376,10 +376,15 @@ function HeaderComponent({
                           if (el) groupButtonRefs.current.set(group.title, el);
                           else groupButtonRefs.current.delete(group.title);
                         }}
-                        // 悬停即展开子菜单;点击亦可切换,便于触屏/精确操作
+                        // 悬停即展开子菜单;点击亦可切换,便于触屏/精确操作。
+                        // 展开路径走 handleGroupEnter(测屏幕坐标 + 设 openGroup),
+                        // 否则 portal 子菜单因 submenuPos 缺失不渲染(纯点击/键盘场景)。
                         onMouseEnter={() => handleGroupEnter(group.title)}
                         onMouseLeave={handleGroupLeave}
-                        onClick={() => setOpenGroup(isOpen ? null : group.title)}
+                        onClick={() => {
+                          if (isOpen) setOpenGroup(null);
+                          else handleGroupEnter(group.title);
+                        }}
                         className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
                         style={{
                           color: isOpen ? 'var(--accent)' : 'var(--text-secondary)',
