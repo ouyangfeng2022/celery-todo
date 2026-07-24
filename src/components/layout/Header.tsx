@@ -90,10 +90,10 @@ function HeaderComponent({
 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
-  // 当前展开的分组(悬停/点击某分组标题时设为该分组标题,离开或再次点击时清空)
+  // 当前展开的分组(点击某分组标题时设为该分组标题,再次点击或外部点击时清空)
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   // 两个弹出层的屏幕坐标(viewport 坐标):portal + fixed 定位用。
-  // 子菜单锚定到悬停分组标题按钮的左下角;搜索面板锚定到搜索按钮的左下角。
+  // 子菜单锚定到点击的分组标题按钮的左下角;搜索面板锚定到搜索按钮的左下角。
   // 展开时一次性测量并缓存,避免每帧重算;窗口/滚动变化时弹出层会直接关闭(见关闭机制)。
   const [submenuPos, setSubmenuPos] = useState<{ left: number; top: number } | null>(null);
   const [searchPos, setSearchPos] = useState<{ left: number; top: number } | null>(null);
@@ -106,8 +106,6 @@ function HeaderComponent({
   // 弹出层 DOM 引用:外部点击判定需覆盖 portal 节点(portal 不在 headerRef 树内)
   const submenuRef = useRef<HTMLDivElement>(null);
   const searchPanelRef = useRef<HTMLDivElement>(null);
-  // 延迟关闭子菜单的计时器:允许鼠标在分组标题与子菜单之间的间隙短暂偏移而不收回
-  const groupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Ctrl+F 等外部聚焦信号到来时,同时展开搜索框。
   useEffect(() => {
@@ -131,16 +129,12 @@ function HeaderComponent({
     }
   }, [sidebarOpen]);
 
-  // 关闭子菜单/搜索弹层时一并清空坐标缓存与悬停计时器。
+  // 关闭子菜单/搜索弹层时一并清空坐标缓存。
   const closeAllPanels = useCallback(() => {
     setSearchOpen(false);
     setOpenGroup(null);
     setSubmenuPos(null);
     setSearchPos(null);
-    if (groupTimerRef.current) {
-      clearTimeout(groupTimerRef.current);
-      groupTimerRef.current = null;
-    }
   }, []);
 
   // 点击 header / 任一弹出层外部,或按下 Escape 时收起菜单/搜索弹层(与 ContextMenu 行为一致)。
@@ -174,13 +168,9 @@ function HeaderComponent({
     };
   }, [openGroup, searchOpen, closeAllPanels]);
 
-  // 悬停某分组标题:立即展开该子菜单,按该按钮屏幕坐标定位,并取消任何待关闭计时器。
+  // 点击某分组标题:展开该子菜单,按按钮屏幕坐标定位 portal 锚点。
   const handleGroupEnter = useCallback((title: string) => {
-    if (groupTimerRef.current) {
-      clearTimeout(groupTimerRef.current);
-      groupTimerRef.current = null;
-    }
-    // 子菜单锚定到悬停分组标题按钮的左下角(与搜索面板一致)。
+    // 子菜单锚定到点击的分组标题按钮的左下角(与搜索面板一致)。
     const btn = groupButtonRefs.current.get(title);
     if (btn) {
       const rect = btn.getBoundingClientRect();
@@ -188,20 +178,6 @@ function HeaderComponent({
     }
     setOpenGroup(title);
   }, []);
-
-  // 离开分组:延迟收起,给鼠标穿越分组标题与子菜单之间的间隙留出时间。
-  const handleGroupLeave = useCallback(() => {
-    if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
-    groupTimerRef.current = setTimeout(() => setOpenGroup(null), 120);
-  }, []);
-
-  // 卸载时清理计时器,避免泄漏。
-  useEffect(
-    () => () => {
-      if (groupTimerRef.current) clearTimeout(groupTimerRef.current);
-    },
-    [],
-  );
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -235,11 +211,16 @@ function HeaderComponent({
     ],
   );
 
+  // 按钮高度统一 h-7(28px):与 text-sm(14px) 行高搭配,上下留白 ~5px,
+  // 避免色块过高让文字显得"缩在中间"。横向 padding 同步收紧,
+  // 让深色反馈框紧贴两字汉字标签(~28px),不再出现"大框 + 小字"。
   const iconButtonClass =
-    'titlebar-no-drag flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
+    'titlebar-no-drag flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
   // 分组标题按钮:文字按钮,与图标按钮同高,宽度随文字自适应。
+  // hover 只显示阴影(bg-hover 反馈)用于提示「这里可点」,不再触发展开 ——
+  // 展开完全交给 onClick。激活态(open)由下方 style 的 accent-subtle 底色表达。
   const groupButtonClass =
-    'titlebar-no-drag flex h-8 items-center rounded-lg px-2.5 text-sm transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
+    'titlebar-no-drag flex h-7 items-center rounded-lg px-2 text-sm transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]';
 
   return (
     <header
@@ -278,11 +259,10 @@ function HeaderComponent({
                 if (el) groupButtonRefs.current.set(group.title, el);
                 else groupButtonRefs.current.delete(group.title);
               }}
-              // 悬停即展开子菜单;点击亦可切换,便于触屏/精确操作。
+              // 纯点击交互:点击展开,再次点击或点击外部收起。
               // 展开路径走 handleGroupEnter(测屏幕坐标 + 设 openGroup),
-              // 否则 portal 子菜单因 submenuPos 缺失不渲染(纯点击/键盘场景)。
-              onMouseEnter={() => handleGroupEnter(group.title)}
-              onMouseLeave={handleGroupLeave}
+              // 收起路径走 setOpenGroup(null) —— 此时 submenuPos 仍存但 openGroup 为 null,
+              // portal 子菜单因 openGroup 缺失不渲染。
               onClick={() => {
                 if (isOpen) setOpenGroup(null);
                 else handleGroupEnter(group.title);
@@ -313,8 +293,6 @@ function HeaderComponent({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                 transition={{ duration: 0.14 }}
-                onMouseEnter={() => handleGroupEnter(openGroup)}
-                onMouseLeave={handleGroupLeave}
                 className="titlebar-no-drag pointer-events-auto fixed z-[60] min-w-[12rem] py-1 rounded-xl border"
                 style={{
                   left: submenuPos.left,

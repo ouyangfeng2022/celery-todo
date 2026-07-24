@@ -485,7 +485,7 @@ function App() {
           </div>
 
           {/*
-            顶部标题区:仅显示当前项目名(单行),与左侧 Header 工具组(py-2 + h-8 ≈ 48px)
+            顶部标题区:仅显示当前项目名(单行),与左侧 Header 工具组(py-2 + h-7 ≈ 44px)
             通过 flex stretch 对齐成同一高度的顶部栏。pr-[152px] 给原生 overlay 让位。
             背景 --bg-frame,与左侧工具组合成一条完整顶部栏。
           */}
