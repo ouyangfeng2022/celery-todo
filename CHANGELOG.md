@@ -8,6 +8,13 @@
 
 ## [Unreleased]
 
+## [v2.5.0] - 2026-07-24
+### Added
+- 贴图窗口复用主窗口排序逻辑并增加优先级样式
+
+### Fixed
+- 修复 IPC 监听器未卸载导致的内存泄漏与数据覆盖问题
+
 ## [v2.4.1] - 2026-07-23
 ### Added
 - refine sidebar navigation and motion
@@ -220,3 +227,5 @@
 [v2.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.0
 
 [v2.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.1
+
+[v2.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.0
