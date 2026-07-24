@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+## [v2.7.0] - 2026-07-24
+### Added
+- 新增全局键盘快捷键，重构顶部布局并调整主题
+- 优化贴图预设预览首次加载卡顿问题
+
 ## [v2.6.0] - 2026-07-24
 ### Added
 - 为项目/数据/窗口操作新增 Ctrl+Shift 快捷键
@@ -254,3 +259,5 @@
 [v2.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.2
 
 [v2.6.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.6.0
+
+[v2.7.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.0
