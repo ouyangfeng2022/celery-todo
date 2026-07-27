@@ -16,7 +16,7 @@
 ```bash
 # 开发模式：免编译直接跑（tsx）
 bun run cli list
-bun run cli add "写周报" -p 工作 --priority high --due 2026-07-20
+bun run cli add "写周报" -p 工作 --priority high
 
 # 编译后以全局命令运行
 bun run build:cli           # 输出到 dist-cli/
@@ -36,16 +36,19 @@ bun link                    # 之后即可 celery list
 | `celery edit <id>` | 修改标题/描述 |
 | `celery done <id...>` | 标记完成 |
 | `celery undone <id...>` | 取消完成 |
-| `celery delete` / `rm <id...>` | 软删除（移入回收站） |
-| `celery restore <id...>` | 从回收站恢复 |
+| `celery pin <id...>` | 置顶（始终显示在列表最前） |
+| `celery unpin <id...>` | 取消置顶 |
 | `celery priority <id> <level>` | 改优先级（high/medium/low） |
-| `celery due <id> [date]` | 设置/清除截止日期 |
-| `celery archive` | 回收站管理（列表/清空/全部恢复） |
+| `celery delete` / `rm <id...>` | 归档（移入历史记录） |
+| `celery restore <id...>` | 从历史记录恢复 |
+| `celery archive` | 历史记录管理（列表/清空/全部恢复） |
 | `celery projects` / `proj` | 项目列表/新增/删除 |
 | `celery stats` | 各项目统计概览 |
 | `celery config` | 展示当前模式（IPC/直连）、通信端点、数据库路径与 schema 版本 |
 
 空参运行等价于 `celery list`。
+
+> 截止日期与到期提醒功能已于 App v2.0.0 移除，CLI 不再有 `due` 子命令，`add` 也不再接受 `--due`。
 
 ## 全局选项
 
@@ -65,28 +68,31 @@ celery list -p 工作
 # 跨项目列全部，含已完成
 celery list --all
 
-# 仅看逾期
-celery list --overdue
+# 仅看已完成
+celery list --done
 
-# 新建带优先级、截止日期、描述的待办
-celery add "完成季度报告" -p 工作 --priority high --due 2026-07-20 --desc "含 Q2 数据"
+# 新建带优先级与描述的待办
+celery add "完成季度报告" -p 工作 --priority high --desc "含 Q2 数据"
+
+# 置顶 / 取消置顶
+celery pin a3f1
+celery unpin a3f1
 
 # 用 id 前缀操作（无需完整 UUID）
 celery done a3f1
 celery priority a3f1 low
-celery due a3f1 clear
 
 # 批量完成
 celery done a3f1 b7c2 c9d3
 
-# 删除（移入回收站，可恢复）
+# 归档（移入历史记录，可恢复）
 celery delete a3f1 -y
 
-# 从回收站恢复
+# 从历史记录恢复
 celery archive --list
 celery restore a3f1
 
-# 永久清空回收站
+# 永久清空历史记录
 celery archive --clean -y
 
 # 项目管理
@@ -145,7 +151,6 @@ CLI 会探测候选目录，命中含 `storage-config.json` 或已有数据库�
 - **ID 前缀匹配**：所有 `<id>` 参数支持 UUID 前缀（如 `a3f1` 匹配 `a3f1b2c3-...`）；前缀歧义时会列出候选项。
 - **项目参数**：`-p <name|id>` 支持完整 id、id 前缀、项目名（或唯一名称前缀）。
 - **优先级**：`--priority high|medium|low`，非法值回退为 medium。
-- **日期**：`--due YYYY-MM-DD`（按本地时区当日零点）或完整 ISO；`due clear` 清除。
 - **非 TTY 友好**：管道/重定向时自动关闭颜色（遵循 `NO_COLOR`），`--json` 输出稳定结构，确认提示在非交互环境默认 yes。
 
 ## 架构
@@ -167,7 +172,9 @@ cli/
     render.ts             表格/颜色/确认（零依赖 ANSI）
     process-check.ts      直连模式下 best-effort 检测 App 进程
     types.ts              Todo/Project 类型（独立维护，与 src/types 同步）
-    commands/             14 个子命令（全部 async）
+    commands/             子命令模块（list/add/show/edit/done/undone/
+                          pin/unpin/priority/delete/restore/archive/
+                          projects/stats/config，全部 async）
   test/
     helpers.ts            临时 DB fixture（复刻 App schema）
     storage.test.ts       路径解析单测
