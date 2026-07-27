@@ -617,7 +617,7 @@ function App() {
                 {(!focusMode || composerVisible) && (
                   <div className="sticky top-0 z-20">
                     <div
-                      className="px-5 pt-7 pb-3 lg:px-10 lg:pt-12 lg:pb-5"
+                      className="px-5 pt-7 pb-1 lg:px-10 lg:pt-12 lg:pb-2"
                       style={{ backgroundColor: 'var(--bg-primary)' }}
                     >
                       <AddTodoInput
