@@ -515,10 +515,14 @@ function App() {
       )}
 
       {/* 内容行:左侧项目栏 + 右侧主区。专注模式下只剩主区(全宽)。 */}
-      <div className="flex flex-1 min-h-0">
+      <div
+        className="sidebar-grid flex-1 min-h-0"
+        data-sidebar={focusMode ? 'hidden' : sidebarOpen ? 'open' : 'closed'}
+      >
         {/*
           左下项目栏 - 专注模式下完全隐藏(直接不渲染)
-          动画策略:外层只控制 width 0 ↔ 280px,内层用 GPU transform 辅助退场。
+          动画策略:父级 .sidebar-grid 用 grid-template-columns 动画驱动布局占位
+          (避免传统 width 动画的 layout reflow),内层用 GPU transform 辅助退场。
           - 容器始终挂载,避免挂载/卸载与 exit 动画的协调问题
           - 内层 .sidebar-inner 固定 280px,<aside> 始终保持完整背景
           - 顶部栏已是独立行,左下栏顶部不再需要为浮动工具让位
@@ -526,9 +530,8 @@ function App() {
         */}
         {!focusMode && (
           <div
-            className="sidebar-shell group/sidebar relative h-full flex-shrink-0 overflow-hidden"
+            className="sidebar-shell group/sidebar relative h-full overflow-hidden"
             data-open={sidebarOpen}
-            style={{ width: sidebarOpen ? '280px' : '0px' }}
           >
             <div className="sidebar-inner h-full" style={{ width: '280px', minWidth: '280px' }}>
               <ProjectSidebar

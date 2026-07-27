@@ -20,11 +20,13 @@
     --bg-active: rgba(0, 0, 0, 0.08);
     --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
 
-    /* 文字层：四级灰阶，保证 ≥4.5:1 对比 */
+    /* 文字层：四级灰阶，保证 ≥4.5:1 对比
+     * tertiary / quaternary 在浅色背景上原值对比度偏低（3.91 / 2.11），
+     * 加深为 #5e5c54 / #8d8b81，使 tertiary 达 AA 6.35，quaternary 仍仅用于极弱分隔。 */
     --text-primary: #141413; /* Anthropic Dark · 标题与正文 */
-    --text-secondary: #56554f; /* 次级说明 */
-    --text-tertiary: #7f7d75; /* 元信息 / 占位 */
-    --text-quaternary: #b0aea5; /* Anthropic Mid Gray · 极弱分隔 */
+    --text-secondary: #4a4944; /* 次级说明 */
+    --text-tertiary: #5e5c54; /* 元信息 / 占位 */
+    --text-quaternary: #8d8b81; /* Anthropic Mid Gray · 极弱分隔 */
 
     /* 描边：弱→强 */
     --border-color: #dedcd3;
@@ -687,13 +689,36 @@
   }
 
   /*
-   * 侧栏折叠动效：宽度变化负责主区布局，固定宽度的内层只做合成层动画。
+   * 侧栏折叠动效：父级 grid 容器用 grid-template-columns 动画驱动布局占位，
+   * 避免传统 width 动画造成的 layout reflow。固定宽度的内层只做合成层动画。
    * 顶部栏独立于此动画，收起侧栏时始终保持完整。
    */
+  .sidebar-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* 侧栏挂载时切到双列：280px(侧栏) ↔ 0px(收起) + 1fr(主区) */
+  .sidebar-grid[data-sidebar='open'] {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .sidebar-grid[data-sidebar='closed'] {
+    grid-template-columns: 0px 1fr;
+  }
+
+  .sidebar-grid > .sidebar-shell {
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .sidebar-grid > .workspace-surface {
+    min-width: 0;
+  }
+
   .sidebar-shell {
     contain: layout paint;
-    transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: width;
   }
 
   .sidebar-inner {
@@ -709,7 +734,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .sidebar-shell,
+    .sidebar-grid,
     .sidebar-inner {
       transition-duration: 0.01ms;
     }
