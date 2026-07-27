@@ -307,6 +307,7 @@ function SortableProjectItem({
             className="p-1 rounded hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label="导出项目"
+            title="导出项目"
           >
             <DownloadIcon size={13} />
           </button>
@@ -318,6 +319,7 @@ function SortableProjectItem({
             className="p-1 rounded hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label="重命名"
+            title="重命名"
           >
             <EditIcon size={13} />
           </button>
@@ -329,6 +331,7 @@ function SortableProjectItem({
             className="p-1 rounded hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-tertiary)' }}
             aria-label="删除项目"
+            title="删除项目"
           >
             <TrashIcon size={13} />
           </button>
