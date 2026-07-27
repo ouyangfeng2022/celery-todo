@@ -11,18 +11,26 @@
 
 import { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { AppSettings } from '../../types';
+import type { AppSettings, Project } from '../../types';
 import * as Icons from '../common/Icons';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
 import { DesktopSection } from './sections/DesktopSection';
 import { DataSection } from './sections/DataSection';
+import { HistorySection } from './sections/HistorySection';
 import { ShortcutsSection } from './sections/ShortcutsSection';
 import { AboutSection } from './sections/AboutSection';
 
 /** 子页面 id。desktop 仅在桌面端渲染入口，故路由层 union 包含但导航项条件渲染。 */
-export type SettingsSectionId = 'general' | 'sticker' | 'desktop' | 'data' | 'shortcuts' | 'about';
+export type SettingsSectionId =
+  | 'general'
+  | 'sticker'
+  | 'desktop'
+  | 'data'
+  | 'history'
+  | 'shortcuts'
+  | 'about';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -34,6 +42,15 @@ interface SettingsPanelProps {
   onExportCsv: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
+  // ===== 历史记录（归档）页面所需 =====
+  /** 全部项目（历史记录页解析项目名标签） */
+  projects: Project[];
+  /** 恢复归档事项 */
+  onRestoreTodo: (id: string) => void;
+  /** 永久删除归档事项 */
+  onPermanentDeleteTodo: (id: string) => void;
+  /** 清空全部归档 */
+  onEmptyArchive: () => void;
   // ===== 自动升级（仅桌面端；Web 下 undefined，UI 不渲染升级行） =====
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
@@ -52,6 +69,7 @@ const NAV_ITEMS: { id: SettingsSectionId; label: string; icon: typeof Icons.Sett
   { id: 'sticker', label: '贴图', icon: Icons.StickerIcon },
   { id: 'desktop', label: '桌面', icon: Icons.MonitorIcon },
   { id: 'data', label: '数据', icon: Icons.FolderIcon },
+  { id: 'history', label: '历史记录', icon: Icons.ArchiveIcon },
   { id: 'shortcuts', label: '快捷键', icon: Icons.KeyboardIcon },
   { id: 'about', label: '关于', icon: Icons.GithubIcon },
 ];
@@ -66,6 +84,10 @@ function SettingsPanelComponent({
   onExportCsv,
   onImportAll,
   onResetData,
+  projects,
+  onRestoreTodo,
+  onPermanentDeleteTodo,
+  onEmptyArchive,
   updateStatus = 'idle',
   updateInfo = null,
   updateProgress = null,
@@ -246,6 +268,15 @@ function SettingsPanelComponent({
                     onExportCsv={onExportCsv}
                     onImportAll={onImportAll}
                     onResetData={onResetData}
+                  />
+                )}
+
+                {activeSection === 'history' && (
+                  <HistorySection
+                    projects={projects}
+                    onRestoreTodo={onRestoreTodo}
+                    onPermanentDeleteTodo={onPermanentDeleteTodo}
+                    onEmptyArchive={onEmptyArchive}
                   />
                 )}
 

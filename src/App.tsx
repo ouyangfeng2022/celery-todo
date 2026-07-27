@@ -25,7 +25,6 @@ import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
-import { HistoryPanel } from './components/settings/HistoryPanel';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { FocusIcon } from './components/common/Icons';
@@ -55,8 +54,6 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
-  // 历史记录独立弹窗（侧栏「历史记录」入口唤出，与「设置」弹窗分离）
-  const [historyOpen, setHistoryOpen] = useState(false);
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
   // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
@@ -291,7 +288,6 @@ function App() {
     onEscape: () => {
       clearSelection();
       setSettingsOpen(false);
-      setHistoryOpen(false);
       // 专注模式下 Esc 收起临时唤出的 AddTodoInput
       if (focusMode) setComposerVisible(false);
     },
@@ -550,7 +546,7 @@ function App() {
                 onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onOpenSettings={openSettings}
-                onOpenHistory={() => setHistoryOpen(true)}
+                onOpenHistory={() => openSettings('history')}
                 onOpenHelp={() =>
                   window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
                 }
@@ -725,6 +721,10 @@ function App() {
         onExportCsv={handleExportCsv}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
+        projects={projects}
+        onRestoreTodo={restoreTodo}
+        onPermanentDeleteTodo={permanentlyDelete}
+        onEmptyArchive={emptyArchive}
         updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
         updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
         updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
@@ -732,16 +732,6 @@ function App() {
         onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
         onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
         onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
-      />
-
-      {/* 历史记录弹窗（归档视图，与设置弹窗独立） */}
-      <HistoryPanel
-        open={historyOpen}
-        projects={projects}
-        onRestoreTodo={restoreTodo}
-        onPermanentDeleteTodo={permanentlyDelete}
-        onEmptyArchive={emptyArchive}
-        onClose={() => setHistoryOpen(false)}
       />
     </div>
   );

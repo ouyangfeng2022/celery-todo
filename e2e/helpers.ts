@@ -212,13 +212,14 @@ export async function openSettingsSection(win: Page, section: string): Promise<v
 }
 
 /**
- * 打开「历史记录」（归档）弹窗：点侧栏左下角品牌按钮唤出菜单，再点「历史记录」。
- * 等弹窗标题「历史记录」与副标题同时可见，即视为加载完成。
+ * 打开「历史记录」（归档）页面：点侧栏左下角品牌按钮唤出菜单，再点「历史记录」，
+ * 会进入设置页的历史记录标签。等设置页顶部 h1 标题「历史记录」与副标题同时可见，
+ * 即视为加载完成。
  */
 export async function openHistory(win: Page): Promise<void> {
   await win.getByRole('button', { name: '打开设置菜单' }).click();
   await win.getByRole('button', { name: '历史记录', exact: true }).click();
-  // 弹窗标题 + 历史视图副标题同时可见
+  // 设置页顶部 h1（activeNavItem.label = "历史记录"）+ 历史视图副标题同时可见
   await win.getByRole('heading', { name: '历史记录' }).waitFor({ state: 'visible' });
   await win
     .getByText('归档的事项会保存在此处，可在任意时间恢复或永久删除。')
