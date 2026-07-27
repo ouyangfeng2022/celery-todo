@@ -1,5 +1,5 @@
 /**
- * @file celery restore —— 从回收站恢复待办
+ * @file celery restore —— 从历史记录恢复待办
  */
 
 import { Command } from 'commander';
@@ -9,7 +9,7 @@ import { color, println } from '../render';
 
 export function makeRestoreCommand(): Command {
   return new Command('restore')
-    .description('从回收站恢复待办')
+    .description('从历史记录恢复待办')
     .argument('<id...>', '归档项 ID（支持前缀，可多个）')
     .action(
       withRuntime(async (ids: string[]) => {

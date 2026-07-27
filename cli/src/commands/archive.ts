@@ -1,5 +1,5 @@
 /**
- * @file celery archive —— 回收站（历史记录）管理
+ * @file celery archive —— 历史记录管理
  */
 
 import { Command } from 'commander';
@@ -16,7 +16,7 @@ interface ArchiveOpts {
 
 export function makeArchiveCommand(): Command {
   return new Command('archive')
-    .description('回收站（历史记录）管理：默认列出全部归档项')
+    .description('历史记录管理：默认列出全部归档项')
     .option('-l, --list', '列出归档项（默认行为）')
     .option('--clean', '永久清空全部归档（不可恢复）')
     .option('--restore-all', '恢复全部归档项到 todos')
@@ -31,7 +31,7 @@ export function makeArchiveCommand(): Command {
           await rt.openReadOnly();
           const count = (await getAllDeletedTodos()).length;
           if (count === 0) {
-            println(color.gray('回收站为空'));
+            println(color.gray('历史记录为空'));
             return;
           }
           println(color.yellow(`将永久删除 ${count} 项归档，此操作不可恢复`));
@@ -44,7 +44,7 @@ export function makeArchiveCommand(): Command {
           }
           await rt.openReadWrite();
           await emptyArchive('all');
-          println(color.green('回收站已清空'));
+          println(color.green('历史记录已清空'));
           return;
         }
 
@@ -54,7 +54,7 @@ export function makeArchiveCommand(): Command {
           await rt.openReadOnly();
           const all = await getAllDeletedTodos();
           if (all.length === 0) {
-            println(color.gray('回收站为空'));
+            println(color.gray('历史记录为空'));
             return;
           }
           await rt.openReadWrite();
@@ -73,7 +73,7 @@ export function makeArchiveCommand(): Command {
           return;
         }
         if (items.length === 0) {
-          println(color.gray('回收站为空'));
+          println(color.gray('历史记录为空'));
           return;
         }
         println(renderArchiveTable(items));

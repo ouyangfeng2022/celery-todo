@@ -1,5 +1,5 @@
 /**
- * @file celery delete —— 软删除（移入回收站/历史记录）
+ * @file celery delete —— 归档（移入历史记录）
  */
 
 import { Command } from 'commander';
@@ -14,7 +14,7 @@ interface DeleteOpts {
 export function makeDeleteCommand(): Command {
   return new Command('delete')
     .alias('rm')
-    .description('删除待办（移入回收站，30 天后保留为历史记录）')
+    .description('归档待办（移入历史记录，可在 archive 中恢复或永久删除）')
     .argument('<id...>', '待办 ID（支持前缀，可多个）')
     .option('-y, --yes', '跳过确认提示')
     .action(
@@ -27,12 +27,12 @@ export function makeDeleteCommand(): Command {
         for (const input of ids) {
           todos.push(await resolveTodo(input));
         }
-        println(color.yellow('将删除以下待办：'));
+        println(color.yellow('将归档以下待办：'));
         for (const t of todos) {
           println(color.gray(`  • ${t.title}`));
         }
         if (!opts.yes) {
-          const ok = await confirm(`确认删除 ${todos.length} 项？`, false);
+          const ok = await confirm(`确认归档 ${todos.length} 项？`, false);
           if (!ok) {
             println(color.gray('已取消'));
             return;
@@ -45,7 +45,7 @@ export function makeDeleteCommand(): Command {
         }
         println(
           color.green(
-            `已删除 ${todos.length} 项（可用 \`celery archive --list\` 查看，\`celery restore\` 恢复）`,
+            `已归档 ${todos.length} 项（可用 \`celery archive --list\` 查看，\`celery restore\` 恢复）`,
           ),
         );
       }),

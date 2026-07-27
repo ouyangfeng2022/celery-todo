@@ -357,7 +357,7 @@ export function nextSortOrder(projectId: string): number {
 }
 
 // ============================================
-// 归档数据访问（原回收站 / 历史记录）
+// 归档数据访问（历史记录：deleted_todos 表）
 // ============================================
 
 export function getAllDeletedTodos(): DeletedTodo[] {

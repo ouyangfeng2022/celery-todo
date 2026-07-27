@@ -157,7 +157,7 @@ export function renderTodoTable(todos: Todo[], projects: Project[]): string {
  * 渲染归档（历史记录）列表。比 todo 表多一列「删除时间」。
  */
 export function renderArchiveTable(items: DeletedTodo[]): string {
-  if (items.length === 0) return c.gray('（回收站为空）');
+  if (items.length === 0) return c.gray('（历史记录为空）');
   const lines: string[] = [];
   for (const it of items) {
     const status = it.completed ? c.green('✔') : c.gray('○');
