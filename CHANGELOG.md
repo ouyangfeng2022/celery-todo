@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+## [v2.7.1] - 2026-07-28
+### Added
+- 支持导出归档历史为 JSON 快照
+
+### Fixed
+- 设置页顶部栏复用主页面 Header 工具组，修复搜索/导入与设置页语境的交互死局
+- 命令结束后关闭 IPC socket 避免进程挂起
+- 修正 bin 入口路径为 dist-cli/index.js
+- 为项目悬浮操作按钮添加 title 提示
+
 ## [v2.7.0] - 2026-07-24
 ### Added
 - 新增全局键盘快捷键，重构顶部布局并调整主题
@@ -261,3 +271,5 @@
 [v2.6.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.6.0
 
 [v2.7.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.0
+
+[v2.7.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.1
