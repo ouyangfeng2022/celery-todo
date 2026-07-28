@@ -4,6 +4,11 @@
  * 排序方式与状态筛选按项目独立持久化（settings 表 `filter.<projectId>` /
  * `sort.<projectId>`），切换项目时各自回到该项目的上次选择；搜索词是临时
  * 查找操作，不持久化，切换项目时清空，避免跨项目残留。
+ *
+ * filter / sort 采用「同步派生」而非 useState + useEffect：
+ * 当 projectId 变化时，filter 与 sort 在渲染阶段即从 DB 读取并参与
+ * filteredTodos 计算，消除旧架构中 useEffect 滞后一帧导致的「旧项目
+ * 筛选条件短暂残留到新项目」问题。
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,21 +35,30 @@ function readFilter(pid: string): FilterType {
 }
 
 export function useFilter(todos: Todo[], projectId: string) {
-  // 初值用默认值兜底；projectId 生效后由下面的 effect 从 settings 读取覆盖。
-  const [filter, setFilter] = useState<FilterType>(DEFAULT_FILTER);
-  const [sort, setSort] = useState<SortType>(DEFAULT_SORT);
+  // === 用户显式修改的覆盖值（per-project），未覆盖时回退到 DB 持久值 ===
+  const [filterOverrides, setFilterOverrides] = useState<Record<string, FilterType>>({});
+  const [sortOverrides, setSortOverrides] = useState<Record<string, SortType>>({});
+
   // 搜索词仅支持 URL 冷启动恢复（web 端 reload 场景），桌面端始终从空串开始。
   const [search, setSearch] = useState<string>(
     () => new URLSearchParams(window.location.search).get(SEARCH_PARAM) ?? '',
   );
 
-  // 切换项目（含首次 mount projectId 就绪）：从 settings 读取该项目的
-  // 排序/筛选偏好，并清空搜索词。projectId 为空串（首启动尚未选定项目）
-  // 时跳过，避免误读/误写到 `filter.` 这种无意义键。
+  // === 同步派生 filter / sort：projectId 变化时在渲染阶段即读取 DB，不滞后一帧 ===
+  // 优先级：用户本次显式选择 > DB 持久值 > 默认值
+  const filter = useMemo((): FilterType => {
+    if (!projectId) return DEFAULT_FILTER;
+    return filterOverrides[projectId] ?? readFilter(projectId);
+  }, [projectId, filterOverrides]);
+
+  const sort = useMemo((): SortType => {
+    if (!projectId) return DEFAULT_SORT;
+    return sortOverrides[projectId] ?? readProjectSort(projectId);
+  }, [projectId, sortOverrides]);
+
+  // 切换项目时清空搜索词（不持久化，避免跨项目残留）
   useEffect(() => {
     if (!projectId) return;
-    setFilter(readFilter(projectId));
-    setSort(readProjectSort(projectId));
     setSearch('');
   }, [projectId]);
 
@@ -58,7 +72,7 @@ export function useFilter(todos: Todo[], projectId: string) {
     window.history.replaceState({}, '', newUrl);
   }, [search]);
 
-  // 监听浏览器前进/后退：只回填搜索词（filter/sort 由 projectId effect 管控）
+  // 监听浏览器前进/后退：只回填搜索词（filter/sort 由 projectId 同步派生）
   useEffect(() => {
     const handlePopState = () => {
       const v = new URLSearchParams(window.location.search).get(SEARCH_PARAM) ?? '';
@@ -112,15 +126,22 @@ export function useFilter(todos: Todo[], projectId: string) {
 
   const changeFilter = useCallback(
     (f: FilterType) => {
-      setFilter(f);
-      if (projectId) db.setSetting(filterKey(projectId), f);
+      if (!projectId) return;
+      // 同时写入本地覆盖 + 持久化到 DB（同一值避免无意义重渲染）
+      setFilterOverrides((prev) =>
+        prev[projectId] === f ? prev : { ...prev, [projectId]: f },
+      );
+      db.setSetting(filterKey(projectId), f);
     },
     [projectId],
   );
   const changeSort = useCallback(
     (s: SortType) => {
-      setSort(s);
-      if (projectId) db.setSetting(sortKey(projectId), s);
+      if (!projectId) return;
+      setSortOverrides((prev) =>
+        prev[projectId] === s ? prev : { ...prev, [projectId]: s },
+      );
+      db.setSetting(sortKey(projectId), s);
     },
     [projectId],
   );
