@@ -7,7 +7,17 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { launchApp, closeApp, addTodo, createProject, openSettingsSection, type LaunchedApp } from './helpers';
+import {
+  launchApp,
+  closeApp,
+  addTodo,
+  createProject,
+  openSettingsSection,
+  installDownloadCapture,
+  getLastDownload,
+  decodeUtf8,
+  type LaunchedApp,
+} from './helpers';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.resolve(__dirname, 'fixtures');
@@ -23,66 +33,6 @@ test.beforeEach(async () => {
 test.afterEach(async () => {
   await closeApp(appInfo);
 });
-
-/**
- * 拦截 renderer 的 downloadFile：在 window 上挂一个捕获器，
- * export.ts 的 downloadFile 用 <a download> + click，在 Electron 里
- * 不一定触发 Playwright 的 download 事件，故改在调用前注入捕获逻辑。
- *
- * 实现：重写 HTMLAnchorElement.prototype.click，记录最后一次的 download 属性 + blob 内容。
- */
-async function installDownloadCapture(win: typeof win): Promise<void> {
-  // 在主 frame 和所有未来 frame 注入捕获器（init script 模式更可靠）
-  await win.evaluate(() => {
-    (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload = undefined;
-    if ((window as unknown as { __downloadHooked?: boolean }).__downloadHooked) return;
-    (window as unknown as { __downloadHooked?: boolean }).__downloadHooked = true;
-    const origClick = HTMLAnchorElement.prototype.click;
-    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
-      if (this.download && this.href) {
-        void fetch(this.href)
-          .then((r) => r.arrayBuffer())
-          .then((buf) => {
-            // latin1 编码保留每个字节为 charCodeAt，便于测试侧处理 BOM
-            const bytes = new Uint8Array(buf);
-            let content = '';
-            for (let i = 0; i < bytes.length; i++) content += String.fromCharCode(bytes[i]);
-            (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload = {
-              filename: this.download,
-              content,
-            };
-          })
-          .catch(() => {
-            // 忽略
-          });
-      }
-      return origClick.call(this);
-    };
-  });
-}
-
-/** 读取并清空捕获的最后一次下载 */
-async function getLastDownload(win: typeof win): Promise<{ filename: string; content: string }> {
-  await win.waitForFunction(
-    () => !!(window as unknown as { __lastDownload?: unknown }).__lastDownload,
-    undefined,
-    { timeout: 5_000 },
-  );
-  return win.evaluate(() => {
-    const d = (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload!;
-    (window as unknown as { __lastDownload?: unknown }).__lastDownload = undefined;
-    return d;
-  });
-}
-
-/** 把 latin1 字符串（每 char 一个字节）解码为 UTF-8 字符串（剥掉 BOM）。
- *  捕获时按 latin1 存是为了保留 BOM 字节，但中文是 UTF-8 多字节，需还原解码。 */
-function decodeUtf8(content: string): string {
-  const bytes = new Uint8Array(content.length);
-  for (let i = 0; i < content.length; i++) bytes[i] = content.charCodeAt(i);
-  const text = new TextDecoder('utf-8').decode(bytes);
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-}
 
 test('导出单个项目为 JSON，文件名与结构正确', async () => {
   await installDownloadCapture(win);
@@ -146,7 +96,7 @@ test('导入完整应用数据后项目和 todo 都出现', async () => {
   await filechooser.setFiles(path.join(FIXTURES, 'import-full.json'));
   // 关闭设置面板，否则遮罩拦截后续点击
   await win.keyboard.press('Escape');
-  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
 
   // 默认项目应含"全量导入的任务1"（importAllData 是异步的，给足等待）
   await expect(win.getByText('全量导入的任务1', { exact: true })).toBeVisible({ timeout: 10_000 });

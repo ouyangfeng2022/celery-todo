@@ -34,7 +34,14 @@ import { useAutoUpdate } from './hooks/useAutoUpdate';
 import { useCliBridge } from './cli-bridge';
 
 import * as db from './utils/database';
-import { exportAppAsJson, exportProjectAsJson, parseImportData, todosToCsv } from './utils/export';
+import {
+  EXPORT_FORMAT_VERSION,
+  exportAppAsJson,
+  exportHistoryAsJson,
+  exportProjectAsJson,
+  parseImportData,
+  todosToCsv,
+} from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
 import type { Priority } from './types';
 
@@ -328,6 +335,26 @@ function App() {
     const csv = todosToCsv(todos);
     downloadFile(csv, `todos-${activeProject?.name ?? 'export'}.csv`, 'text/csv;charset=utf-8');
   }, [todos, activeProject]);
+
+  // 导出历史记录（归档）为独立 JSON 快照。跨项目全量，按归档时间倒序。
+  // 注意：这是只读备份，刻意不被 parseImportData 识别，不可导回。
+  const handleExportHistory = useCallback(() => {
+    const archivedTodos = db.getAllDeletedTodos();
+    // 仅保留归档事项涉及的项目，避免把无关项目名也写进快照
+    const usedIds = new Set(archivedTodos.map((t) => t.projectId));
+    const projectNames: Record<string, string> = {};
+    for (const p of projects) {
+      if (usedIds.has(p.id)) projectNames[p.id] = p.name;
+    }
+    const json = exportHistoryAsJson({
+      version: EXPORT_FORMAT_VERSION,
+      exportedAt: new Date().toISOString(),
+      kind: 'celery-todo-history',
+      archivedTodos,
+      projectNames,
+    });
+    downloadFile(json, `archive-${new Date().toISOString().split('T')[0]}.json`);
+  }, [projects]);
 
   const handleImportProject = useCallback(
     async (file: File) => {
@@ -725,6 +752,7 @@ function App() {
         onRestoreTodo={restoreTodo}
         onPermanentDeleteTodo={permanentlyDelete}
         onEmptyArchive={emptyArchive}
+        onExportHistory={handleExportHistory}
         updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
         updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
         updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}

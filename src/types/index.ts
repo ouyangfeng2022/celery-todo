@@ -235,6 +235,26 @@ export interface AppExportData {
   settings: AppSettings;
 }
 
+/**
+ * 历史记录（归档）导出文件。
+ *
+ * 与 ProjectExportData / AppExportData 不同，这是**单向只读快照**：
+ * `parseImportData` 刻意不识别它（用错开的字段名 archivedTodos / projectNames +
+ * kind 标记），仅供备份与人工查阅，不能导回。
+ */
+export interface HistoryExportData {
+  /** 导出文件格式版本（EXPORT_FORMAT_VERSION，仅作来源标记） */
+  version: number;
+  /** 导出时间（ISO 字符串） */
+  exportedAt: string;
+  /** 文件种类标记，便于人工与未来程序区分 */
+  kind: 'celery-todo-history';
+  /** 全量归档事项（跨项目，按归档时间倒序） */
+  archivedTodos: DeletedTodo[];
+  /** projectId → 项目名 的快照（仅含归档事项涉及的项目） */
+  projectNames: Record<string, string>;
+}
+
 // ============================================
 // 批量操作
 // ============================================

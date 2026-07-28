@@ -195,20 +195,28 @@ export async function hoverRow(row: ReturnType<Page['locator']>): Promise<void> 
   await row.hover();
 }
 
-/** 从侧边栏左下角设置菜单进入设置页面（默认通用分区）。 */
+/** 从侧边栏左下角设置菜单进入设置页面（默认通用分区）。
+ *  设置页根 <section aria-label="设置">（SettingsPanel.tsx）作为稳定锚点：
+ *  它只在设置页打开时存在，与具体子分区（通用/数据/...）无关。 */
 export async function openSettings(win: Page): Promise<void> {
   await win.getByRole('button', { name: '打开设置菜单' }).click();
   await win.getByRole('button', { name: '设置', exact: true }).click();
-  await win.getByRole('heading', { name: '设置' }).waitFor({ state: 'visible' });
+  await win.getByRole('region', { name: '设置' }).waitFor({ state: 'visible' });
 }
 
 /**
  * 打开设置面板并切到指定子页面（左侧分类导航）。默认进入「通用」，
  * 数据导入/导出/重置等在「数据」下，需先切过去再操作对应按钮/文案。
+ *
+ * 实现注意：设置页是全屏覆盖层（fixed inset-0），主界面 Header/侧栏的
+ * DOM 仍在但被遮挡——其上的同名按钮（如 Header 的「数据」分组按钮）
+ * 仍参与 accessible name 计算，会触发 Playwright strict mode 多匹配。
+ * 因此把分区按钮的搜索范围限定在设置页 region 内。
  */
 export async function openSettingsSection(win: Page, section: string): Promise<void> {
   await openSettings(win);
-  await win.getByRole('button', { name: section, exact: true }).click();
+  const settingsRegion = win.getByRole('region', { name: '设置' });
+  await settingsRegion.getByRole('button', { name: section, exact: true }).click();
 }
 
 /**
@@ -251,4 +259,71 @@ export async function getTodoTitlesInOrder(win: Page): Promise<string[]> {
       return titleDiv?.textContent?.trim() ?? '';
     });
   });
+}
+
+// ============================================
+// 导出（downloadFile）捕获工具
+// ============================================
+// export.ts 的 downloadFile 用 <a download> + click，在 Electron 里
+// 不一定触发 Playwright 的 download 事件，故改在调用前注入捕获逻辑：
+// 重写 HTMLAnchorElement.prototype.click，记录最后一次的 download 属性 + blob 内容。
+
+/** 在当前 window 注入下载捕获器（多次调用幂等，重置上次结果） */
+export async function installDownloadCapture(win: Page): Promise<void> {
+  await win.evaluate(() => {
+    (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload =
+      undefined;
+    if ((window as unknown as { __downloadHooked?: boolean }).__downloadHooked) return;
+    (window as unknown as { __downloadHooked?: boolean }).__downloadHooked = true;
+    const origClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      if (this.download && this.href) {
+        void fetch(this.href)
+          .then((r) => r.arrayBuffer())
+          .then((buf) => {
+            // latin1 编码保留每个字节为 charCodeAt，便于测试侧处理 BOM
+            const bytes = new Uint8Array(buf);
+            let content = '';
+            for (let i = 0; i < bytes.length; i++) content += String.fromCharCode(bytes[i]);
+            (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload =
+              {
+                filename: this.download,
+                content,
+              };
+          })
+          .catch(() => {
+            // 忽略
+          });
+      }
+      return origClick.call(this);
+    };
+  });
+}
+
+/** 读取并清空捕获的最后一次下载 */
+export async function getLastDownload(
+  win: Page,
+): Promise<{ filename: string; content: string }> {
+  await win.waitForFunction(
+    () => !!(window as unknown as { __lastDownload?: unknown }).__lastDownload,
+    undefined,
+    { timeout: 5_000 },
+  );
+  return win.evaluate(() => {
+    const d = (window as unknown as { __lastDownload?: { filename: string; content: string } })
+      .__lastDownload!;
+    (window as unknown as { __lastDownload?: unknown }).__lastDownload = undefined;
+    return d;
+  });
+}
+
+/**
+ * 把 latin1 字符串（每 char 一个字节）解码为 UTF-8 字符串（剥掉 BOM）。
+ * 捕获时按 latin1 存是为了保留 BOM 字节，但中文是 UTF-8 多字节，需还原解码。
+ */
+export function decodeUtf8(content: string): string {
+  const bytes = new Uint8Array(content.length);
+  for (let i = 0; i < content.length; i++) bytes[i] = content.charCodeAt(i);
+  const text = new TextDecoder('utf-8').decode(bytes);
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 }

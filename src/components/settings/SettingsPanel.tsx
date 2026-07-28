@@ -24,13 +24,7 @@ import { AboutSection } from './sections/AboutSection';
 
 /** 子页面 id。desktop 仅在桌面端渲染入口，故路由层 union 包含但导航项条件渲染。 */
 export type SettingsSectionId =
-  | 'general'
-  | 'sticker'
-  | 'desktop'
-  | 'data'
-  | 'history'
-  | 'shortcuts'
-  | 'about';
+  'general' | 'sticker' | 'desktop' | 'data' | 'history' | 'shortcuts' | 'about';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -51,6 +45,8 @@ interface SettingsPanelProps {
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */
   onEmptyArchive: () => void;
+  /** 导出全量归档为 JSON 快照（只读，不可导回） */
+  onExportHistory: () => void;
   // ===== 自动升级（仅桌面端；Web 下 undefined，UI 不渲染升级行） =====
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
@@ -88,6 +84,7 @@ function SettingsPanelComponent({
   onRestoreTodo,
   onPermanentDeleteTodo,
   onEmptyArchive,
+  onExportHistory,
   updateStatus = 'idle',
   updateInfo = null,
   updateProgress = null,
@@ -128,6 +125,7 @@ function SettingsPanelComponent({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onKeyDown={handleKeyDown}
+          aria-label="设置"
         >
           {/* 顶部品牌栏：宽度、底色和原生窗口按钮留白均与主页面一致。
               左侧 280px 品牌入口(返回 + wordmark) 与右侧分类标题同高(≈ 48px),
@@ -277,6 +275,7 @@ function SettingsPanelComponent({
                     onRestoreTodo={onRestoreTodo}
                     onPermanentDeleteTodo={onPermanentDeleteTodo}
                     onEmptyArchive={onEmptyArchive}
+                    onExportHistory={onExportHistory}
                   />
                 )}
 

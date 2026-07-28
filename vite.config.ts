@@ -28,6 +28,40 @@ export default defineConfig({
     // 生产构建关闭 sourcemap：体积省 ~2.4MB，避免业务代码暴露。
     // 需要调试时用 dev server 或单独开启。
     sourcemap: false,
+    // 第三方库拆出独立 chunk：业务代码与 vendor 分离，
+    // 既能减小主 bundle 初始 parse 时间，也方便 electron-updater
+    // 增量分发（业务代码 chunk 命中哈希的概率高于 vendor）。
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          // node_modules 内的依赖按"稳定性分层"拆 chunk：
+          // - react-vendor: react/react-dom/scheduler（最稳定，几乎永不升级）
+          // - motion-dnd:   framer-motion + @dnd-kit（动画/拖拽，体积大）
+          // - sqljs:        sql.js JS 胶水层（WASM 二进制是单独文件）
+          // - vendor:       其余第三方（zustand/canvas-confetti/clsx/react-markdown 等）
+          //
+          // 注：不再单拆 markdown——react-markdown 依赖链里的部分工具函数
+          // 被其他包（含 vendor 内）共享，强拆会触发 rollup 的 circular chunk 警告。
+          if (id.includes('node_modules')) {
+            if (id.includes('node_modules/framer-motion') || id.includes('node_modules/@dnd-kit')) {
+              return 'motion-dnd';
+            }
+            if (id.includes('node_modules/sql.js')) {
+              return 'sqljs';
+            }
+            if (
+              id.includes('node_modules/react/') ||
+              id.includes('node_modules/react-dom/') ||
+              id.includes('node_modules/scheduler/')
+            ) {
+              return 'react-vendor';
+            }
+            return 'vendor';
+          }
+          return undefined;
+        },
+      },
+    },
   },
   // 预构建 sql.js 浏览器 WASM 模块
   optimizeDeps: {

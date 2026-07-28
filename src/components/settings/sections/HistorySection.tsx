@@ -27,6 +27,8 @@ interface HistorySectionProps {
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */
   onEmptyArchive: () => void;
+  /** 导出全量归档为 JSON 快照（只读，不可导回） */
+  onExportHistory: () => void;
 }
 
 export function HistorySection({
@@ -34,6 +36,7 @@ export function HistorySection({
   onRestoreTodo,
   onPermanentDeleteTodo,
   onEmptyArchive,
+  onExportHistory,
 }: HistorySectionProps) {
   // === 分页数据 state ===
   const [items, setItems] = useState<DeletedTodo[]>([]);
@@ -127,6 +130,7 @@ export function HistorySection({
         onRestore={handleRestore}
         onPermanentDelete={handlePermanentDelete}
         onEmptyAll={handleEmptyAll}
+        onExportHistory={onExportHistory}
       />
     </section>
   );

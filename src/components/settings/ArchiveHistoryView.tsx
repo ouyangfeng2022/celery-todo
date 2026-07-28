@@ -9,7 +9,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeletedTodo, Project } from '../../types';
 import { formatRelativeTime } from '../../utils/helpers';
-import { RestoreIcon, TrashIcon, InboxIcon } from '../common/Icons';
+import { RestoreIcon, TrashIcon, InboxIcon, DownloadIcon } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ArchiveHistoryViewProps {
@@ -31,6 +31,8 @@ interface ArchiveHistoryViewProps {
   onPermanentDelete: (id: string) => void;
   /** 清空全部归档 */
   onEmptyAll: () => void;
+  /** 导出全量归档为 JSON 快照（只读，不可导回） */
+  onExportHistory: () => void;
 }
 
 function ArchiveHistoryViewComponent({
@@ -43,6 +45,7 @@ function ArchiveHistoryViewComponent({
   onRestore,
   onPermanentDelete,
   onEmptyAll,
+  onExportHistory,
 }: ArchiveHistoryViewProps) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   // 单条操作的确认目标：null 表示无待确认事项
@@ -80,19 +83,29 @@ function ArchiveHistoryViewComponent({
 
   return (
     <div className="space-y-3">
-      {/* 标题行 + 清空按钮 */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+      {/* 标题行 + 操作按钮（导出 / 清空） */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs flex-1 min-w-0" style={{ color: 'var(--text-tertiary)' }}>
           归档的事项会保存在此处，可在任意时间恢复或永久删除。
         </p>
         {totalCount > 0 && (
-          <button
-            onClick={() => setConfirmEmpty(true)}
-            className="btn-ghost text-sm flex-shrink-0"
-            style={{ color: 'var(--danger)' }}
-          >
-            清空归档
-          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={onExportHistory}
+              className="btn-ghost text-sm flex items-center gap-1"
+              title="导出全部归档为 JSON 快照"
+            >
+              <DownloadIcon size={14} />
+              导出归档
+            </button>
+            <button
+              onClick={() => setConfirmEmpty(true)}
+              className="btn-ghost text-sm"
+              style={{ color: 'var(--danger)' }}
+            >
+              清空归档
+            </button>
+          </div>
         )}
       </div>
 

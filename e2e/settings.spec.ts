@@ -26,7 +26,10 @@ test.afterEach(async () => {
 
 test('打开设置面板，标题可见', async () => {
   await openSettings(win);
-  await expect(win.getByRole('heading', { name: '设置' })).toBeVisible();
+  // 设置页根 section 带 aria-label="设置"，是稳定锚点；
+  // 进入后默认在「通用」分区，顶部 h1 显示「通用」（activeNavItem.label）。
+  await expect(win.getByRole('region', { name: '设置' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '通用' })).toBeVisible();
 });
 
 test('切换主题为"深色"，document.documentElement.dark 生效', async () => {
@@ -55,7 +58,7 @@ test('重置所有数据：二次确认后数据清空且项目列表为空', as
   await win.keyboard.press('Enter');
 
   // 设置面板关闭（handleResetData 里 setSettingsOpen(false)）
-  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
   // 数据清空：任务消失
   await expect(win.getByText('重置前任务', { exact: true })).toHaveCount(0);
   // 重置后项目列表为空，主区显示无项目引导（不再自动重建默认项目）
@@ -66,13 +69,13 @@ test('重置所有数据：二次确认后数据清空且项目列表为空', as
 test('Esc 关闭设置面板', async () => {
   await openSettings(win);
   await win.keyboard.press('Escape');
-  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
 });
 
 test('设置作为独立页面打开，并可返回待办页', async () => {
   await openSettings(win);
   await expect(win.getByRole('button', { name: '返回待办' })).toBeVisible();
   await win.getByRole('button', { name: '返回待办' }).click();
-  await expect(win.getByRole('heading', { name: '设置' })).toHaveCount(0);
+  await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
   await expect(win.locator('main')).toBeVisible();
 });

@@ -3,7 +3,7 @@
  * @description 支持 JSON 和 CSV 格式的数据导入导出
  */
 
-import type { Todo, ProjectExportData, AppExportData } from '../types';
+import type { Todo, ProjectExportData, AppExportData, HistoryExportData } from '../types';
 
 /**
  * 导出文件格式版本（独立于 DB schema 版本）。
@@ -73,6 +73,17 @@ export function exportProjectAsJson(
  * 导出完整应用数据为 JSON
  */
 export function exportAppAsJson(data: AppExportData): string {
+  return JSON.stringify(data, null, 2);
+}
+
+/**
+ * 导出历史记录（归档）为 JSON。
+ *
+ * 这是**单向只读快照**，刻意不进入 parseImportData 的识别分支
+ * （字段名错开为 archivedTodos / projectNames，并带 kind 标记），
+ * 仅供备份与人工查阅，不可被现有 importer 导回。
+ */
+export function exportHistoryAsJson(data: HistoryExportData): string {
   return JSON.stringify(data, null, 2);
 }
 

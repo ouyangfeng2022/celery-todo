@@ -12,6 +12,9 @@ import {
   createProject,
   todoRow,
   openHistory,
+  installDownloadCapture,
+  getLastDownload,
+  decodeUtf8,
   type LaunchedApp,
 } from './helpers';
 
@@ -103,4 +106,37 @@ test('Esc 关闭设置页（历史记录标签下）', async () => {
   await expect(win.getByRole('heading', { name: '历史记录' })).toBeVisible();
   await win.keyboard.press('Escape');
   await expect(win.getByRole('heading', { name: '历史记录' })).toHaveCount(0);
+});
+
+test('导出归档为 JSON 快照，文件名含日期且含全部归档', async () => {
+  await installDownloadCapture(win);
+  await createProject(win, '快照源项目');
+  await addTodo(win, '要导出的归档A');
+  await addTodo(win, '要导出的归档B');
+  // 归档两条
+  for (const t of ['要导出的归档A', '要导出的归档B']) {
+    const row = todoRow(win, t);
+    await row.hover();
+    await row.getByRole('button', { name: '归档', exact: true }).click();
+  }
+
+  await openHistory(win);
+  // 用 title 属性（Playwright 转为 button 的 description）精确锁定导出按钮，
+  // 避免与项目列表里"快照源项目"等子串造成 strict mode 歧义
+  await win
+    .getByRole('button', { description: '导出全部归档为 JSON 快照' })
+    .click();
+  const dl = await getLastDownload(win);
+
+  const today = new Date().toISOString().slice(0, 10);
+  expect(dl.filename).toBe(`archive-${today}.json`);
+
+  const data = JSON.parse(decodeUtf8(dl.content));
+  expect(data.kind).toBe('celery-todo-history');
+  expect(Array.isArray(data.archivedTodos)).toBe(true);
+  const titles = data.archivedTodos.map((t: { title: string }) => t.title);
+  expect(titles).toEqual(expect.arrayContaining(['要导出的归档A', '要导出的归档B']));
+  // projectNames 快照包含归档事项所属项目
+  const nameValues = Object.values(data.projectNames as Record<string, string>);
+  expect(nameValues).toContain('快照源项目');
 });
