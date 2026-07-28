@@ -71,13 +71,12 @@ export type ThemeMode = 'light' | 'dark' | 'system' | 'paper';
 
 /**
  * 贴图（简洁模式浮窗）预设风格。
- * - `custom` 表示用户在高级面板里手动调过细粒度参数，不再与任何预设强绑定。
  */
-export type StickerPreset = 'glass' | 'pure' | 'card' | 'note' | 'custom';
+export type StickerPreset = 'glass' | 'pure' | 'card' | 'note';
 
 /** 贴图预设对应的视觉参数快照（点选预设时一次性写入这四个值） */
 export const STICKER_PRESET_VALUES: Record<
-  Exclude<StickerPreset, 'custom'>,
+  StickerPreset,
   {
     radius: number;
     blur: number;
@@ -174,7 +173,7 @@ export interface AppSettings {
   /** 上次激活的项目 ID（启动时恢复；空串表示无激活项目） */
   lastActiveProjectId: string;
   // ===== 贴图样式（简洁模式浮窗） =====
-  /** 当前贴图预设风格（custom = 用户自定义过细粒度参数） */
+  /** 当前贴图预设风格 */
   stickerPreset: StickerPreset;
   /** 贴图圆角大小（px，高级设置） */
   stickerRadius: number;

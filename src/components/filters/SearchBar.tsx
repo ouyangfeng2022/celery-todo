@@ -35,7 +35,10 @@ function SearchBarComponent({ value, onChange, focusSignal }: SearchBarProps) {
       }}
     >
       <div className="flex items-center gap-2">
-        <div className="pointer-events-none flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>
+        <div
+          className="pointer-events-none flex-shrink-0"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
           <SearchIcon size={15} />
         </div>
         <input

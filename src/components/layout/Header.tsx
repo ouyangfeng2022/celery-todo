@@ -116,13 +116,14 @@ function HeaderComponent({
   // 展开时一次性测量并缓存,避免每帧重算;窗口/滚动变化时弹出层会直接关闭(见关闭机制)。
   const [submenuPos, setSubmenuPos] = useState<{ left: number; top: number } | null>(null);
   const [searchPos, setSearchPos] = useState<{ left: number; top: number } | null>(null);
-  // header 根节点引用,用于判断点击是否落在 header 外部
-  const headerRef = useRef<HTMLElement>(null);
+  // 工具组容器引用:点击外部判定时,放行范围仅限工具组与搜索按钮,
+  // 不再放行整个 header —— 否则点击 header 内空白(拖拽区、按钮间)也无法收起弹层。
+  const toolbarRef = useRef<HTMLDivElement>(null);
   // 各分组标题按钮引用:按 title 取其屏幕位置,计算子菜单锚点
   const groupButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  // 搜索按钮引用:用于把搜索面板锚定到按钮下方
+  // 搜索按钮引用:用于把搜索面板锚定到按钮下方;点击外部判定也会放行它
   const searchButtonRef = useRef<HTMLButtonElement>(null);
-  // 弹出层 DOM 引用:外部点击判定需覆盖 portal 节点(portal 不在 headerRef 树内)
+  // 弹出层 DOM 引用:外部点击判定需覆盖 portal 节点(portal 不在 toolbarRef 树内)
   const submenuRef = useRef<HTMLDivElement>(null);
   const searchPanelRef = useRef<HTMLDivElement>(null);
 
@@ -156,15 +157,17 @@ function HeaderComponent({
     setSearchPos(null);
   }, []);
 
-  // 点击 header / 任一弹出层外部,或按下 Escape 时收起菜单/搜索弹层(与 ContextMenu 行为一致)。
-  // 弹出层走 portal 渲染到 document.body,不在 headerRef 树内,故需单独判定其 ref。
+  // 点击工具组 / 搜索按钮 / 任一弹出层之外的区域,或按下 Escape 时收起菜单/搜索弹层(与 ContextMenu 行为一致)。
+  // 放行范围刻意不包含整个 header —— 否则点击 header 内空白(中间拖拽区、按钮之间)会因命中 header 而跳过收起。
+  // 弹出层走 portal 渲染到 document.body,不在 toolbarRef 树内,故需单独判定其 ref。
   // 用 mousedown 而非 click,避免先触发其它交互再关弹层。
   useEffect(() => {
     if (!openGroup && !searchOpen) return;
     const handlePointerDown = (e: MouseEvent) => {
       const target = e.target as Node | null;
       if (!target) return;
-      if (headerRef.current?.contains(target)) return;
+      if (toolbarRef.current?.contains(target)) return;
+      if (searchButtonRef.current?.contains(target)) return;
       if (submenuRef.current?.contains(target)) return;
       if (searchPanelRef.current?.contains(target)) return;
       closeAllPanels();
@@ -243,7 +246,6 @@ function HeaderComponent({
 
   return (
     <header
-      ref={headerRef}
       // z-50:Header 内的下拉菜单(子菜单/搜索)需浮于 main 区吸顶 AddTodoInput(z-20)
       // 之上,否则「清除搜索」等按钮会被吸顶容器遮挡、点不到。
       // 背景 var(--bg-frame)(暖陶土橙):与标题区、左侧栏同色(主区为暖纸色 --bg-primary)。
@@ -258,7 +260,7 @@ function HeaderComponent({
         整个 header 已是 z-50(浮于 main 吸顶 AddTodoInput 之上),这里仅需在 header
         内部把下拉菜单钉在拖拽层之上。
       */}
-      <div className="titlebar-no-drag relative z-30 flex items-center gap-0.5">
+      <div ref={toolbarRef} className="titlebar-no-drag relative z-30 flex items-center gap-0.5">
         {/* 返回按钮:仅子页面(如设置页)传入 onBack 时渲染,排在侧栏开关左侧。
             主页面不传 → 不渲染,工具组与原有视觉零差异。 */}
         {onBack && (

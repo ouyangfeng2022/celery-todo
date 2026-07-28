@@ -2,7 +2,6 @@
  * @file StickerSection - 设置页「贴图」子页面
  * @description 简洁模式浮窗（贴图）的样式设置：
  *              4 个预设风格（玻璃 / 纯净 / 卡片 / 便利贴），点选后一次性写入整套参数。
- *              细粒度滑杆/实时预览因渲染延迟与异常已移除 —— 用户只可在预设间切换。
  */
 
 import { useCallback } from 'react';
@@ -20,8 +19,7 @@ interface StickerSectionProps {
   }) => void;
 }
 
-type PresetId = Exclude<StickerPreset, 'custom'>;
-const PRESETS: { id: PresetId; label: string; desc: string }[] = [
+const PRESETS: { id: StickerPreset; label: string; desc: string }[] = [
   { id: 'glass', label: '玻璃', desc: '半透明 · 高斯模糊' },
   { id: 'pure', label: '纯净', desc: '近实色 · 无模糊' },
   { id: 'card', label: '卡片', desc: '实色 · 外阴影' },
@@ -31,7 +29,7 @@ const PRESETS: { id: PresetId; label: string; desc: string }[] = [
 export function StickerSection({ preset, onUpdateSettings }: StickerSectionProps) {
   // 选中某个预设 → 一次性写入该预设的整套视觉参数
   const applyPreset = useCallback(
-    (id: PresetId) => {
+    (id: StickerPreset) => {
       const values = STICKER_PRESET_VALUES[id];
       onUpdateSettings({
         stickerPreset: id,
@@ -90,20 +88,6 @@ export function StickerSection({ preset, onUpdateSettings }: StickerSectionProps
           );
         })}
       </div>
-
-      {/* 当前预设为自定义时显示标记卡片，避免选中态消失 */}
-      {preset === 'custom' && (
-        <div
-          className="mt-3 flex items-center gap-2 px-3 py-2 rounded-md text-xs"
-          style={{
-            backgroundColor: 'var(--accent-subtle)',
-            border: '1px solid var(--accent)',
-            color: 'var(--accent-pressed)',
-          }}
-        >
-          自定义 · 你已手动调整参数，不再绑定任一预设。
-        </div>
-      )}
     </section>
   );
 }

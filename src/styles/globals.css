@@ -182,7 +182,7 @@
     backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
     -webkit-backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
   }
-  /* 启用外阴影（卡片 / 便利贴预设，或 custom 下勾选「显示外阴影」）。
+  /* 启用外阴影（卡片 / 便利贴预设）。
    * 由 StickerWindow / 设置页预览在 shadow=true 时追加 .sticker-shadow-on 类。 */
   .sticker-shell.sticker-shadow-on {
     box-shadow:
