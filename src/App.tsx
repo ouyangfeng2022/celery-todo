@@ -662,6 +662,7 @@ function App() {
                       style={{ backgroundColor: 'var(--bg-primary)' }}
                     >
                       <AddTodoInput
+                        projectId={activeProjectId}
                         onAdd={(title, priority) => {
                           addTodo(title, priority);
                           // 专注模式下添加完成后收起 composer

@@ -109,3 +109,23 @@ test('切换项目后 todo 列表随之切换', async () => {
   await expect(win.getByText('项目一的任务', { exact: true })).toBeVisible();
   await expect(win.getByText('项目二的任务', { exact: true })).toHaveCount(0);
 });
+
+test('切换项目时输入框草稿跟随项目', async () => {
+  await createProject(win, '项目一');
+  await createProject(win, '项目二');
+
+  const input = win.getByPlaceholder(
+    '添加待办事项...（按 Shift+Enter 换行可批量添加）',
+  );
+
+  // 当前在「项目二」，输入但不提交（仅形成草稿）
+  await input.fill('项目二的草稿');
+
+  // 切到「项目一」→ 输入框应为空
+  await win.getByRole('button', { name: '项目一（拖动以排序）' }).click();
+  await expect(input).toHaveValue('');
+
+  // 切回「项目二」→ 草稿应被恢复
+  await win.getByRole('button', { name: '项目二（拖动以排序）' }).click();
+  await expect(input).toHaveValue('项目二的草稿');
+});

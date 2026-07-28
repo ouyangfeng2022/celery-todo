@@ -10,13 +10,21 @@ import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { PlusIcon } from '../common/Icons';
 import { hasBulkSeparator } from '../../utils/helpers';
 
+/** 每个项目各自的输入草稿（标题 + 优先级） */
+interface Draft {
+  title: string;
+  priority: Priority;
+}
+
 interface AddTodoInputProps {
   onAdd: (title: string, priority: Priority, description?: string) => void;
+  /** 当前所属项目 id —— 草稿按项目隔离，切换项目时输入框内容随之切换 */
+  projectId: string;
   /** 是否聚焦（由快捷键触发） */
   focusSignal?: number;
 }
 
-function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
+function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [showOptions, setShowOptions] = useState(false);
@@ -25,6 +33,9 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   // IME 组字状态：组字过程中的 Enter 不应触发添加（中文输入法选词）
   const isComposingRef = useRef(false);
+  // 每个项目的草稿缓存（仅内存，重启清空）。key 为 projectId。
+  // projectId 为空串（首启 / 项目被删光）时不读写此 Map，避免脏 key。
+  const draftsRef = useRef<Record<string, Draft>>({});
 
   // 快捷键聚焦
   useEffect(() => {
@@ -32,6 +43,17 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
       textareaRef.current?.focus();
     }
   }, [focusSignal]);
+
+  // 切换项目：载入该项目各自的草稿。首次进入某项目时落回空标题 + 默认优先级。
+  // 这里只负责"载入"——保存由 handleTitleChange / handlePriorityChange 在输入时同步写入，
+  // 提交清空也走 handleTitleChange，避免 effect 时序复杂。
+  // projectId 为空串（首启未选定 / 删光项目）时不参与，避免误写到 '' 这个无意义 key。
+  useEffect(() => {
+    if (!projectId) return;
+    const d = draftsRef.current[projectId];
+    setTitle(d?.title ?? '');
+    setPriority(d?.priority ?? 'medium');
+  }, [projectId]);
 
   // 文本框自适应高度：单行时与原 input 一致，多行时自动撑高
   const autosize = useCallback(() => {
@@ -57,13 +79,43 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showOptions]);
 
+  // 写入标题并同步到当前项目的草稿缓存
+  const handleTitleChange = useCallback(
+    (v: string) => {
+      setTitle(v);
+      if (projectId) {
+        const prev = draftsRef.current[projectId];
+        draftsRef.current[projectId] = {
+          title: v,
+          priority: prev?.priority ?? priority,
+        };
+      }
+    },
+    [projectId, priority],
+  );
+
+  // 写入优先级并同步到当前项目的草稿缓存
+  const handlePriorityChange = useCallback(
+    (p: Priority) => {
+      setPriority(p);
+      if (projectId) {
+        const prev = draftsRef.current[projectId];
+        draftsRef.current[projectId] = {
+          title: prev?.title ?? title,
+          priority: p,
+        };
+      }
+    },
+    [projectId, title],
+  );
+
   const handleAdd = useCallback(() => {
     const trimmed = title.trim();
     if (trimmed.length === 0) return;
     onAdd(trimmed, priority);
-    setTitle('');
-    // 保持优先级选择不变，方便连续添加
-  }, [title, priority, onAdd]);
+    // 提交后清空当前项目的标题草稿；优先级保留，方便连续添加。
+    handleTitleChange('');
+  }, [title, priority, onAdd, handleTitleChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -113,7 +165,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
           ref={textareaRef}
           value={title}
           rows={1}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => handleTitleChange(e.target.value)}
           onKeyDown={handleKeyDown}
           onCompositionStart={() => {
             isComposingRef.current = true;
@@ -179,7 +231,7 @@ function AddTodoInputComponent({ onAdd, focusSignal }: AddTodoInputProps) {
                     return (
                       <button
                         key={p}
-                        onClick={() => setPriority(p)}
+                        onClick={() => handlePriorityChange(p)}
                         className="px-2 py-0.5 rounded text-xs font-semibold transition-all"
                         style={{
                           backgroundColor: selected ? `${PRIORITY_SOLID[p]}1f` : 'transparent',
