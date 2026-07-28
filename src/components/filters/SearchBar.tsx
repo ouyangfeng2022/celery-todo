@@ -4,7 +4,7 @@
  */
 
 import { memo, useRef, useEffect } from 'react';
-import { SearchIcon } from '../common/Icons';
+import { SearchIcon, XIcon } from '../common/Icons';
 
 interface SearchBarProps {
   value: string;
@@ -46,14 +46,14 @@ function SearchBarComponent({ value, onChange, focusSignal }: SearchBarProps) {
       {value && (
         <button
           onClick={() => onChange('')}
-          className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors"
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center transition-colors"
           style={{
             backgroundColor: 'var(--bg-hover)',
             color: 'var(--text-tertiary)',
           }}
           aria-label="清除搜索"
         >
-          ×
+          <XIcon size={12} />
         </button>
       )}
     </div>

@@ -147,6 +147,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   { todo, isSelected, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
   ref,
 ) {
+  // 平台相关快捷键提示：Mac 显示 ⌘，Win/Linux 显示 Ctrl
+  const isMac = window.electronAPI?.platform === 'darwin';
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
@@ -270,7 +272,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 className="px-1.5 py-0.5 rounded border"
                 style={{ borderColor: 'var(--border-strong)' }}
               >
-                ⌘+Enter
+                {isMac ? '⌘+Enter' : 'Ctrl+Enter'}
               </kbd>
               <span>保存</span>
               <kbd
