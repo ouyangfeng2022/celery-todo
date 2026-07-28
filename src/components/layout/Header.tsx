@@ -45,6 +45,10 @@ interface HeaderProps {
   //    设置页等浮层语境传入:点搜索按钮时改由外部接管(例如先关浮层再聚焦主搜索),
   //    因为浮层会遮盖主页面 TodoList,内置搜索面板「能输入、看不到结果」。 ===
   onSearchActivate?: () => void;
+  // === 是否渲染搜索按钮(可选,默认 true)。
+  //    搜索目标永远是主页面的 TodoList,子页面(设置页)里搜索无意义,
+  //    传 false 直接不渲染搜索按钮,比让按钮点了再跳转更干净。 ===
+  showSearch?: boolean;
 }
 
 type ToolAction = 'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close';
@@ -101,6 +105,7 @@ function HeaderComponent({
   backLabel = '返回',
   backTitle = '返回',
   onSearchActivate,
+  showSearch = true,
 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
@@ -358,13 +363,12 @@ function HeaderComponent({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                 transition={{ duration: 0.14 }}
-                className="titlebar-no-drag pointer-events-auto fixed z-[60] w-72 rounded-xl border p-1.5"
+                // 仅作为 portal 定位容器,卡片样式交给 SearchBar 自身渲染,
+                // 否则会与 SearchBar 的 claude-card 形成双层卡片底。
+                className="titlebar-no-drag pointer-events-auto fixed z-[60] w-72"
                 style={{
                   left: searchPos.left,
                   top: searchPos.top,
-                  backgroundColor: 'var(--bg-tertiary)',
-                  borderColor: 'var(--border-color)',
-                  boxShadow: 'var(--shadow-md)',
                 }}
               >
                 <SearchBar
@@ -387,8 +391,10 @@ function HeaderComponent({
       <div aria-hidden="true" className="titlebar-drag pointer-events-auto h-full flex-1" />
 
       {/* 搜索属于侧边栏标题行，而不是顶部工具组。Header 容器允许溢出，
-          因此可向下定位到下一行；侧边栏收起时随侧边栏内容一起隐藏。 */}
-      {sidebarOpen && (
+          因此可向下定位到下一行；侧边栏收起时随侧边栏内容一起隐藏。
+          设置页等子页面传 showSearch={false} 不渲染搜索按钮 —— 搜索目标永远是
+          主页面 TodoList,在子页面浮层里搜索结果会被遮盖、无意义。 */}
+      {sidebarOpen && showSearch && (
         <button
           ref={searchButtonRef}
           className={`${iconButtonClass} absolute right-3 top-[calc(100%+8px)] z-40`}
