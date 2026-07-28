@@ -54,6 +54,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onOpenSettings={onOpenSettings}
         onOpenHistory={onOpenHistory}
         onOpenHelp={onOpenHelp}
+        onNewTodoInProject={vi.fn()}
         incompleteCounts={{}}
       />,
     );

@@ -12,6 +12,7 @@ import {
   closeApp,
   addTodo,
   createProject,
+  openProjectContextMenu,
   openSettingsSection,
   installDownloadCapture,
   getLastDownload,
@@ -39,10 +40,9 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   await createProject(win, '导出测试');
   await addTodo(win, '被导出任务');
 
-  const projectBtn = win.getByRole('button', { name: '导出测试（拖动以排序）' }).first();
-  const projectRow = projectBtn.locator('xpath=ancestor::div[contains(@class,"group")][1]');
-  await projectRow.hover();
-  await projectRow.getByRole('button', { name: '导出项目' }).click();
+  // 「导出项目」入口在项目行的右键菜单（原 hover 按钮已迁移）
+  await openProjectContextMenu(win, '导出测试');
+  await win.getByRole('button', { name: '导出项目', exact: true }).click();
 
   const dl = await getLastDownload(win);
   expect(dl.filename).toBe('导出测试-export.json');

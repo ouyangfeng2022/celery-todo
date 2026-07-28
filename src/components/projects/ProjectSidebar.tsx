@@ -27,8 +27,6 @@ import type { DownloadProgress, UpdateInfoLite, UpdateStatus } from '../../hooks
 import type { SettingsSectionId } from '../settings/SettingsPanel';
 import {
   PlusIcon,
-  TrashIcon,
-  EditIcon,
   DownloadIcon,
   ChevronRightIcon,
   RefreshIcon,
@@ -38,6 +36,7 @@ import {
   GithubIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
 import { Logo } from '../common/Logo';
 
 interface ProjectSidebarProps {
@@ -61,6 +60,8 @@ interface ProjectSidebarProps {
   onOpenHistory: () => void;
   /** 打开帮助与反馈（GitHub README） */
   onOpenHelp: () => void;
+  /** 在指定项目下新建事项：切换到该项目并唤出新建事项输入框 */
+  onNewTodoInProject: (projectId: string) => void;
   /** 进入简洁模式，并创建当前项目的浮窗 */
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
@@ -217,9 +218,10 @@ interface SortableProjectItemProps {
   onEditNameChange: (value: string) => void;
   onConfirmRename: () => void;
   onCancelRename: () => void;
-  onStartRename: (project: Project) => void;
-  onExport: (id: string) => void;
-  onDelete: (project: Project) => void;
+  /** 右键唤出上下文菜单（导出 / 重命名 / 删除） */
+  onContextMenu: (e: React.MouseEvent, project: Project) => void;
+  /** 在该项目下新建事项 */
+  onNewTodo: (project: Project) => void;
 }
 
 function SortableProjectItem({
@@ -232,9 +234,8 @@ function SortableProjectItem({
   onEditNameChange,
   onConfirmRename,
   onCancelRename,
-  onStartRename,
-  onExport,
-  onDelete,
+  onContextMenu,
+  onNewTodo,
 }: SortableProjectItemProps) {
   // 用 useSortable（而非 useDraggable）：前者同时注册 droppable，
   // 才能与 SortableContext 配合产出 over≠null，从而触发 onDragEnd 排序。
@@ -248,11 +249,19 @@ function SortableProjectItem({
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 50 : undefined,
     touchAction: 'none',
-    backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group relative rounded-md transition-colors">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group relative rounded-md transition-colors"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu(e, project);
+      }}
+    >
       {isEditing ? (
         <input
           type="text"
@@ -276,7 +285,11 @@ function SortableProjectItem({
           onClick={() => onSwitch(project.id)}
           {...attributes}
           {...listeners}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md cursor-grab active:cursor-grabbing"
+          // 主要操作是「点击切换项目」（光标 pointer），仅在按下拖拽时短暂变 grabbing。
+          // 背景：选中态用 accent-subtle 强调色（且 hover 不变）；未选中时 hover 才出现 bg-hover。
+          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md cursor-pointer active:cursor-grabbing transition-colors ${
+            isActive ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--bg-hover)]'
+          }`}
           style={{
             color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: isActive ? 500 : 400,
@@ -296,44 +309,20 @@ function SortableProjectItem({
         </button>
       )}
 
-      {/* 悬浮操作按钮 */}
+      {/* 悬浮操作按钮：在该项目下新建事项。其余操作（导出/重命名/删除）通过右键菜单访问 */}
       {!isEditing && (
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onExport(project.id);
+              onNewTodo(project);
             }}
             className="p-1 rounded hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-tertiary)' }}
-            aria-label="导出项目"
-            title="导出项目"
+            style={{ color: isActive ? 'var(--accent)' : 'var(--text-tertiary)' }}
+            aria-label="新建事项"
+            title="新建事项"
           >
-            <DownloadIcon size={13} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onStartRename(project);
-            }}
-            className="p-1 rounded hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-tertiary)' }}
-            aria-label="重命名"
-            title="重命名"
-          >
-            <EditIcon size={13} />
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(project);
-            }}
-            className="p-1 rounded hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-tertiary)' }}
-            aria-label="删除项目"
-            title="删除项目"
-          >
-            <TrashIcon size={13} />
+            <PlusIcon size={14} />
           </button>
         </div>
       )}
@@ -359,6 +348,7 @@ function ProjectSidebarComponent({
   onOpenSettings,
   onOpenHistory,
   onOpenHelp,
+  onNewTodoInProject,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -368,6 +358,8 @@ function ProjectSidebarComponent({
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  // 项目项右键菜单的弹出位置与目标项目；为 null 时不渲染菜单
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; project: Project } | null>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
   // 设置菜单弹出层与其触发按钮的引用，用于判断点击是否落在设置区域外部
   const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -428,6 +420,43 @@ function ProjectSidebarComponent({
     }
     setEditingId(null);
   }, [editingId, editName, onRename]);
+
+  // 项目项右键菜单：导出 / 新建事项 / 重命名 / 删除（与原 hover 三按钮一致）
+  const handleItemContextMenu = useCallback((e: React.MouseEvent, project: Project) => {
+    setCtxMenu({ x: e.clientX, y: e.clientY, project });
+  }, []);
+
+  // 右键菜单项：在每次渲染时按当前目标项目构造，确保回调拿到最新引用
+  const ctxMenuItems: ContextMenuItem[] = ctxMenu
+    ? [
+        {
+          label: '新建事项',
+          onClick: () => {
+            onNewTodoInProject(ctxMenu.project.id);
+          },
+        },
+        {
+          label: '导出项目',
+          onClick: () => {
+            onExport(ctxMenu.project.id);
+          },
+        },
+        {
+          label: '重命名',
+          onClick: () => {
+            handleStartRename(ctxMenu.project);
+          },
+        },
+        { separator: true },
+        {
+          label: '删除项目',
+          danger: true,
+          onClick: () => {
+            setDeleteTarget(ctxMenu.project);
+          },
+        },
+      ]
+    : [];
 
   // 拖拽排序：distance:5 区分点击与拖拽，避免影响项目切换
   const sensors = useSensors(
@@ -551,9 +580,8 @@ function ProjectSidebarComponent({
                     onEditNameChange={setEditName}
                     onConfirmRename={handleConfirmRename}
                     onCancelRename={() => setEditingId(null)}
-                    onStartRename={handleStartRename}
-                    onExport={onExport}
-                    onDelete={setDeleteTarget}
+                    onContextMenu={handleItemContextMenu}
+                    onNewTodo={(p) => onNewTodoInProject(p.id)}
                   />
                 );
               })}
@@ -659,6 +687,16 @@ function ProjectSidebarComponent({
         }}
         onCancel={() => setDeleteTarget(null)}
       />
+
+      {/* 项目项右键菜单：替代原 hover 三按钮 */}
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          items={ctxMenuItems}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </aside>
   );
 }

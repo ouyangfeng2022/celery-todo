@@ -269,6 +269,17 @@ function App() {
     setNewTodoFocusSignal((n) => n + 1);
   }, [focusMode]);
 
+  // 在指定项目下新建事项：先切换到该项目（AddTodoInput 通过 store 的 currentProjectId
+  // 决定写入哪个项目），再唤出输入框。切换项目会触发主区重渲染，需等下一帧再聚焦输入框。
+  const handleNewTodoInProject = useCallback(
+    (projectId: string) => {
+      switchProject(projectId);
+      // 切换项目后聚焦信号要排到 loadProject 之后，故延迟一帧
+      requestAnimationFrame(() => focusNewTodo());
+    },
+    [switchProject, focusNewTodo],
+  );
+
   // === 键盘快捷键 ===
   useKeyboardShortcuts({
     onNewTodo: focusNewTodo,
@@ -580,6 +591,7 @@ function App() {
                 onOpenHelp={() =>
                   window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
                 }
+                onNewTodoInProject={handleNewTodoInProject}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}
               />

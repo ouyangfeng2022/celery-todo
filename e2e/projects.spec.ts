@@ -2,7 +2,14 @@
  * 项目：新建、重命名、删除、切换、删除最后一个后列表为空、切换后 todo 列表随之切换。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, createProject, type LaunchedApp } from './helpers';
+import {
+  launchApp,
+  closeApp,
+  addTodo,
+  createProject,
+  openProjectContextMenu,
+  type LaunchedApp,
+} from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -38,15 +45,10 @@ test('新建项目时空标题不创建（Esc 取消）', async () => {
 
 test('重命名项目后新名称生效', async () => {
   await createProject(win, '旧名');
-  // 定位项目行（div.group.relative.rounded-md 是 SortableProjectItem 根）
-  const projectRow = win
-    .locator('div.group.relative.rounded-md')
-    .filter({ has: win.getByRole('button', { name: '旧名（拖动以排序）' }) });
-  await projectRow.hover();
-  await win.waitForTimeout(200);
 
-  // 重命名按钮在 hover 时显示（opacity-0 → 100），force 绕过可见性
-  await projectRow.getByRole('button', { name: '重命名', exact: true }).click({ force: true });
+  // 「重命名」入口在项目行的右键菜单（原 hover 按钮已迁移）
+  await openProjectContextMenu(win, '旧名');
+  await win.getByRole('button', { name: '重命名', exact: true }).click();
 
   // 编辑态：原 button 被替换为 autoFocus input。编辑 input 是当前 activeElement，
   // 全选后直接输入替换。
@@ -62,11 +64,8 @@ test('重命名项目后新名称生效', async () => {
 test('删除非默认项目：二次确认后项目消失', async () => {
   await createProject(win, '待删除');
 
-  const projectRow = win
-    .locator('div.group.relative.rounded-md')
-    .filter({ has: win.getByRole('button', { name: '待删除（拖动以排序）' }) });
-  await projectRow.hover();
-  await projectRow.getByRole('button', { name: '删除项目', exact: true }).click({ force: true });
+  await openProjectContextMenu(win, '待删除');
+  await win.getByRole('button', { name: '删除项目', exact: true }).click();
 
   // ConfirmDialog 打开，标题"删除项目"。按 Enter 确认（dialog 监听 Enter）
   await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();
@@ -80,11 +79,8 @@ test('删除非默认项目：二次确认后项目消失', async () => {
 test('删除最后一个项目后列表为空，主区显示"请创建项目"', async () => {
   await createProject(win, '唯一项目');
 
-  const projectRow = win
-    .locator('div.group.relative.rounded-md')
-    .filter({ has: win.getByRole('button', { name: '唯一项目（拖动以排序）' }) });
-  await projectRow.hover();
-  await projectRow.getByRole('button', { name: '删除项目', exact: true }).click({ force: true });
+  await openProjectContextMenu(win, '唯一项目');
+  await win.getByRole('button', { name: '删除项目', exact: true }).click();
 
   // ConfirmDialog：按 Enter 确认
   await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();

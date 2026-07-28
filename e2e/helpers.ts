@@ -195,6 +195,28 @@ export async function hoverRow(row: ReturnType<Page['locator']>): Promise<void> 
   await row.hover();
 }
 
+/**
+ * 定位侧边栏某个项目行（SortableProjectItem 根 div.group.relative.rounded-md）。
+ * 用于在行范围内查找该项目的悬浮「新建事项」按钮，或对项目行触发右键菜单。
+ */
+export function projectRow(win: Page, name: string) {
+  return win
+    .locator('div.group.relative.rounded-md')
+    .filter({ has: win.getByRole('button', { name: `${name}（拖动以排序）` }) });
+}
+
+/**
+ * 在项目行上唤出右键上下文菜单，并等待菜单项可见。
+ * 项目项的「导出 / 重命名 / 删除」已迁移到右键菜单，不再有 hover 按钮。
+ */
+export async function openProjectContextMenu(win: Page, name: string) {
+  const row = projectRow(win, name);
+  await row.click({ button: 'right' });
+  // ContextMenu 渲染在 portal，菜单项是 button。等待任一菜单项可见作为就绪信号
+  await win.getByRole('button', { name: '重命名', exact: true }).waitFor({ state: 'visible' });
+  return row;
+}
+
 /** 从侧边栏左下角设置菜单进入设置页面（默认通用分区）。
  *  设置页根 <section aria-label="设置">（SettingsPanel.tsx）作为稳定锚点：
  *  它只在设置页打开时存在，与具体子分区（通用/数据/...）无关。 */
