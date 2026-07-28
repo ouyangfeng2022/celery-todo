@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+## [v2.8.0] - 2026-07-28
+### Added
+- 支持切换项目时保留输入框草稿
+- 新增历史记录视图与导出工具，并精简贴图预设
+
+### Fixed
+- 项目切换时筛选条件同步派生，消除 useEffect 滞后一帧导致的残留问题
+
 ## [v2.7.1] - 2026-07-28
 ### Added
 - 支持导出归档历史为 JSON 快照
@@ -273,3 +281,5 @@
 [v2.7.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.0
 
 [v2.7.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.1
+
+[v2.8.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.8.0
