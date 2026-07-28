@@ -243,10 +243,6 @@ function SettingsPanelComponent({
                 {activeSection === 'sticker' && (
                   <StickerSection
                     preset={settings.stickerPreset}
-                    radius={settings.stickerRadius}
-                    blur={settings.stickerBlur}
-                    opacity={settings.stickerOpacity}
-                    shadow={settings.stickerShadow}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}
