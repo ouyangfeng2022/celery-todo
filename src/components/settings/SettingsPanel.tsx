@@ -2,17 +2,18 @@
  * @file SettingsPanel - 设置页面（页面壳 + 左侧导航 + 右侧内容路由）
  * @description
  *   使用与主界面相同的「暖橙 T 型框架 + 圆角纸张工作区」：
- *     - 左侧 280px 品牌栏与分类导航
- *     - 顶部品牌标题栏，为原生窗口按钮预留空间
+ *     - 顶部行直接复用主页面 <Header/> 工具组(侧栏开关/项目/数据/窗口菜单/搜索),
+ *       仅在最左加返回箭头,标题区显示当前分类名 —— 与主页面顶部栏像素级一致。
+ *     - 左侧 280px 分类导航
  *     - 右侧圆角工作区承载设置卡片
- *   各分类的具体 UI 拆到 ./sections/ 下，本文件只负责弹窗骨架、导航与子页面分发。
- *   props 契约与之前完全一致，App.tsx 接线无需改动。
+ *   各分类的具体 UI 拆到 ./sections/ 下,本文件只负责弹窗骨架、导航与子页面分发。
  */
 
 import { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AppSettings, Project } from '../../types';
 import * as Icons from '../common/Icons';
+import { Header } from '../layout/Header';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
@@ -36,6 +37,16 @@ interface SettingsPanelProps {
   onExportCsv: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
+  // ===== 顶部 Header 工具组(与主页面 App.tsx 接线一致) =====
+  sidebarOpen: boolean;
+  search: string;
+  onToggleSidebar: () => void;
+  onSearchChange: (value: string) => void;
+  onCreateProject: () => void;
+  onEnterCompactMode: () => void;
+  onCloseWindow: () => void;
+  /** 点 Header 搜索按钮时由外部接管(设置页浮层会遮盖主搜索结果,故交回主页面)。 */
+  onSearchActivate?: () => void;
   // ===== 历史记录（归档）页面所需 =====
   /** 全部项目（历史记录页解析项目名标签） */
   projects: Project[];
@@ -80,6 +91,14 @@ function SettingsPanelComponent({
   onExportCsv,
   onImportAll,
   onResetData,
+  sidebarOpen,
+  search,
+  onToggleSidebar,
+  onSearchChange,
+  onCreateProject,
+  onEnterCompactMode,
+  onCloseWindow,
+  onSearchActivate,
   projects,
   onRestoreTodo,
   onPermanentDeleteTodo,
@@ -111,6 +130,17 @@ function SettingsPanelComponent({
     [onClose],
   );
 
+  // 导入统一「先关设置页」:无论从 Header「数据」菜单还是 DataSection 触发,
+  // 导入成功后的数据刷新反馈都在主页面(被设置页浮层遮盖),故先关设置页让结果可见。
+  // Header 的 onImport 与 DataSection 的 onImportAll 共用此包装。
+  const handleImportWithClose = useCallback(
+    (file: File) => {
+      onClose();
+      onImportAll(file);
+    },
+    [onClose, onImportAll],
+  );
+
   // 导航项（desktop 仅桌面端可见）
   const navItems = NAV_ITEMS.filter((item) => item.id !== 'desktop' || window.electronAPI);
   const activeNavItem = navItems.find((item) => item.id === activeSection) ?? navItems[0];
@@ -127,46 +157,56 @@ function SettingsPanelComponent({
           onKeyDown={handleKeyDown}
           aria-label="设置"
         >
-          {/* 顶部品牌栏：宽度、底色和原生窗口按钮留白均与主页面一致。
-              左侧 280px 品牌入口(返回 + wordmark) 与右侧分类标题同高(≈ 48px),
-              与主页面顶部栏对齐 —— 单行标题,无 eyebrow 小标。 */}
+          {/* 顶部行:复用主页面 <Header/> 工具组 + 分类标题区,与主页面顶部栏像素级一致。
+              左 280px 容器挂 Header(onBack 返回箭头排在最左侧),
+              右侧标题区按主页面标题区结构(拖拽区 + h1 + 右侧拖拽留白),
+              仅把项目名换成当前分类名。 */}
           <div className="flex flex-shrink-0">
-            <div className="relative flex h-12 w-[280px] flex-shrink-0 items-center px-3">
-              <button
-                onClick={onClose}
-                className="titlebar-no-drag flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-active)]"
-                style={{ color: 'var(--text-secondary)' }}
-                aria-label="返回待办"
-                title="返回待办 (Esc)"
-              >
-                <Icons.ChevronLeftIcon size={16} />
-              </button>
-              <span
-                className="brand-wordmark ml-3 flex items-center gap-[0.35em] truncate text-base"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                <span className="italic">Celery</span>
-                <span
-                  aria-hidden="true"
-                  className="h-[5px] w-[5px] flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: 'var(--accent)' }}
-                />
-                <span>Todo</span>
-              </span>
+            <div className="relative h-full w-[280px] flex-shrink-0">
+              <Header
+                onBack={onClose}
+                backLabel="返回待办"
+                backTitle="返回待办 (Esc)"
+                sidebarOpen={sidebarOpen}
+                search={search}
+                // 设置页 Header 不响应外部 Ctrl+F 搜索信号 —— 设置页里搜索结果在主页面
+                // TodoList(被浮层遮盖),搜索统一经 onSearchActivate 交回主页面处理。
+                searchFocusSignal={0}
+                onSearchActivate={onSearchActivate}
+                onToggleSidebar={onToggleSidebar}
+                onSearchChange={onSearchChange}
+                onImport={handleImportWithClose}
+                onExportAll={onExportAll}
+                onExportCsv={onExportCsv}
+                onCreateProject={onCreateProject}
+                onEnterCompactMode={onEnterCompactMode}
+                onCloseWindow={onCloseWindow}
+              />
             </div>
 
-            <header className="relative flex h-12 min-w-0 flex-1 items-center px-7 pr-[152px]">
+            {/*
+              标题区:结构与主页面 App.tsx 标题区对齐。pr-[152px] 给原生 overlay 让位,
+              拖拽区铺满标题左侧到原生按钮之间的空白。背景 --bg-frame,与 Header 合成完整顶部栏。
+            */}
+            <div
+              className="relative flex h-full flex-1 items-center gap-3 px-7 pr-[152px]"
+              style={{ backgroundColor: 'var(--bg-frame)' }}
+            >
               <div
                 aria-hidden="true"
-                className="titlebar-drag pointer-events-auto absolute inset-y-0 left-0 right-[152px]"
+                className="titlebar-drag pointer-events-auto absolute inset-y-0 right-[152px]"
+                style={{ left: '0px' }}
               />
-              <h1
-                className="titlebar-no-drag relative z-10 min-w-0 truncate text-lg font-serif font-semibold leading-tight"
-                style={{ color: 'var(--text-primary)' }}
-              >
-                {activeNavItem.label}
-              </h1>
-            </header>
+              <div className="titlebar-no-drag relative z-10 min-w-0">
+                <h1
+                  className="truncate text-lg font-serif font-semibold leading-tight"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {activeNavItem.label}
+                </h1>
+              </div>
+              <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5" />
+            </div>
           </div>
 
           <div className="flex min-h-0 flex-1">
@@ -260,7 +300,7 @@ function SettingsPanelComponent({
                   <DataSection
                     onExportAll={onExportAll}
                     onExportCsv={onExportCsv}
-                    onImportAll={onImportAll}
+                    onImportAll={handleImportWithClose}
                     onResetData={onResetData}
                   />
                 )}

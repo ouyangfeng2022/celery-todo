@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SearchBar } from '../filters/SearchBar';
 import {
+  ChevronLeftIcon,
   DownloadIcon,
   FolderPlusIcon,
   FocusIcon,
@@ -35,6 +36,15 @@ interface HeaderProps {
   onCreateProject: () => void;
   onEnterCompactMode: () => void;
   onCloseWindow: () => void;
+  // === 返回按钮(可选)。设置页等子页面传入,渲染在最左侧;主页面不传则不渲染 ===
+  onBack?: () => void;
+  backLabel?: string;
+  backTitle?: string;
+  // === 搜索激活钩子(可选)。
+  //    主页面不传:点搜索按钮打开 Header 内置搜索面板(默认行为)。
+  //    设置页等浮层语境传入:点搜索按钮时改由外部接管(例如先关浮层再聚焦主搜索),
+  //    因为浮层会遮盖主页面 TodoList,内置搜索面板「能输入、看不到结果」。 ===
+  onSearchActivate?: () => void;
 }
 
 type ToolAction = 'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close';
@@ -87,6 +97,10 @@ function HeaderComponent({
   onCreateProject,
   onEnterCompactMode,
   onCloseWindow,
+  onBack,
+  backLabel = '返回',
+  backTitle = '返回',
+  onSearchActivate,
 }: HeaderProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [manualSearchFocusSignal, setManualSearchFocusSignal] = useState(0);
@@ -240,6 +254,19 @@ function HeaderComponent({
         内部把下拉菜单钉在拖拽层之上。
       */}
       <div className="titlebar-no-drag relative z-30 flex items-center gap-0.5">
+        {/* 返回按钮:仅子页面(如设置页)传入 onBack 时渲染,排在侧栏开关左侧。
+            主页面不传 → 不渲染,工具组与原有视觉零差异。 */}
+        {onBack && (
+          <button
+            className={iconButtonClass}
+            style={{ color: 'var(--text-secondary)' }}
+            aria-label={backLabel}
+            title={backTitle}
+            onClick={onBack}
+          >
+            <ChevronLeftIcon size={16} />
+          </button>
+        )}
         <button
           className={iconButtonClass}
           style={{ color: 'var(--text-secondary)' }}
@@ -370,6 +397,12 @@ function HeaderComponent({
           aria-expanded={searchOpen}
           title="搜索事项 (Ctrl+F)"
           onClick={() => {
+            // 浮层语境(如设置页)传入 onSearchActivate 时,搜索改由外部接管 ——
+            // 内置搜索面板虽能弹开,但结果在主页面 TodoList 会被浮层遮盖。
+            if (onSearchActivate) {
+              onSearchActivate();
+              return;
+            }
             setOpenGroup(null);
             setSubmenuPos(null);
             setSearchOpen((value) => {

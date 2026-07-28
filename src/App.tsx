@@ -274,6 +274,9 @@ function App() {
     onNewTodo: focusNewTodo,
     onSearch: () => {
       // 搜索入口位于侧边栏标题行；侧边栏收起时先展开，再打开并聚焦搜索。
+      // 设置页打开时搜索结果在主页面 TodoList（被设置页浮层遮盖），故先关设置页，
+      // 让搜索框与结果都在主页面语境可见。
+      if (settingsOpen) setSettingsOpen(false);
       setSidebarOpen(true);
       setSearchFocusSignal((n) => n + 1);
     },
@@ -748,6 +751,34 @@ function App() {
         onExportCsv={handleExportCsv}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
+        // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====
+        // 设置页是全屏浮层,遮盖主页面 TodoList/侧栏。Header 工具组里凡「结果落在
+        // 主页面」的操作(搜索/导入/新建项目/简洁模式),都先关设置页再触发,
+        // 让操作与反馈都在主页面语境发生,避免「点了看不见」。
+        // 注意:导入/导出回调与 DataSection 共用(onImportAll/onExportAll/onExportCsv),
+        // 「先关设置页」的包装在 SettingsPanel 内部统一处理,App 只提供单一来源。
+        sidebarOpen={sidebarOpen}
+        search={search}
+        onToggleSidebar={() => setSidebarOpen((value) => !value)}
+        onSearchChange={changeSearch}
+        // 搜索:交回主页面聚焦搜索框(结果在主页面 TodoList)。
+        onSearchActivate={() => {
+          setSettingsOpen(false);
+          setSidebarOpen(true);
+          setSearchFocusSignal((n) => n + 1);
+        }}
+        // 新建项目 / 进入简洁模式:同上,先关设置页再触发。
+        onCreateProject={() => {
+          setSettingsOpen(false);
+          setSidebarOpen(true);
+          setCreateProjectSignal((signal) => signal + 1);
+        }}
+        onEnterCompactMode={() => {
+          setSettingsOpen(false);
+          void window.electronAPI?.createSticker(activeProjectId);
+        }}
+        onCloseWindow={() => window.close()}
+        // ===== 历史记录（归档）页面所需 =====
         projects={projects}
         onRestoreTodo={restoreTodo}
         onPermanentDeleteTodo={permanentlyDelete}

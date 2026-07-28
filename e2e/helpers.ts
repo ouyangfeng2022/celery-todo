@@ -208,15 +208,15 @@ export async function openSettings(win: Page): Promise<void> {
  * 打开设置面板并切到指定子页面（左侧分类导航）。默认进入「通用」，
  * 数据导入/导出/重置等在「数据」下，需先切过去再操作对应按钮/文案。
  *
- * 实现注意：设置页是全屏覆盖层（fixed inset-0），主界面 Header/侧栏的
- * DOM 仍在但被遮挡——其上的同名按钮（如 Header 的「数据」分组按钮）
- * 仍参与 accessible name 计算，会触发 Playwright strict mode 多匹配。
- * 因此把分区按钮的搜索范围限定在设置页 region 内。
+ * 实现注意：设置页顶部行复用了主界面 <Header/> 工具组,其「项目/数据/窗口」
+ * 分组按钮也在设置页 region 内,与左侧分类导航的同名按钮(如「数据」分类)
+ * accessible name 撞车。故把分区按钮的搜索范围进一步限定在分类导航
+ * <nav aria-label="设置分类"> 内,而不是整个设置 region。
  */
 export async function openSettingsSection(win: Page, section: string): Promise<void> {
   await openSettings(win);
-  const settingsRegion = win.getByRole('region', { name: '设置' });
-  await settingsRegion.getByRole('button', { name: section, exact: true }).click();
+  const settingsNav = win.getByRole('navigation', { name: '设置分类' });
+  await settingsNav.getByRole('button', { name: section, exact: true }).click();
 }
 
 /**
