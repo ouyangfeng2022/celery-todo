@@ -761,12 +761,6 @@ function App() {
         search={search}
         onToggleSidebar={() => setSidebarOpen((value) => !value)}
         onSearchChange={changeSearch}
-        // 搜索:交回主页面聚焦搜索框(结果在主页面 TodoList)。
-        onSearchActivate={() => {
-          setSettingsOpen(false);
-          setSidebarOpen(true);
-          setSearchFocusSignal((n) => n + 1);
-        }}
         // 新建项目 / 进入简洁模式:同上,先关设置页再触发。
         onCreateProject={() => {
           setSettingsOpen(false);

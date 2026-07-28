@@ -45,8 +45,6 @@ interface SettingsPanelProps {
   onCreateProject: () => void;
   onEnterCompactMode: () => void;
   onCloseWindow: () => void;
-  /** 点 Header 搜索按钮时由外部接管(设置页浮层会遮盖主搜索结果,故交回主页面)。 */
-  onSearchActivate?: () => void;
   // ===== 历史记录（归档）页面所需 =====
   /** 全部项目（历史记录页解析项目名标签） */
   projects: Project[];
@@ -98,7 +96,6 @@ function SettingsPanelComponent({
   onCreateProject,
   onEnterCompactMode,
   onCloseWindow,
-  onSearchActivate,
   projects,
   onRestoreTodo,
   onPermanentDeleteTodo,
@@ -158,21 +155,19 @@ function SettingsPanelComponent({
           aria-label="设置"
         >
           {/* 顶部行:复用主页面 <Header/> 工具组 + 分类标题区,与主页面顶部栏像素级一致。
-              左 280px 容器挂 Header(onBack 返回箭头排在最左侧),
+              左 280px 容器挂 Header(与主页面完全相同的工具组,不再有返回箭头),
               右侧标题区按主页面标题区结构(拖拽区 + h1 + 右侧拖拽留白),
-              仅把项目名换成当前分类名。 */}
+              仅把项目名换成当前分类名。
+              返回按钮改放在左侧导航栏顶部(原"设置"二字位置)。 */}
           <div className="flex flex-shrink-0">
             <div className="relative h-full w-[280px] flex-shrink-0">
               <Header
-                onBack={onClose}
-                backLabel="返回待办"
-                backTitle="返回待办 (Esc)"
                 sidebarOpen={sidebarOpen}
                 search={search}
-                // 设置页 Header 不响应外部 Ctrl+F 搜索信号 —— 设置页里搜索结果在主页面
-                // TodoList(被浮层遮盖),搜索统一经 onSearchActivate 交回主页面处理。
+                // 设置页里搜索结果会落回主页面 TodoList(被浮层遮盖),搜索无意义,
+                // 故既不渲染搜索按钮,也不响应外部搜索信号。
+                showSearch={false}
                 searchFocusSignal={0}
-                onSearchActivate={onSearchActivate}
                 onToggleSidebar={onToggleSidebar}
                 onSearchChange={onSearchChange}
                 onImport={handleImportWithClose}
@@ -215,11 +210,20 @@ function SettingsPanelComponent({
               className="flex w-[280px] flex-shrink-0 flex-col overflow-y-auto px-3 pb-4 pt-1"
               aria-label="设置分类"
             >
-              <div className="mb-2 flex items-center justify-between px-2">
-                <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                  设置
+              {/* 返回按钮:复用原"设置"二字的位置,作为左侧导航栏的入口动作。
+                  用整行按钮而非纯图标,保留与下方导航项一致的视觉节奏。 */}
+              <button
+                onClick={onClose}
+                className="titlebar-no-drag mb-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all hover:bg-[var(--bg-active)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-label="返回待办"
+                title="返回待办 (Esc)"
+              >
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg">
+                  <Icons.ChevronLeftIcon size={16} />
                 </span>
-              </div>
+                <span className="font-semibold">返回</span>
+              </button>
               <div className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = item.icon;
