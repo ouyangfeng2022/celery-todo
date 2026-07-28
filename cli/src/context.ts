@@ -13,6 +13,7 @@
  */
 
 import { closeDatabase, openDatabase, resolveMode, type Mode } from './db';
+import { closeIpc } from './ipc';
 import { ensureSafeToWrite } from './process-check';
 import { resolveDbPath } from './storage';
 
@@ -88,8 +89,11 @@ export function getRuntime(): Runtime {
 }
 
 /**
- * 包装命令动作：统一错误捕获 + 数据库关闭 + 退出码。
+ * 包装命令动作：统一错误捕获 + 数据库关闭 + IPC 关闭 + 退出码。
  * 每个命令只关心业务，错误直接 throw。
+ *
+ * 必须同时关闭 direct 模式的数据库连接与 ipc 模式的长连接 socket，
+ * 否则任一句柄都会让 Node 事件循环挂住、命令结束后无法自然退出。
  */
 export function withRuntime<T extends (...args: never[]) => unknown>(fn: T): T {
   const wrapped = (...args: Parameters<T>): ReturnType<T> => {
@@ -97,15 +101,20 @@ export function withRuntime<T extends (...args: never[]) => unknown>(fn: T): T {
       const result = fn(...args);
       // 异步命令：挂载 finally 关库
       if (result instanceof Promise) {
-        return result.finally(() => closeDatabase()) as unknown as ReturnType<T>;
+        return result.finally(() => {
+          closeDatabase();
+          closeIpc();
+        }) as unknown as ReturnType<T>;
       }
       closeDatabase();
+      closeIpc();
       return result as ReturnType<T>;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('\x1b[31m错误:\x1b[39m ' + msg);
       process.exitCode = 1;
       closeDatabase();
+      closeIpc();
       return undefined as unknown as ReturnType<T>;
     }
   };
