@@ -45,7 +45,7 @@ interface SettingsPanelProps {
   onCreateProject: () => void;
   onEnterCompactMode: () => void;
   onCloseWindow: () => void;
-  // ===== 历史记录（归档）页面所需 =====
+  // ===== 已归档事项页面所需 =====
   /** 全部项目（历史记录页解析项目名标签） */
   projects: Project[];
   /** 恢复归档事项 */
@@ -74,7 +74,7 @@ const NAV_ITEMS: { id: SettingsSectionId; label: string; icon: typeof Icons.Sett
   { id: 'sticker', label: '贴图', icon: Icons.StickerIcon },
   { id: 'desktop', label: '桌面', icon: Icons.MonitorIcon },
   { id: 'data', label: '数据', icon: Icons.FolderIcon },
-  { id: 'history', label: '历史记录', icon: Icons.ArchiveIcon },
+  { id: 'history', label: '已归档事项', icon: Icons.ArchiveIcon },
   { id: 'shortcuts', label: '快捷键', icon: Icons.KeyboardIcon },
   { id: 'about', label: '关于', icon: Icons.GithubIcon },
 ];

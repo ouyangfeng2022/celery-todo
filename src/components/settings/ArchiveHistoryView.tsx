@@ -1,39 +1,35 @@
 /**
- * @file ArchiveHistoryView - 历史记录视图（HistoryPanel 弹窗的正文）
- * @description 分页展示归档事项（跨项目），支持恢复、永久删除、清空全部归档。
- *              归档永久保留，不自动清除——唯一删除途径是本视图的手动操作。
- *              无限滚动：滚动到列表底部附近时通过 IntersectionObserver 自动触发 onLoadMore。
- *              数据所有权与分页状态由父组件 HistoryPanel 管理，本组件只负责渲染 + 触发加载。
+ * @file ArchiveHistoryView - 已归档事项视图
+ * @description 按项目归类展示归档事项，支持搜索、筛选、恢复与永久删除。
  */
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeletedTodo, Project } from '../../types';
 import { formatRelativeTime } from '../../utils/helpers';
-import { RestoreIcon, TrashIcon, InboxIcon, DownloadIcon } from '../common/Icons';
+import {
+  ChevronDownIcon,
+  DownloadIcon,
+  FolderIcon,
+  InboxIcon,
+  SearchIcon,
+  TrashIcon,
+} from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 
 interface ArchiveHistoryViewProps {
-  /** 当前已加载的归档事项（分页累加，非全量） */
   items: DeletedTodo[];
-  /** 归档总数（跨项目，用于显示与 hasMore 判定） */
   totalCount: number;
-  /** 是否还有更多可加载 */
   hasMore: boolean;
-  /** 是否正在加载下一页（用于显示加载态、防重复触发） */
   isLoadingMore: boolean;
-  /** 加载下一页（由父组件实现分页查询） */
   onLoadMore: () => void;
-  /** 全部项目（用于按 projectId 解析项目名标签） */
   projects: Project[];
-  /** 恢复单条归档（重新回到其原属项目） */
   onRestore: (id: string) => void;
-  /** 永久删除单条归档 */
   onPermanentDelete: (id: string) => void;
-  /** 清空全部归档 */
   onEmptyAll: () => void;
-  /** 导出全量归档为 JSON 快照（只读，不可导回） */
   onExportHistory: () => void;
 }
+
+type ArchiveFilter = 'all' | 'completed' | 'active';
 
 function ArchiveHistoryViewComponent({
   items,
@@ -48,163 +44,253 @@ function ArchiveHistoryViewComponent({
   onExportHistory,
 }: ArchiveHistoryViewProps) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
-  // 单条操作的确认目标：null 表示无待确认事项
   const [restoreTarget, setRestoreTarget] = useState<DeletedTodo | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeletedTodo | null>(null);
-
-  // projectId -> Project 查找表，用于每行显示项目名标签
-  const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
-
-  // === 无限滚动：观察列表末尾哨兵，进入视口即触发加载 ===
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<ArchiveFilter>('all');
+  const [projectId, setProjectId] = useState('all');
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(isLoadingMore);
   loadingRef.current = isLoadingMore;
 
+  const projectById = useMemo(
+    () => new Map(projects.map((project) => [project.id, project])),
+    [projects],
+  );
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleItems = useMemo(
+    () =>
+      items.filter((todo) => {
+        const matchesQuery =
+          !normalizedQuery ||
+          todo.title.toLocaleLowerCase().includes(normalizedQuery) ||
+          todo.description?.toLocaleLowerCase().includes(normalizedQuery);
+        const matchesStatus =
+          status === 'all' || (status === 'completed' ? todo.completed : !todo.completed);
+        return (
+          matchesQuery && matchesStatus && (projectId === 'all' || todo.projectId === projectId)
+        );
+      }),
+    [items, normalizedQuery, projectId, status],
+  );
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, DeletedTodo[]>();
+    visibleItems.forEach((todo) =>
+      groups.set(todo.projectId, [...(groups.get(todo.projectId) ?? []), todo]),
+    );
+    return [...groups.entries()].map(([id, todos]) => ({
+      id,
+      todos,
+      project: projectById.get(id),
+    }));
+  }, [projectById, visibleItems]);
+
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const root = scrollContainerRef.current;
     if (!sentinel || !root) return;
-
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !loadingRef.current) {
-          onLoadMore();
-        }
+        if (entries[0]?.isIntersecting && hasMore && !loadingRef.current) onLoadMore();
       },
-      // root 为列表滚动容器；rootMargin 提前 120px 触发，体验更顺滑
-      { root, rootMargin: '120px', threshold: 0 },
+      { root, rootMargin: '160px', threshold: 0 },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasMore, onLoadMore]);
 
-  const isEmpty = items.length === 0 && totalCount === 0;
+  const isEmpty = totalCount === 0;
+  const hasFilters = Boolean(normalizedQuery) || status !== 'all' || projectId !== 'all';
 
   return (
-    <div className="space-y-3">
-      {/* 标题行 + 操作按钮（导出 / 清空） */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs flex-1 min-w-0" style={{ color: 'var(--text-tertiary)' }}>
-          归档的事项会保存在此处，可在任意时间恢复或永久删除。
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            已归档的事项会保存在这里，可随时恢复或永久删除。
+          </p>
+          {totalCount > 0 && (
+            <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              共 {totalCount} 项归档事项
+            </p>
+          )}
+        </div>
         {totalCount > 0 && (
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2">
             <button
               onClick={onExportHistory}
-              className="btn-ghost text-sm flex items-center gap-1"
+              className="btn-ghost flex items-center gap-1.5 text-sm"
               title="导出全部归档为 JSON 快照"
             >
               <DownloadIcon size={14} />
-              导出归档
+              导出
             </button>
             <button
               onClick={() => setConfirmEmpty(true)}
-              className="btn-ghost text-sm"
-              style={{ color: 'var(--danger)' }}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--danger) 10%, transparent)',
+                color: 'var(--danger)',
+              }}
             >
-              清空归档
+              <TrashIcon size={14} />
+              全部删除
             </button>
           </div>
         )}
       </div>
 
-      {/* 列表 */}
+      {!isEmpty && (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label className="relative min-w-0 flex-1">
+            <SearchIcon
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2"
+              size={16}
+              style={{ color: 'var(--text-tertiary)' }}
+            />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索已归档事项"
+              className="w-full rounded-lg border py-2 pl-9 pr-3 text-sm outline-none transition-shadow focus:ring-2 focus:ring-[var(--accent)]"
+              style={{
+                borderColor: 'var(--border-color)',
+                backgroundColor: 'var(--bg-primary)',
+                color: 'var(--text-primary)',
+              }}
+            />
+          </label>
+          <label className="relative">
+            <select
+              value={status}
+              onChange={(event) => setStatus(event.target.value as ArchiveFilter)}
+              className="h-full min-h-10 appearance-none rounded-lg border bg-transparent py-2 pl-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            >
+              <option value="all">所有事项</option>
+              <option value="active">未完成事项</option>
+              <option value="completed">已完成事项</option>
+            </select>
+            <ChevronDownIcon
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+              size={14}
+              style={{ color: 'var(--text-tertiary)' }}
+            />
+          </label>
+          <label className="relative">
+            <select
+              value={projectId}
+              onChange={(event) => setProjectId(event.target.value)}
+              className="h-full min-h-10 appearance-none rounded-lg border bg-transparent py-2 pl-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+            >
+              <option value="all">所有项目</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2"
+              size={14}
+              style={{ color: 'var(--text-tertiary)' }}
+            />
+          </label>
+        </div>
+      )}
+
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div
-            className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              color: 'var(--text-quaternary)',
-            }}
+        <div
+          className="flex flex-col items-center justify-center rounded-xl border py-16 text-center"
+          style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
+        >
+          <span
+            className="mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-quaternary)' }}
           >
-            <InboxIcon size={24} />
-          </div>
+            <InboxIcon size={22} />
+          </span>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            暂无历史记录
+            暂无已归档事项
           </p>
         </div>
       ) : (
-        <div
-          ref={scrollContainerRef}
-          className="space-y-1.5 max-h-[55vh] overflow-y-auto -mx-1 px-1"
-        >
-          {items.map((todo) => {
-            const project = projectNameById.get(todo.projectId);
-            return (
+        <div ref={scrollContainerRef} className="max-h-[55vh] space-y-7 overflow-y-auto pr-1">
+          {groupedItems.map(({ id, project, todos }) => (
+            <section key={id}>
+              <div className="mb-2.5 flex items-center justify-between px-0.5">
+                <div
+                  className="flex min-w-0 items-center gap-2 text-sm font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  <FolderIcon
+                    size={16}
+                    style={{ color: project?.color ?? 'var(--text-tertiary)' }}
+                  />
+                  <span className="truncate">{project?.name ?? '已删除的项目'}</span>
+                </div>
+                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                  {todos.length} 个事项
+                </span>
+              </div>
               <div
-                key={todo.id}
-                className="group flex items-center gap-3 px-3.5 py-3 rounded-lg"
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
+                className="overflow-hidden rounded-xl border"
+                style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
               >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <p
-                      className="text-sm truncate flex-1 min-w-0"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      {todo.title}
-                    </p>
-                    {project && (
-                      <span
-                        className="claude-tag shrink-0"
+                {todos.map((todo, index) => (
+                  <div
+                    key={todo.id}
+                    className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-secondary)]"
+                    style={{ borderTop: index === 0 ? undefined : '1px solid var(--border-color)' }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-sm font-medium"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        {todo.title}
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                        归档于 {formatRelativeTime(todo.deletedAt)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => setDeleteTarget(todo)}
+                        className="rounded-md p-1.5 opacity-0 transition-all hover:bg-[var(--bg-tertiary)] group-hover:opacity-100 focus:opacity-100"
+                        style={{ color: 'var(--text-tertiary)' }}
+                        aria-label={`永久删除 ${todo.title}`}
+                        title="永久删除"
+                      >
+                        <TrashIcon size={15} />
+                      </button>
+                      <button
+                        onClick={() => setRestoreTarget(todo)}
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
                         style={{
-                          color: 'var(--text-tertiary)',
-                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-tertiary)',
+                          color: 'var(--text-primary)',
                         }}
                       >
-                        {project.name}
-                      </span>
-                    )}
+                        取消归档
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                    归档于 {formatRelativeTime(todo.deletedAt)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setRestoreTarget(todo)}
-                    className="btn-ghost p-1.5"
-                    style={{ color: 'var(--accent)' }}
-                    aria-label="恢复"
-                    title="恢复"
-                  >
-                    <RestoreIcon size={15} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(todo)}
-                    className="btn-ghost p-1.5"
-                    style={{ color: 'var(--danger)' }}
-                    aria-label="永久删除"
-                    title="永久删除"
-                  >
-                    <TrashIcon size={15} />
-                  </button>
-                </div>
+                ))}
               </div>
-            );
-          })}
-
-          {/* 哨兵 + 加载态：始终渲染哨兵供 Observer 观察加载更多 */}
+            </section>
+          ))}
+          {hasFilters && visibleItems.length === 0 && (
+            <p className="py-12 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
+              没有符合条件的已归档事项
+            </p>
+          )}
           {hasMore && (
             <div ref={sentinelRef} className="py-3 text-center">
-              {isLoadingMore ? (
-                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  加载中…
-                </span>
-              ) : (
-                // 占位高度，确保哨兵可被 rootMargin 命中
-                <span className="block h-4" />
-              )}
-            </div>
-          )}
-
-          {/* 兜底：异常情况下 items < totalCount 且无 hasMore（不应出现，仅作容错提示） */}
-          {!hasMore && items.length < totalCount && (
-            <div className="py-3 text-center">
               <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                已显示 {items.length} / 共 {totalCount} 条
+                {isLoadingMore ? '加载中…' : '向下滚动加载更多'}
               </span>
             </div>
           )}
@@ -213,9 +299,9 @@ function ArchiveHistoryViewComponent({
 
       <ConfirmDialog
         open={confirmEmpty}
-        title="清空归档"
-        message="此操作将永久删除所有归档事项，无法恢复。确定继续吗？"
-        confirmText="永久删除"
+        title="删除全部归档事项"
+        message="此操作将永久删除所有已归档事项，无法恢复。确定继续吗？"
+        confirmText="全部删除"
         danger
         onConfirm={() => {
           onEmptyAll();
@@ -223,21 +309,17 @@ function ArchiveHistoryViewComponent({
         }}
         onCancel={() => setConfirmEmpty(false)}
       />
-
-      {/* 单条恢复确认 */}
       <ConfirmDialog
         open={restoreTarget !== null}
-        title="恢复事项"
-        message={`确定要恢复「${restoreTarget?.title}」吗？将还原到其原属项目。`}
-        confirmText="恢复"
+        title="取消归档"
+        message={`确定要取消归档「${restoreTarget?.title}」吗？该事项将回到原属项目。`}
+        confirmText="取消归档"
         onConfirm={() => {
           if (restoreTarget) onRestore(restoreTarget.id);
           setRestoreTarget(null);
         }}
         onCancel={() => setRestoreTarget(null)}
       />
-
-      {/* 单条永久删除确认 */}
       <ConfirmDialog
         open={deleteTarget !== null}
         title="永久删除"

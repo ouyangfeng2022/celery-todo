@@ -242,17 +242,16 @@ export async function openSettingsSection(win: Page, section: string): Promise<v
 }
 
 /**
- * 打开「历史记录」（归档）页面：点侧栏左下角品牌按钮唤出菜单，再点「历史记录」，
- * 会进入设置页的历史记录标签。等设置页顶部 h1 标题「历史记录」与副标题同时可见，
+ * 打开「已归档事项」页面：点侧栏左下角品牌按钮唤出菜单，再点「已归档事项」，
+ * 会进入设置页的已归档事项标签。等设置页顶部 h1 标题与副标题同时可见，
  * 即视为加载完成。
  */
 export async function openHistory(win: Page): Promise<void> {
   await win.getByRole('button', { name: '打开设置菜单' }).click();
-  await win.getByRole('button', { name: '历史记录', exact: true }).click();
-  // 设置页顶部 h1（activeNavItem.label = "历史记录"）+ 历史视图副标题同时可见
-  await win.getByRole('heading', { name: '历史记录' }).waitFor({ state: 'visible' });
+  await win.getByRole('button', { name: '已归档事项', exact: true }).click();
+  await win.getByRole('heading', { name: '已归档事项' }).waitFor({ state: 'visible' });
   await win
-    .getByText('归档的事项会保存在此处，可在任意时间恢复或永久删除。')
+    .getByText('已归档的事项会保存在这里，可随时恢复或永久删除。')
     .waitFor({ state: 'visible' });
 }
 
@@ -293,8 +292,9 @@ export async function getTodoTitlesInOrder(win: Page): Promise<string[]> {
 /** 在当前 window 注入下载捕获器（多次调用幂等，重置上次结果） */
 export async function installDownloadCapture(win: Page): Promise<void> {
   await win.evaluate(() => {
-    (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload =
-      undefined;
+    (
+      window as unknown as { __lastDownload?: { filename: string; content: string } }
+    ).__lastDownload = undefined;
     if ((window as unknown as { __downloadHooked?: boolean }).__downloadHooked) return;
     (window as unknown as { __downloadHooked?: boolean }).__downloadHooked = true;
     const origClick = HTMLAnchorElement.prototype.click;
@@ -307,11 +307,12 @@ export async function installDownloadCapture(win: Page): Promise<void> {
             const bytes = new Uint8Array(buf);
             let content = '';
             for (let i = 0; i < bytes.length; i++) content += String.fromCharCode(bytes[i]);
-            (window as unknown as { __lastDownload?: { filename: string; content: string } }).__lastDownload =
-              {
-                filename: this.download,
-                content,
-              };
+            (
+              window as unknown as { __lastDownload?: { filename: string; content: string } }
+            ).__lastDownload = {
+              filename: this.download,
+              content,
+            };
           })
           .catch(() => {
             // 忽略
@@ -323,9 +324,7 @@ export async function installDownloadCapture(win: Page): Promise<void> {
 }
 
 /** 读取并清空捕获的最后一次下载 */
-export async function getLastDownload(
-  win: Page,
-): Promise<{ filename: string; content: string }> {
+export async function getLastDownload(win: Page): Promise<{ filename: string; content: string }> {
   await win.waitForFunction(
     () => !!(window as unknown as { __lastDownload?: unknown }).__lastDownload,
     undefined,

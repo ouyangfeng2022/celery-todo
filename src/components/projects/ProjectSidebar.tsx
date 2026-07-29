@@ -623,7 +623,7 @@ function ProjectSidebarComponent({
                   onSelect: () => onOpenSettings('general'),
                 },
                 {
-                  label: '历史记录',
+                  label: '已归档事项',
                   icon: InboxIcon,
                   onSelect: () => onOpenHistory(),
                 },

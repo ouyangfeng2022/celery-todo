@@ -1,5 +1,5 @@
 /**
- * @file HistorySection - 设置页「历史记录」子页面
+ * @file HistorySection - 设置页「已归档事项」子页面
  * @description 跨项目展示全部归档事项，支持恢复、永久删除、清空全部归档。
  *              归档永久保留，不自动清除——唯一删除途径是本视图的手动操作。
  *
@@ -112,14 +112,6 @@ export function HistorySection({
 
   return (
     <section>
-      <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
-        归档事项
-        {totalCount > 0 && (
-          <span className="ml-1 font-normal" style={{ color: 'var(--text-tertiary)' }}>
-            · {totalCount}
-          </span>
-        )}
-      </h3>
       <ArchiveHistoryView
         items={items}
         totalCount={totalCount}

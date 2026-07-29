@@ -42,9 +42,7 @@ test('归档 todo 后历史记录显示该条 + 项目名标签', async () => {
   // 项目名标签显示在历史记录行
   await expect(win.getByText('归档测试项目', { exact: true }).first()).toBeVisible();
   // 副标题提示（归档语义，无 30 天字样）
-  await expect(
-    win.getByText('归档的事项会保存在此处，可在任意时间恢复或永久删除。'),
-  ).toBeVisible();
+  await expect(win.getByText('已归档的事项会保存在这里，可随时恢复或永久删除。')).toBeVisible();
 });
 
 test('恢复单条 todo 后回到当前项目列表', async () => {
@@ -55,7 +53,7 @@ test('恢复单条 todo 后回到当前项目列表', async () => {
   await row.getByRole('button', { name: '归档', exact: true }).click();
 
   await openHistory(win);
-  await win.getByRole('button', { name: '恢复' }).click();
+  await win.getByRole('button', { name: '取消归档' }).click();
 
   // 关闭设置页（Esc），回到项目列表
   await win.keyboard.press('Escape');
@@ -79,7 +77,7 @@ test('永久删除单条后历史记录为空', async () => {
   await expect(win.getByRole('heading', { name: '永久删除' })).toBeVisible();
   await win.keyboard.press('Enter');
   await expect(win.getByText('永久删除这条', { exact: true })).toHaveCount(0);
-  await expect(win.getByText('暂无历史记录')).toBeVisible();
+  await expect(win.getByText('暂无已归档事项')).toBeVisible();
 });
 
 test('清空归档：二次确认后空状态', async () => {
@@ -93,19 +91,19 @@ test('清空归档：二次确认后空状态', async () => {
   }
 
   await openHistory(win);
-  await win.getByRole('button', { name: '清空归档' }).click();
+  await win.getByRole('button', { name: '全部删除' }).click();
   // 二次确认 ConfirmDialog：按 Enter 确认（ConfirmDialog 监听 Enter）
-  await expect(win.getByRole('heading', { name: '清空归档' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '删除全部归档事项' })).toBeVisible();
   await win.keyboard.press('Enter');
 
-  await expect(win.getByText('暂无历史记录')).toBeVisible();
+  await expect(win.getByText('暂无已归档事项')).toBeVisible();
 });
 
-test('Esc 关闭设置页（历史记录标签下）', async () => {
+test('Esc 关闭设置页（已归档事项标签下）', async () => {
   await openHistory(win);
-  await expect(win.getByRole('heading', { name: '历史记录' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '已归档事项' })).toBeVisible();
   await win.keyboard.press('Escape');
-  await expect(win.getByRole('heading', { name: '历史记录' })).toHaveCount(0);
+  await expect(win.getByRole('heading', { name: '已归档事项' })).toHaveCount(0);
 });
 
 test('导出归档为 JSON 快照，文件名含日期且含全部归档', async () => {
@@ -123,9 +121,7 @@ test('导出归档为 JSON 快照，文件名含日期且含全部归档', async
   await openHistory(win);
   // 用 title 属性（Playwright 转为 button 的 description）精确锁定导出按钮，
   // 避免与项目列表里"快照源项目"等子串造成 strict mode 歧义
-  await win
-    .getByRole('button', { description: '导出全部归档为 JSON 快照' })
-    .click();
+  await win.getByRole('button', { description: '导出全部归档为 JSON 快照' }).click();
   const dl = await getLastDownload(win);
 
   const today = new Date().toISOString().slice(0, 10);

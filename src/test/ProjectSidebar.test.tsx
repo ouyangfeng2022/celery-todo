@@ -37,7 +37,7 @@ describe('SidebarUpdateCard', () => {
 });
 
 describe('ProjectSidebar 设置菜单', () => {
-  it('左下角菜单包含「设置」「历史记录」「帮助与反馈」', () => {
+  it('左下角菜单包含「设置」「已归档事项」「帮助与反馈」', () => {
     const onOpenSettings = vi.fn();
     const onOpenHistory = vi.fn();
     const onOpenHelp = vi.fn();
@@ -66,9 +66,9 @@ describe('ProjectSidebar 设置菜单', () => {
     expect(onOpenSettings).toHaveBeenCalledWith('general');
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
 
-    // 「历史记录」打开归档弹窗
+    // 「已归档事项」打开归档弹窗
     fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
-    fireEvent.click(screen.getByRole('button', { name: '历史记录' }));
+    fireEvent.click(screen.getByRole('button', { name: '已归档事项' }));
     expect(onOpenHistory).toHaveBeenCalledTimes(1);
 
     // 「帮助与反馈」打开 GitHub 链接
