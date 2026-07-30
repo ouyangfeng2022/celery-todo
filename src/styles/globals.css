@@ -121,30 +121,30 @@
 
   /* 芹绿主题：用低饱和芹菜白贯穿底色，使强调绿自然融入界面层级。 */
   .theme-celery {
-    --bg-primary: #fcfdfb;
-    --bg-secondary: #f7f9f4;
+    --bg-primary: #fdfffc;
+    --bg-secondary: #fafcf8;
     --bg-tertiary: #ffffff;
-    --bg-hover: #eef4e9;
-    --bg-active: #e4eedc;
-    --bg-frame: #f4f7f0;
+    --bg-hover: #f3f8ef;
+    --bg-active: #eaf3e4;
+    --bg-frame: #f7faf4;
 
     --text-primary: #1c2519;
     --text-secondary: #505b4b;
     --text-tertiary: #667060;
     --text-quaternary: #909b89;
 
-    --border-color: #e1e8db;
-    --border-strong: #c6d4bc;
+    --border-color: #e8eee3;
+    --border-strong: #d3dfca;
 
-    --accent: #86b96a;
-    --accent-hover: #73a456;
-    --accent-subtle: #f0f7ec;
-    --accent-pressed: #5d8b42;
-    --accent-blue: #7eb45f;
-    --accent-blue-subtle: #eef6e9;
-    --accent-green: #9dcc7c;
-    --accent-green-subtle: #f3f9ef;
-    --pinned-bg: #f0f7ec99;
+    --accent: #a5ca91;
+    --accent-hover: #91ba7c;
+    --accent-subtle: #f5faf1;
+    --accent-pressed: #79a465;
+    --accent-blue: #9bc583;
+    --accent-blue-subtle: #f3f9ef;
+    --accent-green: #b4d69f;
+    --accent-green-subtle: #f7fbf4;
+    --pinned-bg: #f5faf199;
   }
 
   /* 除「芹绿」外均沿用浅色主题的暖珊瑚 Logo；芹绿保留原始绿色版本。 */

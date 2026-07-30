@@ -22,13 +22,13 @@ const OVERLAY_COLORS = {
     light: { color: '#f9f9f7', symbolColor: '#141413' }, // rgb(249,249,247) / --text-primary
     dark: { color: '#33251f', symbolColor: '#f3f1ec' },
     paper: { color: '#e3dacc', symbolColor: '#141413' }, // --bg-frame 暖陶土橙 / --text-primary
-    celery: { color: '#f4f7f0', symbolColor: '#1c2519' },
+    celery: { color: '#f7faf4', symbolColor: '#1c2519' },
   },
   focus: {
     light: { color: '#f9f9f7', symbolColor: '#141413' }, // --bg-primary / --text-primary
     dark: { color: '#1a1916', symbolColor: '#f3f1ec' },
     paper: { color: '#faf9f5', symbolColor: '#141413' }, // Anthropic Light 主画布
-    celery: { color: '#fcfdfb', symbolColor: '#1c2519' },
+    celery: { color: '#fdfffc', symbolColor: '#1c2519' },
   },
 } as const;
 
