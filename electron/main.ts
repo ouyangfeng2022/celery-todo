@@ -20,27 +20,41 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const stickerWindows = new Map<string, BrowserWindow>();
 type StickerState = { id: string; projectId: string; bounds?: Electron.Rectangle };
-type StartupTheme = 'light' | 'dark' | 'system' | 'paper' | 'celery';
+type StartupTheme =
+  | 'default-light'
+  | 'default-dark'
+  | 'default-system'
+  | 'paper-light'
+  | 'paper-dark'
+  | 'paper-system'
+  | 'celery-light'
+  | 'celery-dark'
+  | 'celery-system';
 let stickerStates: StickerState[] = [];
 
 const STARTUP_THEME_COLORS = {
-  light: { backgroundColor: '#f9f9f7', overlayColor: '#f9f9f7', symbolColor: '#141413' },
-  dark: { backgroundColor: '#1a1916', overlayColor: '#33251f', symbolColor: '#f3f1ec' },
-  paper: { backgroundColor: '#faf9f5', overlayColor: '#e3dacc', symbolColor: '#141413' },
-  celery: { backgroundColor: '#f9fbf7', overlayColor: '#eef3ea', symbolColor: '#263126' },
+  'default-light': { backgroundColor: '#f9f9f7', overlayColor: '#f9f9f7', symbolColor: '#141413' },
+  'default-dark': { backgroundColor: '#1a1916', overlayColor: '#33251f', symbolColor: '#f3f1ec' },
+  'paper-light': { backgroundColor: '#faf9f5', overlayColor: '#e3dacc', symbolColor: '#141413' },
+  'paper-dark': { backgroundColor: '#211b18', overlayColor: '#3d3028', symbolColor: '#f6eee8' },
+  'celery-light': { backgroundColor: '#f9fbf7', overlayColor: '#eef3ea', symbolColor: '#263126' },
+  'celery-dark': { backgroundColor: '#182018', overlayColor: '#263226', symbolColor: '#edf4e9' },
 } as const;
 
 function getStartupThemeColors(theme: StartupTheme) {
-  if (theme === 'system') {
-    return nativeTheme.shouldUseDarkColors ? STARTUP_THEME_COLORS.dark : STARTUP_THEME_COLORS.light;
+  if (theme.endsWith('-system')) {
+    const name = theme.replace('-system', '') as 'default' | 'paper' | 'celery';
+    return STARTUP_THEME_COLORS[`${name}-${nativeTheme.shouldUseDarkColors ? 'dark' : 'light'}`];
   }
-  return STARTUP_THEME_COLORS[theme];
+  return STARTUP_THEME_COLORS[theme as keyof typeof STARTUP_THEME_COLORS];
 }
 
 function saveStickerStates(): void {
   try {
     const storePath = getStorePath();
-    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    const existing = fs.existsSync(storePath)
+      ? JSON.parse(fs.readFileSync(storePath, 'utf-8'))
+      : {};
     fs.writeFileSync(storePath, JSON.stringify({ ...existing, stickers: stickerStates }, null, 2));
   } catch {
     // 写入失败时保留当前会话状态，不中断贴图操作。
@@ -49,29 +63,61 @@ function saveStickerStates(): void {
 
 function createStickerWindow(id: string, projectId = ''): void {
   const existing = stickerWindows.get(id);
-  if (existing) { existing.show(); existing.focus(); return; }
+  if (existing) {
+    existing.show();
+    existing.focus();
+    return;
+  }
   const state = stickerStates.find((item) => item.id === id) ?? { id, projectId };
   if (!stickerStates.some((item) => item.id === id)) stickerStates.push(state);
   const index = stickerStates.indexOf(state);
   const display = screen.getPrimaryDisplay().workArea;
   const bounds = state.bounds;
   const window = new BrowserWindow({
-    width: bounds?.width ?? 340, height: bounds?.height ?? 460,
+    width: bounds?.width ?? 340,
+    height: bounds?.height ?? 460,
     x: bounds?.x ?? display.x + display.width - 364 - index * 28,
     y: bounds?.y ?? display.y + display.height - 484 - index * 28,
-    minWidth: 300, minHeight: 380, maxWidth: 420, maxHeight: 620,
-    frame: false, transparent: true, backgroundColor: '#00000000', alwaysOnTop: true,
-    skipTaskbar: true, resizable: true, title: 'Celery Todo 简洁模式', hasShadow: false,
+    minWidth: 300,
+    minHeight: 380,
+    maxWidth: 420,
+    maxHeight: 620,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: true,
+    title: 'Celery Todo 简洁模式',
+    hasShadow: false,
     vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
   });
   window.setHasShadow(false);
   stickerWindows.set(id, window);
-  const persist = () => { state.bounds = window.getBounds(); saveStickerStates(); };
-  window.on('move', persist); window.on('resize', persist);
-  window.on('closed', () => { stickerWindows.delete(id); stickerStates = stickerStates.filter((item) => item.id !== id); saveStickerStates(); });
-  if (isDev) window.loadURL(`${devServerUrl}?sticker=${encodeURIComponent(id)}&project=${encodeURIComponent(state.projectId)}`);
-  else window.loadFile(path.join(__dirname, '../dist/index.html'), { query: { sticker: id, project: state.projectId } });
+  const persist = () => {
+    state.bounds = window.getBounds();
+    saveStickerStates();
+  };
+  window.on('move', persist);
+  window.on('resize', persist);
+  window.on('closed', () => {
+    stickerWindows.delete(id);
+    stickerStates = stickerStates.filter((item) => item.id !== id);
+    saveStickerStates();
+  });
+  if (isDev)
+    window.loadURL(
+      `${devServerUrl}?sticker=${encodeURIComponent(id)}&project=${encodeURIComponent(state.projectId)}`,
+    );
+  else
+    window.loadFile(path.join(__dirname, '../dist/index.html'), {
+      query: { sticker: id, project: state.projectId },
+    });
 }
 
 // ============================================
@@ -143,9 +189,7 @@ function createMainWindow(): BrowserWindow {
     const template: Electron.MenuItemConstructorOptions[] = [
       {
         label: app.name,
-        submenu: [
-          { role: 'quit' },
-        ],
+        submenu: [{ role: 'quit' }],
       },
     ];
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -226,20 +270,36 @@ function getSavedStartupTheme(): StartupTheme {
     const storePath = getStorePath();
     if (fs.existsSync(storePath)) {
       const theme = JSON.parse(fs.readFileSync(storePath, 'utf-8')).theme;
-      if (theme === 'light' || theme === 'dark' || theme === 'system' || theme === 'paper' || theme === 'celery') {
+      if (theme === 'light') return 'default-light';
+      if (theme === 'dark') return 'default-dark';
+      if (theme === 'system') return 'default-system';
+      if (theme === 'paper') return 'paper-light';
+      if (theme === 'celery') return 'celery-light';
+      if (
+        theme === 'default-light' ||
+        theme === 'default-dark' ||
+        theme === 'default-system' ||
+        theme === 'paper-light' ||
+        theme === 'paper-dark' ||
+        theme === 'paper-system' ||
+        theme === 'celery-light' ||
+        theme === 'celery-dark' ||
+        theme === 'celery-system'
+      )
         return theme;
-      }
     }
   } catch {
     // 读取失败时沿用默认的跟随系统主题。
   }
-  return 'system';
+  return 'default-system';
 }
 
 function saveStartupTheme(theme: StartupTheme): void {
   try {
     const storePath = getStorePath();
-    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    const existing = fs.existsSync(storePath)
+      ? JSON.parse(fs.readFileSync(storePath, 'utf-8'))
+      : {};
     fs.writeFileSync(storePath, JSON.stringify({ ...existing, theme }, null, 2));
   } catch {
     // 持久化失败不影响当前会话，渲染进程仍会即时切换主题。
@@ -263,7 +323,9 @@ function getSavedBounds(): { x: number; y: number; width: number; height: number
 function saveBoundsToStore(bounds: { x: number; y: number; width: number; height: number }): void {
   try {
     const storePath = getStorePath();
-    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    const existing = fs.existsSync(storePath)
+      ? JSON.parse(fs.readFileSync(storePath, 'utf-8'))
+      : {};
     fs.writeFileSync(storePath, JSON.stringify({ ...existing, bounds }, null, 2));
   } catch {
     // 保存失败时静默处理
@@ -368,9 +430,12 @@ ipcMain.handle('get-window-bounds', () => {
 });
 
 /** 保存窗口位置 */
-ipcMain.handle('save-window-bounds', (_event, bounds: { x: number; y: number; width: number; height: number }) => {
-  saveBoundsToStore(bounds);
-});
+ipcMain.handle(
+  'save-window-bounds',
+  (_event, bounds: { x: number; y: number; width: number; height: number }) => {
+    saveBoundsToStore(bounds);
+  },
+);
 
 ipcMain.handle('sticker:create', (_event, projectId = '') => {
   const id = crypto.randomUUID();
@@ -381,7 +446,10 @@ ipcMain.handle('sticker:set-project', (event, id: string, projectId: string) => 
   const window = stickerWindows.get(id);
   if (!window || event.sender.id !== window.webContents.id) return;
   const state = stickerStates.find((item) => item.id === id);
-  if (state) { state.projectId = projectId; saveStickerStates(); }
+  if (state) {
+    state.projectId = projectId;
+    saveStickerStates();
+  }
 });
 ipcMain.handle('sticker:close', (event, id: string) => {
   const window = stickerWindows.get(id);
@@ -436,9 +504,7 @@ ipcMain.handle(
 
 /** 记录下次启动时的主题，让原生窗口首帧与渲染页面保持一致。 */
 ipcMain.handle('set-startup-theme', (_event, theme: StartupTheme) => {
-  if (theme === 'light' || theme === 'dark' || theme === 'system' || theme === 'paper' || theme === 'celery') {
-    saveStartupTheme(theme);
-  }
+  saveStartupTheme(theme);
 });
 
 // 导出供其他模块使用

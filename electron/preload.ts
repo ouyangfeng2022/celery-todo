@@ -15,8 +15,12 @@ const electronAPI = {
     ipcRenderer.invoke('get-window-bounds'),
 
   /** 保存窗口位置和大小 */
-  saveWindowBounds: (bounds: { x: number; y: number; width: number; height: number }): Promise<void> =>
-    ipcRenderer.invoke('save-window-bounds', bounds),
+  saveWindowBounds: (bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }): Promise<void> => ipcRenderer.invoke('save-window-bounds', bounds),
 
   /** 显示托盘通知 */
   showTrayNotification: (title: string, body: string): Promise<void> =>
@@ -27,8 +31,18 @@ const electronAPI = {
     ipcRenderer.invoke('set-titlebar-overlay', options),
 
   /** 保存启动主题，使下次启动的原生窗口首帧颜色正确。 */
-  setStartupTheme: (theme: 'light' | 'dark' | 'system' | 'paper' | 'celery'): Promise<void> =>
-    ipcRenderer.invoke('set-startup-theme', theme),
+  setStartupTheme: (
+    theme:
+      | 'default-light'
+      | 'default-dark'
+      | 'default-system'
+      | 'paper-light'
+      | 'paper-dark'
+      | 'paper-system'
+      | 'celery-light'
+      | 'celery-dark'
+      | 'celery-system',
+  ): Promise<void> => ipcRenderer.invoke('set-startup-theme', theme),
 
   /** 监听快速添加事件，返回取消订阅函数 */
   onQuickAdd: (callback: () => void): (() => void) => {
@@ -39,7 +53,8 @@ const electronAPI = {
     };
   },
   /** 创建一张桌面贴图；projectId 为空时由贴图自行选择第一个项目 */
-  createSticker: (projectId?: string): Promise<void> => ipcRenderer.invoke('sticker:create', projectId),
+  createSticker: (projectId?: string): Promise<void> =>
+    ipcRenderer.invoke('sticker:create', projectId),
   setStickerProject: (id: string, projectId: string): Promise<void> =>
     ipcRenderer.invoke('sticker:set-project', id, projectId),
   closeSticker: (id: string): Promise<void> => ipcRenderer.invoke('sticker:close', id),
@@ -95,7 +110,8 @@ const electronAPI = {
   storageSave: (data: Uint8Array): Promise<void> => ipcRenderer.invoke('storage:save', data),
 
   /** 弹出文件夹选择对话框，返回所选目录路径或 null */
-  storageChooseDirectory: (): Promise<string | null> => ipcRenderer.invoke('storage:choose-directory'),
+  storageChooseDirectory: (): Promise<string | null> =>
+    ipcRenderer.invoke('storage:choose-directory'),
 
   /** 切换存储目录并迁移已有数据 */
   storageSetPath: (newDir: string): Promise<{ filePath: string }> =>
@@ -105,7 +121,8 @@ const electronAPI = {
   storageOpenInFolder: (): Promise<void> => ipcRenderer.invoke('storage:open-in-folder'),
 
   /** 重置到默认存储位置（同时迁移数据） */
-  storageResetToDefault: (): Promise<{ filePath: string }> => ipcRenderer.invoke('storage:reset-to-default'),
+  storageResetToDefault: (): Promise<{ filePath: string }> =>
+    ipcRenderer.invoke('storage:reset-to-default'),
 
   // ===== CLI IPC 桥接 =====
 
@@ -118,8 +135,10 @@ const electronAPI = {
   onCliRequest: (
     callback: (req: { id: string; method: string; params?: unknown }) => void,
   ): (() => void) => {
-    const listener = (_event: unknown, req: { id: string; method: string; params?: unknown }): void =>
-      callback(req);
+    const listener = (
+      _event: unknown,
+      req: { id: string; method: string; params?: unknown },
+    ): void => callback(req);
     ipcRenderer.on('cli:request', listener);
     return () => {
       ipcRenderer.removeListener('cli:request', listener);
@@ -131,8 +150,11 @@ const electronAPI = {
    * 否则主进程的待决 Promise 会一直挂起直到超时。
    * payload: { id: string; result?: unknown; error?: { message: string } }
    */
-  cliRespond: (payload: { id: string; result?: unknown; error?: { message: string } }): Promise<void> =>
-    ipcRenderer.invoke('cli:response', payload),
+  cliRespond: (payload: {
+    id: string;
+    result?: unknown;
+    error?: { message: string };
+  }): Promise<void> => ipcRenderer.invoke('cli:response', payload),
 
   // ===== 自动升级 =====
 
@@ -146,7 +168,8 @@ const electronAPI = {
   updaterQuitAndInstall: (): Promise<void> => ipcRenderer.invoke('updater:quit-and-install'),
 
   /** 获取当前应用版本号 */
-  updaterGetCurrentVersion: (): Promise<string> => ipcRenderer.invoke('updater:get-current-version'),
+  updaterGetCurrentVersion: (): Promise<string> =>
+    ipcRenderer.invoke('updater:get-current-version'),
 
   /** 获取最近一次发现的更新信息（可空） */
   updaterGetCachedInfo: (): Promise<{ version: string; releaseName?: string } | null> =>

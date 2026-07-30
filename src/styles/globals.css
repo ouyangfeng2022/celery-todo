@@ -108,8 +108,7 @@
     --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
   }
 
-  /* 经典主题（原默认浅色）：Anthropic 暖白纸张 + 暖陶土橙 T 型品牌框架。
-   * 仅覆盖背景层 token，文字 / accent / border / 阴影 / 圆角 等沿用 :root。 */
+  /* 经典主题：Anthropic 暖白纸张 + 暖陶土橙 T 型品牌框架。 */
   .theme-paper {
     --bg-primary: #faf9f5; /* Anthropic Light · 主画布 */
     --bg-secondary: #e8e6dc; /* Anthropic Light Gray · 框架 / 凹陷控件 */
@@ -117,6 +116,26 @@
     --bg-hover: #dedbd0; /* 悬停反馈 */
     --bg-active: #d4d1c5; /* 按下 / 选中填充 */
     --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
+  }
+
+  .dark.theme-paper {
+    --bg-primary: #211b18;
+    --bg-secondary: #29211d;
+    --bg-tertiary: #312823;
+    --bg-hover: #3b302a;
+    --bg-active: #483a32;
+    --bg-frame: #3d3028;
+    --text-primary: #f6eee8;
+    --text-secondary: #c7b8ad;
+    --text-tertiary: #9d8c80;
+    --text-quaternary: #6f6057;
+    --border-color: #493c35;
+    --border-strong: #624f45;
+    --accent: #e39a7d;
+    --accent-hover: #efaa8e;
+    --accent-subtle: #39251e;
+    --accent-pressed: #f4b89f;
+    --pinned-bg: #4a2b20cc;
   }
 
   /* 芹绿主题：以带灰度的鼠尾草绿铺陈，避免高明度黄绿色在大面积界面中显得刺眼。 */
@@ -147,6 +166,31 @@
     --accent-green-subtle: #edf4e9;
     --success: #668255;
     --pinned-bg: #eaf1e6b3;
+  }
+
+  .dark.theme-celery {
+    --bg-primary: #182018;
+    --bg-secondary: #1d271d;
+    --bg-tertiary: #243024;
+    --bg-hover: #2d3a2d;
+    --bg-active: #364536;
+    --bg-frame: #263226;
+    --text-primary: #edf4e9;
+    --text-secondary: #bdc9b8;
+    --text-tertiary: #91a08c;
+    --text-quaternary: #667361;
+    --border-color: #384937;
+    --border-strong: #536451;
+    --accent: #9fbd87;
+    --accent-hover: #b1cc9a;
+    --accent-subtle: #283624;
+    --accent-pressed: #c2dbaa;
+    --accent-blue: #a6bf91;
+    --accent-blue-subtle: #263324;
+    --accent-green: #9fbd87;
+    --accent-green-subtle: #293625;
+    --success: #a3c58b;
+    --pinned-bg: #31442dcc;
   }
 
   /* 除「芹绿」外均沿用浅色主题的暖珊瑚 Logo；芹绿保留原始绿色版本。 */
@@ -673,15 +717,13 @@
     color: var(--text-tertiary);
   }
 
-  /* 主工作区像一张嵌入暖灰框架的纸，强化侧栏 / 内容层级。
-   * 外阴影主要落在左侧线（offset-x: -10px），保持深度但已收弱避免压迫侧栏。 */
+  /* 主工作区像一张嵌入框架的纸，保留一条低对比的主题分割线。
+   * 分割线由框架色与边框色混合而成；不使用白色内高光，避免深色主题出现亮缝。 */
   .workspace-surface {
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, var(--border-strong) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-color) 55%, var(--bg-frame));
     border-radius: 1.25rem 0 0 0;
-    box-shadow:
-      -10px 14px 36px -28px rgba(20, 20, 19, 0.32),
-      inset 0 1px rgba(255, 255, 255, 0.55);
+    box-shadow: -10px 14px 36px -28px rgba(20, 20, 19, 0.32);
   }
 
   /* 设置页沿用主工作区的纸张卡片层级，避免旧版扁平灰色列表割裂视觉。 */

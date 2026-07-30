@@ -1,12 +1,11 @@
 /**
  * @file useTheme - 主题切换 Hook
- * @description 支持 light / dark / system / paper / celery 五种模式，自动监听系统主题变化。
- * paper（设置面板中标记为「经典」）为独立浅色外观（无深色变体），不响应 prefers-color-scheme。
+ * @description 支持默认、经典、芹绿三组浅/深色主题及跟随系统模式。
  */
 
 import { useCallback, useEffect } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
-import type { ThemeMode } from '../types';
+import type { ThemeMode, ThemeName } from '../types';
 import celeryLogoUrl from '../../assets/celery-todo-no-text.svg';
 import lightLogoUrl from '../../assets/celery-todo-no-text-light.svg';
 
@@ -15,50 +14,40 @@ import lightLogoUrl from '../../assets/celery-todo-no-text-light.svg';
  * 完整模式对齐 T 型品牌框架 --bg-frame；
  * 专注模式没有顶部栏，因此对齐正文画布 --bg-primary。
  * light（默认浅色）为中性纸白 --bg-frame rgb(249,249,247)；
- * paper（「经典」）为 Anthropic 暖白纸张，frame 回到暖陶土橙 / 主画布 #faf9f5。
+ * 每组配色都拥有独立的浅色与深色标题栏颜色。
  */
 const OVERLAY_COLORS = {
   full: {
-    light: { color: '#f9f9f7', symbolColor: '#141413' }, // rgb(249,249,247) / --text-primary
-    dark: { color: '#33251f', symbolColor: '#f3f1ec' },
-    paper: { color: '#e3dacc', symbolColor: '#141413' }, // --bg-frame 暖陶土橙 / --text-primary
-    celery: { color: '#eef3ea', symbolColor: '#263126' },
+    'default-light': { color: '#f9f9f7', symbolColor: '#141413' }, // rgb(249,249,247) / --text-primary
+    'default-dark': { color: '#33251f', symbolColor: '#f3f1ec' },
+    'paper-light': { color: '#e3dacc', symbolColor: '#141413' },
+    'paper-dark': { color: '#3d3028', symbolColor: '#f6eee8' },
+    'celery-light': { color: '#eef3ea', symbolColor: '#263126' },
+    'celery-dark': { color: '#263226', symbolColor: '#edf4e9' },
   },
   focus: {
-    light: { color: '#f9f9f7', symbolColor: '#141413' }, // --bg-primary / --text-primary
-    dark: { color: '#1a1916', symbolColor: '#f3f1ec' },
-    paper: { color: '#faf9f5', symbolColor: '#141413' }, // Anthropic Light 主画布
-    celery: { color: '#f9fbf7', symbolColor: '#263126' },
+    'default-light': { color: '#f9f9f7', symbolColor: '#141413' }, // --bg-primary / --text-primary
+    'default-dark': { color: '#1a1916', symbolColor: '#f3f1ec' },
+    'paper-light': { color: '#faf9f5', symbolColor: '#141413' },
+    'paper-dark': { color: '#211b18', symbolColor: '#f6eee8' },
+    'celery-light': { color: '#f9fbf7', symbolColor: '#263126' },
+    'celery-dark': { color: '#182018', symbolColor: '#edf4e9' },
   },
 } as const;
 
 /** 应用主题到 document */
-function applyTheme(theme: ThemeMode, focusMode: boolean): void {
+type ThemeVariant = Exclude<keyof (typeof OVERLAY_COLORS)['full'], never>;
+
+function applyTheme(theme: ThemeName, colorMode: ThemeMode, focusMode: boolean): void {
   const root = document.documentElement;
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
   const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (favicon) favicon.href = theme === 'celery' ? celeryLogoUrl : lightLogoUrl;
+  const isCelery = theme === 'celery';
+  if (favicon) favicon.href = isCelery ? celeryLogoUrl : lightLogoUrl;
 
-  // paper（「经典」外观）是独立浅色外观：移除 .dark、添加 .theme-paper，并跳过系统主题判定。
-  if (theme === 'paper') {
-    root.classList.remove('dark');
-    root.classList.add('theme-paper');
-    const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
-    window.electronAPI?.setTitleBarOverlay?.(palette.paper);
-    return;
-  }
-
-  if (theme === 'celery') {
-    root.classList.remove('dark', 'theme-paper');
-    root.classList.add('theme-celery');
-    const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
-    window.electronAPI?.setTitleBarOverlay?.(palette.celery);
-    return;
-  }
-
-  root.classList.remove('theme-paper', 'theme-celery');
-
-  const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
+  const isDark = colorMode === 'dark' || (colorMode === 'system' && mediaQuery.matches);
+  root.classList.toggle('theme-paper', theme === 'paper');
+  root.classList.toggle('theme-celery', isCelery);
 
   if (isDark) {
     root.classList.add('dark');
@@ -68,43 +57,48 @@ function applyTheme(theme: ThemeMode, focusMode: boolean): void {
 
   // 同步 Electron 标题栏 overlay 颜色（仅 Win/Linux 生效，Web 环境下为 noop）
   const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
-  window.electronAPI?.setTitleBarOverlay?.(isDark ? palette.dark : palette.light);
+  const paletteKey: ThemeVariant = `${theme}-${isDark ? 'dark' : 'light'}`;
+  window.electronAPI?.setTitleBarOverlay?.(palette[paletteKey]);
 }
 
 export function useTheme() {
   const theme = useSettingsStore((s) => s.theme);
+  const colorMode = useSettingsStore((s) => s.colorMode);
   const focusMode = useSettingsStore((s) => s.focusMode);
   const setTheme = useSettingsStore((s) => s.setTheme);
+  const setColorMode = useSettingsStore((s) => s.setColorMode);
 
   // 应用主题（theme 或 focusMode 任一变化都重算 overlay 颜色）
   useEffect(() => {
-    applyTheme(theme, focusMode);
-  }, [theme, focusMode]);
+    applyTheme(theme, colorMode, focusMode);
+  }, [theme, colorMode, focusMode]);
 
   // 监听系统主题变化（仅在 system 模式下生效）
   useEffect(() => {
-    if (theme !== 'system') return;
+    if (colorMode !== 'system') return;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => applyTheme('system', focusMode);
+    const handler = () => applyTheme(theme, 'system', focusMode);
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
-  }, [theme, focusMode]);
+  }, [theme, colorMode, focusMode]);
 
   const toggleTheme = useCallback(() => {
     const root = document.documentElement;
     const isDark = root.classList.contains('dark');
-    setTheme(isDark ? 'light' : 'dark');
-  }, [setTheme]);
+    setColorMode(isDark ? 'light' : 'dark');
+  }, [setColorMode]);
 
   const cycleTheme = useCallback(() => {
     const order: ThemeMode[] = ['light', 'dark', 'system'];
-    const currentIdx = order.indexOf(theme);
-    setTheme(order[(currentIdx + 1) % order.length]);
-  }, [theme, setTheme]);
+    const currentIdx = order.indexOf(colorMode);
+    setColorMode(order[(currentIdx + 1) % order.length]);
+  }, [colorMode, setColorMode]);
 
   return {
     theme,
+    colorMode,
     setTheme,
+    setColorMode,
     toggleTheme,
     cycleTheme,
   };

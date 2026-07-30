@@ -62,8 +62,11 @@ export const MANUAL_SORT_LABEL = '手动排序';
 // 主题
 // ============================================
 
-/** 主题模式 */
-export type ThemeMode = 'light' | 'dark' | 'system' | 'paper' | 'celery';
+/** 主题配色。 */
+export type ThemeName = 'default' | 'paper' | 'celery';
+
+/** 明暗模式。跟随系统时仍应用当前选择的主题配色。 */
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 // ============================================
 // 贴图样式（简洁模式浮窗）
@@ -158,8 +161,10 @@ export interface Project {
 
 /** 应用设置 */
 export interface AppSettings {
-  /** 主题模式 */
-  theme: ThemeMode;
+  /** 主题配色 */
+  theme: ThemeName;
+  /** 主题明暗模式 */
+  colorMode: ThemeMode;
   /** 是否开机自启（Electron） */
   autoStart: boolean;
   /** 是否最小化到托盘 */
@@ -187,7 +192,8 @@ export interface AppSettings {
 
 /** 默认设置 */
 export const DEFAULT_SETTINGS: AppSettings = {
-  theme: 'system',
+  theme: 'default',
+  colorMode: 'system',
   autoStart: false,
   minimizeToTray: true,
   dataVersion: 1,

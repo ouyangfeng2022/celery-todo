@@ -4,9 +4,13 @@
  */
 
 import { create } from 'zustand';
-import type { AppSettings, ThemeMode } from '../types';
+import type { AppSettings, ThemeMode, ThemeName } from '../types';
 import { DEFAULT_SETTINGS, type StickerPreset } from '../types';
 import * as db from '../utils/database';
+
+type StartupTheme = `${ThemeName}-${ThemeMode}`;
+const toStartupTheme = (theme: ThemeName, colorMode: ThemeMode): StartupTheme =>
+  `${theme}-${colorMode}`;
 
 /** 贴图样式相关字段名集合 —— 用于 updateSettings 时判断是否需要广播给贴图窗口 */
 const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
@@ -17,11 +21,38 @@ const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
   'stickerShadow',
 ]);
 
+/** 将旧版「主题 + 明暗」合并值迁移为两个独立设置。 */
+function normalizeTheme(
+  value: string | null,
+  colorMode: string | null,
+): Pick<AppSettings, 'theme' | 'colorMode'> {
+  if (value === 'light' || value === 'dark' || value === 'system') {
+    return { theme: 'default', colorMode: value };
+  }
+  if (value === 'paper' || value === 'paper-light') return { theme: 'paper', colorMode: 'light' };
+  if (value === 'paper-dark') return { theme: 'paper', colorMode: 'dark' };
+  if (value === 'celery' || value === 'celery-light')
+    return { theme: 'celery', colorMode: 'light' };
+  if (value === 'celery-dark') return { theme: 'celery', colorMode: 'dark' };
+  return {
+    theme:
+      value === 'default' || value === 'paper' || value === 'celery'
+        ? value
+        : DEFAULT_SETTINGS.theme,
+    colorMode:
+      colorMode === 'light' || colorMode === 'dark' || colorMode === 'system'
+        ? colorMode
+        : DEFAULT_SETTINGS.colorMode,
+  };
+}
+
 interface SettingsState extends AppSettings {
   /** 加载设置 */
   loadSettings: () => void;
   /** 设置主题 */
-  setTheme: (theme: ThemeMode) => void;
+  setTheme: (theme: ThemeName) => void;
+  /** 设置主题明暗模式 */
+  setColorMode: (colorMode: ThemeMode) => void;
   /** 设置开机自启 */
   setAutoStart: (enabled: boolean) => void;
   /** 设置最小化到托盘 */
@@ -50,8 +81,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
     // autoUpdateEnabled 同上：老数据无该键时走默认 true
     const storedAutoUpdate = db.getSetting('autoUpdateEnabled');
+    const storedTheme = db.getSetting('theme');
+    const normalizedTheme = normalizeTheme(storedTheme, db.getSetting('colorMode'));
+    if (storedTheme !== normalizedTheme.theme) db.setSetting('theme', normalizedTheme.theme);
+    if (db.getSetting('colorMode') !== normalizedTheme.colorMode) {
+      db.setSetting('colorMode', normalizedTheme.colorMode);
+    }
     const settings: AppSettings = {
-      theme: (db.getSetting('theme') as ThemeMode) ?? DEFAULT_SETTINGS.theme,
+      ...normalizedTheme,
       autoStart: db.getSetting('autoStart') === 'true',
       minimizeToTray: db.getSetting('minimizeToTray') !== 'false',
       dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
@@ -73,13 +110,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     };
     set(settings);
     // 将数据库中的既有主题同步给主进程；老版本用户无需重新选择主题，下一次启动即可生效。
-    window.electronAPI?.setStartupTheme?.(settings.theme);
+    window.electronAPI?.setStartupTheme?.(toStartupTheme(settings.theme, settings.colorMode));
   },
 
   setTheme: (theme) => {
     db.setSetting('theme', theme);
     set({ theme });
-    window.electronAPI?.setStartupTheme?.(theme);
+    window.electronAPI?.setStartupTheme?.(toStartupTheme(theme, get().colorMode));
+  },
+
+  setColorMode: (colorMode) => {
+    db.setSetting('colorMode', colorMode);
+    set({ colorMode });
+    window.electronAPI?.setStartupTheme?.(toStartupTheme(get().theme, colorMode));
   },
 
   setAutoStart: (autoStart) => {
@@ -113,8 +156,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       db.setSetting(key, String(value));
     });
     set(newSettings);
-    if (updates.theme) {
-      window.electronAPI?.setStartupTheme?.(updates.theme);
+    if (updates.theme || updates.colorMode) {
+      window.electronAPI?.setStartupTheme?.(
+        toStartupTheme(newSettings.theme, newSettings.colorMode),
+      );
     }
     // 贴图样式相关字段被改动时，通知主进程向所有已打开的贴图窗口广播刷新。
     // 贴图是独立 renderer 进程，不共享 React 状态，必须经 IPC 同步。

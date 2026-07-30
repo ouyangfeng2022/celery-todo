@@ -32,16 +32,24 @@ test('打开设置面板，标题可见', async () => {
   await expect(win.getByRole('heading', { name: '通用' })).toBeVisible();
 });
 
-test('切换主题为"深色"，document.documentElement.dark 生效', async () => {
+test('切换默认深色主题，document.documentElement.dark 生效', async () => {
   await openSettings(win);
-  await win.getByText('深色', { exact: true }).click();
+  await win
+    .getByText('明暗模式', { exact: true })
+    .locator('..')
+    .getByRole('button', { name: '深色' })
+    .click();
   // useTheme 把 .dark class 加到 html
   await expect(win.locator('html')).toHaveClass(/dark/);
 });
 
-test('切换主题为"浅色"，移除 dark class', async () => {
+test('切换默认浅色主题，移除 dark class', async () => {
   await openSettings(win);
-  await win.getByText('浅色', { exact: true }).click();
+  await win
+    .getByText('明暗模式', { exact: true })
+    .locator('..')
+    .getByRole('button', { name: '浅色' })
+    .click();
   await expect(win.locator('html')).not.toHaveClass(/dark/);
 });
 

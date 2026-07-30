@@ -929,7 +929,8 @@ export function exportAllData(): import('../types').AppExportData {
     todos: getAllTodos(),
     deletedTodos: getAllDeletedTodos(),
     settings: {
-      theme: (getSetting('theme') as import('../types').ThemeMode) ?? 'system',
+      theme: (getSetting('theme') as import('../types').ThemeName) ?? 'default',
+      colorMode: (getSetting('colorMode') as import('../types').ThemeMode) ?? 'system',
       autoStart: getSetting('autoStart') === 'true',
       minimizeToTray: getSetting('minimizeToTray') !== 'false',
       dataVersion: DB_VERSION,

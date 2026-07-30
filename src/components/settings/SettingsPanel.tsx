@@ -281,7 +281,11 @@ function SettingsPanelComponent({
                 transition={{ duration: 0.18, ease: 'easeOut' }}
               >
                 {activeSection === 'general' && (
-                  <GeneralSection theme={settings.theme} onUpdateSettings={onUpdateSettings} />
+                  <GeneralSection
+                    theme={settings.theme}
+                    colorMode={settings.colorMode}
+                    onUpdateSettings={onUpdateSettings}
+                  />
                 )}
 
                 {activeSection === 'sticker' && (
