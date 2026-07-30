@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.9.1] - 2026-07-30
+### Fixed
+- 扩展 SVG viewBox 让兔耳不再贴边被裁
+
 ## [v2.9.0] - 2026-07-30
 ### Added
 - reduce sticker preview rendering cost
@@ -291,3 +295,5 @@
 [v2.8.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.8.0
 
 [v2.9.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.0
+
+[v2.9.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.1
