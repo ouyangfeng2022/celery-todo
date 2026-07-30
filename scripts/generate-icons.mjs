@@ -38,7 +38,8 @@ const sharp = (await import('sharp')).default;
 const sizes = [16, 32, 64, 128, 256];
 for (const size of sizes) {
   const out = resolve(publicDir, size === 256 ? 'icon.png' : `icon-${size}.png`);
-  await sharp(svgBuffer, { density: 384 }).resize(size, size).png().toFile(out);
+  // fit: 'contain' 保证按比例缩放、永不裁切；即便 viewBox 非正方形也安全。
+  await sharp(svgBuffer, { density: 384 }).resize(size, size, { fit: 'contain' }).png().toFile(out);
   console.log(`[generate-icons] ✓ ${size}x${size} → ${out}`);
 }
 
@@ -50,7 +51,7 @@ try {
   // ICO 内嵌多尺寸：16 / 32 / 48 / 64 / 128 / 256
   const icoPngs = await Promise.all(
     [16, 32, 48, 64, 128, 256].map((s) =>
-      sharp(svgBuffer, { density: 384 }).resize(s, s).png().toBuffer(),
+      sharp(svgBuffer, { density: 384 }).resize(s, s, { fit: 'contain' }).png().toBuffer(),
     ),
   );
   const icoBuf = await pngToIco(icoPngs);
