@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v2.9.0] - 2026-07-30
+### Added
+- reduce sticker preview rendering cost
+- add celery visual identity
+- 归档视图改版，支持搜索/筛选/按项目分组，并重命名为「已归档事项」
+
 ## [v2.8.0] - 2026-07-28
 ### Added
 - 支持切换项目时保留输入框草稿
@@ -283,3 +289,5 @@
 [v2.7.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.1
 
 [v2.8.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.8.0
+
+[v2.9.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.0
