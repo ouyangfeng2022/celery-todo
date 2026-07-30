@@ -37,6 +37,7 @@ import {
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
+import { CountBadge } from '../common/CountBadge';
 import { Logo } from '../common/Logo';
 
 interface ProjectSidebarProps {
@@ -299,12 +300,9 @@ function SortableProjectItem({
           <span className="flex-1 truncate">{project.name}</span>
           {/* 未完成 todo 计数：悬浮显示操作按钮时淡出，避免位置重叠 */}
           {incompleteCount > 0 && (
-            <span
-              className="text-[11px] font-medium px-1.5 py-0.5 rounded-full min-w-[18px] text-center opacity-100 group-hover:opacity-0 transition-opacity"
-              style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-tertiary)' }}
-            >
+            <CountBadge className="text-[var(--text-tertiary)] opacity-100 transition-opacity group-hover:opacity-0">
               {incompleteCount}
-            </span>
+            </CountBadge>
           )}
         </button>
       )}

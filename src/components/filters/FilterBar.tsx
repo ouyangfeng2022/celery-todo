@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { motion } from 'framer-motion';
 import type { FilterType, SortType } from '../../types';
 import { MANUAL_SORT_LABEL, SORT_LABELS } from '../../types';
+import { CountBadge } from '../common/CountBadge';
 import { ArchiveIcon } from '../common/Icons';
 
 interface FilterBarProps {
@@ -73,15 +74,12 @@ function FilterBarComponent({
                 )}
                 <span className="relative z-10 flex items-center gap-1.5">
                   {option.label}
-                  <span
-                    className="text-[13px] leading-none px-2 py-0.5 rounded-full tabular-nums font-bold min-w-[22px] text-center"
-                    style={{
-                      backgroundColor: isActive ? 'var(--accent-subtle)' : 'var(--bg-hover)',
-                      color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-                    }}
+                  <CountBadge
+                    variant={isActive ? 'accent' : 'muted'}
+                    className="min-w-[22px] px-2 text-[13px] font-bold"
                   >
                     {count}
-                  </span>
+                  </CountBadge>
                 </span>
               </button>
             );
