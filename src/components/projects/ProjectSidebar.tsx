@@ -421,7 +421,7 @@ function ProjectSidebarComponent({
     setEditingId(null);
   }, [editingId, editName, onRename]);
 
-  // 项目项右键菜单：导出 / 新建事项 / 重命名 / 删除（与原 hover 三按钮一致）
+  // 项目项右键菜单：项目操作 / 贴图 / 删除。贴图会打开独立窗口，故单独成组。
   const handleItemContextMenu = useCallback((e: React.MouseEvent, project: Project) => {
     setCtxMenu({ x: e.clientX, y: e.clientY, project });
   }, []);
@@ -436,12 +436,6 @@ function ProjectSidebarComponent({
           },
         },
         {
-          label: '创建贴图',
-          onClick: () => {
-            onCreateSticker(ctxMenu.project.id);
-          },
-        },
-        {
           label: '导出项目',
           onClick: () => {
             onExport(ctxMenu.project.id);
@@ -451,6 +445,13 @@ function ProjectSidebarComponent({
           label: '重命名',
           onClick: () => {
             handleStartRename(ctxMenu.project);
+          },
+        },
+        { separator: true },
+        {
+          label: '创建贴图',
+          onClick: () => {
+            onCreateSticker(ctxMenu.project.id);
           },
         },
         { separator: true },
