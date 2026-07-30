@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.11.0] - 2026-07-30
+### Added
+- global cross-project search with locate and a11y
+
 ## [v2.10.0] - 2026-07-30
 ### Added
 - sync native theme icons and duplicate stickers
@@ -314,3 +318,5 @@
 [v2.9.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.2
 
 [v2.10.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.10.0
+
+[v2.11.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.0
