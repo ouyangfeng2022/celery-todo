@@ -61,6 +61,18 @@ test('重命名项目后新名称生效', async () => {
   await expect(win.getByRole('button', { name: '旧名（拖动以排序）' })).toHaveCount(0);
 });
 
+test('右键项目可快速创建对应贴图', async () => {
+  await createProject(win, '贴图项目');
+
+  await openProjectContextMenu(win, '贴图项目');
+  const stickerWindow = appInfo.app.waitForEvent('window');
+  await win.getByRole('button', { name: '创建贴图', exact: true }).click();
+
+  const sticker = await stickerWindow;
+  await sticker.waitForLoadState('domcontentloaded');
+  await expect(sticker.getByLabel('选择贴图项目').locator('option:checked')).toHaveText('贴图项目');
+});
+
 test('删除非默认项目：二次确认后项目消失', async () => {
   await createProject(win, '待删除');
 

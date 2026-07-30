@@ -55,6 +55,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onOpenHistory={onOpenHistory}
         onOpenHelp={onOpenHelp}
         onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -75,5 +76,41 @@ describe('ProjectSidebar 设置菜单', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开设置菜单' }));
     fireEvent.click(screen.getByRole('button', { name: '帮助与反馈' }));
     expect(onOpenHelp).toHaveBeenCalledTimes(1);
+  });
+
+  it('右键项目可创建该项目的贴图', () => {
+    const onCreateSticker = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'project-sticker',
+            name: '贴图项目',
+            color: '#22c55e',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+          },
+        ]}
+        activeProjectId="project-sticker"
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={onCreateSticker}
+        incompleteCounts={{}}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: '贴图项目（拖动以排序）' }));
+    fireEvent.click(screen.getByRole('button', { name: '创建贴图' }));
+
+    expect(onCreateSticker).toHaveBeenCalledWith('project-sticker');
   });
 });

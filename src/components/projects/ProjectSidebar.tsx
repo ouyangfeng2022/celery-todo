@@ -63,7 +63,8 @@ interface ProjectSidebarProps {
   onOpenHelp: () => void;
   /** 在指定项目下新建事项：切换到该项目并唤出新建事项输入框 */
   onNewTodoInProject: (projectId: string) => void;
-  /** 进入简洁模式，并创建当前项目的浮窗 */
+  /** 为指定项目创建桌面贴图 */
+  onCreateSticker: (projectId: string) => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -347,6 +348,7 @@ function ProjectSidebarComponent({
   onOpenHistory,
   onOpenHelp,
   onNewTodoInProject,
+  onCreateSticker,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -431,6 +433,12 @@ function ProjectSidebarComponent({
           label: '新建事项',
           onClick: () => {
             onNewTodoInProject(ctxMenu.project.id);
+          },
+        },
+        {
+          label: '创建贴图',
+          onClick: () => {
+            onCreateSticker(ctxMenu.project.id);
           },
         },
         {

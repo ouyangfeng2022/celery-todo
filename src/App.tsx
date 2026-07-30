@@ -578,6 +578,7 @@ function App() {
                   window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
                 }
                 onNewTodoInProject={handleNewTodoInProject}
+                onCreateSticker={(projectId) => void window.electronAPI?.createSticker(projectId)}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}
               />
