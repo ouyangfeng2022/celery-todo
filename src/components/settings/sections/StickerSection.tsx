@@ -109,7 +109,7 @@ interface StickerPreviewProps {
  * 4 个完整贴图外壳（backdrop-filter、clip-path 与合成层会造成明显掉帧）。
  * 真正的贴图窗口仍使用 .sticker-shell 的完整视觉效果。
  */
-function StickerPreview({ preset, radius, blur, opacity, shadow }: StickerPreviewProps) {
+function StickerPreview({ preset, radius, blur: _blur, opacity, shadow }: StickerPreviewProps) {
   return (
     <div
       className={`sticker-preview-card${shadow ? ' sticker-preview-shadow' : ''}`}
