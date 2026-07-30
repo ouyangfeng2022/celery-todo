@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.9.2] - 2026-07-30
+### Fixed
+- 修正左耳裁切——正方形 viewBox + generate-icons 用 fit:contain
+
 ## [v2.9.1] - 2026-07-30
 ### Fixed
 - 扩展 SVG viewBox 让兔耳不再贴边被裁
@@ -297,3 +301,5 @@
 [v2.9.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.0
 
 [v2.9.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.1
+
+[v2.9.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.2
