@@ -720,6 +720,26 @@ export function getAllTodos(): import('../types').Todo[] {
   return queryAll<TodoRow>('SELECT * FROM todos ORDER BY created_at DESC').map(rowToTodo);
 }
 
+/**
+ * 跨项目关键词搜索：标题或描述命中即返回，结果按 created_at 倒序取前 limit 条。
+ * 直接在 SQL 层做 LIKE + LIMIT，避免拉全表后在 JS 侧过滤（全局搜索每次按键触发）。
+ * 关键词左右已加 %，调用方负责 trim / 转义特殊字符交给 LIKE 的 ESCAPE 规则处理。
+ */
+export function searchTodos(keyword: string, limit = 20): import('../types').Todo[] {
+  const trimmed = keyword.trim();
+  if (!trimmed) return [];
+  // LIKE 转义：把 % _ \ 当字面量。开启 ESCAPE '\' 后反斜杠为转义符。
+  const escaped = trimmed.replace(/[%_\\]/g, '\\$&');
+  const pattern = `%${escaped}%`;
+  return queryAll<TodoRow>(
+    `SELECT * FROM todos
+     WHERE title LIKE ? ESCAPE '\\' OR description LIKE ? ESCAPE '\\'
+     ORDER BY created_at DESC
+     LIMIT ?`,
+    [pattern, pattern, limit],
+  ).map(rowToTodo);
+}
+
 /** 根据 ID 获取 Todo */
 export function getTodoById(id: string): import('../types').Todo | null {
   const row = queryOne<TodoRow>('SELECT * FROM todos WHERE id = ?', [id]);

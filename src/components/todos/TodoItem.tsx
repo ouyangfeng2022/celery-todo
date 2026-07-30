@@ -14,6 +14,8 @@ import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/I
 export interface TodoItemProps {
   todo: Todo;
   isSelected: boolean;
+  /** 全局搜索定位时递增，触发一次短暂高亮。 */
+  focusSignal?: number;
   onToggle: (id: string) => void;
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
@@ -144,7 +146,7 @@ function PriorityMenu({
 }
 
 const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent(
-  { todo, isSelected, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
+  { todo, isSelected, focusSignal, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
   ref,
 ) {
   // 平台相关快捷键提示：Mac 显示 ⌘，Win/Linux 显示 Ctrl
@@ -152,6 +154,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
+  const [isSearchHighlighted, setIsSearchHighlighted] = useState(false);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 进入编辑模式时聚焦
@@ -161,6 +164,13 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
       editInputRef.current.select();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (!focusSignal) return;
+    setIsSearchHighlighted(true);
+    const timer = window.setTimeout(() => setIsSearchHighlighted(false), 1600);
+    return () => window.clearTimeout(timer);
+  }, [focusSignal]);
 
   const handleStartEdit = useCallback(() => {
     setEditTitle(todo.title);
@@ -216,6 +226,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         todo.pinned &&
           'bg-[var(--pinned-bg)] hover:bg-[var(--pinned-bg)] shadow-[inset_3px_0_var(--accent)]',
         isSelected && 'bg-[var(--accent-subtle)]',
+        isSearchHighlighted &&
+          'bg-[var(--accent-subtle)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-primary)]',
       )}
       style={undefined}
     >

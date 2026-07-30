@@ -155,6 +155,14 @@ export interface Project {
   order: number;
 }
 
+/** 全局搜索返回的事项及其所属项目。 */
+export interface GlobalSearchResult {
+  todo: Todo;
+  project: Project;
+  /** 供结果列表使用的匹配文本摘要。 */
+  matchedText: string;
+}
+
 // ============================================
 // 设置
 // ============================================

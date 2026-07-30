@@ -1,9 +1,9 @@
 /**
  * @file useFilter - 筛选与排序 Hook
- * @description 管理筛选视图、排序方式、搜索关键词。
+ * @description 管理当前项目的筛选视图与排序方式。
  * 排序方式与状态筛选按项目独立持久化（settings 表 `filter.<projectId>` /
- * `sort.<projectId>`），切换项目时各自回到该项目的上次选择；搜索词是临时
- * 查找操作，不持久化，切换项目时清空，避免跨项目残留。
+ * `sort.<projectId>`），切换项目时各自回到该项目的上次选择。
+ * 全局事项搜索由 App 单独管理，不参与当前项目的列表筛选。
  *
  * filter / sort 采用「同步派生」而非 useState + useEffect：
  * 当 projectId 变化时，filter 与 sort 在渲染阶段即从 DB 读取并参与
@@ -11,13 +11,10 @@
  * 筛选条件短暂残留到新项目」问题。
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
 import * as db from '../utils/database';
 import { DEFAULT_SORT, readProjectSort, sortKey, sortTodos } from '../utils/sortTodos';
-
-/** URL 参数键（仅用于搜索词的 web 端 reload 恢复） */
-const SEARCH_PARAM = 'q';
 
 /** 默认值 */
 const DEFAULT_FILTER: FilterType = 'all';
@@ -34,69 +31,33 @@ function readFilter(pid: string): FilterType {
   return v && (FILTER_VALUES as readonly string[]).includes(v) ? (v as FilterType) : DEFAULT_FILTER;
 }
 
-export function useFilter(todos: Todo[], projectId: string) {
+/**
+ * @param overrideFilter 临时覆盖当前项目的筛选值（不写盘、不替换用户选择）。
+ *   供全局搜索定位时强制展示目标事项：跳到结果后 FilterBar 仍显示用户原筛选，
+ *   只在本次定位渲染中视作 'all'，避免目标被 'active'/'completed' 隐藏后无反馈。
+ */
+export function useFilter(todos: Todo[], projectId: string, overrideFilter?: FilterType | null) {
   // === 用户显式修改的覆盖值（per-project），未覆盖时回退到 DB 持久值 ===
   const [filterOverrides, setFilterOverrides] = useState<Record<string, FilterType>>({});
   const [sortOverrides, setSortOverrides] = useState<Record<string, SortType>>({});
 
-  // 搜索词仅支持 URL 冷启动恢复（web 端 reload 场景），桌面端始终从空串开始。
-  const [search, setSearch] = useState<string>(
-    () => new URLSearchParams(window.location.search).get(SEARCH_PARAM) ?? '',
-  );
-
   // === 同步派生 filter / sort：projectId 变化时在渲染阶段即读取 DB，不滞后一帧 ===
-  // 优先级：用户本次显式选择 > DB 持久值 > 默认值
+  // 优先级：临时覆盖 > 用户本次显式选择 > DB 持久值 > 默认值
   const filter = useMemo((): FilterType => {
     if (!projectId) return DEFAULT_FILTER;
-    return filterOverrides[projectId] ?? readFilter(projectId);
-  }, [projectId, filterOverrides]);
+    return overrideFilter ?? filterOverrides[projectId] ?? readFilter(projectId);
+  }, [projectId, filterOverrides, overrideFilter]);
 
   const sort = useMemo((): SortType => {
     if (!projectId) return DEFAULT_SORT;
     return sortOverrides[projectId] ?? readProjectSort(projectId);
   }, [projectId, sortOverrides]);
 
-  // 切换项目时清空搜索词（不持久化，避免跨项目残留）
-  useEffect(() => {
-    if (!projectId) return;
-    setSearch('');
-  }, [projectId]);
-
-  // 同步搜索词到 URL（仅 web 端 reload 可见，桌面端无意义但保持兼容）
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (search) params.set(SEARCH_PARAM, search);
-    else params.delete(SEARCH_PARAM);
-    const qs = params.toString();
-    const newUrl = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
-    window.history.replaceState({}, '', newUrl);
-  }, [search]);
-
-  // 监听浏览器前进/后退：只回填搜索词（filter/sort 由 projectId 同步派生）
-  useEffect(() => {
-    const handlePopState = () => {
-      const v = new URLSearchParams(window.location.search).get(SEARCH_PARAM) ?? '';
-      setSearch(v);
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
   /** 筛选后的 Todo 列表 */
   const filteredTodos = useMemo(() => {
     let result = [...todos];
 
-    // 1. 搜索过滤
-    if (search.trim()) {
-      const lower = search.trim().toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.title.toLowerCase().includes(lower) ||
-          (t.description?.toLowerCase().includes(lower) ?? false),
-      );
-    }
-
-    // 2. 状态筛选
+    // 1. 状态筛选
     switch (filter) {
       case 'active':
         result = result.filter((t) => !t.completed);
@@ -108,12 +69,12 @@ export function useFilter(todos: Todo[], projectId: string) {
         break;
     }
 
-    // 3. 排序：置顶项恒居顶 + 按 sort 规则排序（逻辑抽到 sortTodos，
+    // 2. 排序：置顶项恒居顶 + 按 sort 规则排序（逻辑抽到 sortTodos，
     //    与贴图窗口共用同一份实现，保证两端排序完全一致）。
     result = sortTodos(result, sort);
 
     return result;
-  }, [todos, filter, sort, search]);
+  }, [todos, filter, sort]);
 
   /** 统计信息 */
   const stats = useMemo(() => {
@@ -128,9 +89,7 @@ export function useFilter(todos: Todo[], projectId: string) {
     (f: FilterType) => {
       if (!projectId) return;
       // 同时写入本地覆盖 + 持久化到 DB（同一值避免无意义重渲染）
-      setFilterOverrides((prev) =>
-        prev[projectId] === f ? prev : { ...prev, [projectId]: f },
-      );
+      setFilterOverrides((prev) => (prev[projectId] === f ? prev : { ...prev, [projectId]: f }));
       db.setSetting(filterKey(projectId), f);
     },
     [projectId],
@@ -138,23 +97,17 @@ export function useFilter(todos: Todo[], projectId: string) {
   const changeSort = useCallback(
     (s: SortType) => {
       if (!projectId) return;
-      setSortOverrides((prev) =>
-        prev[projectId] === s ? prev : { ...prev, [projectId]: s },
-      );
+      setSortOverrides((prev) => (prev[projectId] === s ? prev : { ...prev, [projectId]: s }));
       db.setSetting(sortKey(projectId), s);
     },
     [projectId],
   );
-  const changeSearch = useCallback((q: string) => setSearch(q), []);
-
   return {
     filter,
     sort,
-    search,
     filteredTodos,
     stats,
     changeFilter,
     changeSort,
-    changeSearch,
   };
 }

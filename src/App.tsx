@@ -43,7 +43,7 @@ import {
   todosToCsv,
 } from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
-import type { Priority } from './types';
+import type { GlobalSearchResult, Priority, Todo } from './types';
 
 /**
  * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
@@ -55,6 +55,26 @@ function fireCelebration() {
   confetti({ ...defaults, particleCount: 60, origin: { x: 0.8, y: 0.7 }, angle: 120 });
 }
 
+/**
+ * 生成全局搜索结果摘要：返回命中字段（标题/描述）的片段而非占位文案。
+ * 命中描述时截取关键词周边字符；仅命中标题时回退展示标题，让用户能看到匹配上下文。
+ */
+/**
+ * 生成全局搜索结果摘要：描述命中时截取关键词周边片段；描述未命中但有内容时
+ * 展示描述作为上下文；无描述时返回空串，由 SearchBar 隐藏该行，避免重复标题或占位文案。
+ */
+function extractMatchedText(todo: Todo, lowerKeyword: string): string {
+  const description = todo.description?.trim();
+  if (!description) return '';
+  const descLower = description.toLowerCase();
+  const idx = descLower.indexOf(lowerKeyword);
+  if (idx === -1) return description;
+  const start = Math.max(0, idx - 12);
+  const end = Math.min(description.length, idx + lowerKeyword.length + 12);
+  const snippet = description.slice(start, end);
+  return start > 0 ? `…${snippet}` : snippet;
+}
+
 function App() {
   // === 初始化数据库 ===
   const [dbReady, setDbReady] = useState(false);
@@ -63,6 +83,10 @@ function App() {
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
   const [newTodoFocusSignal, setNewTodoFocusSignal] = useState(0);
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [todoFocusTarget, setTodoFocusTarget] = useState<{ id: string; signal: number } | null>(
+    null,
+  );
   // 专注模式下 AddTodoInput 默认隐藏，Ctrl+N 临时唤出；添加完成或 Esc 后回隐藏
   const [composerVisible, setComposerVisible] = useState(false);
   // 主区「请创建项目」按钮触发侧边栏新建输入框聚焦：递增值驱动 ProjectSidebar 的 effect
@@ -139,8 +163,48 @@ function App() {
   useCliBridge();
 
   // === 筛选 ===
-  const { filter, sort, search, filteredTodos, stats, changeFilter, changeSort, changeSearch } =
-    useFilter(activeProjectTodos, activeProjectId);
+  // overrideFilter 仅在全局搜索定位的瞬间视作 'all'，确保被用户当前筛选
+  // （'active'/'completed'）隐藏的目标事项仍能渲染出来再高亮定位。
+  const searchFocusOverride = todoFocusTarget ? ('all' as const) : null;
+  const { filter, sort, filteredTodos, stats, changeFilter, changeSort } = useFilter(
+    activeProjectTodos,
+    activeProjectId,
+    searchFocusOverride,
+  );
+
+  // === 全局事项搜索 ===
+  // 当前项目 store 只缓存已打开项目；搜索直接读取正常事项表，确保跨项目结果完整。
+  // 使用参数化 searchTodos 在 SQL 层 LIKE + LIMIT，避免每次按键拉全表。
+  const globalSearchResults = useMemo<GlobalSearchResult[]>(() => {
+    const keyword = globalSearch.trim();
+    if (!dbReady || !keyword) return [];
+    const lower = keyword.toLowerCase();
+    const projectById = new Map(projects.map((project) => [project.id, project]));
+    return db.searchTodos(keyword).flatMap((todo) => {
+      const project = projectById.get(todo.projectId);
+      if (!project) return [];
+      return [{ todo, project, matchedText: extractMatchedText(todo, lower) }];
+    });
+    // todos / deletedTodos 是数据库内容变动的渲染信号；查询结果本身不直接引用它们。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dbReady, globalSearch, projects, todos, deletedTodos]);
+
+  const handleSelectGlobalSearchResult = useCallback(
+    (result: GlobalSearchResult) => {
+      setGlobalSearch('');
+      switchProject(result.project.id);
+      setTodoFocusTarget((current) => ({ id: result.todo.id, signal: (current?.signal ?? 0) + 1 }));
+    },
+    [switchProject],
+  );
+
+  // 定位高亮 1600ms 后清空 todoFocusTarget，连带解除 searchFocusOverride：
+  // 否则 overrideFilter 会永久视作 'all'，FilterBar 不再反映用户原筛选。
+  useEffect(() => {
+    if (!todoFocusTarget) return;
+    const timer = window.setTimeout(() => setTodoFocusTarget(null), 1700);
+    return () => window.clearTimeout(timer);
+  }, [todoFocusTarget]);
 
   // === 各项目未完成 todo 计数 ===
   // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，
@@ -491,10 +555,12 @@ function App() {
           <div className="relative h-full w-[280px] flex-shrink-0">
             <Header
               sidebarOpen={sidebarOpen}
-              search={search}
+              search={globalSearch}
               searchFocusSignal={searchFocusSignal}
               onToggleSidebar={() => setSidebarOpen((value) => !value)}
-              onSearchChange={changeSearch}
+              onSearchChange={setGlobalSearch}
+              searchResults={globalSearchResults}
+              onSelectSearchResult={handleSelectGlobalSearchResult}
               onImport={handleImportProject}
               onExportAll={handleExportAll}
               onExportCsv={handleExportCsv}
@@ -714,6 +780,7 @@ function App() {
                       sort={sort}
                       filter={filter}
                       hasTodos={stats.total > 0}
+                      focusTarget={todoFocusTarget}
                       onToggle={toggleTodo}
                       onEdit={updateTodo}
                       onDelete={deleteTodo}
@@ -758,9 +825,9 @@ function App() {
         // 注意:导入/导出回调与 DataSection 共用(onImportAll/onExportAll/onExportCsv),
         // 「先关设置页」的包装在 SettingsPanel 内部统一处理,App 只提供单一来源。
         sidebarOpen={sidebarOpen}
-        search={search}
+        search={globalSearch}
         onToggleSidebar={() => setSidebarOpen((value) => !value)}
-        onSearchChange={changeSearch}
+        onSearchChange={setGlobalSearch}
         // 新建项目 / 进入简洁模式:同上,先关设置页再触发。
         onCreateProject={() => {
           setSettingsOpen(false);

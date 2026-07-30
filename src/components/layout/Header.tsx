@@ -12,6 +12,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SearchBar } from '../filters/SearchBar';
+import type { GlobalSearchResult } from '../../types';
 import {
   ChevronLeftIcon,
   DownloadIcon,
@@ -30,6 +31,8 @@ interface HeaderProps {
   searchFocusSignal: number;
   onToggleSidebar: () => void;
   onSearchChange: (value: string) => void;
+  searchResults?: GlobalSearchResult[];
+  onSelectSearchResult?: (result: GlobalSearchResult) => void;
   onImport: (file: File) => void;
   onExportAll: () => void;
   onExportCsv: () => void;
@@ -95,6 +98,8 @@ function HeaderComponent({
   searchFocusSignal,
   onToggleSidebar,
   onSearchChange,
+  searchResults,
+  onSelectSearchResult,
   onImport,
   onExportAll,
   onExportCsv,
@@ -376,6 +381,11 @@ function HeaderComponent({
                 <SearchBar
                   value={search}
                   onChange={onSearchChange}
+                  results={searchResults}
+                  onSelectResult={(result) => {
+                    closeAllPanels();
+                    onSelectSearchResult?.(result);
+                  }}
                   focusSignal={searchFocusSignal + manualSearchFocusSignal}
                 />
               </motion.div>
@@ -401,9 +411,9 @@ function HeaderComponent({
           ref={searchButtonRef}
           className={`${iconButtonClass} absolute right-3 top-[calc(100%+8px)] z-40`}
           style={{ color: searchOpen || search ? 'var(--accent)' : 'var(--text-secondary)' }}
-          aria-label="搜索事项"
+          aria-label="搜索所有项目中的事项"
           aria-expanded={searchOpen}
-          title="搜索事项 (Ctrl+F)"
+          title="搜索所有项目中的事项 (Ctrl+F)"
           onClick={() => {
             // 浮层语境(如设置页)传入 onSearchActivate 时,搜索改由外部接管 ——
             // 内置搜索面板虽能弹开,但结果在主页面 TodoList 会被浮层遮盖。

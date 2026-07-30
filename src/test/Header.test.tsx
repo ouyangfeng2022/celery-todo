@@ -31,7 +31,7 @@ describe('Header', () => {
   it('侧边栏收起后顶部工具栏仍可恢复侧边栏并操作菜单', () => {
     const props = renderHeader({ sidebarOpen: false });
 
-    expect(screen.queryByRole('button', { name: '搜索事项' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '搜索所有项目中的事项' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '展开侧边栏' }));
     expect(props.onToggleSidebar).toHaveBeenCalledOnce();
 
@@ -43,8 +43,46 @@ describe('Header', () => {
 
   it('点击搜索按钮后展开并聚焦搜索框', () => {
     renderHeader();
-    fireEvent.click(screen.getByRole('button', { name: '搜索事项' }));
-    expect(screen.getByPlaceholderText('搜索事项...')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: '搜索所有项目中的事项' }));
+    expect(screen.getByPlaceholderText('搜索所有项目中的事项...')).toHaveFocus();
+  });
+
+  it('展示全局结果并将选中项交给上层跳转', () => {
+    const props = renderHeader({
+      search: '周报',
+      searchResults: [
+        {
+          todo: {
+            id: 'todo-1',
+            projectId: 'project-1',
+            title: '完成周报',
+            description: '整理本周进展',
+            completed: false,
+            priority: 'high',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+            pinned: false,
+          },
+          project: {
+            id: 'project-1',
+            name: '工作',
+            color: '#ef4444',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+          },
+          matchedText: '整理本周进展',
+        },
+      ],
+      onSelectSearchResult: vi.fn(),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '搜索所有项目中的事项' }));
+    expect(screen.getByRole('listbox', { name: '全局搜索结果' })).toBeInTheDocument();
+    expect(screen.getByText('工作')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: /完成周报/ }));
+    expect(props.onSelectSearchResult).toHaveBeenCalledWith(props.searchResults?.[0]);
   });
 
   it('从工具列表创建项目', () => {

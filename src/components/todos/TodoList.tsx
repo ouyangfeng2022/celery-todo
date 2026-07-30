@@ -3,7 +3,7 @@
  * @description 渲染筛选后的事项列表，支持拖拽排序（使用 @dnd-kit）
  */
 
-import { forwardRef, memo, useCallback } from 'react';
+import { forwardRef, memo, useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -44,12 +44,15 @@ interface TodoListProps {
   onSortChange: (sort: SortType) => void;
   /** 拖拽切入 manual 前快照当前显示顺序到 todo.order */
   onSnapshotOrder: (ids: string[]) => void;
+  /** 全局搜索选中后定位并高亮的事项。 */
+  focusTarget?: { id: string; signal: number } | null;
 }
 
 /** 可排序的 TodoItem 包装器 */
 interface SortableTodoItemProps {
   todo: Todo;
   isSelected: boolean;
+  focusSignal?: number;
   onToggle: (id: string) => void;
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
@@ -94,10 +97,11 @@ const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
     );
 
     return (
-      <div ref={setRefs} style={style}>
+      <div ref={setRefs} id={`todo-${props.todo.id}`} style={style}>
         <TodoItem
           todo={props.todo}
           isSelected={props.isSelected}
+          focusSignal={props.focusSignal}
           onToggle={props.onToggle}
           onEdit={props.onEdit}
           onDelete={props.onDelete}
@@ -124,6 +128,7 @@ function TodoListComponent({
   onReorder,
   onSortChange,
   onSnapshotOrder,
+  focusTarget,
 }: TodoListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -153,6 +158,16 @@ function TodoListComponent({
     [onReorder, onSortChange, onSnapshotOrder, sort, todos],
   );
 
+  useEffect(() => {
+    if (!focusTarget || !todos.some((todo) => todo.id === focusTarget.id)) return;
+    requestAnimationFrame(() => {
+      document.getElementById(`todo-${focusTarget.id}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  }, [focusTarget, todos]);
+
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
@@ -164,6 +179,7 @@ function TodoListComponent({
           key={todo.id}
           todo={todo}
           isSelected={selectedIds.has(todo.id)}
+          focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
           onToggle={onToggle}
           onEdit={onEdit}
           onDelete={onDelete}
