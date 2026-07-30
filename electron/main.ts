@@ -3,7 +3,17 @@
  * @description 创建窗口、系统托盘、开机自启、窗口位置记忆
  */
 
-import { app, BrowserWindow, Menu, Tray, ipcMain, nativeTheme, shell, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+  shell,
+  screen,
+} from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
@@ -442,6 +452,25 @@ ipcMain.handle('sticker:create', (_event, projectId = '') => {
   createStickerWindow(id, projectId);
   mainWindow?.hide();
 });
+ipcMain.handle('sticker:duplicate', (event, sourceId: string, projectId: string) => {
+  const sourceWindow = stickerWindows.get(sourceId);
+  if (!sourceWindow || event.sender.id !== sourceWindow.webContents.id) return;
+
+  const sourceState = stickerStates.find((item) => item.id === sourceId);
+  if (!sourceState) return;
+
+  // 以当前窗口尺寸为准，向右下错开一小段，避免复制品与原贴图完全重叠。
+  const bounds = sourceWindow.getBounds();
+  sourceState.projectId = projectId;
+  const id = crypto.randomUUID();
+  stickerStates.push({
+    id,
+    projectId,
+    bounds: { ...bounds, x: bounds.x + 28, y: bounds.y + 28 },
+  });
+  saveStickerStates();
+  createStickerWindow(id, projectId);
+});
 ipcMain.handle('sticker:set-project', (event, id: string, projectId: string) => {
   const window = stickerWindows.get(id);
   if (!window || event.sender.id !== window.webContents.id) return;
@@ -501,6 +530,20 @@ ipcMain.handle(
     }
   },
 );
+
+/**
+ * 更新 Windows 任务栏与系统托盘图标。
+ * 图标由 renderer 将当前主题的 SVG 栅格化后传入，避免主进程依赖 Vite 资源路径。
+ */
+ipcMain.handle('set-app-icon', (_event, dataUrl: string) => {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return;
+
+  const icon = nativeImage.createFromDataURL(dataUrl);
+  if (icon.isEmpty()) return;
+
+  mainWindow?.setIcon(icon);
+  tray?.setImage(process.platform === 'win32' ? icon.resize({ width: 16, height: 16 }) : icon);
+});
 
 /** 记录下次启动时的主题，让原生窗口首帧与渲染页面保持一致。 */
 ipcMain.handle('set-startup-theme', (_event, theme: StartupTheme) => {

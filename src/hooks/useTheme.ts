@@ -61,6 +61,24 @@ function applyTheme(theme: ThemeName, colorMode: ThemeMode, focusMode: boolean):
   window.electronAPI?.setTitleBarOverlay?.(palette[paletteKey]);
 }
 
+/** 将 Vite 管理的 SVG 栅格化，再交由 Electron 更新原生图标。 */
+function syncNativeAppIcon(url: string): void {
+  if (!window.electronAPI?.setAppIcon) return;
+
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    void window.electronAPI?.setAppIcon(canvas.toDataURL('image/png'));
+  };
+  image.src = url;
+}
+
 export function useTheme() {
   const theme = useSettingsStore((s) => s.theme);
   const colorMode = useSettingsStore((s) => s.colorMode);
@@ -72,6 +90,11 @@ export function useTheme() {
   useEffect(() => {
     applyTheme(theme, colorMode, focusMode);
   }, [theme, colorMode, focusMode]);
+
+  // Windows 任务栏和右下角托盘是原生 UI，无法随网页 favicon 自动变化，需单独同步。
+  useEffect(() => {
+    syncNativeAppIcon(theme === 'celery' ? celeryLogoUrl : lightLogoUrl);
+  }, [theme]);
 
   // 监听系统主题变化（仅在 system 模式下生效）
   useEffect(() => {

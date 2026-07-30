@@ -30,6 +30,9 @@ const electronAPI = {
   setTitleBarOverlay: (options: { color: string; symbolColor: string }): Promise<void> =>
     ipcRenderer.invoke('set-titlebar-overlay', options),
 
+  /** 更新任务栏与系统托盘图标（与当前主题同步）。 */
+  setAppIcon: (dataUrl: string): Promise<void> => ipcRenderer.invoke('set-app-icon', dataUrl),
+
   /** 保存启动主题，使下次启动的原生窗口首帧颜色正确。 */
   setStartupTheme: (
     theme:
@@ -55,6 +58,9 @@ const electronAPI = {
   /** 创建一张桌面贴图；projectId 为空时由贴图自行选择第一个项目 */
   createSticker: (projectId?: string): Promise<void> =>
     ipcRenderer.invoke('sticker:create', projectId),
+  /** 复制当前贴图（保留项目与窗口尺寸） */
+  duplicateSticker: (id: string, projectId: string): Promise<void> =>
+    ipcRenderer.invoke('sticker:duplicate', id, projectId),
   setStickerProject: (id: string, projectId: string): Promise<void> =>
     ipcRenderer.invoke('sticker:set-project', id, projectId),
   closeSticker: (id: string): Promise<void> => ipcRenderer.invoke('sticker:close', id),

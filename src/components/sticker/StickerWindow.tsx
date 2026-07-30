@@ -4,6 +4,7 @@ import * as db from '../../utils/database';
 import { readProjectSort, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { PRIORITY_LABELS, PRIORITY_SOLID, type Project, type Todo } from '../../types';
+import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
 
 interface Props {
   stickerId: string;
@@ -38,6 +39,9 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [projectId, setProjectId] = useState(initialProjectId);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [ready, setReady] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   // 用 ref 持有最新 projectId，让 refresh 引用保持稳定（不依赖 projectId），
   // 从而订阅 effect 不会因切项目而反复重订阅、泄漏监听器。
   const projectIdRef = useRef(projectId);
@@ -119,6 +123,20 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     await db.flushSave();
     refresh();
   };
+  const contextMenuItems: ContextMenuItem[] = [
+    {
+      label: '复制贴图',
+      disabled: !projectId,
+      onClick: () => {
+        void window.electronAPI?.duplicateSticker(stickerId, projectId);
+      },
+    },
+  ];
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY });
+  };
+
   return (
     <div
       className={`sticker-shell${stickerShadow ? ' sticker-shadow-on' : ''}`}
@@ -130,6 +148,8 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
           '--sticker-opacity': `${stickerOpacity / 100}`,
         } as React.CSSProperties
       }
+      // 使用捕获阶段，确保任务按钮、项目选择器等原生/交互控件不会拦截右键菜单。
+      onContextMenuCapture={handleContextMenu}
     >
       <header className="sticker-drag sticker-header">
         <select
@@ -187,6 +207,14 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         </AnimatePresence>
         {ready && todos.length === 0 && <div className="sticker-empty">这一页，已经轻盈完成。</div>}
       </div>
+      {contextMenuPosition && (
+        <ContextMenu
+          x={contextMenuPosition.x}
+          y={contextMenuPosition.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenuPosition(null)}
+        />
+      )}
     </div>
   );
 }

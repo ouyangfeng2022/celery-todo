@@ -18,6 +18,8 @@ interface ElectronAPI {
   /** 从托盘快速添加事项，返回取消订阅函数 */
   onQuickAdd: (callback: () => void) => () => void;
   createSticker: (projectId?: string) => Promise<void>;
+  /** 复制当前贴图（保留项目与窗口尺寸） */
+  duplicateSticker: (id: string, projectId: string) => Promise<void>;
   setStickerProject: (id: string, projectId: string) => Promise<void>;
   closeSticker: (id: string) => Promise<void>;
   /** 通知所有已打开的贴图窗口：样式设置已变更（主窗口侧调用） */
@@ -34,6 +36,8 @@ interface ElectronAPI {
   showTrayNotification: (title: string, body: string) => Promise<void>;
   /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
   setTitleBarOverlay: (options: { color: string; symbolColor: string }) => Promise<void>;
+  /** 更新任务栏与系统托盘图标（与当前主题同步） */
+  setAppIcon: (dataUrl: string) => Promise<void>;
   /** 保存启动主题，使下次启动的原生窗口首帧颜色正确 */
   setStartupTheme: (
     theme:
