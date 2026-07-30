@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+## [v2.10.0] - 2026-07-30
+### Added
+- sync native theme icons and duplicate stickers
+- add sticker shortcut to context menu
+- separate palette and color mode
+
+### Fixed
+- group sticker context action
+
 ## [v2.9.2] - 2026-07-30
 ### Fixed
 - 修正左耳裁切——正方形 viewBox + generate-icons 用 fit:contain
@@ -303,3 +312,5 @@
 [v2.9.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.1
 
 [v2.9.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.2
+
+[v2.10.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.10.0
