@@ -313,21 +313,41 @@
     display: none;
   }
 
-  /* 设置页里的缩略预览：覆盖 height:100% 等全屏规则，让小尺寸卡片能正常渲染 */
-  .sticker-shell.sticker-preview {
-    height: auto;
+  /* 设置页预设缩略图使用独立的轻量样式。不要复用 .sticker-shell：即使禁用
+   * backdrop-filter，它的 clip-path、isolation、伪元素和阴影在首次挂载时仍会
+   * 创建多个合成层，导致首次进入「贴图」分类掉帧。 */
+  .sticker-preview-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: linear-gradient(
+      138deg,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0.1) 43%,
+      rgba(255, 239, 228, 0.18) 100%
+    );
   }
-  /* 缩略预览（4 个预设按钮）：禁用 backdrop-filter 与 ::before 高光层，
-   * 避免首次进入「设置 → 贴图」时主窗口首次遭遇 backdrop-filter 触发
-   * GPU shader 编译 + 4 个合成层同时创建，叠加 tab 进入动画导致掉帧。
-   * 120×72 小尺寸下背景几乎纯色，禁用后视觉差异极小；
-   * large 预览（高级设置里的实时预览）仍保留真实玻璃效果。 */
-  .sticker-shell.sticker-preview-mini {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+  .sticker-preview-card.sticker-preview-shadow {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
   }
-  .sticker-shell.sticker-preview-mini::before {
-    display: none;
+  .dark .sticker-preview-card {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, rgba(61, 56, 49, 0.72), rgba(34, 31, 28, 0.47));
+  }
+  .sticker-preview-card[data-sticker-preset='pure'] {
+    background: var(--bg-tertiary);
+  }
+  .sticker-preview-card[data-sticker-preset='card'] {
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+  }
+  .sticker-preview-card[data-sticker-preset='note'] {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: linear-gradient(160deg, #fff8e0 0%, #fdecb6 100%);
+  }
+  .dark .sticker-preview-card[data-sticker-preset='note'] {
+    border-color: rgba(0, 0, 0, 0.3);
+    background: linear-gradient(160deg, #5a4a2a 0%, #3d3220 100%);
   }
   .sticker-header {
     height: 48px;

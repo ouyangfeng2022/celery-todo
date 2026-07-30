@@ -60,7 +60,7 @@ export function StickerSection({ preset, onUpdateSettings }: StickerSectionProps
             <button
               key={item.id}
               onClick={() => applyPreset(item.id)}
-              className="flex flex-col gap-2 p-2.5 rounded-lg border transition-all text-left"
+              className="flex flex-col gap-2 rounded-lg border p-2.5 text-left transition-colors"
               style={{
                 borderColor: isActive ? 'var(--accent)' : 'var(--border-color)',
                 backgroundColor: isActive ? 'var(--accent-subtle)' : 'transparent',
@@ -105,24 +105,21 @@ interface StickerPreviewProps {
 }
 
 /**
- * 贴图缩略预览。复用 globals.css 里 .sticker-shell 的整套视觉规则，
- * 通过 data-sticker-preset + CSS 变量驱动，确保与真实贴图窗口一致。
- *
- * 性能注意：追加 sticker-preview-mini 类，禁用 backdrop-filter 与 ::before
- * 高光，避免 4 个预设按钮首次挂载时同时触发 GPU shader 编译造成卡顿。
+ * 贴图缩略预览。使用专用的轻量样式近似展示各预设，避免首次进入时挂载
+ * 4 个完整贴图外壳（backdrop-filter、clip-path 与合成层会造成明显掉帧）。
+ * 真正的贴图窗口仍使用 .sticker-shell 的完整视觉效果。
  */
 function StickerPreview({ preset, radius, blur, opacity, shadow }: StickerPreviewProps) {
   return (
     <div
-      className={`sticker-shell sticker-preview sticker-preview-mini${shadow ? ' sticker-shadow-on' : ''}`}
+      className={`sticker-preview-card${shadow ? ' sticker-preview-shadow' : ''}`}
       data-sticker-preset={preset}
       style={
         {
           width: 120,
           height: 72,
-          '--sticker-radius': `${radius}px`,
-          '--sticker-blur': `${blur}px`,
-          '--sticker-opacity': `${opacity / 100}`,
+          borderRadius: radius,
+          opacity: opacity / 100,
         } as React.CSSProperties
       }
     >
