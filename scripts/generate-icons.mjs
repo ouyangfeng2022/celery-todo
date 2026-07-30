@@ -1,6 +1,6 @@
 /**
  * @file generate-icons.mjs
- * @description 一次性脚本：把 assets/logo.svg 光栅化为 Electron 所需的图标。
+ * @description 一次性脚本：把新版无文字 Logo 光栅化为 Electron 所需的图标。
  *
  * 产物：
  *   - public/icon.png      256×256  主进程窗口图标 + electron-builder 默认图标源
@@ -18,7 +18,7 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const svgPath = resolve(root, 'assets/logo.svg');
+const svgPath = resolve(root, 'assets/celery-todo-no-text.svg');
 const publicDir = resolve(root, 'public');
 
 if (!existsSync(svgPath)) {

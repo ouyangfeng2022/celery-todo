@@ -1,12 +1,14 @@
 /**
  * @file useTheme - 主题切换 Hook
- * @description 支持 light / dark / system / paper 四种模式，自动监听系统主题变化。
+ * @description 支持 light / dark / system / paper / celery 五种模式，自动监听系统主题变化。
  * paper（设置面板中标记为「经典」）为独立浅色外观（无深色变体），不响应 prefers-color-scheme。
  */
 
 import { useCallback, useEffect } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
 import type { ThemeMode } from '../types';
+import celeryLogoUrl from '../../assets/celery-todo-no-text.svg';
+import lightLogoUrl from '../../assets/celery-todo-no-text-light.svg';
 
 /**
  * 标题栏 overlay 颜色（与 globals.css 的 CSS 变量对齐）。
@@ -20,11 +22,13 @@ const OVERLAY_COLORS = {
     light: { color: '#f9f9f7', symbolColor: '#141413' }, // rgb(249,249,247) / --text-primary
     dark: { color: '#33251f', symbolColor: '#f3f1ec' },
     paper: { color: '#e3dacc', symbolColor: '#141413' }, // --bg-frame 暖陶土橙 / --text-primary
+    celery: { color: '#f4f7f0', symbolColor: '#1c2519' },
   },
   focus: {
     light: { color: '#f9f9f7', symbolColor: '#141413' }, // --bg-primary / --text-primary
     dark: { color: '#1a1916', symbolColor: '#f3f1ec' },
     paper: { color: '#faf9f5', symbolColor: '#141413' }, // Anthropic Light 主画布
+    celery: { color: '#fcfdfb', symbolColor: '#1c2519' },
   },
 } as const;
 
@@ -32,6 +36,8 @@ const OVERLAY_COLORS = {
 function applyTheme(theme: ThemeMode, focusMode: boolean): void {
   const root = document.documentElement;
   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (favicon) favicon.href = theme === 'celery' ? celeryLogoUrl : lightLogoUrl;
 
   // paper（「经典」外观）是独立浅色外观：移除 .dark、添加 .theme-paper，并跳过系统主题判定。
   if (theme === 'paper') {
@@ -42,7 +48,15 @@ function applyTheme(theme: ThemeMode, focusMode: boolean): void {
     return;
   }
 
-  root.classList.remove('theme-paper');
+  if (theme === 'celery') {
+    root.classList.remove('dark', 'theme-paper');
+    root.classList.add('theme-celery');
+    const palette = focusMode ? OVERLAY_COLORS.focus : OVERLAY_COLORS.full;
+    window.electronAPI?.setTitleBarOverlay?.(palette.celery);
+    return;
+  }
+
+  root.classList.remove('theme-paper', 'theme-celery');
 
   const isDark = theme === 'dark' || (theme === 'system' && mediaQuery.matches);
 

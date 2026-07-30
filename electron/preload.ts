@@ -26,6 +26,10 @@ const electronAPI = {
   setTitleBarOverlay: (options: { color: string; symbolColor: string }): Promise<void> =>
     ipcRenderer.invoke('set-titlebar-overlay', options),
 
+  /** 保存启动主题，使下次启动的原生窗口首帧颜色正确。 */
+  setStartupTheme: (theme: 'light' | 'dark' | 'system' | 'paper' | 'celery'): Promise<void> =>
+    ipcRenderer.invoke('set-startup-theme', theme),
+
   /** 监听快速添加事件，返回取消订阅函数 */
   onQuickAdd: (callback: () => void): (() => void) => {
     const listener = (): void => callback();

@@ -119,6 +119,47 @@
     --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
   }
 
+  /* 芹绿主题：用低饱和芹菜白贯穿底色，使强调绿自然融入界面层级。 */
+  .theme-celery {
+    --bg-primary: #fcfdfb;
+    --bg-secondary: #f7f9f4;
+    --bg-tertiary: #ffffff;
+    --bg-hover: #eef4e9;
+    --bg-active: #e4eedc;
+    --bg-frame: #f4f7f0;
+
+    --text-primary: #1c2519;
+    --text-secondary: #505b4b;
+    --text-tertiary: #667060;
+    --text-quaternary: #909b89;
+
+    --border-color: #e1e8db;
+    --border-strong: #c6d4bc;
+
+    --accent: #86b96a;
+    --accent-hover: #73a456;
+    --accent-subtle: #f0f7ec;
+    --accent-pressed: #5d8b42;
+    --accent-blue: #7eb45f;
+    --accent-blue-subtle: #eef6e9;
+    --accent-green: #9dcc7c;
+    --accent-green-subtle: #f3f9ef;
+    --pinned-bg: #f0f7ec99;
+  }
+
+  /* 除「芹绿」外均沿用浅色主题的暖珊瑚 Logo；芹绿保留原始绿色版本。 */
+  .app-logo-celery {
+    display: none;
+  }
+
+  .theme-celery .app-logo-light {
+    display: none;
+  }
+
+  .theme-celery .app-logo-celery {
+    display: block;
+  }
+
   * {
     border-color: var(--border-color);
   }

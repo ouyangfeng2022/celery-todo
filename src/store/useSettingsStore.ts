@@ -72,11 +72,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       stickerShadow: db.getSetting('stickerShadow') !== 'false',
     };
     set(settings);
+    // 将数据库中的既有主题同步给主进程；老版本用户无需重新选择主题，下一次启动即可生效。
+    window.electronAPI?.setStartupTheme?.(settings.theme);
   },
 
   setTheme: (theme) => {
     db.setSetting('theme', theme);
     set({ theme });
+    window.electronAPI?.setStartupTheme?.(theme);
   },
 
   setAutoStart: (autoStart) => {
@@ -110,6 +113,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       db.setSetting(key, String(value));
     });
     set(newSettings);
+    if (updates.theme) {
+      window.electronAPI?.setStartupTheme?.(updates.theme);
+    }
     // 贴图样式相关字段被改动时，通知主进程向所有已打开的贴图窗口广播刷新。
     // 贴图是独立 renderer 进程，不共享 React 状态，必须经 IPC 同步。
     const touchesSticker = Object.keys(updates).some((key) => STICKER_SETTING_KEYS.has(key));

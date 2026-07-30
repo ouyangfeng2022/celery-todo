@@ -456,21 +456,7 @@ function App() {
           animate={{ opacity: 1 }}
           className="flex flex-col items-center gap-4"
         >
-          <div className="flex items-center gap-2.5">
-            <Logo size={32} />
-            <h1
-              className="brand-wordmark text-xl leading-none whitespace-nowrap flex items-center gap-[0.35em]"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              <span className="italic">Celery</span>
-              <span
-                aria-hidden="true"
-                className="w-[5px] h-[5px] rounded-full flex-shrink-0"
-                style={{ backgroundColor: 'var(--accent)' }}
-              />
-              <span>Todo</span>
-            </h1>
-          </div>
+          <Logo variant="full" size={128} />
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}

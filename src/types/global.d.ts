@@ -34,6 +34,8 @@ interface ElectronAPI {
   showTrayNotification: (title: string, body: string) => Promise<void>;
   /** 更新标题栏 overlay 颜色（与主题同步，仅 Win/Linux） */
   setTitleBarOverlay: (options: { color: string; symbolColor: string }) => Promise<void>;
+  /** 保存启动主题，使下次启动的原生窗口首帧颜色正确 */
+  setStartupTheme: (theme: 'light' | 'dark' | 'system' | 'paper' | 'celery') => Promise<void>;
   /** 平台信息 */
   platform: string;
   /** 获取当前数据存储配置 */

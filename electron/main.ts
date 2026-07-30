@@ -3,7 +3,7 @@
  * @description 创建窗口、系统托盘、开机自启、窗口位置记忆
  */
 
-import { app, BrowserWindow, Menu, Tray, ipcMain, shell, screen } from 'electron';
+import { app, BrowserWindow, Menu, Tray, ipcMain, nativeTheme, shell, screen } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
@@ -20,7 +20,22 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 const stickerWindows = new Map<string, BrowserWindow>();
 type StickerState = { id: string; projectId: string; bounds?: Electron.Rectangle };
+type StartupTheme = 'light' | 'dark' | 'system' | 'paper' | 'celery';
 let stickerStates: StickerState[] = [];
+
+const STARTUP_THEME_COLORS = {
+  light: { backgroundColor: '#f9f9f7', overlayColor: '#f9f9f7', symbolColor: '#141413' },
+  dark: { backgroundColor: '#1a1916', overlayColor: '#33251f', symbolColor: '#f3f1ec' },
+  paper: { backgroundColor: '#faf9f5', overlayColor: '#e3dacc', symbolColor: '#141413' },
+  celery: { backgroundColor: '#fcfdfb', overlayColor: '#f4f7f0', symbolColor: '#1c2519' },
+} as const;
+
+function getStartupThemeColors(theme: StartupTheme) {
+  if (theme === 'system') {
+    return nativeTheme.shouldUseDarkColors ? STARTUP_THEME_COLORS.dark : STARTUP_THEME_COLORS.light;
+  }
+  return STARTUP_THEME_COLORS[theme];
+}
 
 function saveStickerStates(): void {
   try {
@@ -73,6 +88,7 @@ const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
 function createMainWindow(): BrowserWindow {
   // 读取上次窗口位置
   const savedBounds = getSavedBounds();
+  const startupColors = getStartupThemeColors(getSavedStartupTheme());
 
   const isMac = process.platform === 'darwin';
   const isWin = process.platform === 'win32';
@@ -92,16 +108,16 @@ function createMainWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     title: 'Celery Todo',
-    backgroundColor: '#e3dacc',
+    backgroundColor: startupColors.backgroundColor,
     icon: iconPath,
     // macOS 隐藏标题栏但保留红绿灯按钮；Windows 隐藏标题栏文字 + 自带 overlay 控制按钮
     titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
     // Windows/Linux 通过 overlay 保留原生最小化/最大化/关闭按钮。
-    // 初始颜色对齐完整主窗口的标题栏背景。
+    // 首帧即使用上次主题的标题栏颜色，避免数据库初始化完成前闪出旧主题。
     titleBarOverlay: !isMac
       ? {
-          color: '#e3dacc',
-          symbolColor: '#141413',
+          color: startupColors.overlayColor,
+          symbolColor: startupColors.symbolColor,
           height: 36,
         }
       : undefined,
@@ -205,6 +221,31 @@ function getStorePath(): string {
   return path.join(userDataPath, 'window-state.json');
 }
 
+function getSavedStartupTheme(): StartupTheme {
+  try {
+    const storePath = getStorePath();
+    if (fs.existsSync(storePath)) {
+      const theme = JSON.parse(fs.readFileSync(storePath, 'utf-8')).theme;
+      if (theme === 'light' || theme === 'dark' || theme === 'system' || theme === 'paper' || theme === 'celery') {
+        return theme;
+      }
+    }
+  } catch {
+    // 读取失败时沿用默认的跟随系统主题。
+  }
+  return 'system';
+}
+
+function saveStartupTheme(theme: StartupTheme): void {
+  try {
+    const storePath = getStorePath();
+    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    fs.writeFileSync(storePath, JSON.stringify({ ...existing, theme }, null, 2));
+  } catch {
+    // 持久化失败不影响当前会话，渲染进程仍会即时切换主题。
+  }
+}
+
 function getSavedBounds(): { x: number; y: number; width: number; height: number } | null {
   try {
     const storePath = getStorePath();
@@ -222,8 +263,8 @@ function getSavedBounds(): { x: number; y: number; width: number; height: number
 function saveBoundsToStore(bounds: { x: number; y: number; width: number; height: number }): void {
   try {
     const storePath = getStorePath();
-    const data = { bounds };
-    fs.writeFileSync(storePath, JSON.stringify(data, null, 2));
+    const existing = fs.existsSync(storePath) ? JSON.parse(fs.readFileSync(storePath, 'utf-8')) : {};
+    fs.writeFileSync(storePath, JSON.stringify({ ...existing, bounds }, null, 2));
   } catch {
     // 保存失败时静默处理
   }
@@ -392,6 +433,13 @@ ipcMain.handle(
     }
   },
 );
+
+/** 记录下次启动时的主题，让原生窗口首帧与渲染页面保持一致。 */
+ipcMain.handle('set-startup-theme', (_event, theme: StartupTheme) => {
+  if (theme === 'light' || theme === 'dark' || theme === 'system' || theme === 'paper' || theme === 'celery') {
+    saveStartupTheme(theme);
+  }
+});
 
 // 导出供其他模块使用
 export { mainWindow, tray };

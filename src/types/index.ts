@@ -63,7 +63,7 @@ export const MANUAL_SORT_LABEL = '手动排序';
 // ============================================
 
 /** 主题模式 */
-export type ThemeMode = 'light' | 'dark' | 'system' | 'paper';
+export type ThemeMode = 'light' | 'dark' | 'system' | 'paper' | 'celery';
 
 // ============================================
 // 贴图样式（简洁模式浮窗）

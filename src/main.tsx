@@ -7,6 +7,11 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { StickerWindow } from './components/sticker/StickerWindow';
 import './styles/globals.css';
+import logoMarkUrl from '../assets/celery-todo-no-text-light.svg';
+
+// Vite 会将新版 Logo 指纹化并随应用打包；运行时同步覆盖静态占位 favicon。
+const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+if (favicon) favicon.href = logoMarkUrl;
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Root element not found');
