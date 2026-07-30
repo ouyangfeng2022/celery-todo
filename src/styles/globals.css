@@ -119,32 +119,34 @@
     --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
   }
 
-  /* 芹绿主题：用低饱和芹菜白贯穿底色，使强调绿自然融入界面层级。 */
+  /* 芹绿主题：以带灰度的鼠尾草绿铺陈，避免高明度黄绿色在大面积界面中显得刺眼。 */
   .theme-celery {
-    --bg-primary: #fdfffc;
-    --bg-secondary: #fafcf8;
-    --bg-tertiary: #ffffff;
-    --bg-hover: #f3f8ef;
-    --bg-active: #eaf3e4;
-    --bg-frame: #f7faf4;
+    --bg-primary: #f9fbf7;
+    --bg-secondary: #f4f7f1;
+    --bg-tertiary: #fdfefb;
+    --bg-hover: #edf2e9;
+    --bg-active: #e1e9dc;
+    --bg-frame: #eef3ea;
 
-    --text-primary: #1c2519;
-    --text-secondary: #505b4b;
-    --text-tertiary: #667060;
-    --text-quaternary: #909b89;
+    --text-primary: #263126;
+    --text-secondary: #566152;
+    --text-tertiary: #6b7567;
+    --text-quaternary: #929a8e;
 
-    --border-color: #e8eee3;
-    --border-strong: #d3dfca;
+    --border-color: #dce5d7;
+    --border-strong: #bdcbb6;
 
-    --accent: #a5ca91;
-    --accent-hover: #91ba7c;
-    --accent-subtle: #f5faf1;
-    --accent-pressed: #79a465;
-    --accent-blue: #9bc583;
-    --accent-blue-subtle: #f3f9ef;
-    --accent-green: #b4d69f;
-    --accent-green-subtle: #f7fbf4;
-    --pinned-bg: #f5faf199;
+    /* 主强调色刻意压低黄度与明度，白字按钮仍保持可读对比。 */
+    --accent: #637b56;
+    --accent-hover: #526b47;
+    --accent-subtle: #eaf1e6;
+    --accent-pressed: #40593a;
+    --accent-blue: #7f9a72;
+    --accent-blue-subtle: #edf3e9;
+    --accent-green: #719063;
+    --accent-green-subtle: #edf4e9;
+    --success: #668255;
+    --pinned-bg: #eaf1e6b3;
   }
 
   /* 除「芹绿」外均沿用浅色主题的暖珊瑚 Logo；芹绿保留原始绿色版本。 */

@@ -27,7 +27,7 @@ const STARTUP_THEME_COLORS = {
   light: { backgroundColor: '#f9f9f7', overlayColor: '#f9f9f7', symbolColor: '#141413' },
   dark: { backgroundColor: '#1a1916', overlayColor: '#33251f', symbolColor: '#f3f1ec' },
   paper: { backgroundColor: '#faf9f5', overlayColor: '#e3dacc', symbolColor: '#141413' },
-  celery: { backgroundColor: '#fdfffc', overlayColor: '#f7faf4', symbolColor: '#1c2519' },
+  celery: { backgroundColor: '#f9fbf7', overlayColor: '#eef3ea', symbolColor: '#263126' },
 } as const;
 
 function getStartupThemeColors(theme: StartupTheme) {
