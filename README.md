@@ -1,16 +1,82 @@
+<div align="center">
+
+<img src="assets/celery-todo.svg" width="220" alt="Celery Todo" />
+
 # Celery Todo
 
-> 一款功能完整的桌面端待办事项应用，Celery 风格 UI，支持多项目、桌面贴图浮窗、置顶、拖拽排序与本地离线存储。
+**一款功能完整的桌面端待办事项应用**
+
+Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 置顶 · 拖拽排序 · 本地离线存储
+
+<p>
+  <a href="https://github.com/ouyangfeng2022/celery-todo/releases"><img src="https://img.shields.io/github/v/release/ouyangfeng2022/celery-todo?style=flat-square&color=d97757&label=%E7%89%88%E6%9C%AC" alt="Release"></a>
+  <img src="https://img.shields.io/badge/Electron-31-47848F?style=flat-square&logo=electron&logoColor=white" alt="Electron">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/SQLite-WASM-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite">
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-8dbf33?style=flat-square" alt="License"></a>
+  <a href="https://github.com/ouyangfeng2022/celery-todo/actions"><img src="https://img.shields.io/github/actions/workflow/status/ouyangfeng2022/celery-todo/release.yml?branch=main&style=flat-square&label=%E5%8F%91%E7%89%88" alt="CI"></a>
+  <img src="https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows&logoColor=white" alt="Platform">
+</p>
+
+<p>
+  <a href="#-功能特性">功能</a> ·
+  <a href="#-截图预览">截图</a> ·
+  <a href="#-快速开始">快速开始</a> ·
+  <a href="#-键盘快捷键">快捷键</a> ·
+  <a href="#-项目架构">架构</a> ·
+  <a href="#-开发文档">文档</a>
+</p>
+
+</div>
 
 Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数据通过 SQLite (WASM) 存储在本地，无需联网、无需账号，开箱即用。配套命令行工具 `celery` 可在终端直接管理同一份数据库。
 
-![Celery Todo 主界面](assets/main.png)
+---
 
-[开发文档](#开发文档) · [快速开始](#快速开始)
+## 📸 截图预览
+
+<p align="center">
+  <img src="assets/screenshots/main-light.png" width="100%" alt="主界面 · 芹绿主题" />
+  <sub><b>主界面 · 芹绿主题</b>　——　多项目侧边栏、置顶、优先级、Markdown 描述、统计进度</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/main-dark.png" width="100%" alt="深色主题" /><br/>
+      <sub><b>深色主题</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/main-paper.png" width="100%" alt="经典（纸白）主题" /><br/>
+      <sub><b>经典 · 纸白主题</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/settings-general.png" width="100%" alt="设置 · 通用 / 主题切换" /><br/>
+      <sub><b>设置 · 主题切换</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/settings-sticker.png" width="100%" alt="设置 · 桌面贴图样式" /><br/>
+      <sub><b>设置 · 桌面贴图样式</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/archive.png" width="100%" alt="已归档事项" /><br/>
+      <sub><b>已归档事项 · 搜索与恢复</b></sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/screenshots/settings-shortcuts.png" width="100%" alt="键盘快捷键" /><br/>
+      <sub><b>键盘快捷键一览</b></sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 功能特性
+## ✨ 功能特性
 
 ### 待办管理
 
@@ -36,7 +102,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ### 界面与体验
 
-- **四种主题** — 浅色 / 深色 / 跟随系统 / 经典（纸白）一键切换
+- **五种主题** — 浅色 / 深色 / 跟随系统 / 经典（纸白）/ 芹绿 一键切换
 - **键盘快捷键** — 全局快捷键覆盖新建、保存、筛选、侧边栏、主题、导入导出、贴图浮窗等高频操作（详见[键盘快捷键](#%EF%B8%8F-键盘快捷键)）
 - **统计面板** — 可视化展示完成情况与进度
 - **全部完成庆祝** — 列表清空时撒花 + 庆祝卡片，支持一键归档当批已完成项
@@ -45,7 +111,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## 技术栈
+## 🛠 技术栈
 
 | 类别 | 技术 |
 | --- | --- |
@@ -64,7 +130,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## 快速开始
+## 🚀 快速开始
 
 ### 环境要求
 
@@ -104,7 +170,7 @@ bun run electron:build
 
 ---
 
-## 常用脚本
+## 📜 常用脚本
 
 | 命令 | 说明 |
 | --- | --- |
@@ -122,13 +188,13 @@ bun run electron:build
 | `bun run build:cli` | 编译 CLI 到 `dist-cli/`（CommonJS） |
 | `bun run test:cli` | 运行 CLI 测试（独立 vitest，临时 DB） |
 
-E2E 测试命令见 [测试策略](#-测试策略)。
+E2E 测试命令见[测试策略](#-测试策略)。
 
 > 💡 命令行工具 `celery` 可在终端直接管理待办（GUI 运行时走 IPC 实时同步，未运行时直连 SQLite 文件）。完整说明见 [`cli/README.md`](./cli/README.md)。
 
 ---
 
-## 键盘快捷键
+## ⌨️ 键盘快捷键
 
 ### 基础快捷键
 
@@ -155,7 +221,7 @@ E2E 测试命令见 [测试策略](#-测试策略)。
 
 ---
 
-## 项目架构
+## 🏗 项目架构
 
 ```
 celery-todo/
@@ -217,7 +283,7 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 ---
 
-## 数据库结构
+## 🗄 数据库结构
 
 | 表 | 说明 |
 | --- | --- |
@@ -230,7 +296,7 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 ---
 
-## 测试策略
+## 🧪 测试策略
 
 两层测试，严格隔离：
 
@@ -250,7 +316,7 @@ bunx playwright test e2e/todos.spec.ts --headed # 显式窗口运行
 
 ---
 
-## 开发文档
+## 📚 开发文档
 
 | 文档 | 内容 |
 | --- | --- |
@@ -277,13 +343,13 @@ bun run bump -- <patch|minor|major> --push
 
 ---
 
-## 已知平台行为
+## ⚠️ 已知平台行为
 
 - **Windows 拖拽改窗口大小时右上角出现尺寸数字**：这是 Windows DWM 在无框窗口上绘制的原生尺寸提示，与 Electron 无框 + `titleBarOverlay` 配合时的已知现象（[electron/electron#943](https://github.com/electron/electron/issues/943)）。非 Bug，应用层无法移除，仅影响拖拽改大小期间的视觉。
 
 ---
 
-## 贡献
+## 🤝 贡献
 
 欢迎提 Issue 与 PR：
 
@@ -294,6 +360,6 @@ bun run bump -- <patch|minor|major> --push
 
 ---
 
-## 许可证
+## 📄 许可证
 
 本项目基于 [MIT License](./LICENSE) 开源。
