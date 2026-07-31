@@ -149,6 +149,9 @@ function renderBlock(versionLabel, dateLabel) {
   push('Added', buckets.added);
   push('Fixed', buckets.fixed);
   if (args.includes('--verbose')) push('Internal', buckets.internal);
+  // 纯测试或内部维护提交不会进入 Added / Fixed；仍需保留一条发布说明，
+  // 否则 release workflow 的 extract-changelog 会将该版本视为空段而中止。
+  if (lines.length === 1) lines.push('- 维护性更新');
   return lines.join('\n').replace(/\n+$/, '\n');
 }
 
