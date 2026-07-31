@@ -98,11 +98,11 @@ test('导入完整应用数据后项目和 todo 都出现', async () => {
   await win.keyboard.press('Escape');
   await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
 
-  // 默认项目应含"全量导入的任务1"（importAllData 是异步的，给足等待）
-  await expect(win.getByText('全量导入的任务1', { exact: true })).toBeVisible({ timeout: 10_000 });
-  // 切换到"导入的项目"看到其 todo
-  await win.getByRole('button', { name: '导入的项目（拖动以排序）' }).first().click();
-  await expect(win.getByText('导入项目的任务', { exact: true })).toBeVisible();
+  // 导入会恢复备份中的 lastActiveProjectId（importAllData 是异步的，给足等待）
+  await expect(win.getByText('导入项目的任务', { exact: true })).toBeVisible({ timeout: 10_000 });
+  // 切到默认项目后也能看到其 todo，确认全量数据均已替换导入
+  await win.getByRole('button', { name: '默认项目（拖动以排序）' }).first().click();
+  await expect(win.getByText('全量导入的任务1', { exact: true })).toBeVisible();
 });
 
 test('导入单个项目后新建该项目并自动切换', async () => {

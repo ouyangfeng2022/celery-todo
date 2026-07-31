@@ -452,12 +452,20 @@ function App() {
           await db.importAllData(data);
           loadProjects();
           useSettingsStore.getState().loadSettings();
-          // 导入后确保 active 指向一个真实存在的项目：原 active 可能指向已不存在的项目
-          // （或首启时为空串），此时回退到导入后的第一个项目
+          // autoStart 同时存在于 SQLite 设置和操作系统登录项；全量导入恢复了前者，
+          // 这里同步后者，避免设置面板与系统实际状态不一致。
+          void window.electronAPI
+            ?.setAutoStart?.(useSettingsStore.getState().autoStart)
+            .catch(() => {});
+          // 导入后优先恢复备份中的上次活跃项目；该项目不存在或旧备份没有该设置时，
+          // 再回退到第一个项目。不能沿用导入前的 activeProjectId，否则偶发同 ID
+          // 命中时会把旧会话状态带进新数据集。
           const store = useProjectStore.getState();
-          const exists = store.projects.some((p) => p.id === store.activeProjectId);
-          const targetId = exists ? store.activeProjectId : (store.projects[0]?.id ?? '');
-          if (!exists && targetId) {
+          const importedLastId = useSettingsStore.getState().lastActiveProjectId;
+          const targetId = store.projects.some((p) => p.id === importedLastId)
+            ? importedLastId
+            : (store.projects[0]?.id ?? '');
+          if (store.activeProjectId !== targetId) {
             store.setActiveProject(targetId);
           }
           useTodoStore.getState().loadProject(targetId);
