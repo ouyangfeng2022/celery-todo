@@ -3,11 +3,12 @@
  * @description 当选中多个事项时显示，支持批量完成/归档/设置优先级
  */
 
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { CheckIcon, ArchiveIcon, XIcon } from '../common/Icons';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 interface BatchToolbarProps {
   selectedCount: number;
@@ -29,17 +30,8 @@ function BatchToolbarComponent({
   const [priorityOpen, setPriorityOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭优先级菜单
-  useEffect(() => {
-    if (!priorityOpen) return;
-    const handleClick = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setPriorityOpen(false);
-      }
-    };
-    window.addEventListener('mousedown', handleClick);
-    return () => window.removeEventListener('mousedown', handleClick);
-  }, [priorityOpen]);
+  // 点击外部或按 Escape 关闭优先级菜单。
+  useDismissibleLayer(priorityOpen, [wrapRef], () => setPriorityOpen(false));
 
   return (
     <AnimatePresence>

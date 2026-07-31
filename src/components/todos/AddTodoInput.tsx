@@ -9,6 +9,7 @@ import type { Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { PlusIcon } from '../common/Icons';
 import { hasBulkSeparator } from '../../utils/helpers';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 /** 每个项目各自的输入草稿（标题 + 优先级） */
 interface Draft {
@@ -67,17 +68,8 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
     autosize();
   }, [title, autosize]);
 
-  // 点击外部收起扩展选项
-  useEffect(() => {
-    if (!showOptions) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setShowOptions(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showOptions]);
+  // 点击外部或按 Escape 收起扩展选项。
+  useDismissibleLayer(showOptions, [wrapRef], () => setShowOptions(false));
 
   // 写入标题并同步到当前项目的草稿缓存
   const handleTitleChange = useCallback(

@@ -4,6 +4,7 @@
  */
 
 import { memo, useState, useCallback, useEffect, useRef } from 'react';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -365,31 +366,10 @@ function ProjectSidebarComponent({
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
 
-  // 点击设置菜单外部或按下 Escape 时收起菜单（与 AppToolbar / ContextMenu 行为一致）。
-  // 用 mousedown 而非 click，避免先触发其它交互再关菜单。
-  useEffect(() => {
-    if (!settingsMenuOpen) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        settingsMenuRef.current &&
-        !settingsMenuRef.current.contains(target) &&
-        settingsButtonRef.current &&
-        !settingsButtonRef.current.contains(target)
-      ) {
-        setSettingsMenuOpen(false);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSettingsMenuOpen(false);
-    };
-    window.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('keydown', handleKey);
-    return () => {
-      window.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('keydown', handleKey);
-    };
-  }, [settingsMenuOpen]);
+  // 点击设置菜单外部或按下 Escape 时收起菜单。
+  useDismissibleLayer(settingsMenuOpen, [settingsMenuRef, settingsButtonRef], () =>
+    setSettingsMenuOpen(false),
+  );
 
   // 外部（主区空状态按钮）触发：唤出新建输入框并聚焦
   useEffect(() => {

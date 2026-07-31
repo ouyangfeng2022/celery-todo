@@ -12,6 +12,8 @@
 
 import { app, ipcMain, BrowserWindow } from 'electron';
 import { autoUpdater, type UpdateInfo } from 'electron-updater';
+import type { IpcSenderValidator } from './ipc-auth';
+import { requireAuthorizedSender } from './ipc-auth';
 
 // ============================================
 // 配置
@@ -98,9 +100,10 @@ export function initUpdater(mainWindow: BrowserWindow): void {
 // IPC 通道注册
 // ============================================
 
-export function registerUpdaterIpc(): void {
+export function registerUpdaterIpc(isMainWindowSender: IpcSenderValidator): void {
   /** 检查更新（开发环境下短路，直接视为"无更新"） */
-  ipcMain.handle('updater:check', async () => {
+  ipcMain.handle('updater:check', async (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     if (!app.isPackaged) {
       // 开发环境：electron-updater 无法工作，通知渲染进程"已是最新"
       send('updater:update-not-available');
@@ -114,7 +117,8 @@ export function registerUpdaterIpc(): void {
   });
 
   /** 下载更新 */
-  ipcMain.handle('updater:download', async () => {
+  ipcMain.handle('updater:download', async (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     if (!app.isPackaged) return;
     try {
       await autoUpdater.downloadUpdate();
@@ -124,18 +128,21 @@ export function registerUpdaterIpc(): void {
   });
 
   /** 退出并安装 */
-  ipcMain.handle('updater:quit-and-install', () => {
+  ipcMain.handle('updater:quit-and-install', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     if (!app.isPackaged) return;
     autoUpdater.quitAndInstall();
   });
 
   /** 获取当前应用版本 */
-  ipcMain.handle('updater:get-current-version', () => {
+  ipcMain.handle('updater:get-current-version', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     return app.getVersion();
   });
 
   /** 获取最近一次发现的更新信息（可空） */
-  ipcMain.handle('updater:get-cached-info', () => {
+  ipcMain.handle('updater:get-cached-info', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     return cachedUpdateInfo ? pickUpdateInfo(cachedUpdateInfo) : null;
   });
 }

@@ -12,6 +12,7 @@ import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SearchBar } from '../filters/SearchBar';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import type { GlobalSearchResult } from '../../types';
 import {
   ChevronLeftIcon,
@@ -162,34 +163,20 @@ function HeaderComponent({
     setSearchPos(null);
   }, []);
 
-  // 点击工具组 / 搜索按钮 / 任一弹出层之外的区域,或按下 Escape 时收起菜单/搜索弹层(与 ContextMenu 行为一致)。
-  // 放行范围刻意不包含整个 header —— 否则点击 header 内空白(中间拖拽区、按钮之间)会因命中 header 而跳过收起。
-  // 弹出层走 portal 渲染到 document.body,不在 toolbarRef 树内,故需单独判定其 ref。
-  // 用 mousedown 而非 click,避免先触发其它交互再关弹层。
+  useDismissibleLayer(
+    Boolean(openGroup || searchOpen),
+    [toolbarRef, searchButtonRef, submenuRef, searchPanelRef],
+    closeAllPanels,
+  );
+
+  // 窗口尺寸或滚动变化会让 portal 的缓存坐标失效，直接关闭浮层。
+  // 外部点击和 Escape 统一由 useDismissibleLayer 处理。
   useEffect(() => {
     if (!openGroup && !searchOpen) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (toolbarRef.current?.contains(target)) return;
-      if (searchButtonRef.current?.contains(target)) return;
-      if (submenuRef.current?.contains(target)) return;
-      if (searchPanelRef.current?.contains(target)) return;
-      closeAllPanels();
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      // 子菜单展开时 Esc 直接收起(不再有主菜单两层结构)
-      if (e.key === 'Escape') closeAllPanels();
-    };
-    // 滚动 / resize 会让缓存的屏幕坐标失效,直接关闭(与 ContextMenu 一致)。
     const handleLayoutChange = () => closeAllPanels();
-    window.addEventListener('mousedown', handlePointerDown);
-    window.addEventListener('keydown', handleKey);
     window.addEventListener('resize', handleLayoutChange);
     window.addEventListener('scroll', handleLayoutChange, true);
     return () => {
-      window.removeEventListener('mousedown', handlePointerDown);
-      window.removeEventListener('keydown', handleKey);
       window.removeEventListener('resize', handleLayoutChange);
       window.removeEventListener('scroll', handleLayoutChange, true);
     };

@@ -6,6 +6,8 @@
  */
 
 import { app, ipcMain, dialog, shell } from 'electron';
+import type { IpcSenderValidator } from './ipc-auth';
+import { requireAuthorizedSender } from './ipc-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -178,9 +180,18 @@ function switchDataDir(newDir: string): { filePath: string } {
 // IPC 通道注册
 // ============================================
 
-export function registerStorageIpc(): void {
+export function registerStorageIpc({
+  isAppWindowSender,
+  isMainWindowSender,
+}: {
+  /** 主窗口和贴图窗口都要读写同一份数据库。 */
+  isAppWindowSender: IpcSenderValidator;
+  /** 迁移位置、打开资源管理器等系统操作只属于主窗口。 */
+  isMainWindowSender: IpcSenderValidator;
+}): void {
   /** 获取当前存储配置 */
-  ipcMain.handle('storage:get-config', () => {
+  ipcMain.handle('storage:get-config', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     const cfg = readConfig();
     return {
       filePath: path.join(cfg.dataDir, DB_FILENAME),
@@ -189,17 +200,20 @@ export function registerStorageIpc(): void {
   });
 
   /** 从当前路径读取数据库二进制 */
-  ipcMain.handle('storage:load', () => {
+  ipcMain.handle('storage:load', (event) => {
+    requireAuthorizedSender(event, isAppWindowSender);
     return readDbFile();
   });
 
   /** 写入数据库二进制到当前路径 */
-  ipcMain.handle('storage:save', (_event, data: Uint8Array) => {
+  ipcMain.handle('storage:save', (event, data: Uint8Array) => {
+    requireAuthorizedSender(event, isAppWindowSender);
     writeDbFile(data);
   });
 
   /** 弹出文件夹选择对话框 */
-  ipcMain.handle('storage:choose-directory', async () => {
+  ipcMain.handle('storage:choose-directory', async (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     const result = await dialog.showOpenDialog({
       title: '选择数据存储位置',
       properties: ['openDirectory', 'createDirectory'],
@@ -209,12 +223,14 @@ export function registerStorageIpc(): void {
   });
 
   /** 切换存储目录并迁移数据 */
-  ipcMain.handle('storage:set-path', (_event, newDir: string) => {
+  ipcMain.handle('storage:set-path', (event, newDir: string) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     return switchDataDir(newDir);
   });
 
   /** 在系统资源管理器中显示数据库文件 */
-  ipcMain.handle('storage:open-in-folder', () => {
+  ipcMain.handle('storage:open-in-folder', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     const filePath = getCurrentDbPath();
     // 文件不存在时只打开所在目录
     if (fs.existsSync(filePath)) {
@@ -225,7 +241,8 @@ export function registerStorageIpc(): void {
   });
 
   /** 重置到默认存储位置（同时迁移数据） */
-  ipcMain.handle('storage:reset-to-default', () => {
+  ipcMain.handle('storage:reset-to-default', (event) => {
+    requireAuthorizedSender(event, isMainWindowSender);
     const result = switchDataDir(getDefaultDataDir());
     return result;
   });

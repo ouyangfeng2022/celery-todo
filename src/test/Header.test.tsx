@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { Header } from '@/components/layout/Header';
 
@@ -91,6 +91,23 @@ describe('Header', () => {
     fireEvent.click(screen.getByRole('button', { name: '项目' }));
     fireEvent.click(screen.getByRole('button', { name: /新建项目/ }));
     expect(props.onCreateProject).toHaveBeenCalledOnce();
+  });
+
+  it('点击外部或按 Escape 时关闭展开的菜单', async () => {
+    renderHeader();
+
+    fireEvent.click(screen.getByRole('button', { name: '项目' }));
+    expect(screen.getByRole('button', { name: /新建项目/ })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /新建项目/ })).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '项目' }));
+    fireEvent.mouseDown(document.body);
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /新建项目/ })).not.toBeInTheDocument();
+    });
   });
 
   it('主菜单按分组分层，项收在子菜单中', () => {

@@ -9,6 +9,7 @@ import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatRelativeTime } from '../../utils/helpers';
+import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
 
 export interface TodoItemProps {
@@ -71,16 +72,7 @@ function PriorityMenu({
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [open]);
+  useDismissibleLayer(open, [wrapRef], () => setOpen(false));
 
   return (
     <div ref={wrapRef} className="relative inline-flex">

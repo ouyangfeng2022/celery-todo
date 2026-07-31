@@ -209,7 +209,8 @@ let responseRegistered = false;
 function registerResponseHandler(): void {
   if (responseRegistered) return;
   responseRegistered = true;
-  ipcMain.handle('cli:response', (_event: IpcMainInvokeEvent, payload: { id: string; result?: unknown; error?: { message: string } }) => {
+  ipcMain.handle('cli:response', (event: IpcMainInvokeEvent, payload: { id: string; result?: unknown; error?: { message: string } }) => {
+    if (event.sender !== mainWindowRef?.webContents) return;
     const req = pending.get(payload.id);
     if (!req) return; // 已超时或未知 id，忽略
     clearTimeout(req.timer);

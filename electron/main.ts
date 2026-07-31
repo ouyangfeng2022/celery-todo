@@ -14,12 +14,14 @@ import {
   shell,
   screen,
 } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
 import { initUpdater, registerUpdaterIpc } from './updater';
 import { initCliServer, shutdownCliServer } from './cli-server';
 import { applyInstallOptionsOnce, consumePendingAutoStartSync } from './install-options';
+import { requireAuthorizedSender } from './ipc-auth';
 import type { AppWithIsQuitting } from './types';
 
 // ============================================
@@ -41,6 +43,21 @@ type StartupTheme =
   | 'celery-dark'
   | 'celery-system';
 let stickerStates: StickerState[] = [];
+
+/** 仅完整主窗口可调用会改变系统或应用级配置的 IPC。 */
+function isMainWindowSender(event: IpcMainInvokeEvent): boolean {
+  return event.sender === mainWindow?.webContents;
+}
+
+/** 主窗口与已注册贴图窗口都可同步同一份数据库。 */
+function isAppWindowSender(event: IpcMainInvokeEvent): boolean {
+  if (isMainWindowSender(event)) return true;
+  return [...stickerWindows.values()].some((window) => event.sender === window.webContents);
+}
+
+function requireMainWindowSender(event: IpcMainInvokeEvent): void {
+  requireAuthorizedSender(event, isMainWindowSender);
+}
 
 const STARTUP_THEME_COLORS = {
   'default-light': { backgroundColor: '#f9f9f7', overlayColor: '#f9f9f7', symbolColor: '#141413' },
@@ -381,8 +398,8 @@ if (!gotTheLock) {
       createSticker: () => createStickerWindow(crypto.randomUUID()),
       showStickers: () => stickerWindows.forEach((window) => window.show()),
     });
-    registerStorageIpc();
-    registerUpdaterIpc();
+    registerStorageIpc({ isAppWindowSender, isMainWindowSender });
+    registerUpdaterIpc(isMainWindowSender);
     // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
     if (mainWindow) initUpdater(mainWindow);
     // CLI IPC 服务器：监听本地 socket/命名管道，接收 CLI 请求并转发给渲染进程
@@ -428,26 +445,30 @@ app.on('before-quit', () => {
 // ============================================
 
 /** 设置开机自启 */
-ipcMain.handle('set-auto-start', (_event, enabled: boolean) => {
+ipcMain.handle('set-auto-start', (event, enabled: boolean) => {
+  requireMainWindowSender(event);
   app.setLoginItemSettings({
     openAtLogin: enabled,
   });
 });
 
 /** 获取窗口位置 */
-ipcMain.handle('get-window-bounds', () => {
+ipcMain.handle('get-window-bounds', (event) => {
+  requireMainWindowSender(event);
   return mainWindow?.getBounds() ?? getSavedBounds();
 });
 
 /** 保存窗口位置 */
 ipcMain.handle(
   'save-window-bounds',
-  (_event, bounds: { x: number; y: number; width: number; height: number }) => {
+  (event, bounds: { x: number; y: number; width: number; height: number }) => {
+    requireMainWindowSender(event);
     saveBoundsToStore(bounds);
   },
 );
 
-ipcMain.handle('sticker:create', (_event, projectId = '') => {
+ipcMain.handle('sticker:create', (event, projectId = '') => {
+  requireMainWindowSender(event);
   const id = crypto.randomUUID();
   createStickerWindow(id, projectId);
   mainWindow?.hide();
@@ -486,7 +507,8 @@ ipcMain.handle('sticker:close', (event, id: string) => {
 });
 // 贴图样式被改动时（主窗口的设置页 → store.updateSettings），向所有已打开的贴图窗口
 // 广播一个事件。贴图是独立 renderer，不共享 React 状态，必须经主进程中转同步。
-ipcMain.handle('sticker:style-changed', () => {
+ipcMain.handle('sticker:style-changed', (event) => {
+  requireMainWindowSender(event);
   for (const window of stickerWindows.values()) {
     window.webContents.send('sticker:style-changed');
   }
@@ -497,6 +519,7 @@ ipcMain.handle('sticker:style-changed', () => {
 // 主进程不读文件、不解释数据，仅做事件路由。过滤 event.sender.id 是为了避免
 // 发起者收到自己的广播而做无谓 reload（它本地状态早已更新）。
 ipcMain.handle('data:changed', (event) => {
+  requireAuthorizedSender(event, isAppWindowSender);
   const senderId = event.sender.id;
   if (mainWindow && mainWindow.webContents.id !== senderId) {
     mainWindow.webContents.send('data:changed');
@@ -509,7 +532,8 @@ ipcMain.handle('data:changed', (event) => {
 });
 
 /** 显示托盘通知 */
-ipcMain.handle('show-tray-notification', (_event, title: string, body: string) => {
+ipcMain.handle('show-tray-notification', (event, title: string, body: string) => {
+  requireMainWindowSender(event);
   if (mainWindow) {
     tray?.displayBalloon({
       title,
@@ -524,7 +548,8 @@ ipcMain.handle('show-tray-notification', (_event, title: string, body: string) =
  */
 ipcMain.handle(
   'set-titlebar-overlay',
-  (_event, options: { color: string; symbolColor: string }) => {
+  (event, options: { color: string; symbolColor: string }) => {
+    requireMainWindowSender(event);
     if (mainWindow && typeof mainWindow.setTitleBarOverlay === 'function') {
       mainWindow.setTitleBarOverlay(options);
     }
@@ -535,7 +560,8 @@ ipcMain.handle(
  * 更新 Windows 任务栏与系统托盘图标。
  * 图标由 renderer 将当前主题的 SVG 栅格化后传入，避免主进程依赖 Vite 资源路径。
  */
-ipcMain.handle('set-app-icon', (_event, dataUrl: string) => {
+ipcMain.handle('set-app-icon', (event, dataUrl: string) => {
+  requireMainWindowSender(event);
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) return;
 
   const icon = nativeImage.createFromDataURL(dataUrl);
@@ -546,7 +572,8 @@ ipcMain.handle('set-app-icon', (_event, dataUrl: string) => {
 });
 
 /** 记录下次启动时的主题，让原生窗口首帧与渲染页面保持一致。 */
-ipcMain.handle('set-startup-theme', (_event, theme: StartupTheme) => {
+ipcMain.handle('set-startup-theme', (event, theme: StartupTheme) => {
+  requireMainWindowSender(event);
   saveStartupTheme(theme);
 });
 
