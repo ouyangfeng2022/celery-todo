@@ -724,8 +724,8 @@ function App() {
                     >
                       <AddTodoInput
                         projectId={activeProjectId}
-                        onAdd={(title, priority) => {
-                          addTodo(title, priority);
+                        onAdd={(title, priority, description) => {
+                          addTodo(title, priority, description);
                           // 专注模式下添加完成后收起 composer
                           if (focusMode) setComposerVisible(false);
                         }}

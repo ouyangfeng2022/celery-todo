@@ -168,7 +168,7 @@ export async function addTodo(
   title: string,
   options?: { priority?: '高' | '中' | '低' },
 ): Promise<ReturnType<Page['getByText']>> {
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
+  const input = win.getByLabel('新事项标题');
   await input.click();
 
   if (options?.priority) {
@@ -187,7 +187,7 @@ export async function addTodo(
  * 批量添加（textarea 内换行触发 addTodosBulk）。
  */
 export async function addTodosBulk(win: Page, titles: string[]): Promise<void> {
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
+  const input = win.getByLabel('新事项标题');
   await input.click();
   await input.fill(titles.join('\n'));
   await win.keyboard.press('Enter');

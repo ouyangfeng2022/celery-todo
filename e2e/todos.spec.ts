@@ -24,10 +24,44 @@ test('添加单条 todo 后出现在列表中', async () => {
 });
 
 test('Enter 提交后输入框清空', async () => {
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
+  const input = win.getByLabel('新事项标题');
   await input.fill('测试任务');
   await win.keyboard.press('Enter');
   await expect(input).toHaveValue('');
+});
+
+test('按需展开描述并在创建时渲染 Markdown', async () => {
+  const titleInput = win.getByLabel('新事项标题');
+
+  // 默认保持单行简洁，不渲染描述输入区
+  await expect(win.getByLabel('新事项描述')).toHaveCount(0);
+  await titleInput.fill('创建时带描述');
+  await win.getByRole('button', { name: '添加描述' }).click();
+
+  const descriptionInput = win.getByLabel('新事项描述');
+  await expect(descriptionInput).toBeFocused();
+  await descriptionInput.fill('**重要** 内容');
+  await win.keyboard.press('Control+Enter');
+
+  await expect(win.getByText('创建时带描述', { exact: true })).toBeVisible();
+  await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
+  await expect(titleInput).toHaveValue('');
+  await expect(win.getByLabel('新事项描述')).toHaveCount(0);
+});
+
+test('Esc 收起描述后保留当前项目草稿', async () => {
+  const titleInput = win.getByLabel('新事项标题');
+  await titleInput.fill('尚未提交');
+  await win.getByRole('button', { name: '添加描述' }).click();
+  await win.getByLabel('新事项描述').fill('保留这段 **Markdown**');
+
+  await win.keyboard.press('Escape');
+  await expect(win.getByLabel('新事项描述')).toHaveCount(0);
+  await expect(win.getByRole('button', { name: '已添加描述' })).toBeVisible();
+
+  await win.getByRole('button', { name: '已添加描述' }).click();
+  await expect(win.getByLabel('新事项描述')).toHaveValue('保留这段 **Markdown**');
+  await expect(titleInput).toHaveValue('尚未提交');
 });
 
 test('Shift+Enter 批量添加多行 todo', async () => {
@@ -35,6 +69,16 @@ test('Shift+Enter 批量添加多行 todo', async () => {
   await expect(win.getByText('任务A', { exact: true })).toBeVisible();
   await expect(win.getByText('任务B', { exact: true })).toBeVisible();
   await expect(win.getByText('任务C', { exact: true })).toBeVisible();
+});
+
+test('批量输入时禁用统一描述', async () => {
+  const titleInput = win.getByLabel('新事项标题');
+  await titleInput.click();
+  await titleInput.fill('任务A\n任务B');
+
+  const descriptionButton = win.getByRole('button', { name: '批量添加不支持描述' });
+  await expect(descriptionButton).toBeDisabled();
+  await expect(win.getByLabel('新事项描述')).toHaveCount(0);
 });
 
 test('点击完成按钮标记完成，再次点击取消', async () => {
@@ -113,9 +157,7 @@ test('编辑态点"保存"按钮也能保存', async () => {
 test('编辑态可填写描述，渲染 Markdown', async () => {
   await addTodo(win, '带描述的任务');
   await win.getByText('带描述的任务', { exact: true }).dblclick();
-  await win
-    .getByPlaceholder('描述（支持 Markdown：**粗体** *斜体* `代码` [链接](url)）')
-    .fill('**重要** 内容');
+  await win.getByLabel('事项描述').fill('**重要** 内容');
   await win.keyboard.press('Control+Enter');
 
   // Markdown 渲染为 <strong>重要</strong>

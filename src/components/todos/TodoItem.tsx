@@ -264,9 +264,10 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             <textarea
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
+              aria-label="事项描述"
               className="claude-input resize-none text-sm"
               rows={3}
-              placeholder="描述（支持 Markdown：**粗体** *斜体* `代码` [链接](url)）"
+              placeholder="描述"
             />
             <div
               className="flex items-center gap-2 text-xs"

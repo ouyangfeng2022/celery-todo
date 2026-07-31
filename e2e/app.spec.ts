@@ -58,7 +58,5 @@ test('完整主界面的 Header / 侧边栏 / FilterBar / StatsPanel 均渲染',
   // 排序下拉
   await expect(win.getByLabel('排序方式')).toBeVisible();
   // 添加事项输入框
-  await expect(
-    win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）'),
-  ).toBeVisible();
+  await expect(win.getByLabel('新事项标题')).toBeVisible();
 });

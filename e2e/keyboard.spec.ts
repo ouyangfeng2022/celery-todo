@@ -30,7 +30,7 @@ test('Ctrl+N 聚焦添加事项输入框', async () => {
   await win.keyboard.press('Control+n');
   const isFocused = await win.evaluate(() => {
     const el = document.activeElement;
-    return el?.tagName === 'TEXTAREA' && el?.getAttribute('placeholder')?.includes('添加待办事项');
+    return el?.tagName === 'TEXTAREA' && el?.getAttribute('aria-label') === '新事项标题';
   });
   expect(isFocused).toBe(true);
 });

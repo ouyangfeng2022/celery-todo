@@ -126,18 +126,23 @@ test('切换项目时输入框草稿跟随项目', async () => {
   await createProject(win, '项目一');
   await createProject(win, '项目二');
 
-  const input = win.getByPlaceholder(
-    '添加待办事项...（按 Shift+Enter 换行可批量添加）',
-  );
+  const input = win.getByLabel('新事项标题');
 
-  // 当前在「项目二」，输入但不提交（仅形成草稿）
+  // 当前在「项目二」，输入标题与描述但不提交（仅形成草稿）
   await input.fill('项目二的草稿');
+  await win.getByRole('button', { name: '添加描述' }).click();
+  await win.getByLabel('新事项描述').fill('项目二的描述草稿');
 
-  // 切到「项目一」→ 输入框应为空
+  // 切到「项目一」→ 标题和描述状态都应为空
   await win.getByRole('button', { name: '项目一（拖动以排序）' }).click();
   await expect(input).toHaveValue('');
+  await input.click();
+  await expect(win.getByRole('button', { name: '添加描述' })).toBeVisible();
+  await expect(win.getByLabel('新事项描述')).toHaveCount(0);
 
-  // 切回「项目二」→ 草稿应被恢复
+  // 切回「项目二」→ 标题、描述和展开状态都应恢复
   await win.getByRole('button', { name: '项目二（拖动以排序）' }).click();
   await expect(input).toHaveValue('项目二的草稿');
+  await input.click();
+  await expect(win.getByLabel('新事项描述')).toHaveValue('项目二的描述草稿');
 });

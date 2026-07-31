@@ -96,7 +96,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   // 1) 造两条高优先级 todo（间隔 >1ms 保证 createdAt 不同）。
   //    addTodo 助手 click textarea 触发 onFocus→setShowOptions(true)，AnimatePresence
   //    展开后高优先级按钮才出现，故这里等「高」按钮可见再点。
-  const input = win.getByPlaceholder('添加待办事项...（按 Shift+Enter 换行可批量添加）');
+  const input = win.getByLabel('新事项标题');
   for (const title of ['H1', 'H2']) {
     await input.click();
     const highBtn = win.getByRole('button', { name: '高', exact: true });
