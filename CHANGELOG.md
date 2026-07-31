@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.11.1] - 2026-07-31
+### Fixed
+- make data mutations atomic
+
 ## [v2.11.0] - 2026-07-30
 ### Added
 - global cross-project search with locate and a11y
@@ -320,3 +324,5 @@
 [v2.10.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.10.0
 
 [v2.11.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.0
+
+[v2.11.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.1
