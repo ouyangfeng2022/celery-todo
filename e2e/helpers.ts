@@ -19,6 +19,7 @@ export interface LaunchedApp {
   app: ElectronApplication;
   window: Page;
   userData: string;
+  processId: number | undefined;
 }
 
 /**
@@ -30,8 +31,7 @@ export interface LaunchedApp {
  */
 export async function closeApp(appInfo: LaunchedApp | undefined): Promise<void> {
   if (!appInfo) return;
-  const proc = appInfo.app.process();
-  const pid = proc?.pid;
+  const pid = appInfo.processId;
 
   if (pid) {
     try {
@@ -72,14 +72,45 @@ export async function launchApp(): Promise<LaunchedApp> {
   fs.mkdirSync(userData, { recursive: true });
 
   const app = await electron.launch({
-    args: [projectRoot], // 加载 package.json:main → dist-electron/main.js
+    // 与 main.ts 的测试模式设置一致，强制使用内置 SwiftShader，隔离本机显卡驱动。
+    args: ['--use-angle=swiftshader', '--no-sandbox', projectRoot],
     cwd: projectRoot,
     env: { ...process.env, CELERY_TODO_USERDATA: userData },
     timeout: 30_000,
   });
 
-  const window = await app.firstWindow();
-  await window.waitForLoadState('domcontentloaded');
+  // 主进程在窗口创建前退出时，firstWindow 只会给出泛化的“browser closed”。
+  // 同时收集 stderr，把真实 Electron 启动错误带回失败报告。
+  const processErrors: string[] = [];
+  const electronProcess = app.process();
+  const processId = electronProcess?.pid;
+  electronProcess.stderr?.on('data', (chunk: Buffer | string) => {
+    processErrors.push(String(chunk));
+  });
+
+  let window: Page;
+  try {
+    window = await app.firstWindow();
+  } catch (error) {
+    // firstWindow 已报告浏览器关闭，不能再调用 app.process()；仅清理临时目录。
+    try {
+      fs.rmSync(userData, { recursive: true, force: true });
+    } catch {
+      // 忽略
+    }
+    throw new Error(
+      `Electron 主进程在创建窗口前退出：${error instanceof Error ? error.message : String(error)}; stderr: ${processErrors.join('').trim() || '(无输出)'}`,
+    );
+  }
+
+  try {
+    await window.waitForLoadState('domcontentloaded');
+  } catch (error) {
+    await closeApp({ app, window, userData, processId });
+    throw new Error(
+      `Electron renderer 启动时崩溃：${error instanceof Error ? error.message : String(error)}; stderr: ${processErrors.join('').trim() || '(无输出)'}`,
+    );
+  }
 
   // 收集控制台错误便于排查冷启动问题
   const consoleErrors: string[] = [];
@@ -115,7 +146,7 @@ export async function launchApp(): Promise<LaunchedApp> {
   // dbReady 后 React 还要跑 loadProjects/loadTodo 的 effect，再等一拍
   await window.waitForTimeout(800);
 
-  return { app, window, userData };
+  return { app, window, userData, processId };
 }
 
 /** 等待 SQLite debounce 保存（scheduleSave 500ms）落盘 */

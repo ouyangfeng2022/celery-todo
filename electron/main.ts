@@ -369,6 +369,12 @@ function saveBoundsToStore(bounds: { x: number; y: number; width: number; height
 const testUserData = process.env.CELERY_TODO_USERDATA;
 if (testUserData) {
   app.setPath('userData', testUserData);
+  // Playwright 连续冷启动时，Windows 的 GPU 进程偶发在 renderer 首次导航前崩溃。
+  // E2E 不验证真实显卡，固定使用 Electron 自带的 SwiftShader ANGLE 后端，
+  // 并关闭 Chromium sandbox（仅测试），避免本机安全软件/图形驱动在 GPU 子进程
+  // 初始化时注入失败，导致 renderer 首帧崩溃。
+  app.commandLine.appendSwitch('use-angle', 'swiftshader');
+  app.commandLine.appendSwitch('no-sandbox');
   // 用 userData 目录名做 app.name 后缀，确保单实例锁命名管道独立，
   // 否则多实例共享 app.name 导致第二实例被 quit，测试卡死。
   app.setName(`celery-todo-e2e-${testUserData.split(/[/\\]/).pop()}`);
@@ -402,8 +408,9 @@ if (!gotTheLock) {
     registerUpdaterIpc(isMainWindowSender);
     // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
     if (mainWindow) initUpdater(mainWindow);
-    // CLI IPC 服务器：监听本地 socket/命名管道，接收 CLI 请求并转发给渲染进程
-    if (mainWindow) initCliServer(mainWindow);
+    // CLI IPC 服务器使用固定命名管道，测试进程强杀后短时间内可能残留。
+    // E2E 不通过该桥接通信，测试模式不启动它，避免无关的启动竞争。
+    if (mainWindow && !isTestMode) initCliServer(mainWindow);
 
     // 安装阶段勾选了开机自启时，主进程已写注册表；这里在 renderer 加载完成后
     // 推送一次，让它把 settings.autoStart 同步进 DB（保持设置面板 UI 一致）

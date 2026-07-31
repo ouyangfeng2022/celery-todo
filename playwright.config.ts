@@ -4,15 +4,17 @@
  * 关键点：
  * - workers=1 + fullyParallel=false：Electron 单实例锁（main.ts requestSingleInstanceLock）
  *   会阻止同 userData 下并发启动，必须串行。
- * - webServer: build:electron 提前把 renderer(dist/) 和主进程(dist-electron/) 编译好，
- *   reuseExistingServer 让开发时手动构建一次即可，不必每次重跑。
- * - 测试自身不依赖 webServer 进程的 URL（用 _electron.launch 启动 app），
- *   webServer 仅作为「确保产物已构建」的触发器。
+ * - globalSetup: build:electron 在首个 Electron 实例启动前完成 renderer(dist/)
+ *   与主进程(dist-electron/)编译，避免测试读取构建中的产物。
  */
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  // Electron E2E 直接从 dist/ 与 dist-electron/ 启动。构建命令是一次性任务，
+  // 不能放在 webServer：Playwright 会把它当成长驻服务，在构建仍在重写产物时
+  // 就启动测试，冷启动中的 renderer 可能读到不完整的文件并崩溃。
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   timeout: 120_000, // 单实例串行 + 冷启动加载 sql-wasm 较慢，留足余量
@@ -27,13 +29,6 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-  },
-  // 仅作为构建触发器；测试本身不请求其 URL。
-  webServer: {
-    command: 'bun run build:electron',
-    cwd: '.',
-    reuseExistingServer: true,
-    timeout: 180_000,
   },
   projects: [
     {
