@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.12.0] - 2026-07-31
+### Added
+- add descriptions during creation
+
 ## [v2.11.2] - 2026-07-31
 ### Fixed
 - style priority in results
@@ -332,3 +336,5 @@
 [v2.11.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.1
 
 [v2.11.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.2
+
+[v2.12.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.0
