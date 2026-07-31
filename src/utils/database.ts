@@ -106,6 +106,14 @@ const MIGRATIONS: SchemaMigration[] = [
 let SQL: SqlJsStatic | null = null;
 let db: Database | null = null;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * 持久化必须串行执行。SQLite 导出是内存快照，而 Electron/IndexedDB 写入是异步的；
+ * 若两个写入并发完成，较旧的快照可能在较新的快照之后落盘，造成数据回退。
+ */
+let saveQueue: Promise<void> = Promise.resolve();
+/** 当前事务深度；事务内的多次 execute 在提交后只触发一次保存。 */
+let transactionDepth = 0;
+let transactionDirty = false;
 let isInitialized = false;
 let initPromise: Promise<Database> | null = null;
 
@@ -526,13 +534,22 @@ async function persistDatabase(): Promise<void> {
   void window.electronAPI?.notifyDataChanged?.().catch(() => {});
 }
 
+/** 将一次持久化排到前一次完成之后，保证快照写入顺序。 */
+function queuePersist(): Promise<void> {
+  const save = saveQueue.then(() => persistDatabase());
+  // 队列自身始终可继续工作；调用 flushSave 的路径仍会收到本次写入的错误。
+  saveQueue = save.catch(() => {});
+  return save;
+}
+
 /**
  * 触发自动保存（debounce 500ms）
  */
 export function scheduleSave(): void {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    void persistDatabase();
+    saveTimer = null;
+    void queuePersist();
   }, 500);
 }
 
@@ -544,7 +561,7 @@ export async function flushSave(): Promise<void> {
     clearTimeout(saveTimer);
     saveTimer = null;
   }
-  await persistDatabase();
+  await queuePersist();
 }
 
 // ============================================
@@ -582,7 +599,45 @@ function execute(sql: string, params: unknown[] = []): void {
   if (!db) throw new Error('Database not initialized');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db.run(sql, params as any);
-  scheduleSave();
+  if (transactionDepth > 0) {
+    transactionDirty = true;
+  } else {
+    scheduleSave();
+  }
+}
+
+/**
+ * 执行一组必须同时成功或失败的写操作。
+ *
+ * 归档/恢复、批量重排和全量导入都涉及多条 SQL。统一由此处包裹，既避免
+ * 中途异常留下半完成数据，也把多次 execute 合并为一次 debounce 保存。
+ */
+function runTransaction<T>(operation: () => T): T {
+  if (!db) throw new Error('Database not initialized');
+  const isOutermost = transactionDepth === 0;
+  if (isOutermost) {
+    transactionDirty = false;
+    db.run('BEGIN');
+  }
+
+  transactionDepth += 1;
+  try {
+    const result = operation();
+    if (isOutermost) {
+      db.run('COMMIT');
+      if (transactionDirty) scheduleSave();
+    }
+    return result;
+  } catch (error) {
+    if (isOutermost) {
+      db.run('ROLLBACK');
+      transactionDirty = false;
+    }
+    throw error;
+  } finally {
+    // COMMIT 本身抛错时也必须平衡深度；否则后续写入会被误判在事务中。
+    transactionDepth -= 1;
+  }
 }
 
 // ============================================
@@ -659,16 +714,20 @@ export function updateProject(project: import('../types').Project): void {
  */
 export function reorderProjects(ids: string[]): void {
   // 按数组下标作为新的 sort_order，与 todos 的 reorder 写法一致。
-  ids.forEach((id, idx) => {
-    execute('UPDATE projects SET sort_order = ? WHERE id = ?', [idx, id]);
+  runTransaction(() => {
+    ids.forEach((id, idx) => {
+      execute('UPDATE projects SET sort_order = ? WHERE id = ?', [idx, id]);
+    });
   });
 }
 
 /** 删除项目（同时删除其下所有 Todo） */
 export function deleteProject(id: string): void {
-  execute('DELETE FROM todos WHERE project_id = ?', [id]);
-  execute('DELETE FROM deleted_todos WHERE project_id = ?', [id]);
-  execute('DELETE FROM projects WHERE id = ?', [id]);
+  runTransaction(() => {
+    execute('DELETE FROM todos WHERE project_id = ?', [id]);
+    execute('DELETE FROM deleted_todos WHERE project_id = ?', [id]);
+    execute('DELETE FROM projects WHERE id = ?', [id]);
+  });
 }
 
 // ============================================
@@ -872,6 +931,21 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   );
 }
 
+/**
+ * 将事项移入归档。返回写入归档表的对象，供 Zustand 直接更新内存状态。
+ * 同一时间戳用于整批归档，使历史记录的排序和批量语义保持一致。
+ */
+export function archiveTodos(todos: import('../types').Todo[]): import('../types').DeletedTodo[] {
+  if (todos.length === 0) return [];
+  const archivedAt = new Date().toISOString();
+  const archived = todos.map((todo) => ({ ...todo, deletedAt: archivedAt, expiresAt: archivedAt }));
+  runTransaction(() => {
+    archived.forEach(insertDeletedTodo);
+    deleteTodos(archived.map((todo) => todo.id));
+  });
+  return archived;
+}
+
 /** 从归档永久删除 */
 export function permanentlyDeleteTodo(id: string): void {
   execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
@@ -881,26 +955,28 @@ export function permanentlyDeleteTodo(id: string): void {
 export function restoreTodo(id: string): void {
   const row = queryOne<DeletedTodoRow>('SELECT * FROM deleted_todos WHERE id = ?', [id]);
   if (!row) return;
-  // 重新插入到 todos 表（保留归档时的 pinned 状态）
-  execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      row.id,
-      row.project_id,
-      row.title,
-      row.description,
-      row.completed,
-      row.priority,
-      row.created_at,
-      new Date().toISOString(),
-      row.completed_at,
-      row.sort_order,
-      row.pinned,
-    ],
-  );
-  // 从归档删除
-  execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
+  runTransaction(() => {
+    // 重新插入到 todos 表（保留归档时的 pinned 状态）
+    execute(
+      `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        row.id,
+        row.project_id,
+        row.title,
+        row.description,
+        row.completed,
+        row.priority,
+        row.created_at,
+        new Date().toISOString(),
+        row.completed_at,
+        row.sort_order,
+        row.pinned,
+      ],
+    );
+    // 从归档删除
+    execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
+  });
 }
 
 /** 清空归档（历史记录）。传 projectId 时只清该项目，否则清全部 */
@@ -954,8 +1030,8 @@ export function exportAllData(): import('../types').AppExportData {
       autoStart: getSetting('autoStart') === 'true',
       minimizeToTray: getSetting('minimizeToTray') !== 'false',
       dataVersion: DB_VERSION,
-      // 与 useSettingsStore.loadSettings 保持一致：未持久化时回退默认值 true
-      focusMode: getSetting('focusMode') === null ? true : getSetting('focusMode') === 'true',
+      // 专注模式已废弃；导出中保持当前默认值，避免旧键影响备份内容。
+      focusMode: DEFAULT_SETTINGS.focusMode,
       autoUpdateEnabled:
         getSetting('autoUpdateEnabled') === null
           ? true
@@ -979,25 +1055,56 @@ export function exportAllData(): import('../types').AppExportData {
 export async function importAllData(data: import('../types').AppExportData): Promise<void> {
   if (!db) throw new Error('Database not initialized');
 
-  // 清空所有表
-  db.run('DELETE FROM todos');
-  db.run('DELETE FROM deleted_todos');
-  db.run('DELETE FROM projects');
+  runTransaction(() => {
+    // 全量导入是替换语义：连同全局设置一起替换，避免旧项目的筛选/庆祝状态泄漏。
+    execute('DELETE FROM todos');
+    execute('DELETE FROM deleted_todos');
+    execute('DELETE FROM projects');
+    execute('DELETE FROM settings');
 
-  // 插入项目
-  for (const project of data.projects) {
-    insertProject(project);
-  }
+    // 插入项目
+    for (const project of data.projects) {
+      insertProject(project);
+    }
 
-  // 插入 Todo（旧导出文件可能缺 pinned，兜底为 false 避免写入 NOT NULL 列）
-  for (const todo of data.todos) {
-    insertTodo({ ...todo, pinned: todo.pinned ?? false });
-  }
+    // 插入 Todo（旧导出文件可能缺 pinned，兜底为 false 避免写入 NOT NULL 列）
+    for (const todo of data.todos) {
+      insertTodo({ ...todo, pinned: todo.pinned ?? false });
+    }
 
-  // 插入归档（历史记录；同样兜底 pinned）
-  for (const deleted of data.deletedTodos) {
-    insertDeletedTodo({ ...deleted, pinned: deleted.pinned ?? false });
-  }
+    // 插入归档（历史记录；同样兜底 pinned）
+    for (const deleted of data.deletedTodos) {
+      insertDeletedTodo({ ...deleted, pinned: deleted.pinned ?? false });
+    }
+
+    // 老备份可能没有 settings（或 settings 为空对象），一律写入完整默认集，
+    // 保证导入后不会残留被替换数据的设置。dataVersion 永远使用当前 schema 版本。
+    const settings = data.settings ?? DEFAULT_SETTINGS;
+    setSetting('theme', settings.theme ?? DEFAULT_SETTINGS.theme);
+    setSetting('colorMode', settings.colorMode ?? DEFAULT_SETTINGS.colorMode);
+    setSetting('autoStart', String(settings.autoStart ?? DEFAULT_SETTINGS.autoStart));
+    setSetting(
+      'minimizeToTray',
+      String(settings.minimizeToTray ?? DEFAULT_SETTINGS.minimizeToTray),
+    );
+    setSetting(
+      'autoUpdateEnabled',
+      String(settings.autoUpdateEnabled ?? DEFAULT_SETTINGS.autoUpdateEnabled),
+    );
+    setSetting(
+      'lastActiveProjectId',
+      settings.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
+    );
+    setSetting('stickerPreset', settings.stickerPreset ?? DEFAULT_SETTINGS.stickerPreset);
+    setSetting('stickerRadius', String(settings.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius));
+    setSetting('stickerBlur', String(settings.stickerBlur ?? DEFAULT_SETTINGS.stickerBlur));
+    setSetting(
+      'stickerOpacity',
+      String(settings.stickerOpacity ?? DEFAULT_SETTINGS.stickerOpacity),
+    );
+    setSetting('stickerShadow', String(settings.stickerShadow ?? DEFAULT_SETTINGS.stickerShadow));
+    setSetting('dataVersion', String(DB_VERSION));
+  });
 
   await flushSave();
 }
@@ -1007,10 +1114,13 @@ export async function importAllData(data: import('../types').AppExportData): Pro
  */
 export async function resetDatabase(): Promise<void> {
   if (!db) return;
-  db.run('DROP TABLE IF EXISTS todos');
-  db.run('DROP TABLE IF EXISTS deleted_todos');
-  db.run('DROP TABLE IF EXISTS projects');
-  createTables(db);
+  runTransaction(() => {
+    execute('DROP TABLE IF EXISTS todos');
+    execute('DROP TABLE IF EXISTS deleted_todos');
+    execute('DROP TABLE IF EXISTS projects');
+    execute('DROP TABLE IF EXISTS settings');
+    createTables(db!);
+  });
   await flushSave();
 }
 

@@ -167,18 +167,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
 
-    // 归档模式：归档永久保留，expiresAt 不再有自动清除语义，
-    // 写入与 deletedAt 相同的时间戳作为占位以维持类型契约。
-    const now = new Date();
-    const archivedAt = now.toISOString();
-    const deletedTodo: DeletedTodo = {
-      ...todo,
-      deletedAt: archivedAt,
-      expiresAt: archivedAt,
-    };
-
-    db.insertDeletedTodo(deletedTodo);
-    db.deleteTodo(id);
+    const [deletedTodo] = db.archiveTodos([todo]);
 
     set({
       todos: todos.filter((t) => t.id !== id),
@@ -233,13 +222,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     switch (action) {
       case 'complete': {
+        const now = new Date().toISOString();
         const updated = todos.map((t) =>
           selectedIds.has(t.id)
             ? {
                 ...t,
                 completed: true,
-                completedAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                completedAt: now,
+                updatedAt: now,
               }
             : t,
         );
@@ -250,13 +240,14 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         break;
       }
       case 'uncomplete': {
+        const now = new Date().toISOString();
         const updated = todos.map((t) =>
           selectedIds.has(t.id)
             ? {
                 ...t,
                 completed: false,
                 completedAt: undefined,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
               }
             : t,
         );
@@ -267,29 +258,20 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         break;
       }
       case 'delete': {
-        // 归档模式：expiresAt 不再有自动清除语义，用 archivedAt 占位
-        const now = new Date();
-        const archivedAt = now.toISOString();
         const toDelete = todos.filter((t) => selectedIds.has(t.id));
-        toDelete.forEach((t) => {
-          const deleted: DeletedTodo = { ...t, deletedAt: archivedAt, expiresAt: archivedAt };
-          db.insertDeletedTodo(deleted);
-        });
-        db.deleteTodos(ids);
+        const archived = db.archiveTodos(toDelete);
         set({
           todos: todos.filter((t) => !selectedIds.has(t.id)),
-          deletedTodos: [
-            ...toDelete.map((t) => ({ ...t, deletedAt: archivedAt, expiresAt: archivedAt })),
-            ...get().deletedTodos,
-          ],
+          deletedTodos: [...archived, ...get().deletedTodos],
           selectedIds: new Set(),
         });
         break;
       }
       case 'setPriority': {
         if (!priority) return;
+        const now = new Date().toISOString();
         const updated = todos.map((t) =>
-          selectedIds.has(t.id) ? { ...t, priority, updatedAt: new Date().toISOString() } : t,
+          selectedIds.has(t.id) ? { ...t, priority, updatedAt: now } : t,
         );
         updated.forEach((t) => {
           if (selectedIds.has(t.id)) db.updateTodo(t);
@@ -357,22 +339,11 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   clearCompleted: () => {
     const { todos } = get();
     const completed = todos.filter((t) => t.completed);
-    // 归档模式：expiresAt 用 archivedAt 占位（不再有自动清除）
-    const now = new Date();
-    const archivedAt = now.toISOString();
-
-    completed.forEach((t) => {
-      const deleted: DeletedTodo = { ...t, deletedAt: archivedAt, expiresAt: archivedAt };
-      db.insertDeletedTodo(deleted);
-      db.deleteTodo(t.id);
-    });
+    const archived = db.archiveTodos(completed);
 
     set({
       todos: todos.filter((t) => !t.completed),
-      deletedTodos: [
-        ...completed.map((t) => ({ ...t, deletedAt: archivedAt, expiresAt: archivedAt })),
-        ...get().deletedTodos,
-      ],
+      deletedTodos: [...archived, ...get().deletedTodos],
     });
   },
 }));

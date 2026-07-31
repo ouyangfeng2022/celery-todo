@@ -48,5 +48,7 @@
     }
   ],
   "deletedTodos": [],
-  "settings": {}
+  "settings": {
+    "lastActiveProjectId": "imported-proj"
+  }
 }
