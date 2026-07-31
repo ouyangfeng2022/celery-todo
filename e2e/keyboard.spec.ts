@@ -38,7 +38,7 @@ test('Ctrl+N 聚焦添加事项输入框', async () => {
 test('Ctrl+F 聚焦搜索框', async () => {
   await win.keyboard.press('Control+f');
   const isFocused = await win.evaluate(() => {
-    return document.activeElement?.getAttribute('placeholder') === '搜索事项...';
+    return document.activeElement?.getAttribute('aria-label') === '搜索所有项目中的事项';
   });
   expect(isFocused).toBe(true);
 });
