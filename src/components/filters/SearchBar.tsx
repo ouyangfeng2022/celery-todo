@@ -6,7 +6,7 @@
 import { memo, useRef, useEffect, useState, useId } from 'react';
 import { SearchIcon, XIcon } from '../common/Icons';
 import type { GlobalSearchResult } from '../../types';
-import { PRIORITY_LABELS } from '../../types';
+import { PRIORITY_COLORS, PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 
 interface SearchBarProps {
   value: string;
@@ -139,30 +139,37 @@ function SearchBarComponent({
                     className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full"
                     style={{ backgroundColor: result.project.color ?? 'var(--accent)' }}
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <span className="flex min-w-0 flex-1 items-start gap-2">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium">
+                          <span
+                            className={
+                              result.todo.completed ? 'line-through opacity-60' : undefined
+                            }
+                          >
+                            {result.todo.title}
+                          </span>
+                        </span>
+                      {result.matchedText && (
+                        <span
+                          className="mt-0.5 block truncate text-xs"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          {result.matchedText}
+                        </span>
+                      )}
                       <span
-                        className={result.todo.completed ? 'line-through opacity-60' : undefined}
+                        className="mt-1 block truncate text-[11px]"
+                        style={{ color: 'var(--text-tertiary)' }}
                       >
-                        {result.todo.title}
-                      </span>
-                      <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                        {PRIORITY_LABELS[result.todo.priority]}
+                        {result.project.name}
                       </span>
                     </span>
-                    {result.matchedText && (
-                      <span
-                        className="mt-0.5 block truncate text-xs"
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {result.matchedText}
-                      </span>
-                    )}
                     <span
-                      className="mt-1 block truncate text-[11px]"
-                      style={{ color: 'var(--text-tertiary)' }}
+                      className={`claude-tag mt-0.5 flex-shrink-0 font-semibold ${PRIORITY_COLORS[result.todo.priority]}`}
+                      style={{ borderLeft: `1px solid ${PRIORITY_SOLID[result.todo.priority]}` }}
                     >
-                      {result.project.name}
+                      {PRIORITY_LABELS[result.todo.priority]}
                     </span>
                   </span>
                 </button>
