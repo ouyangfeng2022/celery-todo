@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.12.2] - 2026-07-31
+### Fixed
+- add fallback maintenance notes
+
 ## [v2.12.1] - 2026-07-31
 ## [v2.12.0] - 2026-07-31
 ### Added
@@ -341,3 +345,5 @@
 [v2.12.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.0
 
 [v2.12.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.1
+
+[v2.12.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.2
