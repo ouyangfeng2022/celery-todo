@@ -20,6 +20,7 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 置顶 · 拖拽排
 </p>
 
 <p>
+  <a href="#-下载">下载</a> ·
   <a href="#-功能特性">功能</a> ·
   <a href="#-截图预览">截图</a> ·
   <a href="#-快速开始">快速开始</a> ·
@@ -31,6 +32,24 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 置顶 · 拖拽排
 </div>
 
 Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数据通过 SQLite (WASM) 存储在本地，无需联网、无需账号，开箱即用。配套命令行工具 `celery` 可在终端直接管理同一份数据库。
+
+---
+
+## 📥 下载
+
+<p>
+  <a href="https://github.com/ouyangfeng2022/celery-todo/releases/latest">
+    <img src="https://img.shields.io/github/v/release/ouyangfeng2022/celery-todo?style=flat-square&color=d97757&label=%E2%AC%87%EF%B8%8F%20%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88" alt="下载最新版">
+  </a>
+  <a href="https://github.com/ouyangfeng2022/celery-todo/releases">
+    <img src="https://img.shields.io/badge/%F0%9F%93%A6-%E5%85%A8%E9%83%A8%E7%89%88%E6%9C%AC-8dbf33?style=flat-square" alt="全部版本">
+  </a>
+</p>
+
+- **Windows**：在 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 页面下载 `Celery-Todo-Setup-x.y.z.exe`（NSIS 安装包），安装向导支持开机自启与自定义数据目录。
+- **历史版本**：前往 [Releases](https://github.com/ouyangfeng2022/celery-todo/releases) 选择对应版本。
+
+> 📌 应用内置自动更新：启动后会自动检查 GitHub Release 新版本，发现新版弹窗提示，下载、进度、重启在同一弹窗内完成，无需手动重新下载。
 
 ---
 
