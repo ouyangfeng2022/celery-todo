@@ -146,7 +146,7 @@
       "allowToChangeInstallationDirectory": true,
       "include": "build/installer.nsh"
     },
-    "artifactName": "Celery-Todo-Setup.${ext}",
+    "artifactName": "Celery-Todo-Setup-${version}.${ext}",
     "publish": {
       "provider": "github",
       "owner": "ouyangfeng2022",

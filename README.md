@@ -38,7 +38,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 ## 下载
 
 <p>
-  <a href="https://github.com/ouyangfeng2022/celery-todo/releases/latest/download/Celery-Todo-Setup.exe">
+  <a href="https://github.com/ouyangfeng2022/celery-todo/releases/latest">
     <img src="https://img.shields.io/badge/Windows-下载最新版-d97757?style=for-the-badge&logo=windows&logoColor=white" alt="下载最新版">
   </a>
   &nbsp;
@@ -47,7 +47,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
   </a>
 </p>
 
-- **Windows**：点击上方「下载最新版」直接获取最新版安装包（NSIS），安装向导支持开机自启与自定义数据目录。
+- **Windows**：在 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 页面下载 `Celery-Todo-Setup-x.y.z.exe`（NSIS 安装包），安装向导支持开机自启与自定义数据目录。
 - **历史版本**：前往 [Releases](https://github.com/ouyangfeng2022/celery-todo/releases) 选择对应版本。
 
 > **内置自动更新**：启动后会自动检查 GitHub Release 新版本，发现新版弹窗提示，下载、进度、重启在同一弹窗内完成，无需手动重新下载。
