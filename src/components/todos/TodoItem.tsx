@@ -5,12 +5,12 @@
 
 import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatRelativeTime } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 export interface TodoItemProps {
   todo: Todo;
@@ -318,7 +318,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 style={{ color: 'var(--text-secondary)' }}
                 onDoubleClick={handleStartEdit}
               >
-                <ReactMarkdown>{todo.description}</ReactMarkdown>
+                <MarkdownContent content={todo.description} />
               </div>
             )}
 
