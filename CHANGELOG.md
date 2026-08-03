@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v2.13.0] - 2026-08-03
+### Added
+- add GFM and math rendering
+- enhance project selection UI with improved styles and functionality
+- 支持右键关闭贴图并新增 E2E 测试
+
 ## [v2.12.2] - 2026-07-31
 ### Fixed
 - add fallback maintenance notes
@@ -347,3 +353,5 @@
 [v2.12.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.1
 
 [v2.12.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.2
+
+[v2.13.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.13.0
