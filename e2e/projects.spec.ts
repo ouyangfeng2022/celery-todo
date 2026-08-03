@@ -27,13 +27,9 @@ test('新建项目并自动切换为当前', async () => {
   await createProject(win, '工作');
 
   // Header h1 标题变成"工作"
-  await expect(
-    win.getByRole('heading', { name: '工作', level: 1 }),
-  ).toBeVisible();
+  await expect(win.getByRole('heading', { name: '工作', level: 1 })).toBeVisible();
   // 侧边栏项目按钮里也含"工作"
-  await expect(
-    win.getByRole('button', { name: '工作（拖动以排序）' }),
-  ).toBeVisible();
+  await expect(win.getByRole('button', { name: '工作（拖动以排序）' })).toBeVisible();
 });
 
 test('新建项目时空标题不创建（Esc 取消）', async () => {
@@ -70,7 +66,7 @@ test('右键项目可快速创建对应贴图', async () => {
 
   const sticker = await stickerWindow;
   await sticker.waitForLoadState('domcontentloaded');
-  await expect(sticker.getByLabel('选择贴图项目').locator('option:checked')).toHaveText('贴图项目');
+  await expect(sticker.getByLabel('选择贴图项目')).toHaveText('贴图项目');
 });
 
 test('删除非默认项目：二次确认后项目消失', async () => {
@@ -83,9 +79,7 @@ test('删除非默认项目：二次确认后项目消失', async () => {
   await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();
   await win.keyboard.press('Enter');
 
-  await expect(
-    win.getByRole('button', { name: '待删除（拖动以排序）' }),
-  ).toHaveCount(0);
+  await expect(win.getByRole('button', { name: '待删除（拖动以排序）' })).toHaveCount(0);
 });
 
 test('删除最后一个项目后列表为空，主区显示"请创建项目"', async () => {

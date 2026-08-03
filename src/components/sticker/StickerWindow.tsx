@@ -11,6 +11,12 @@ interface Props {
   initialProjectId: string;
 }
 
+interface StickerTodoListProps {
+  todos: Todo[];
+  ready: boolean;
+  onToggle: (todo: Todo) => void;
+}
+
 /** 浅比较项目列表（id + name + color），内容相同则视为无需更新，避免 select 抖动 */
 function sameProjects(a: Project[], b: Project[]): boolean {
   if (a === b) return true;
@@ -34,14 +40,57 @@ function loadActiveTodos(pid: string): Todo[] {
   return sortTodos(raw, readProjectSort(pid));
 }
 
+/**
+ * 每次切换项目时通过 key 整体重建列表，避免两个项目的行进入同一个
+ * AnimatePresence/layout 动画树；同一项目内完成事项时仍保留退场与重排动画。
+ */
+function StickerTodoList({ todos, ready, onToggle }: StickerTodoListProps) {
+  return (
+    <>
+      <AnimatePresence initial={false}>
+        {todos.map((todo) => (
+          <motion.button
+            key={todo.id}
+            layout
+            exit={{ opacity: 0, x: 18 }}
+            className="sticker-todo"
+            onClick={() => onToggle(todo)}
+            title="标记为完成"
+            style={
+              {
+                '--sticker-priority-color': PRIORITY_SOLID[todo.priority],
+              } as React.CSSProperties
+            }
+          >
+            <span className="sticker-priority-bar" aria-hidden="true" />
+            <span className="sticker-check" />
+            <span className="sticker-todo-title">{todo.title}</span>
+            <span
+              className="sticker-priority-tag"
+              data-priority={todo.priority}
+              aria-label={`优先级：${PRIORITY_LABELS[todo.priority]}`}
+            >
+              {PRIORITY_LABELS[todo.priority]}
+            </span>
+            {todo.pinned && <i>置顶</i>}
+          </motion.button>
+        ))}
+      </AnimatePresence>
+      {ready && todos.length === 0 && <div className="sticker-empty">这一页，已经轻盈完成。</div>}
+    </>
+  );
+}
+
 export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState(initialProjectId);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [ready, setReady] = useState(false);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
     null,
   );
+  const projectPickerRef = useRef<HTMLDivElement>(null);
   // 用 ref 持有最新 projectId，让 refresh 引用保持稳定（不依赖 projectId），
   // 从而订阅 effect 不会因切项目而反复重订阅、泄漏监听器。
   const projectIdRef = useRef(projectId);
@@ -70,7 +119,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   useEffect(() => {
     void db.initDatabase().then(() => {
       // 同步读取本窗口应有的样式设置（首次加载 / 老数据缺失键时走默认）
-      useSettingsStore.getState().loadSettings();
+      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       // 首次加载时若 initialProjectId 缺失，回落到第一个项目并持久化，让 select 有值。
       const ps = db.getAllProjects();
       if (!projectIdRef.current && ps[0]) {
@@ -86,7 +135,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   // 订阅主窗口发起的"贴图样式已变更"广播 —— 重新读 DB 同步本地状态。
   useEffect(() => {
     const off = window.electronAPI?.onStickerStyleChanged?.(() => {
-      useSettingsStore.getState().loadSettings();
+      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
     });
     return () => {
       off?.();
@@ -99,7 +148,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   useEffect(() => {
     const off = window.electronAPI?.onDataChanged?.(async () => {
       await db.reloadDatabase();
-      useSettingsStore.getState().loadSettings();
+      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       refresh();
     });
     return () => {
@@ -108,11 +157,29 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   }, [refresh]);
 
   useEffect(() => {
-    if (ready) {
-      setTodos(loadActiveTodos(projectId));
-      void window.electronAPI?.setStickerProject(stickerId, projectId);
-    }
-  }, [projectId, ready, stickerId]);
+    if (!projectMenuOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      if (!projectPickerRef.current?.contains(event.target as Node)) setProjectMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProjectMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [projectMenuOpen]);
+
+  const handleProjectChange = (nextProjectId: string) => {
+    // 项目 id 与对应列表必须在同一次 React 提交中更新，避免中间一帧显示新项目名和旧事项。
+    projectIdRef.current = nextProjectId;
+    setProjectId(nextProjectId);
+    setTodos(loadActiveTodos(nextProjectId));
+    setProjectMenuOpen(false);
+    void window.electronAPI?.setStickerProject(stickerId, nextProjectId);
+  };
   const toggle = async (todo: Todo) => {
     db.updateTodo({
       ...todo,
@@ -159,18 +226,34 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       onContextMenuCapture={handleContextMenu}
     >
       <header className="sticker-drag sticker-header">
-        <select
-          className="sticker-no-drag sticker-project"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          aria-label="选择贴图项目"
-        >
-          {projects.map((item) => (
-            <option value={item.id} key={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
+        <div ref={projectPickerRef} className="sticker-no-drag sticker-project-picker">
+          <button
+            type="button"
+            className="sticker-project"
+            aria-label="选择贴图项目"
+            aria-haspopup="listbox"
+            aria-expanded={projectMenuOpen}
+            onClick={() => setProjectMenuOpen((open) => !open)}
+          >
+            {project?.name ?? '选择一个项目'}
+          </button>
+          {projectMenuOpen && (
+            <div className="sticker-project-menu" role="listbox" aria-label="贴图项目列表">
+              {projects.map((item) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={item.id === projectId}
+                  className="sticker-project-option"
+                  key={item.id}
+                  onClick={() => handleProjectChange(item.id)}
+                >
+                  {item.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           className="sticker-no-drag sticker-close"
           aria-label="关闭贴图"
@@ -183,36 +266,12 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       </header>
       <div className="sticker-body">
         <p className="sticker-eyebrow">{project ? `${todos.length} 项待完成` : '选择一个项目'}</p>
-        <AnimatePresence initial={false}>
-          {todos.map((todo) => (
-            <motion.button
-              key={todo.id}
-              layout
-              exit={{ opacity: 0, x: 18 }}
-              className="sticker-todo"
-              onClick={() => void toggle(todo)}
-              title="标记为完成"
-              style={
-                {
-                  '--sticker-priority-color': PRIORITY_SOLID[todo.priority],
-                } as React.CSSProperties
-              }
-            >
-              <span className="sticker-priority-bar" aria-hidden="true" />
-              <span className="sticker-check" />
-              <span className="sticker-todo-title">{todo.title}</span>
-              <span
-                className="sticker-priority-tag"
-                data-priority={todo.priority}
-                aria-label={`优先级：${PRIORITY_LABELS[todo.priority]}`}
-              >
-                {PRIORITY_LABELS[todo.priority]}
-              </span>
-              {todo.pinned && <i>置顶</i>}
-            </motion.button>
-          ))}
-        </AnimatePresence>
-        {ready && todos.length === 0 && <div className="sticker-empty">这一页，已经轻盈完成。</div>}
+        <StickerTodoList
+          key={projectId}
+          todos={todos}
+          ready={ready}
+          onToggle={(todo) => void toggle(todo)}
+        />
       </div>
       {contextMenuPosition && (
         <ContextMenu

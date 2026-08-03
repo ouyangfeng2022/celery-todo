@@ -48,7 +48,7 @@ function normalizeTheme(
 
 interface SettingsState extends AppSettings {
   /** 加载设置 */
-  loadSettings: () => void;
+  loadSettings: (options?: { syncStartupTheme?: boolean }) => void;
   /** 设置主题 */
   setTheme: (theme: ThemeName) => void;
   /** 设置主题明暗模式 */
@@ -68,7 +68,7 @@ interface SettingsState extends AppSettings {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
 
-  loadSettings: () => {
+  loadSettings: ({ syncStartupTheme = true } = {}) => {
     // 专注模式已废弃：升级时清理旧键，始终进入完整主窗口。
     // 仅当该 key 仍存在时才执行删除 —— deleteSetting 内部走 execute() →
     // scheduleSave()，会在 500ms 后触发 persistDatabase 并向其它窗口广播
@@ -109,8 +109,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       stickerShadow: db.getSetting('stickerShadow') !== 'false',
     };
     set(settings);
-    // 将数据库中的既有主题同步给主进程；老版本用户无需重新选择主题，下一次启动即可生效。
-    window.electronAPI?.setStartupTheme?.(toStartupTheme(settings.theme, settings.colorMode));
+    // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，
+    // 但没有调用该系统级 IPC 的权限，必须显式跳过。
+    if (syncStartupTheme) {
+      window.electronAPI?.setStartupTheme?.(toStartupTheme(settings.theme, settings.colorMode));
+    }
   },
 
   setTheme: (theme) => {

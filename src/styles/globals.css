@@ -404,14 +404,74 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.22);
     background: linear-gradient(to bottom, rgba(255, 255, 255, 0.13), transparent);
   }
-  .sticker-project {
+  .sticker-project-picker {
+    position: relative;
     max-width: 270px;
+  }
+  .sticker-project {
+    display: block;
+    max-width: 100%;
+    padding: 5px 8px;
     border: 0;
+    border-radius: 12px;
     outline: 0;
     background: transparent;
     color: var(--text-primary);
     font: 600 15px var(--font-serif);
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .sticker-project:hover {
+    background: rgba(20, 20, 19, 0.12);
+  }
+  .dark .sticker-project:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .sticker-project-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 180px;
+    max-width: 280px;
+    padding: 5px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-md);
+  }
+  .sticker-project-option {
+    display: block;
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: 13px var(--font-sans);
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .sticker-project-option:hover {
+    background: var(--bg-hover);
+  }
+  .sticker-project-option[aria-selected='true'] {
+    background: var(--bg-active);
+  }
+  /* 覆盖全局 :focus-visible 橙色描边：原生 select 关闭下拉后仍保有焦点，
+   * 但贴图标题不需要持续显示选中态。 */
+  .sticker-project:focus,
+  .sticker-project:focus-visible {
+    border: 0;
+    outline: none;
+    box-shadow: none;
   }
   .sticker-close {
     width: 26px;

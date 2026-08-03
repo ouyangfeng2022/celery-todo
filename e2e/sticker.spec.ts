@@ -69,9 +69,30 @@ test('贴图切换项目后列表随之刷新', async () => {
   await expect(sticker.getByText('甲任务')).toBeVisible();
   await expect(sticker.getByText('乙任务')).toHaveCount(0);
 
-  await sticker.getByLabel('选择贴图项目').selectOption('项目乙');
+  const projectSelect = sticker.getByLabel('选择贴图项目');
+  // 项目名称悬浮时显示深色圆角背景，展开列表保持普通面板背景。
+  await projectSelect.hover();
+  await expect
+    .poll(() => projectSelect.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)');
+  expect(await projectSelect.evaluate((element) => getComputedStyle(element).borderRadius)).toBe(
+    '12px',
+  );
+  await projectSelect.click();
+  const projectMenu = sticker.getByRole('listbox', { name: '贴图项目列表' });
+  await expect(projectMenu).toBeVisible();
+  expect(await projectSelect.evaluate((element) => getComputedStyle(element).borderRadius)).toBe(
+    '12px',
+  );
+  await projectSelect.focus();
+  expect(await projectSelect.evaluate((element) => getComputedStyle(element).outlineStyle)).toBe(
+    'none',
+  );
+
+  await projectMenu.getByRole('option', { name: '项目乙' }).click();
+  // 项目切换会重建列表动画边界，旧项目行不应继续以 exit 节点滞留。
+  expect(await sticker.getByText('甲任务').count()).toBe(0);
   await expect(sticker.getByText('乙任务')).toBeVisible();
-  await expect(sticker.getByText('甲任务')).toHaveCount(0);
 });
 
 test('贴图点击 todo 标记完成，该 todo 从贴图消失', async () => {
