@@ -131,6 +131,13 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         void window.electronAPI?.duplicateSticker(stickerId, projectId);
       },
     },
+    { separator: true },
+    {
+      label: '关闭贴图',
+      onClick: () => {
+        void window.electronAPI?.closeSticker(stickerId);
+      },
+    },
   ];
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
