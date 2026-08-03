@@ -14,16 +14,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { SearchBar } from '../filters/SearchBar';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import type { GlobalSearchResult } from '../../types';
-import {
-  ChevronLeftIcon,
-  DownloadIcon,
-  FolderPlusIcon,
-  FocusIcon,
-  SearchIcon,
-  SidebarIcon,
-  UploadIcon,
-  XIcon,
-} from '../common/Icons';
+import { ChevronLeftIcon, SearchIcon, SidebarIcon } from '../common/Icons';
 
 interface HeaderProps {
   // === 工具组(原 AppToolbar 的 props) ===
@@ -60,7 +51,6 @@ type ToolAction = 'new-project' | 'import' | 'export-all' | 'export-csv' | 'comp
 interface ToolMenuItem {
   label: string;
   hint?: string;
-  icon: typeof FolderPlusIcon;
   action: ToolAction;
 }
 
@@ -74,21 +64,21 @@ interface ToolMenuGroup {
 const MENU_GROUPS: ToolMenuGroup[] = [
   {
     title: '项目',
-    items: [{ label: '新建项目', icon: FolderPlusIcon, action: 'new-project' }],
+    items: [{ label: '新建项目', action: 'new-project' }],
   },
   {
     title: '数据',
     items: [
-      { label: '导入数据…', icon: UploadIcon, action: 'import' },
-      { label: '导出全部数据', icon: DownloadIcon, action: 'export-all' },
-      { label: '导出当前列表', icon: DownloadIcon, action: 'export-csv' },
+      { label: '导入数据…', action: 'import' },
+      { label: '导出全部数据', action: 'export-all' },
+      { label: '导出当前列表', action: 'export-csv' },
     ],
   },
   {
     title: '窗口',
     items: [
-      { label: '进入简洁模式', icon: FocusIcon, action: 'compact' },
-      { label: '关闭窗口', icon: XIcon, action: 'close' },
+      { label: '进入简洁模式', action: 'compact' },
+      { label: '关闭窗口', action: 'close' },
     ],
   },
 ];
@@ -329,14 +319,13 @@ function HeaderComponent({
                 }}
               >
                 {MENU_GROUPS.find((g) => g.title === openGroup)?.items.map(
-                  ({ label, icon: Icon, action, ...item }) => (
+                  ({ label, action, ...item }) => (
                     <button
                       key={action}
                       onClick={() => runMenuAction(action)}
-                      className="flex w-full items-center gap-2 px-3 py-1 text-left text-[13px] transition-colors hover:bg-[var(--bg-hover)]"
+                      className="flex w-full items-center px-3 py-1 text-left text-[13px] transition-colors hover:bg-[var(--bg-hover)]"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      <Icon size={15} />
                       <span className="flex-1">{label}</span>
                       {item.hint && (
                         <span className="text-[10px]" style={{ color: 'var(--text-quaternary)' }}>
