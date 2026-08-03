@@ -20,13 +20,13 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 置顶 · 拖拽排
 </p>
 
 <p>
-  <a href="#-下载">下载</a> ·
-  <a href="#-功能特性">功能</a> ·
-  <a href="#-截图预览">截图</a> ·
-  <a href="#-快速开始">快速开始</a> ·
-  <a href="#-键盘快捷键">快捷键</a> ·
-  <a href="#-项目架构">架构</a> ·
-  <a href="#-开发文档">文档</a>
+  <a href="#下载">下载</a> ·
+  <a href="#功能特性">功能</a> ·
+  <a href="#截图预览">截图</a> ·
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#键盘快捷键">快捷键</a> ·
+  <a href="#项目架构">架构</a> ·
+  <a href="#开发文档">文档</a>
 </p>
 
 </div>
@@ -35,25 +35,26 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## 📥 下载
+## 下载
 
 <p>
   <a href="https://github.com/ouyangfeng2022/celery-todo/releases/latest">
-    <img src="https://img.shields.io/github/v/release/ouyangfeng2022/celery-todo?style=flat-square&color=d97757&label=%E2%AC%87%EF%B8%8F%20%E4%B8%8B%E8%BD%BD%E6%9C%80%E6%96%B0%E7%89%88" alt="下载最新版">
+    <img src="https://img.shields.io/badge/Windows-下载最新版-d97757?style=for-the-badge&logo=windows&logoColor=white" alt="下载最新版">
   </a>
+  &nbsp;
   <a href="https://github.com/ouyangfeng2022/celery-todo/releases">
-    <img src="https://img.shields.io/badge/%F0%9F%93%A6-%E5%85%A8%E9%83%A8%E7%89%88%E6%9C%AC-8dbf33?style=flat-square" alt="全部版本">
+    <img src="https://img.shields.io/badge/GitHub-全部版本-8dbf33?style=for-the-badge&logo=github&logoColor=white" alt="全部版本">
   </a>
 </p>
 
 - **Windows**：在 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 页面下载 `Celery-Todo-Setup-x.y.z.exe`（NSIS 安装包），安装向导支持开机自启与自定义数据目录。
 - **历史版本**：前往 [Releases](https://github.com/ouyangfeng2022/celery-todo/releases) 选择对应版本。
 
-> 📌 应用内置自动更新：启动后会自动检查 GitHub Release 新版本，发现新版弹窗提示，下载、进度、重启在同一弹窗内完成，无需手动重新下载。
+> **内置自动更新**：启动后会自动检查 GitHub Release 新版本，发现新版弹窗提示，下载、进度、重启在同一弹窗内完成，无需手动重新下载。
 
 ---
 
-## 📸 截图预览
+## 截图预览
 
 <p align="center">
   <img src="assets/screenshots/main-light.png" width="100%" alt="主界面 · 芹绿主题" />
@@ -95,7 +96,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## ✨ 功能特性
+## 功能特性
 
 ### 待办管理
 
@@ -122,7 +123,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 ### 界面与体验
 
 - **五种主题** — 浅色 / 深色 / 跟随系统 / 经典（纸白）/ 芹绿 一键切换
-- **键盘快捷键** — 全局快捷键覆盖新建、保存、筛选、侧边栏、主题、导入导出、贴图浮窗等高频操作（详见[键盘快捷键](#%EF%B8%8F-键盘快捷键)）
+- **键盘快捷键** — 全局快捷键覆盖新建、保存、筛选、侧边栏、主题、导入导出、贴图浮窗等高频操作（详见[键盘快捷键](#键盘快捷键)）
 - **统计面板** — 可视化展示完成情况与进度
 - **全部完成庆祝** — 列表清空时撒花 + 庆祝卡片，支持一键归档当批已完成项
 
@@ -130,7 +131,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## 🛠 技术栈
+## 技术栈
 
 | 类别 | 技术 |
 | --- | --- |
@@ -149,7 +150,7 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 
 ---
 
-## 🚀 快速开始
+## 快速开始
 
 ### 环境要求
 
@@ -189,7 +190,7 @@ bun run electron:build
 
 ---
 
-## 📜 常用脚本
+## 常用脚本
 
 | 命令 | 说明 |
 | --- | --- |
@@ -207,13 +208,13 @@ bun run electron:build
 | `bun run build:cli` | 编译 CLI 到 `dist-cli/`（CommonJS） |
 | `bun run test:cli` | 运行 CLI 测试（独立 vitest，临时 DB） |
 
-E2E 测试命令见[测试策略](#-测试策略)。
+E2E 测试命令见[测试策略](#测试策略)。
 
-> 💡 命令行工具 `celery` 可在终端直接管理待办（GUI 运行时走 IPC 实时同步，未运行时直连 SQLite 文件）。完整说明见 [`cli/README.md`](./cli/README.md)。
+> **命令行工具 `celery`** 可在终端直接管理待办（GUI 运行时走 IPC 实时同步，未运行时直连 SQLite 文件）。完整说明见 [`cli/README.md`](./cli/README.md)。
 
 ---
 
-## ⌨️ 键盘快捷键
+## 键盘快捷键
 
 ### 基础快捷键
 
@@ -240,7 +241,7 @@ E2E 测试命令见[测试策略](#-测试策略)。
 
 ---
 
-## 🏗 项目架构
+## 项目架构
 
 ```
 celery-todo/
@@ -302,7 +303,7 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 ---
 
-## 🗄 数据库结构
+## 数据库结构
 
 | 表 | 说明 |
 | --- | --- |
@@ -315,7 +316,7 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 
 ---
 
-## 🧪 测试策略
+## 测试策略
 
 两层测试，严格隔离：
 
@@ -335,7 +336,7 @@ bunx playwright test e2e/todos.spec.ts --headed # 显式窗口运行
 
 ---
 
-## 📚 开发文档
+## 开发文档
 
 | 文档 | 内容 |
 | --- | --- |
@@ -362,13 +363,13 @@ bun run bump -- <patch|minor|major> --push
 
 ---
 
-## ⚠️ 已知平台行为
+## 已知平台行为
 
 - **Windows 拖拽改窗口大小时右上角出现尺寸数字**：这是 Windows DWM 在无框窗口上绘制的原生尺寸提示，与 Electron 无框 + `titleBarOverlay` 配合时的已知现象（[electron/electron#943](https://github.com/electron/electron/issues/943)）。非 Bug，应用层无法移除，仅影响拖拽改大小期间的视觉。
 
 ---
 
-## 🤝 贡献
+## 贡献
 
 欢迎提 Issue 与 PR：
 
@@ -379,6 +380,6 @@ bun run bump -- <patch|minor|major> --push
 
 ---
 
-## 📄 许可证
+## 许可证
 
 本项目基于 [MIT License](./LICENSE) 开源。
