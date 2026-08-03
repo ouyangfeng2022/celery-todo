@@ -190,8 +190,8 @@ export function SidebarUpdateCard({
         <span
           className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
           style={{
-            backgroundColor: 'var(--success-subtle, var(--accent-subtle))',
-            color: 'var(--success)',
+            backgroundColor: 'var(--accent-subtle)',
+            color: 'var(--accent)',
           }}
         >
           <CheckIcon size={14} />

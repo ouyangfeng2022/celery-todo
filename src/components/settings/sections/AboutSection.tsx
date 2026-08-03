@@ -70,7 +70,7 @@ export function AboutSection({
             style={{
               color:
                 updateStatus === 'downloaded' || updateStatus === 'dismissed'
-                  ? 'var(--success)'
+                  ? 'var(--accent)'
                   : updateStatus === 'available'
                     ? 'var(--accent)'
                     : 'var(--text-primary)',
@@ -184,11 +184,11 @@ export function AboutSection({
                   className="mt-2 flex items-start gap-2 px-2.5 py-2 rounded-md"
                   style={{
                     backgroundColor: 'var(--accent-subtle)',
-                    border: '1px solid var(--success)',
+                    border: '1px solid var(--accent)',
                   }}
                 >
                   <motion.span
-                    style={{ color: 'var(--success)', flexShrink: 0 }}
+                    style={{ color: 'var(--accent)', flexShrink: 0 }}
                     initial={{ scale: 0 }}
                     animate={{ scale: [0, 1.2, 1] }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -196,7 +196,7 @@ export function AboutSection({
                     <CheckIcon size={14} />
                   </motion.span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs" style={{ color: 'var(--success)', fontWeight: 500 }}>
+                    <p className="text-xs" style={{ color: 'var(--accent)', fontWeight: 500 }}>
                       {updateStatus === 'dismissed'
                         ? '更新已就绪，可随时重启完成安装。'
                         : '更新已下载，可立即重启完成安装。'}
@@ -204,7 +204,7 @@ export function AboutSection({
                     <button
                       onClick={onRestartToUpdate}
                       className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-md transition-colors hover:opacity-90"
-                      style={{ backgroundColor: 'var(--success)', color: '#fff' }}
+                      style={{ backgroundColor: 'var(--accent)', color: '#fff' }}
                     >
                       <DownloadIcon size={15} />
                       立即重启安装
@@ -222,18 +222,18 @@ export function AboutSection({
                   className="mt-2 flex items-center gap-2 px-2.5 py-2 rounded-md"
                   style={{
                     backgroundColor: 'var(--accent-subtle)',
-                    border: '1px solid var(--success)',
+                    border: '1px solid var(--accent)',
                   }}
                 >
                   <motion.span
-                    style={{ color: 'var(--success)', flexShrink: 0 }}
+                    style={{ color: 'var(--accent)', flexShrink: 0 }}
                     initial={{ scale: 0 }}
                     animate={{ scale: [0, 1.2, 1] }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
                   >
                     <CheckIcon size={14} />
                   </motion.span>
-                  <p className="text-xs" style={{ color: 'var(--success)', fontWeight: 500 }}>
+                  <p className="text-xs" style={{ color: 'var(--accent)', fontWeight: 500 }}>
                     已是最新版本
                   </p>
                 </motion.div>
