@@ -27,6 +27,7 @@ import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
+import { ArchiveNotice } from './components/common/ArchiveNotice';
 import { FocusIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 
@@ -43,7 +44,7 @@ import {
   todosToCsv,
 } from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
-import type { GlobalSearchResult, Priority, Todo } from './types';
+import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Todo } from './types';
 
 /**
  * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
@@ -91,6 +92,20 @@ function App() {
   const [composerVisible, setComposerVisible] = useState(false);
   // 主区「请创建项目」按钮触发侧边栏新建输入框聚焦：递增值驱动 ProjectSidebar 的 effect
   const [createProjectSignal, setCreateProjectSignal] = useState(0);
+  // 最近一次归档的 id：用于顶部提示的数量展示与「撤销」恢复。
+  const [archiveNoticeIds, setArchiveNoticeIds] = useState<string[]>([]);
+  // 从已归档事项页恢复后的反馈，项目名可作为返回原项目的入口。
+  const [restoreNotice, setRestoreNotice] = useState<{
+    count: number;
+    projectId: string;
+    projectName: string;
+    filter: FilterType;
+  } | null>(null);
+  // 点击恢复提示的项目名后，待项目切换完成再应用对应状态筛选。
+  const [restoreTargetFilter, setRestoreTargetFilter] = useState<{
+    projectId: string;
+    filter: FilterType;
+  } | null>(null);
 
   // === Stores ===
   const settings = useSettingsStore();
@@ -159,6 +174,29 @@ function App() {
     setSettingsOpen(true);
   }, []);
 
+  const showArchiveNotice = useCallback((ids: string[]) => {
+    if (ids.length > 0) setArchiveNoticeIds(ids);
+  }, []);
+
+  const handleUndoArchive = useCallback(() => {
+    archiveNoticeIds.forEach(restoreTodo);
+    setArchiveNoticeIds([]);
+  }, [archiveNoticeIds, restoreTodo]);
+
+  const handleRestoreFromHistory = useCallback(
+    (todo: DeletedTodo) => {
+      restoreTodo(todo.id);
+      setArchiveNoticeIds([]);
+      setRestoreNotice({
+        count: 1,
+        projectId: todo.projectId,
+        projectName: projects.find((project) => project.id === todo.projectId)?.name ?? '原项目',
+        filter: todo.completed ? 'completed' : 'active',
+      });
+    },
+    [projects, restoreTodo],
+  );
+
   // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
   useCliBridge();
 
@@ -171,6 +209,14 @@ function App() {
     activeProjectId,
     searchFocusOverride,
   );
+
+  // 项目切换会让 useFilter 绑定新的 projectId；等两者对齐后再写入筛选，
+  // 确保恢复已完成事项时进入「已完成」，未完成事项时进入「进行中」。
+  useEffect(() => {
+    if (!restoreTargetFilter || restoreTargetFilter.projectId !== activeProjectId) return;
+    changeFilter(restoreTargetFilter.filter);
+    setRestoreTargetFilter(null);
+  }, [activeProjectId, changeFilter, restoreTargetFilter]);
 
   // === 全局事项搜索 ===
   // 当前项目 store 只缓存已打开项目；搜索直接读取正常事项表，确保跨项目结果完整。
@@ -249,7 +295,8 @@ function App() {
       db.setSetting(`celebrated.${activeProjectId}`, 'false');
     }
     clearCompleted();
-  }, [activeProjectId, clearCompleted]);
+    showArchiveNotice(activeProjectTodos.filter((todo) => todo.completed).map((todo) => todo.id));
+  }, [activeProjectId, activeProjectTodos, clearCompleted, showArchiveNotice]);
 
   // === 初始化 ===
   useEffect(() => {
@@ -768,7 +815,13 @@ function App() {
                       completedCount={stats.completed}
                       onFilterChange={changeFilter}
                       onSortChange={changeSort}
-                      onClearCompleted={clearCompleted}
+                      onClearCompleted={() => {
+                        const ids = activeProjectTodos
+                          .filter((todo) => todo.completed)
+                          .map((todo) => todo.id);
+                        clearCompleted();
+                        showArchiveNotice(ids);
+                      }}
                     />
                   )}
 
@@ -791,7 +844,10 @@ function App() {
                       focusTarget={todoFocusTarget}
                       onToggle={toggleTodo}
                       onEdit={updateTodo}
-                      onDelete={deleteTodo}
+                      onDelete={(id) => {
+                        deleteTodo(id);
+                        showArchiveNotice([id]);
+                      }}
                       onToggleSelect={toggleSelected}
                       onReorder={reorderTodos}
                       onSortChange={changeSort}
@@ -811,9 +867,42 @@ function App() {
         onClearSelection={clearSelection}
         onBatchComplete={() => batchAction('complete')}
         onBatchUncomplete={() => batchAction('uncomplete')}
-        onBatchDelete={() => batchAction('delete')}
+        onBatchDelete={() => {
+          const ids = Array.from(selectedIds);
+          batchAction('delete');
+          showArchiveNotice(ids);
+        }}
         onBatchSetPriority={(p: Priority) => batchAction('setPriority', p)}
       />
+
+      <ArchiveNotice
+        variant="archived"
+        count={archiveNoticeIds.length}
+        horizontalOffset={!focusMode && sidebarOpen ? 140 : 0}
+        onUndo={handleUndoArchive}
+        onOpenHistory={() => {
+          setArchiveNoticeIds([]);
+          openSettings('history');
+        }}
+        onDismiss={() => setArchiveNoticeIds([])}
+      />
+
+      {restoreNotice && (
+        <ArchiveNotice
+          variant="restored"
+          count={restoreNotice.count}
+          projectName={restoreNotice.projectName}
+          horizontalOffset={!focusMode && sidebarOpen ? 140 : 0}
+          onOpenProject={() => {
+            const target = restoreNotice;
+            setRestoreNotice(null);
+            setSettingsOpen(false);
+            setRestoreTargetFilter({ projectId: target.projectId, filter: target.filter });
+            switchProject(target.projectId);
+          }}
+          onDismiss={() => setRestoreNotice(null)}
+        />
+      )}
 
       {/* 设置面板 */}
       <SettingsPanel
@@ -849,7 +938,7 @@ function App() {
         onCloseWindow={() => window.close()}
         // ===== 历史记录（归档）页面所需 =====
         projects={projects}
-        onRestoreTodo={restoreTodo}
+        onRestoreTodo={handleRestoreFromHistory}
         onPermanentDeleteTodo={permanentlyDelete}
         onEmptyArchive={emptyArchive}
         onExportHistory={handleExportHistory}

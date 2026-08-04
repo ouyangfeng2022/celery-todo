@@ -63,6 +63,21 @@ export function formatRelativeTime(isoString?: string): string {
 }
 
 /**
+ * 格式化为详细时间（YYYY-MM-DD HH:mm），用于点击模糊时间后切换显示
+ *
+ * 与 formatRelativeTime 互补：后者是"刚刚 / N 分钟前"，本函数是"2026-08-04 14:30"。
+ * 不依赖 locale，避免不同环境/时区下日期分隔符差异。
+ */
+export function formatDateTime(isoString?: string): string {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+/**
  * 获取今天的日期字符串（YYYY-MM-DD）
  */
 export function getTodayString(): string {

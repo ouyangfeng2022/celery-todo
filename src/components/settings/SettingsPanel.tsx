@@ -11,7 +11,7 @@
 
 import { memo, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { AppSettings, Project } from '../../types';
+import type { AppSettings, DeletedTodo, Project } from '../../types';
 import * as Icons from '../common/Icons';
 import { Header } from '../layout/Header';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
@@ -49,7 +49,7 @@ interface SettingsPanelProps {
   /** 全部项目（历史记录页解析项目名标签） */
   projects: Project[];
   /** 恢复归档事项 */
-  onRestoreTodo: (id: string) => void;
+  onRestoreTodo: (todo: DeletedTodo) => void;
   /** 永久删除归档事项 */
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */

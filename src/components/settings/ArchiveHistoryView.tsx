@@ -23,7 +23,7 @@ interface ArchiveHistoryViewProps {
   isLoadingMore: boolean;
   onLoadMore: () => void;
   projects: Project[];
-  onRestore: (id: string) => void;
+  onRestore: (todo: DeletedTodo) => void;
   onPermanentDelete: (id: string) => void;
   onEmptyAll: () => void;
   onExportHistory: () => void;
@@ -79,11 +79,29 @@ function ArchiveHistoryViewComponent({
     visibleItems.forEach((todo) =>
       groups.set(todo.projectId, [...(groups.get(todo.projectId) ?? []), todo]),
     );
-    return [...groups.entries()].map(([id, todos]) => ({
-      id,
-      todos,
-      project: projectById.get(id),
-    }));
+    return (
+      [...groups.entries()]
+        .map(([id, todos]) => ({
+          id,
+          todos,
+          project: projectById.get(id),
+          // 项目最近一次归档时间：todos 已按 deleted_at DESC，首条即最大值
+          latestArchivedAt: todos[0]?.deletedAt ?? '',
+        }))
+        // 项目间排序：
+        //   1) 最近归档时间降序（最近有归档的项目排前面）
+        //   2) 时间相同时（批量/清空归档共用一个时间戳），按项目创建时间降序，
+        //      新建项目排前面；已删除项目（无 createdAt）兜底排最后。
+        // ISO 字符串的字典序 == 时间序，可直接 localeCompare。
+        .sort((a, b) => {
+          if (a.latestArchivedAt !== b.latestArchivedAt) {
+            return b.latestArchivedAt.localeCompare(a.latestArchivedAt);
+          }
+          const aCreated = a.project?.createdAt ?? '';
+          const bCreated = b.project?.createdAt ?? '';
+          return bCreated.localeCompare(aCreated);
+        })
+    );
   }, [projectById, visibleItems]);
 
   useEffect(() => {
@@ -315,7 +333,7 @@ function ArchiveHistoryViewComponent({
         message={`确定要取消归档「${restoreTarget?.title}」吗？该事项将回到原属项目。`}
         confirmText="取消归档"
         onConfirm={() => {
-          if (restoreTarget) onRestore(restoreTarget.id);
+          if (restoreTarget) onRestore(restoreTarget);
           setRestoreTarget(null);
         }}
         onCancel={() => setRestoreTarget(null)}

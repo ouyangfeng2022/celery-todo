@@ -22,7 +22,7 @@ interface HistorySectionProps {
   /** 全部项目（历史记录页解析项目名标签） */
   projects: Project[];
   /** 恢复归档事项 */
-  onRestoreTodo: (id: string) => void;
+  onRestoreTodo: (todo: DeletedTodo) => void;
   /** 永久删除归档事项 */
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */
@@ -92,8 +92,8 @@ export function HistorySection({
   // store 更新会改变 deletedTodos 引用从而也触发上方 effect 的 reload；
   // 多查一次 sql.js 本地查询开销可忽略，保持实现简单。
   const handleRestore = useCallback(
-    (id: string) => {
-      onRestoreTodo(id);
+    (todo: DeletedTodo) => {
+      onRestoreTodo(todo);
       reload();
     },
     [onRestoreTodo, reload],

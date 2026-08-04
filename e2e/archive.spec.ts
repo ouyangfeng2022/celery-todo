@@ -37,7 +37,10 @@ test('归档 todo 后历史记录显示该条 + 项目名标签', async () => {
   await row.hover();
   await row.getByRole('button', { name: '归档', exact: true }).click();
 
-  await openHistory(win);
+  const notice = win.getByRole('status').filter({ hasText: '条已归档' });
+  await expect(notice).toContainText('1 条已归档');
+  await notice.getByRole('button', { name: '在设置中查看已归档事项' }).click();
+  await expect(win.getByRole('heading', { name: '已归档事项', exact: true })).toBeVisible();
   await expect(win.getByText('要归档的任务', { exact: true })).toBeVisible();
   // 项目名标签显示在历史记录行
   await expect(win.getByText('归档测试项目', { exact: true }).first()).toBeVisible();
@@ -45,20 +48,34 @@ test('归档 todo 后历史记录显示该条 + 项目名标签', async () => {
   await expect(win.getByText('已归档的事项会保存在这里，可随时恢复或永久删除。')).toBeVisible();
 });
 
-test('恢复单条 todo 后回到当前项目列表', async () => {
+test('归档提示可撤销，恢复单条 todo 到当前项目列表', async () => {
   await createProject(win, '日常事务');
+  await addTodo(win, '仍在进行中');
   await addTodo(win, '待恢复');
+  await todoRow(win, '待恢复').getByRole('button', { name: '标记为已完成' }).click();
   const row = todoRow(win, '待恢复');
   await row.hover();
   await row.getByRole('button', { name: '归档', exact: true }).click();
 
+  await win.getByRole('status').getByRole('button', { name: '撤销', exact: true }).click();
+  await expect(win.getByText('待恢复', { exact: true })).toBeVisible();
+
+  // 再次归档，覆盖设置页历史记录中原有的恢复流程。
+  await todoRow(win, '待恢复').hover();
+  await todoRow(win, '待恢复').getByRole('button', { name: '归档', exact: true }).click();
+
   await openHistory(win);
   await win.getByRole('button', { name: '取消归档' }).click();
+  await win.keyboard.press('Enter');
 
-  // 关闭设置页（Esc），回到项目列表
-  await win.keyboard.press('Escape');
-  // 当前项目列表重新出现该 todo
+  const restoredNotice = win.getByRole('status').filter({ hasText: '已恢复 1 条事项' });
+  await expect(restoredNotice).toContainText('在日常事务中查看');
+  await restoredNotice.getByRole('button', { name: '在 日常事务 中查看' }).click();
+
+  // 点击项目名后关闭设置页，且已完成事项进入「已完成」筛选。
+  await expect(win.getByRole('heading', { name: '已归档事项' })).toHaveCount(0);
   await expect(win.getByText('待恢复', { exact: true })).toBeVisible();
+  await expect(win.getByText('仍在进行中', { exact: true })).toHaveCount(0);
 });
 
 test('永久删除单条后历史记录为空', async () => {

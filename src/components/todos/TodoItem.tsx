@@ -7,7 +7,7 @@ import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'reac
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
-import { cn, formatRelativeTime } from '../../utils/helpers';
+import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
 import { MarkdownContent } from '../common/MarkdownContent';
@@ -147,6 +147,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
   const [isSearchHighlighted, setIsSearchHighlighted] = useState(false);
+  // 点击"创建/完成"时间标签，在模糊计时与精确计时（分钟级）间切换
+  const [showExactTime, setShowExactTime] = useState(false);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
 
   // 进入编辑模式时聚焦
@@ -353,15 +355,45 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 </span>
               )}
 
-              {/* 创建时间 */}
-              <span className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                {formatRelativeTime(todo.createdAt)}创建
+              {/* 创建时间：点击切换 模糊计时 ↔ 精确计时（精确到分钟） */}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowExactTime((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowExactTime((v) => !v);
+                  }
+                }}
+                className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
+                style={{ color: 'var(--text-tertiary)' }}
+                title={showExactTime ? '点击切换为相对时间' : '点击切换为精确时间'}
+              >
+                {showExactTime
+                  ? `${formatDateTime(todo.createdAt)} 创建`
+                  : `${formatRelativeTime(todo.createdAt)}创建`}
               </span>
 
-              {/* 完成时间：已完成且记录了完成时间时显示 */}
+              {/* 完成时间：与创建时间联动同一个精确/模糊状态 */}
               {todo.completedAt && (
-                <span className="text-[11px]" style={{ color: 'var(--success)' }}>
-                  {formatRelativeTime(todo.completedAt)}完成
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setShowExactTime((v) => !v)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowExactTime((v) => !v);
+                    }
+                  }}
+                  className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--success)' }}
+                  title={showExactTime ? '点击切换为相对时间' : '点击切换为精确时间'}
+                >
+                  {showExactTime
+                    ? `${formatDateTime(todo.completedAt)} 完成`
+                    : `${formatRelativeTime(todo.completedAt)}完成`}
                 </span>
               )}
             </div>
