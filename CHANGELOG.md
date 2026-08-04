@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v2.14.0] - 2026-08-04
+### Added
+- 将时间显示格式提升为全局持久化设置
+- implement archive and restore notifications with undo functionality
+- 支持点击直达最新版安装包
+
 ## [v2.13.0] - 2026-08-03
 ### Added
 - add GFM and math rendering
@@ -355,3 +361,5 @@
 [v2.12.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.2
 
 [v2.13.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.13.0
+
+[v2.14.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.14.0
