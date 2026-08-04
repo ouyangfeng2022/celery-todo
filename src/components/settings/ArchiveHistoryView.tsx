@@ -5,7 +5,8 @@
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { DeletedTodo, Project } from '../../types';
-import { formatRelativeTime } from '../../utils/helpers';
+import { formatRelativeTime, formatDateTime } from '../../utils/helpers';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import {
   ChevronDownIcon,
   DownloadIcon,
@@ -49,6 +50,8 @@ function ArchiveHistoryViewComponent({
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<ArchiveFilter>('all');
   const [projectId, setProjectId] = useState('all');
+  // 跟随全局时间格式设置（与主列表「创建/完成」时间联动同一开关）
+  const timeFormat = useSettingsStore((s) => s.timeFormat);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(isLoadingMore);
@@ -271,7 +274,10 @@ function ArchiveHistoryViewComponent({
                         {todo.title}
                       </p>
                       <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        归档于 {formatRelativeTime(todo.deletedAt)}
+                        归档于{' '}
+                        {timeFormat === 'exact'
+                          ? formatDateTime(todo.deletedAt)
+                          : formatRelativeTime(todo.deletedAt)}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">

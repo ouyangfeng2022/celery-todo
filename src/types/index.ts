@@ -185,6 +185,8 @@ export interface AppSettings {
   autoUpdateEnabled: boolean;
   /** 上次激活的项目 ID（启动时恢复；空串表示无激活项目） */
   lastActiveProjectId: string;
+  /** 时间显示格式：relative=模糊计时（如「5 分钟前」），exact=精确到分钟（如「2026-08-04 14:30」） */
+  timeFormat: 'relative' | 'exact';
   // ===== 贴图样式（简洁模式浮窗） =====
   /** 当前贴图预设风格 */
   stickerPreset: StickerPreset;
@@ -211,6 +213,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdateEnabled: true,
   // 首次启动无历史激活项目，空串 → 显示「请创建项目」
   lastActiveProjectId: '',
+  // 默认模糊计时；点击事项上的时间标签可在两种格式间切换（全局生效）
+  timeFormat: 'relative',
   // 贴图样式默认走「玻璃」预设的当前观感，保证老用户视觉零回归
   stickerPreset: 'glass',
   stickerRadius: STICKER_PRESET_VALUES.glass.radius,
