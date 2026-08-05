@@ -1,6 +1,10 @@
 /**
  * @file generate-icons.mjs
- * @description 一次性脚本：把新版无文字 Logo 光栅化为 Electron 所需的图标。
+ * @description 一次性脚本：把无文字 Logo 光栅化为 Electron 所需的图标。
+ *
+ * 默认源是橙色版（celery-todo-no-text-light.svg）—— 这是应用主配色，
+ * 也是安装后用户看到的 exe / 任务栏 / 托盘图标。芹绿版（celery-todo-no-text.svg）
+ * 仅作为「芹绿」主题的运行时切换素材，不再作为安装图标。
  *
  * 产物：
  *   - public/icon.png      256×256  主进程窗口图标 + electron-builder 默认图标源
@@ -9,7 +13,7 @@
  *   - public/icon.ico      多尺寸   electron-builder win.icon（可选，比 PNG 更友好）
  *
  * 用法： node scripts/generate-icons.mjs
- * 依赖： sharp + png-to-ico（通过 npx 临时安装，不写进 package.json）
+ * 依赖： sharp + png-to-ico（已在 devDependencies，无需临时安装）
  */
 
 import { readFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -18,7 +22,8 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const svgPath = resolve(root, 'assets/celery-todo-no-text.svg');
+// 主配色 = 橙色 logo；如需切回芹绿版，把常量改成 'celery-todo-no-text.svg'。
+const svgPath = resolve(root, 'assets/celery-todo-no-text-light.svg');
 const publicDir = resolve(root, 'public');
 
 if (!existsSync(svgPath)) {
@@ -28,6 +33,8 @@ if (!existsSync(svgPath)) {
 mkdirSync(publicDir, { recursive: true });
 
 const svgBuffer = readFileSync(svgPath);
+// SVG 的 viewBox 不是正方形；contain 产生的留白必须透明，否则 Sharp 会写入默认黑色背景。
+const transparentBackground = { r: 0, g: 0, b: 0, alpha: 0 };
 
 // 动态拉取 sharp —— 不在项目依赖里
 const sharp = (await import('sharp')).default;
@@ -39,7 +46,10 @@ const sizes = [16, 32, 64, 128, 256];
 for (const size of sizes) {
   const out = resolve(publicDir, size === 256 ? 'icon.png' : `icon-${size}.png`);
   // fit: 'contain' 保证按比例缩放、永不裁切；即便 viewBox 非正方形也安全。
-  await sharp(svgBuffer, { density: 384 }).resize(size, size, { fit: 'contain' }).png().toFile(out);
+  await sharp(svgBuffer, { density: 384 })
+    .resize(size, size, { fit: 'contain', background: transparentBackground })
+    .png()
+    .toFile(out);
   console.log(`[generate-icons] ✓ ${size}x${size} → ${out}`);
 }
 
@@ -51,7 +61,10 @@ try {
   // ICO 内嵌多尺寸：16 / 32 / 48 / 64 / 128 / 256
   const icoPngs = await Promise.all(
     [16, 32, 48, 64, 128, 256].map((s) =>
-      sharp(svgBuffer, { density: 384 }).resize(s, s, { fit: 'contain' }).png().toBuffer(),
+      sharp(svgBuffer, { density: 384 })
+        .resize(s, s, { fit: 'contain', background: transparentBackground })
+        .png()
+        .toBuffer(),
     ),
   );
   const icoBuf = await pngToIco(icoPngs);
