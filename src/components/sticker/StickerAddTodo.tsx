@@ -16,6 +16,8 @@ interface StickerAddTodoProps {
   onAdd: (titles: string[], priority: Priority) => void;
   /** 当前所属项目 id —— 草稿按项目隔离，切换项目时输入框内容随之切换 */
   projectId: string;
+  /** 挂载后自动聚焦 textarea。浮层场景用；body 常驻场景（如有）不传。 */
+  autoFocus?: boolean;
 }
 
 /** 每个项目各自的输入草稿，切换项目时完整恢复编辑现场 */
@@ -26,7 +28,7 @@ interface Draft {
 
 const DEFAULT_PRIORITY: Priority = 'medium';
 
-function StickerAddTodoComponent({ onAdd, projectId }: StickerAddTodoProps) {
+function StickerAddTodoComponent({ onAdd, projectId, autoFocus }: StickerAddTodoProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>(DEFAULT_PRIORITY);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -53,6 +55,11 @@ function StickerAddTodoComponent({ onAdd, projectId }: StickerAddTodoProps) {
   useEffect(() => {
     autosize();
   }, [title, autosize]);
+
+  // 浮层场景：挂载后自动聚焦输入框，便于立即开始输入
+  useEffect(() => {
+    if (autoFocus) requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [autoFocus]);
 
   // 写入标题并同步到当前项目的草稿缓存
   const handleTitleChange = useCallback(

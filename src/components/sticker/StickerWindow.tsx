@@ -3,7 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
 import { readProjectSort, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { PRIORITY_LABELS, PRIORITY_SOLID, type Priority, type Project, type Todo } from '../../types';
+import {
+  PRIORITY_LABELS,
+  PRIORITY_SOLID,
+  type Priority,
+  type Project,
+  type Todo,
+} from '../../types';
 import { generateId } from '../../utils/helpers';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
 import { StickerAddTodo } from './StickerAddTodo';
@@ -101,10 +107,13 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [ready, setReady] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [addPopoverOpen, setAddPopoverOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
     null,
   );
   const projectPickerRef = useRef<HTMLDivElement>(null);
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const addPopoverRef = useRef<HTMLDivElement>(null);
   // 用 ref 持有最新 projectId，让 refresh 引用保持稳定（不依赖 projectId），
   // 从而订阅 effect 不会因切项目而反复重订阅、泄漏监听器。
   const projectIdRef = useRef(projectId);
@@ -185,6 +194,27 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [projectMenuOpen]);
+
+  // 新建浮层：外部点击 / Esc 关闭。复用项目选择器菜单的关闭套路。
+  // 触发按钮（addButtonRef）单独排除，避免它的点击同时被 onClick toggle 与此处关闭互相抵消。
+  useEffect(() => {
+    if (!addPopoverOpen) return;
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!addPopoverRef.current?.contains(target) && !addButtonRef.current?.contains(target)) {
+        setAddPopoverOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAddPopoverOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [addPopoverOpen]);
 
   const handleProjectChange = (nextProjectId: string) => {
     // 项目 id 与对应列表必须在同一次 React 提交中更新，避免中间一帧显示新项目名和旧事项。
@@ -298,18 +328,46 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
             </div>
           )}
         </div>
-        <button
-          className="sticker-no-drag sticker-close"
-          aria-label="关闭贴图"
-          onClick={() => void window.electronAPI?.closeSticker(stickerId)}
-        >
-          <svg viewBox="0 0 12 12" aria-hidden="true">
-            <path d="M2 2l8 8M10 2l-8 8" />
-          </svg>
-        </button>
+        <div className="sticker-header-actions sticker-no-drag">
+          <button
+            ref={addButtonRef}
+            type="button"
+            className="sticker-add-trigger"
+            aria-label="新建待办"
+            aria-haspopup="dialog"
+            aria-expanded={addPopoverOpen}
+            onClick={() => setAddPopoverOpen((open) => !open)}
+          >
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M6 1.5v9M1.5 6h9" />
+            </svg>
+          </button>
+          <button
+            className="sticker-close"
+            aria-label="关闭贴图"
+            onClick={() => void window.electronAPI?.closeSticker(stickerId)}
+          >
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M2 2l8 8M10 2l-8 8" />
+            </svg>
+          </button>
+        </div>
       </header>
+      {addPopoverOpen && (
+        <div
+          ref={addPopoverRef}
+          className="sticker-add-popover sticker-no-drag"
+          role="dialog"
+          aria-label="新建待办"
+        >
+          <StickerAddTodo
+            projectId={projectId}
+            autoFocus
+            onAdd={(titles, priority) => void handleAdd(titles, priority)}
+          />
+        </div>
+      )}
       <div className="sticker-body">
-        <StickerAddTodo projectId={projectId} onAdd={(titles, priority) => void handleAdd(titles, priority)} />
         {project && (
           <p className="sticker-eyebrow">
             {`${todos.filter((t) => !t.completed).length} 项待完成`}

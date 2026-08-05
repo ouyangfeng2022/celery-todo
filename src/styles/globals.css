@@ -498,6 +498,64 @@
     stroke-width: 1.6;
     stroke-linecap: round;
   }
+  /* header 右侧操作按钮组：[+ 新建] [× 关闭]。相对定位，承载浮层。 */
+  .sticker-header-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* header「新建」触发按钮：accent 橙圆形 FAB。
+   * 展开时旋转 45°（+ → × 视觉切换），暗示再点一次即关闭浮层。 */
+  .sticker-add-trigger {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition:
+      transform 0.18s ease,
+      filter 0.15s ease;
+  }
+  .sticker-add-trigger:hover {
+    filter: brightness(1.06);
+  }
+  .sticker-add-trigger[aria-expanded='true'] {
+    transform: rotate(45deg);
+  }
+  .sticker-add-trigger svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  /* 「新建」浮层：相对贴图外壳水平居中、垂直紧贴 header 下方，与 + 按钮脱钩。
+   * 宽度容纳 textarea 与三个优先级点。 */
+  .sticker-add-popover {
+    position: absolute;
+    z-index: 25;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-md);
+  }
+  /* 浮层内的 .sticker-add 不再需要自带的外边距与底色 —— 浮层容器已提供。 */
+  .sticker-add-popover .sticker-add {
+    margin: 0;
+    background: transparent;
+  }
   .sticker-body {
     padding: 14px 12px 18px;
     overflow-y: auto;

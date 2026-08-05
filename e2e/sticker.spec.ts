@@ -95,17 +95,19 @@ test('贴图切换项目后列表随之刷新', async () => {
   await expect(sticker.getByText('乙任务')).toBeVisible();
 });
 
-test('贴图点击 todo 标记完成，该 todo 从贴图消失', async () => {
+test('贴图点击 todo 标记完成，该 todo 沉底并显示完成态', async () => {
   await createProject(win, '完成测试');
   await addTodo(win, '待完成任务');
   await waitForSave(win);
 
   const sticker = await createSticker('完成测试');
+  const row = sticker.locator('.sticker-todo', { hasText: '待完成任务' });
   await expect(sticker.getByText('待完成任务')).toBeVisible();
   // 贴图 todo 整行是 button，点击 title span 冒泡到 button → toggle 完成
   await sticker.getByText('待完成任务').click();
-  // 贴图只显示未完成，完成后 AnimatePresence 移除该行
-  await expect(sticker.getByText('待完成任务')).toHaveCount(0);
+  // 已完成事项不再隐藏：沉底仍在列表里，整行带 data-completed=true、标题加删除线
+  await expect(row).toHaveAttribute('data-completed', 'true');
+  await expect(row.locator('.sticker-todo-title')).toHaveCSS('text-decoration', /line-through/);
 });
 
 test('右键复制贴图：打开第二个贴图窗口', async () => {
