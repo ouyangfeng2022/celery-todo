@@ -74,6 +74,7 @@ function StickerTodoList({ todos, ready, onToggle }: StickerTodoListProps) {
             exit={{ opacity: 0, x: 18 }}
             className="sticker-todo"
             data-completed={todo.completed}
+            data-todo-id={todo.id}
             onClick={() => onToggle(todo)}
             title={todo.completed ? '取消完成' : '标记为完成'}
             style={
@@ -111,6 +112,8 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
     null,
   );
+  // 右键命中的事项 id：菜单据此决定是否展示"归档事项"。null 表示右键在空白处。
+  const [contextMenuTodoId, setContextMenuTodoId] = useState<string | null>(null);
   const projectPickerRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const addPopoverRef = useRef<HTMLDivElement>(null);
@@ -237,6 +240,13 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     await db.flushSave();
     refresh();
   };
+  // 归档事项：复用 db.archiveTodos，与主窗口「归档」语义一致（移入历史记录，可恢复）。
+  // 贴图窗口绕过 store，故直接走 db + flushSave + refresh。
+  const archive = async (todo: Todo) => {
+    db.archiveTodos([todo]);
+    await db.flushSave();
+    refresh();
+  };
   // 新建待办：批量场景一次插入多条，order 接在当前项目最大 order 之后。
   // 复刻 useTodoStore.addTodo / addTodosBulk 的写入逻辑（贴图本就绕过 store 直连 db）。
   const handleAdd = async (titles: string[], priority: Priority) => {
@@ -264,6 +274,11 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     await db.flushSave();
     refresh();
   };
+  // 右键命中的事项：在菜单顶部额外提供「归档事项」。无命中时只显示贴图自身操作。
+  const contextMenuTargetTodo = useMemo(
+    () => todos.find((t) => t.id === contextMenuTodoId) ?? null,
+    [todos, contextMenuTodoId],
+  );
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: '复制贴图',
@@ -279,9 +294,23 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         void window.electronAPI?.closeSticker(stickerId);
       },
     },
+    // 命中事项时在末尾追加「归档事项」——破坏性操作放最底，与主流右键菜单一致
+    ...(contextMenuTargetTodo
+      ? ([
+          { separator: true },
+          {
+            label: '归档事项',
+            danger: true,
+            onClick: () => void archive(contextMenuTargetTodo),
+          },
+        ] as ContextMenuItem[])
+      : []),
   ];
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
+    // 捕获阶段向上追溯到 .sticker-todo 行，命中则记录该事项 id。
+    const row = (event.target as HTMLElement)?.closest<HTMLElement>('.sticker-todo[data-todo-id]');
+    setContextMenuTodoId(row?.dataset.todoId ?? null);
     setContextMenuPosition({ x: event.clientX, y: event.clientY });
   };
 
@@ -388,7 +417,10 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
           x={contextMenuPosition.x}
           y={contextMenuPosition.y}
           items={contextMenuItems}
-          onClose={() => setContextMenuPosition(null)}
+          onClose={() => {
+            setContextMenuPosition(null);
+            setContextMenuTodoId(null);
+          }}
         />
       )}
     </div>
