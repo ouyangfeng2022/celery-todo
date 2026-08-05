@@ -8,6 +8,17 @@
 
 ## [Unreleased]
 
+## [v2.15.0] - 2026-08-05
+### Added
+- 右键菜单支持归档当前事项
+- 新建待办改为 header + 按钮触发悬浮输入框
+- 贴图支持新建待办、已完成沉底并加深字体
+- update icon generation script and replace logo assets
+- 支持空白处右键新建项目并接入导入导出
+
+### Fixed
+- 统一多行输入框为内容自适应+可滚动
+
 ## [v2.14.0] - 2026-08-04
 ### Added
 - 将时间显示格式提升为全局持久化设置
@@ -363,3 +374,5 @@
 [v2.13.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.13.0
 
 [v2.14.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.14.0
+
+[v2.15.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.0
