@@ -280,7 +280,7 @@ function SortableProjectItem({
           }}
           onBlur={onConfirmRename}
           autoFocus
-          className="w-full px-3 py-2 text-sm rounded-md border outline-none"
+          className="w-full px-3 py-1.5 text-sm rounded-md border outline-none"
           style={{
             backgroundColor: 'var(--bg-tertiary)',
             color: 'var(--text-primary)',
@@ -295,17 +295,25 @@ function SortableProjectItem({
           {...listeners}
           // 主要操作是「点击切换项目」（光标 pointer），仅在按下拖拽时短暂变 grabbing。
           // 背景：选中态用 accent-subtle 强调色（且 hover 不变）；未选中时 hover 才出现 bg-hover。
-          className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left rounded-md cursor-pointer active:cursor-grabbing transition-colors ${
+          className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left rounded-md cursor-pointer active:cursor-grabbing transition-colors ${
             isActive ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--bg-hover)]'
           }`}
           style={{
             color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-            fontWeight: isActive ? 600 : 500,
+            fontWeight: isActive ? 500 : 400,
             fontFamily: 'var(--font-heading)',
           }}
           aria-label={`${project.name}（拖动以排序）`}
         >
-          <span className="flex-1 truncate">{project.name}</span>
+          <span
+            className="flex-1 truncate"
+            style={{
+              fontFamily: "'Noto Sans SC', sans-serif",
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {project.name}
+          </span>
           {/* 未完成 todo 计数：悬浮显示操作按钮时淡出，避免位置重叠 */}
           {incompleteCount > 0 && (
             <CountBadge className="text-[var(--text-tertiary)] opacity-100 transition-opacity group-hover:opacity-0">
@@ -546,7 +554,10 @@ function ProjectSidebarComponent({
         onContextMenu={handleContainerContextMenu}
       >
         <div className="flex items-center justify-between px-2 mb-2">
-          <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+          <span
+            className="text-sm font-medium"
+            style={{ color: '#8f8f8f', fontFamily: 'var(--font-heading)' }}
+          >
             项目
           </span>
           <button onClick={handleStartCreate} className="btn-ghost p-1" aria-label="新建项目">
@@ -601,7 +612,7 @@ function ProjectSidebarComponent({
           modifiers={[restrictToVerticalAxis]}
         >
           <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-0.5 mt-1">
+            <div className="space-y-px mt-1">
               {projects.map((project) => {
                 const isActive = project.id === activeProjectId;
                 const isEditing = editingId === project.id;

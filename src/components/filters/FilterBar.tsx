@@ -56,7 +56,7 @@ function FilterBarComponent({
               <button
                 key={option.value}
                 onClick={() => onFilterChange(option.value)}
-                className="relative px-3 py-1.5 text-[13px] font-medium rounded-md transition-colors"
+                className="relative px-3 py-1.5 text-[13px] font-semibold rounded-md transition-colors"
                 style={{
                   color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
                 }}
