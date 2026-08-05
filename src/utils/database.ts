@@ -10,7 +10,7 @@
 import initSqlJs from 'sql.js/dist/sql-wasm-browser.js';
 import type { Database, SqlJsStatic } from 'sql.js';
 import { EXPORT_FORMAT_VERSION } from './export';
-import { DEFAULT_SETTINGS, type StickerPreset } from '../types';
+import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
 
 // ============================================
 // 类型定义
@@ -1045,7 +1045,11 @@ export function exportAllData(): import('../types').AppExportData {
         (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
       stickerRadius: Number(getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
       stickerBlur: Number(getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
-      stickerOpacity: Number(getSetting('stickerOpacity') ?? DEFAULT_SETTINGS.stickerOpacity),
+      // stickerOpacity 由 preset 派生（与 loadSettings 对齐），不直读 DB 旧值
+      stickerOpacity:
+        STICKER_PRESET_VALUES[
+          (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset
+        ].opacity,
       stickerShadow: getSetting('stickerShadow') !== 'false',
     },
   };

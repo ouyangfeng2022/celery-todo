@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import type { AppSettings, ThemeMode, ThemeName } from '../types';
-import { DEFAULT_SETTINGS, type StickerPreset } from '../types';
+import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
 import * as db from '../utils/database';
 
 type StartupTheme = `${ThemeName}-${ThemeMode}`;
@@ -109,7 +109,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         (db.getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
       stickerRadius: Number(db.getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
       stickerBlur: Number(db.getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
-      stickerOpacity: Number(db.getSetting('stickerOpacity') ?? DEFAULT_SETTINGS.stickerOpacity),
+      // stickerOpacity 不再读 DB：当前版本设置面板已移除独立的透明度滑块，
+      // 它只能随预设整体变化。直接由当前 preset 派生，避免老 DB 里残留的
+      // 旧 opacity 值（如 65）覆盖预设的合理值，导致贴图永久偏淡（issue #12）。
+      stickerOpacity:
+        STICKER_PRESET_VALUES[
+          (db.getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset
+        ].opacity,
       stickerShadow: db.getSetting('stickerShadow') !== 'false',
     };
     set(settings);

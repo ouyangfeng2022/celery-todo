@@ -503,6 +503,113 @@
     overflow-y: auto;
     height: calc(100% - 48px);
   }
+  /* ===== 贴图内新建输入框 =====
+   * 单行布局：[+按钮] [标题 textarea] [优先级三色点]。
+   * 文字浓度统一走 --text-primary，让贴图即便半透明也尽量清晰。 */
+  .sticker-add {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 4px 12px;
+    padding: 7px 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-hover) 38%, transparent);
+  }
+  .sticker-add-btn {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+  .sticker-add-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .sticker-add-btn:not(:disabled):hover {
+    transform: scale(1.06);
+  }
+  .sticker-add-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .sticker-add-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    resize: none;
+    overflow-y: auto;
+    color: var(--text-primary);
+    font: 13px/1.5 var(--font-sans);
+    min-height: 1.5rem;
+  }
+  .sticker-add-title::placeholder {
+    color: var(--text-tertiary);
+  }
+  /* 优先级三色点：当前选中项实色描边，未选中半透明。紧凑、低存在感。 */
+  .sticker-add-priority {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sticker-add-priority-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+  }
+  .sticker-add-priority-dot[data-selected='true'] {
+    opacity: 1;
+  }
+  .sticker-add-priority-dot[data-priority='high'] {
+    background: #dc2626;
+  }
+  .sticker-add-priority-dot[data-priority='medium'] {
+    background: #b45309;
+  }
+  .sticker-add-priority-dot[data-priority='low'] {
+    background: #475569;
+  }
+  .dark .sticker-add-priority-dot[data-priority='high'] {
+    background: #fca5a5;
+  }
+  .dark .sticker-add-priority-dot[data-priority='medium'] {
+    background: #fcd34d;
+  }
+  .dark .sticker-add-priority-dot[data-priority='low'] {
+    background: #cbd5e1;
+  }
+  .sticker-add-bulk-tag {
+    flex: none;
+    margin-left: 2px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+  }
   .sticker-eyebrow {
     margin: 0 4px 10px;
     color: var(--text-tertiary);
@@ -546,13 +653,28 @@
     border-radius: 50%;
     box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
   }
-  /* 标题占据剩余空间，长标题省略，避免挤压右侧优先级 tag / 置顶标签 */
+  /* 标题占据剩余空间，长标题省略，避免挤压右侧优先级 tag / 置顶标签。
+   * 显式声明 color 避免被父级 opacity 二次稀释误判（贴图整体走 --sticker-opacity）。 */
   .sticker-todo-title {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    color: var(--text-primary);
+  }
+  /* 已完成事项：弱化整行 + 标题加删除线 + 色条/tag 退到背景。
+   * 仅贴图使用此规则，主窗口的完成态样式由 TodoItem.tsx 控制。 */
+  .sticker-todo[data-completed='true'] {
+    opacity: 0.55;
+  }
+  .sticker-todo[data-completed='true'] .sticker-todo-title {
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--text-tertiary) 80%, transparent);
+  }
+  .sticker-todo[data-completed='true'] .sticker-priority-bar,
+  .sticker-todo[data-completed='true'] .sticker-priority-tag {
+    opacity: 0.4;
   }
   /* 优先级文字 tag：紧凑浅底彩字 pill，margin-left:auto 把它顶到行末。
    * 配色取与主页 PRIORITY_COLORS 同色系但更浅，适配贴图半透明背景。 */

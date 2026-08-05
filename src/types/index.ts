@@ -87,8 +87,9 @@ export const STICKER_PRESET_VALUES: Record<
     shadow: boolean;
   }
 > = {
-  // 玻璃：当前默认观感 —— 大圆角 + 强模糊 + 半透明渐变 + 高光
-  glass: { radius: 22, blur: 38, opacity: 65, shadow: false },
+  // 玻璃：当前默认观感 —— 大圆角 + 强模糊 + 半透明渐变 + 高光。
+  // opacity 从 65 提到 80：原值下文字随 shell 整体被稀释，偏淡（issue #12 反馈）。
+  glass: { radius: 22, blur: 38, opacity: 80, shadow: false },
   // 纯净：无模糊、近实色、中等圆角
   pure: { radius: 16, blur: 0, opacity: 96, shadow: false },
   // 卡片：小圆角、实色背景、外阴影、明显描边

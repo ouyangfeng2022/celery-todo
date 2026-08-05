@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
 import { readProjectSort, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { PRIORITY_LABELS, PRIORITY_SOLID, type Project, type Todo } from '../../types';
+import { PRIORITY_LABELS, PRIORITY_SOLID, type Priority, type Project, type Todo } from '../../types';
+import { generateId } from '../../utils/helpers';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
+import { StickerAddTodo } from './StickerAddTodo';
 
 interface Props {
   stickerId: string;
@@ -31,13 +33,24 @@ function sameProjects(a: Project[], b: Project[]): boolean {
 }
 
 /**
- * 取某项目未完成 todo，并按主窗口该项目持久化的排序方式排序。
- * 排序逻辑与主窗口 useFilter 共用 sortTodos，确保两端顺序完全一致。
+ * 取某项目全部 todo（含已完成），按"未完成在前、已完成沉底"分组，
+ * 每组内复用主窗口该项目持久化的排序方式（sortTodos），保证两端顺序一致。
+ * 注意：不直接改 sortTodos.ts —— 那是主窗口 + 贴图共用，主窗口仍保持
+ * filter='all' 下的混排行为；此处"沉底"仅是贴图本地的展示策略。
  */
-function loadActiveTodos(pid: string): Todo[] {
+function loadStickerTodos(pid: string): Todo[] {
   if (!pid) return [];
-  const raw = db.getTodosByProject(pid).filter((todo) => !todo.completed);
-  return sortTodos(raw, readProjectSort(pid));
+  const all = db.getTodosByProject(pid);
+  const sort = readProjectSort(pid);
+  const active = sortTodos(
+    all.filter((t) => !t.completed),
+    sort,
+  );
+  const completed = sortTodos(
+    all.filter((t) => t.completed),
+    sort,
+  );
+  return [...active, ...completed];
 }
 
 /**
@@ -54,8 +67,9 @@ function StickerTodoList({ todos, ready, onToggle }: StickerTodoListProps) {
             layout
             exit={{ opacity: 0, x: 18 }}
             className="sticker-todo"
+            data-completed={todo.completed}
             onClick={() => onToggle(todo)}
-            title="标记为完成"
+            title={todo.completed ? '取消完成' : '标记为完成'}
             style={
               {
                 '--sticker-priority-color': PRIORITY_SOLID[todo.priority],
@@ -114,7 +128,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     const ps = db.getAllProjects();
     setProjects((prev) => (sameProjects(prev, ps) ? prev : ps));
     const id = projectIdRef.current || ps[0]?.id || '';
-    setTodos(loadActiveTodos(id));
+    setTodos(loadStickerTodos(id));
   }, []);
   useEffect(() => {
     void db.initDatabase().then(() => {
@@ -176,17 +190,47 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     // 项目 id 与对应列表必须在同一次 React 提交中更新，避免中间一帧显示新项目名和旧事项。
     projectIdRef.current = nextProjectId;
     setProjectId(nextProjectId);
-    setTodos(loadActiveTodos(nextProjectId));
+    setTodos(loadStickerTodos(nextProjectId));
     setProjectMenuOpen(false);
     void window.electronAPI?.setStickerProject(stickerId, nextProjectId);
   };
   const toggle = async (todo: Todo) => {
+    // 点击已完成项：取消完成，回到待办区；点击未完成项：标记完成并沉底。
+    // 行为与主窗口勾选语义对齐（主窗口支持取消勾选，贴图以前只是隐藏，现在也允许反悔）。
+    const nextCompleted = !todo.completed;
     db.updateTodo({
       ...todo,
-      completed: true,
-      completedAt: new Date().toISOString(),
+      completed: nextCompleted,
+      completedAt: nextCompleted ? new Date().toISOString() : undefined,
       updatedAt: new Date().toISOString(),
     });
+    await db.flushSave();
+    refresh();
+  };
+  // 新建待办：批量场景一次插入多条，order 接在当前项目最大 order 之后。
+  // 复刻 useTodoStore.addTodo / addTodosBulk 的写入逻辑（贴图本就绕过 store 直连 db）。
+  const handleAdd = async (titles: string[], priority: Priority) => {
+    const pid = projectIdRef.current;
+    if (!pid || titles.length === 0) return;
+    const existing = db.getTodosByProject(pid);
+    let baseOrder = existing.length > 0 ? Math.max(...existing.map((t) => t.order)) : 0;
+    const now = new Date().toISOString();
+    for (const rawTitle of titles) {
+      const trimmed = rawTitle.trim();
+      if (!trimmed) continue;
+      const newTodo: Todo = {
+        id: generateId(),
+        projectId: pid,
+        title: trimmed,
+        completed: false,
+        priority,
+        createdAt: now,
+        updatedAt: now,
+        order: ++baseOrder,
+        pinned: false,
+      };
+      db.insertTodo(newTodo);
+    }
     await db.flushSave();
     refresh();
   };
@@ -265,7 +309,15 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         </button>
       </header>
       <div className="sticker-body">
-        <p className="sticker-eyebrow">{project ? `${todos.length} 项待完成` : '选择一个项目'}</p>
+        <StickerAddTodo projectId={projectId} onAdd={(titles, priority) => void handleAdd(titles, priority)} />
+        {project && (
+          <p className="sticker-eyebrow">
+            {`${todos.filter((t) => !t.completed).length} 项待完成`}
+            {todos.some((t) => t.completed) &&
+              ` · ${todos.filter((t) => t.completed).length} 项已完成`}
+          </p>
+        )}
+        {!project && <p className="sticker-eyebrow">选择一个项目</p>}
         <StickerTodoList
           key={projectId}
           todos={todos}
