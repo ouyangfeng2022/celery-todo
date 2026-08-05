@@ -20,13 +20,11 @@
     --bg-active: rgba(0, 0, 0, 0.08);
     --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
 
-    /* 文字层：四级灰阶，保证 ≥4.5:1 对比
-     * tertiary / quaternary 在浅色背景上原值对比度偏低（3.91 / 2.11），
-     * 加深为 #5e5c54 / #8d8b81，使 tertiary 达 AA 6.35，quaternary 仍仅用于极弱分隔。 */
+    /* 文字层：提高正文与辅助信息的对比度，降低浅色界面的「发灰」感。 */
     --text-primary: #141413; /* Anthropic Dark · 标题与正文 */
-    --text-secondary: #4a4944; /* 次级说明 */
-    --text-tertiary: #5e5c54; /* 元信息 / 占位 */
-    --text-quaternary: #8d8b81; /* Anthropic Mid Gray · 极弱分隔 */
+    --text-secondary: #272724; /* 次级说明 */
+    --text-tertiary: #34332f; /* 元信息 / 占位 */
+    --text-quaternary: #4a4944; /* 极弱分隔 */
 
     /* 描边：弱→强 */
     --border-color: #dedcd3;
@@ -80,9 +78,9 @@
     --bg-frame: #33251f;
 
     --text-primary: #f3f1ec;
-    --text-secondary: #b8b3a4;
-    --text-tertiary: #8a8576;
-    --text-quaternary: #5c584c;
+    --text-secondary: #edeae2;
+    --text-tertiary: #d7d3c8;
+    --text-quaternary: #b8b3a4;
 
     --border-color: #34332f;
     --border-strong: #46443e;
@@ -126,9 +124,9 @@
     --bg-active: #483a32;
     --bg-frame: #3d3028;
     --text-primary: #f6eee8;
-    --text-secondary: #c7b8ad;
-    --text-tertiary: #9d8c80;
-    --text-quaternary: #6f6057;
+    --text-secondary: #f0e5de;
+    --text-tertiary: #d8c9bf;
+    --text-quaternary: #bda99d;
     --border-color: #493c35;
     --border-strong: #624f45;
     --accent: #e39a7d;
@@ -148,9 +146,9 @@
     --bg-frame: #eef3ea;
 
     --text-primary: #263126;
-    --text-secondary: #566152;
-    --text-tertiary: #6b7567;
-    --text-quaternary: #929a8e;
+    --text-secondary: #354033;
+    --text-tertiary: #475244;
+    --text-quaternary: #5d685a;
 
     --border-color: #dce5d7;
     --border-strong: #bdcbb6;
@@ -176,9 +174,9 @@
     --bg-active: #364536;
     --bg-frame: #263226;
     --text-primary: #edf4e9;
-    --text-secondary: #bdc9b8;
-    --text-tertiary: #91a08c;
-    --text-quaternary: #667361;
+    --text-secondary: #e2ebdd;
+    --text-tertiary: #c7d3c1;
+    --text-quaternary: #a6b7a0;
     --border-color: #384937;
     --border-strong: #536451;
     --accent: #9fbd87;
@@ -907,6 +905,8 @@
 
   /* Markdown 渲染 */
   .markdown-body {
+    /* 事项标题使用无衬线标题字，描述保留衬线正文字，形成明确层级。 */
+    font-family: var(--font-body);
     font-size: 0.875rem;
     line-height: 1.65;
   }

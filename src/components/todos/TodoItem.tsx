@@ -324,6 +324,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
               )}
               style={{
                 color: todo.completed ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 500,
               }}
             >
               {todo.title}

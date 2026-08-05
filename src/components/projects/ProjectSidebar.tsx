@@ -285,6 +285,7 @@ function SortableProjectItem({
             backgroundColor: 'var(--bg-tertiary)',
             color: 'var(--text-primary)',
             borderColor: 'var(--accent)',
+            fontFamily: 'var(--font-heading)',
           }}
         />
       ) : (
@@ -299,7 +300,8 @@ function SortableProjectItem({
           }`}
           style={{
             color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
-            fontWeight: isActive ? 500 : 400,
+            fontWeight: isActive ? 600 : 500,
+            fontFamily: 'var(--font-heading)',
           }}
           aria-label={`${project.name}（拖动以排序）`}
         >
