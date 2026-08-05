@@ -204,7 +204,7 @@ function SettingsPanelComponent({
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1">
+          <div className="settings-panel flex min-h-0 flex-1">
             {/* 左侧分类栏复用主页面侧栏的宽度、暖橙底色与列表节奏。 */}
             <nav
               className="flex w-[280px] flex-shrink-0 flex-col overflow-y-auto px-3 pb-4 pt-1"

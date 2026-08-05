@@ -794,6 +794,20 @@
     padding: 1.5rem;
   }
 
+  /* 设置页信息密度较高，中文统一使用清晰、紧凑的无衬线字面。
+   * 不影响主工作区的正文与品牌排印。 */
+  .settings-panel {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-feature-settings:
+      'kern' 1,
+      'palt' 1;
+  }
+
+  .settings-panel .font-serif,
+  .settings-panel .claude-eyebrow {
+    font-family: var(--font-heading);
+  }
+
   .brand-progress {
     background-image: linear-gradient(
       90deg,
