@@ -139,17 +139,15 @@ function SearchBarComponent({
                     className="mt-1.5 h-2 w-2 flex-shrink-0 rounded-full"
                     style={{ backgroundColor: result.project.color ?? 'var(--accent)' }}
                   />
-                    <span className="flex min-w-0 flex-1 items-start gap-2">
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium">
-                          <span
-                            className={
-                              result.todo.completed ? 'line-through opacity-60' : undefined
-                            }
-                          >
-                            {result.todo.title}
-                          </span>
+                  <span className="flex min-w-0 flex-1 items-start gap-2">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium">
+                        <span
+                          className={result.todo.completed ? 'line-through opacity-60' : undefined}
+                        >
+                          {result.todo.title}
                         </span>
+                      </span>
                       {result.matchedText && (
                         <span
                           className="mt-0.5 block truncate text-xs"

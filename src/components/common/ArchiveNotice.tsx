@@ -66,9 +66,16 @@ function ArchiveNoticeComponent({
               className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg"
               style={{ backgroundColor: 'var(--accent-subtle)', color: 'var(--accent)' }}
             >
-              {notice.variant === 'archived' ? <ArchiveIcon size={15} /> : <RestoreIcon size={15} />}
+              {notice.variant === 'archived' ? (
+                <ArchiveIcon size={15} />
+              ) : (
+                <RestoreIcon size={15} />
+              )}
             </span>
-            <div className="whitespace-nowrap text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+            <div
+              className="whitespace-nowrap text-sm leading-6"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               {notice.variant === 'archived' ? (
                 <>
                   <span className="font-medium" style={{ color: 'var(--text-primary)' }}>

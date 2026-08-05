@@ -700,6 +700,8 @@ function App() {
                 }
                 onNewTodoInProject={handleNewTodoInProject}
                 onCreateSticker={(projectId) => void window.electronAPI?.createSticker(projectId)}
+                onImport={handleImportClick}
+                onExportAll={handleExportAll}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}
               />

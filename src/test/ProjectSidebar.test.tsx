@@ -56,6 +56,8 @@ describe('ProjectSidebar 设置菜单', () => {
         onOpenHelp={onOpenHelp}
         onNewTodoInProject={vi.fn()}
         onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        onExportAll={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -104,6 +106,8 @@ describe('ProjectSidebar 设置菜单', () => {
         onOpenHelp={vi.fn()}
         onNewTodoInProject={vi.fn()}
         onCreateSticker={onCreateSticker}
+        onImport={vi.fn()}
+        onExportAll={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -112,5 +116,113 @@ describe('ProjectSidebar 设置菜单', () => {
     fireEvent.click(screen.getByRole('button', { name: '创建贴图' }));
 
     expect(onCreateSticker).toHaveBeenCalledWith('project-sticker');
+  });
+
+  it('在项目行右键可一步新建项目', () => {
+    const onCreate = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'p1',
+            name: '项目一',
+            color: '#22c55e',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+          },
+        ]}
+        activeProjectId="p1"
+        onSwitch={vi.fn()}
+        onCreate={onCreate}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        onExportAll={vi.fn()}
+        incompleteCounts={{}}
+      />,
+    );
+
+    // 右键项目行 → 菜单顶部「新建项目」 → 输入名称回车。
+    // 注意「新建项目」会同时命中菜单项与侧栏「+」按钮（aria-label），取 portal 中渲染的最后一个。
+    fireEvent.contextMenu(screen.getByRole('button', { name: '项目一（拖动以排序）' }));
+    const newProjectBtns = screen.getAllByRole('button', { name: '新建项目' });
+    fireEvent.click(newProjectBtns[newProjectBtns.length - 1]);
+    const input = screen.getByPlaceholderText('项目名称...');
+    fireEvent.change(input, { target: { value: '新项目' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onCreate).toHaveBeenCalledWith('新项目');
+  });
+
+  it('列表空白处右键提供新建项目/导入/导出', () => {
+    const onCreate = vi.fn();
+    const onImport = vi.fn();
+    const onExportAll = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'p1',
+            name: '项目一',
+            color: '#22c55e',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+          },
+        ]}
+        activeProjectId="p1"
+        onSwitch={vi.fn()}
+        onCreate={onCreate}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={onImport}
+        onExportAll={onExportAll}
+        incompleteCounts={{}}
+      />,
+    );
+
+    // 在项目列表的空白处（列表容器内、非项目行）右键。
+    // 列表容器的 onContextMenu 挂在 aside 内 overflow-auto 的 div 上，
+    // 事件冒泡而非捕获，故在「项目」分组标题上触发即可命中它。
+    const sectionHeader = screen.getByText('项目');
+
+    fireEvent.contextMenu(sectionHeader);
+
+    // 空白菜单不包含项目级操作
+    expect(screen.queryByRole('button', { name: '删除项目' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '重命名' })).not.toBeInTheDocument();
+
+    // 但包含这 3 项
+    fireEvent.click(screen.getByRole('button', { name: '导入数据' }));
+    expect(onImport).toHaveBeenCalledTimes(1);
+
+    // 重新唤出菜单（点击项后菜单关闭）
+    fireEvent.contextMenu(sectionHeader);
+    fireEvent.click(screen.getByRole('button', { name: '导出全部数据' }));
+    expect(onExportAll).toHaveBeenCalledTimes(1);
+
+    // 新建项目走同一输入流程
+    fireEvent.contextMenu(sectionHeader);
+    const newProjectBtns = screen.getAllByRole('button', { name: '新建项目' });
+    fireEvent.click(newProjectBtns[newProjectBtns.length - 1]);
+    const input = screen.getByPlaceholderText('项目名称...');
+    fireEvent.change(input, { target: { value: '空白创建' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onCreate).toHaveBeenCalledWith('空白创建');
   });
 });

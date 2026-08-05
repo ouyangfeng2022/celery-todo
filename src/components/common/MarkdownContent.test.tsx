@@ -5,7 +5,9 @@ describe('MarkdownContent', () => {
   it('渲染 GitHub Flavored Markdown 扩展语法', () => {
     render(
       <MarkdownContent
-        content={'~~已删除~~\n\n- [x] 已完成\n- [ ] 待办\n\n| 名称 | 数量 |\n| --- | ---: |\n| 苹果 | 2 |'}
+        content={
+          '~~已删除~~\n\n- [x] 已完成\n- [ ] 待办\n\n| 名称 | 数量 |\n| --- | ---: |\n| 苹果 | 2 |'
+        }
       />,
     );
 

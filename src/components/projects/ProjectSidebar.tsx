@@ -66,6 +66,10 @@ interface ProjectSidebarProps {
   onNewTodoInProject: (projectId: string) => void;
   /** 为指定项目创建桌面贴图 */
   onCreateSticker: (projectId: string) => void;
+  /** 导入数据（与 Header「数据 → 导入数据」同一条路径） */
+  onImport: () => void;
+  /** 导出全部数据为 JSON 备份 */
+  onExportAll: () => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -350,6 +354,8 @@ function ProjectSidebarComponent({
   onOpenHelp,
   onNewTodoInProject,
   onCreateSticker,
+  onImport,
+  onExportAll,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -359,8 +365,11 @@ function ProjectSidebarComponent({
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-  // 项目项右键菜单的弹出位置与目标项目；为 null 时不渲染菜单
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; project: Project } | null>(null);
+  // 右键菜单的弹出位置与目标项目。project 为 null 表示在列表空白处右键，
+  // 此时只提供「新建项目」一项（与 Finder/Explorer 在空白处右键的行为一致）。
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; project: Project | null } | null>(
+    null,
+  );
   const createInputRef = useRef<HTMLInputElement>(null);
   // 设置菜单弹出层与其触发按钮的引用，用于判断点击是否落在设置区域外部
   const settingsMenuRef = useRef<HTMLDivElement>(null);
@@ -406,42 +415,83 @@ function ProjectSidebarComponent({
     setCtxMenu({ x: e.clientX, y: e.clientY, project });
   }, []);
 
+  // 唤出新建项目输入框：点击「+」按钮、列表空白处右键、主区空状态按钮共用同一流程。
+  const handleStartCreate = useCallback(() => {
+    setIsCreating(true);
+    // 等下一帧 AnimatePresence 把 input 挂载出来再聚焦
+    requestAnimationFrame(() => createInputRef.current?.focus());
+  }, []);
+
+  // 列表空白处右键：仅提供「新建项目」（Finder/Explorer 习惯）。
+  const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
+    // 命中具体项目行时，由该行的 onContextMenu 处理（已 stopPropagation），不会走到这里。
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, project: null });
+  }, []);
+
   // 右键菜单项：在每次渲染时按当前目标项目构造，确保回调拿到最新引用
   const ctxMenuItems: ContextMenuItem[] = ctxMenu
     ? [
+        // 空白处右键仅显示新建项目；命中项目行时把「新建项目」置顶并加分隔线，
+        // 让用户在任意位置右键都能一步新建项目。
         {
-          label: '新建事项',
+          label: '新建项目',
           onClick: () => {
-            onNewTodoInProject(ctxMenu.project.id);
+            handleStartCreate();
           },
         },
-        {
-          label: '导出项目',
-          onClick: () => {
-            onExport(ctxMenu.project.id);
-          },
-        },
-        {
-          label: '重命名',
-          onClick: () => {
-            handleStartRename(ctxMenu.project);
-          },
-        },
-        { separator: true },
-        {
-          label: '创建贴图',
-          onClick: () => {
-            onCreateSticker(ctxMenu.project.id);
-          },
-        },
-        { separator: true },
-        {
-          label: '删除项目',
-          danger: true,
-          onClick: () => {
-            setDeleteTarget(ctxMenu.project);
-          },
-        },
+        ...(ctxMenu.project
+          ? ([
+              { separator: true },
+              {
+                label: '新建事项',
+                onClick: () => {
+                  onNewTodoInProject(ctxMenu.project!.id);
+                },
+              },
+              {
+                label: '导出项目',
+                onClick: () => {
+                  onExport(ctxMenu.project!.id);
+                },
+              },
+              {
+                label: '重命名',
+                onClick: () => {
+                  handleStartRename(ctxMenu.project!);
+                },
+              },
+              { separator: true },
+              {
+                label: '创建贴图',
+                onClick: () => {
+                  onCreateSticker(ctxMenu.project!.id);
+                },
+              },
+              { separator: true },
+              {
+                label: '删除项目',
+                danger: true,
+                onClick: () => {
+                  setDeleteTarget(ctxMenu.project!);
+                },
+              },
+            ] as ContextMenuItem[])
+          : ([
+              { separator: true },
+              {
+                label: '导入数据',
+                onClick: () => {
+                  onImport();
+                },
+              },
+              {
+                label: '导出全部数据',
+                onClick: () => {
+                  onExportAll();
+                },
+              },
+            ] as ContextMenuItem[])),
       ]
     : [];
 
@@ -489,16 +539,15 @@ function ProjectSidebarComponent({
       </div>
 
       {/* 项目列表 */}
-      <div className="flex-1 overflow-y-auto px-3 pb-4 pt-1">
+      <div
+        className="flex-1 overflow-y-auto px-3 pb-4 pt-1"
+        onContextMenu={handleContainerContextMenu}
+      >
         <div className="flex items-center justify-between px-2 mb-2">
           <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
             项目
           </span>
-          <button
-            onClick={() => setIsCreating(true)}
-            className="btn-ghost p-1"
-            aria-label="新建项目"
-          >
+          <button onClick={handleStartCreate} className="btn-ghost p-1" aria-label="新建项目">
             <PlusIcon size={14} />
           </button>
         </div>

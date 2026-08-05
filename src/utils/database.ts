@@ -1039,8 +1039,7 @@ export function exportAllData(): import('../types').AppExportData {
       // 与 useSettingsStore.loadSettings 保持一致：缺失键回退空串
       lastActiveProjectId: getSetting('lastActiveProjectId') ?? '',
       // 时间格式：缺失键回退默认相对时间，与 loadSettings 对齐
-      timeFormat:
-        getSetting('timeFormat') === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
+      timeFormat: getSetting('timeFormat') === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（缺失时回退玻璃预设默认值，与 loadSettings 对齐） =====
       stickerPreset:
         (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
