@@ -10,6 +10,7 @@ import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { PlusIcon } from '../common/Icons';
 import { hasBulkSeparator } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
+import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
 
 /** 每个项目各自的输入草稿，切换项目时完整恢复编辑现场 */
 interface Draft {
@@ -65,15 +66,17 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
 
   // 文本框自适应高度：单行时与原 input 一致，多行时自动撑高
   const autosize = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
+    autosizeTextarea(textareaRef.current);
   }, []);
 
   useEffect(() => {
     autosize();
   }, [title, autosize]);
+
+  // 描述框同样自适应：内容少时贴合行数，超过最大高度后改为内部滚动
+  useEffect(() => {
+    autosizeTextarea(descriptionRef.current);
+  }, [description]);
 
   // 点击外部或按 Escape 收起扩展选项。
   useDismissibleLayer(showOptions, [wrapRef], () => setShowOptions(false));
@@ -263,11 +266,13 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
           onBlur={() => setIsFocused(false)}
           aria-label="新事项标题"
           placeholder="添加待办事项…"
-          className="flex-1 bg-transparent border-none outline-none text-base resize-none overflow-hidden leading-6"
+          className="flex-1 bg-transparent border-none outline-none text-base resize-none overflow-y-auto leading-6"
           style={{
             color: 'var(--text-primary)',
             minHeight: '1.5rem',
-            maxHeight: '12rem',
+            // 上限 8 行（行高 1.5rem × 8）。超过后 textarea 自身滚动，避免撑高整个表单，
+            // 也避免之前用 overflow-hidden 导致前几行被永久截断看不到。
+            maxHeight: TEXTAREA_MAX_HEIGHT,
           }}
         />
 
@@ -387,7 +392,8 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
                       }}
                       aria-label="新事项描述"
                       placeholder="添加描述…"
-                      className="claude-input min-h-[5.5rem] resize-y text-sm leading-6"
+                      className="claude-input resize-none overflow-y-auto text-sm leading-6"
+                      style={{ minHeight: '5.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
                     />
                     <div
                       className="mt-1.5 flex justify-end text-[11px]"

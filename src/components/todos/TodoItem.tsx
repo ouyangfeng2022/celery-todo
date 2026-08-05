@@ -10,6 +10,7 @@ import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
 import { MarkdownContent } from '../common/MarkdownContent';
 
@@ -152,14 +153,24 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   const timeFormat = useSettingsStore((s) => s.timeFormat);
   const setTimeFormat = useSettingsStore((s) => s.setTimeFormat);
   const editInputRef = useRef<HTMLTextAreaElement>(null);
+  const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
 
-  // 进入编辑模式时聚焦
+  // 进入编辑模式时聚焦标题
   useEffect(() => {
     if (isEditing && editInputRef.current) {
       editInputRef.current.focus();
       editInputRef.current.select();
     }
   }, [isEditing]);
+
+  // 编辑态：标题/描述按内容自适应高度。进入编辑时把已保存内容一次性撑到真实高度，
+  // 之后随输入更新。超过最大高度后由 textarea 自身滚动承接（见下面 textarea 的 maxHeight）。
+  useEffect(() => {
+    if (isEditing) {
+      autosizeTextarea(editInputRef.current);
+      autosizeTextarea(editDescriptionRef.current);
+    }
+  }, [isEditing, editTitle, editDescription]);
 
   useEffect(() => {
     if (!focusSignal) return;
@@ -261,15 +272,18 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
               ref={editInputRef}
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="claude-input resize-none font-medium"
+              className="claude-input resize-none overflow-y-auto leading-6"
+              style={{ minHeight: '1.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
               rows={1}
               placeholder="事项标题"
             />
             <textarea
+              ref={editDescriptionRef}
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               aria-label="事项描述"
-              className="claude-input resize-none text-sm"
+              className="claude-input resize-none overflow-y-auto text-sm leading-6"
+              style={{ minHeight: '4.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
               rows={3}
               placeholder="描述"
             />
