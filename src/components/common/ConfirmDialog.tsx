@@ -81,33 +81,31 @@ function ConfirmDialogComponent({
             exit={{ scale: 0.96, opacity: 0, y: 12 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-center justify-center gap-2 mb-1.5">
               {danger && (
                 <div
-                  className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                  className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
                   style={{
                     backgroundColor: 'var(--danger-subtle)',
                     color: 'var(--danger)',
                   }}
                 >
-                  <AlertIcon size={18} />
+                  <AlertIcon size={14} />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <h3
-                  className="text-lg font-serif font-semibold mb-1.5 leading-tight"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed text-pretty"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  {message}
-                </p>
-              </div>
+              <h3
+                className="text-lg font-serif font-semibold leading-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {title}
+              </h3>
             </div>
+            <p
+              className="text-sm leading-relaxed text-pretty"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {message}
+            </p>
 
             <div className="flex justify-end gap-2 mt-6">
               <button className="btn-secondary" onClick={onCancel}>

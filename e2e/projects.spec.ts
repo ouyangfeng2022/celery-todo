@@ -69,27 +69,27 @@ test('右键项目可快速创建对应贴图', async () => {
   await expect(sticker.getByLabel('选择贴图项目')).toHaveText('贴图项目');
 });
 
-test('删除非默认项目：二次确认后项目消失', async () => {
-  await createProject(win, '待删除');
+test('归档非默认项目：二次确认后项目消失', async () => {
+  await createProject(win, '待归档');
 
-  await openProjectContextMenu(win, '待删除');
-  await win.getByRole('button', { name: '删除项目', exact: true }).click();
+  await openProjectContextMenu(win, '待归档');
+  await win.getByRole('button', { name: '归档项目', exact: true }).click();
 
-  // ConfirmDialog 打开，标题"删除项目"。按 Enter 确认（dialog 监听 Enter）
-  await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();
+  // ConfirmDialog 打开，标题"归档项目"。按 Enter 确认（dialog 监听 Enter）
+  await expect(win.getByRole('heading', { name: '归档项目' })).toBeVisible();
   await win.keyboard.press('Enter');
 
-  await expect(win.getByRole('button', { name: '待删除（拖动以排序）' })).toHaveCount(0);
+  await expect(win.getByRole('button', { name: '待归档（拖动以排序）' })).toHaveCount(0);
 });
 
-test('删除最后一个项目后列表为空，主区显示"请创建项目"', async () => {
+test('归档最后一个项目后列表为空，主区显示"请创建项目"', async () => {
   await createProject(win, '唯一项目');
 
   await openProjectContextMenu(win, '唯一项目');
-  await win.getByRole('button', { name: '删除项目', exact: true }).click();
+  await win.getByRole('button', { name: '归档项目', exact: true }).click();
 
   // ConfirmDialog：按 Enter 确认
-  await expect(win.getByRole('heading', { name: '删除项目' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '归档项目' })).toBeVisible();
   await win.keyboard.press('Enter');
 
   // 项目列表为空

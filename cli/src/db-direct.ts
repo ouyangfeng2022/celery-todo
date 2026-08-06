@@ -254,9 +254,12 @@ export function insertProject(project: Project): void {
 }
 
 export function deleteProject(id: string): void {
-  // 与 App 一致：先删 todos 和归档，再删项目（外键 ON DELETE CASCADE 也兜底）
-  exec('DELETE FROM todos WHERE project_id = ?', [id]);
-  exec('DELETE FROM deleted_todos WHERE project_id = ?', [id]);
+  // 与 App 一致：归档项目——其下 todos 移入 deleted_todos（历史记录），再删项目本身。
+  // 同批次共用时间戳，便于历史记录按批次聚合展示。
+  const now = new Date().toISOString();
+  for (const todo of getTodosByProject(id)) {
+    softDeleteTodo(todo, now, now);
+  }
   exec('DELETE FROM projects WHERE id = ?', [id]);
 }
 

@@ -378,7 +378,7 @@ export async function createProject(name: string, color?: string): Promise<{ id:
   return { id };
 }
 
-/** 删除项目（级联删除其下 todos 与归档） */
+/** 归档项目：其下 todos 移入归档（历史记录），再删除项目本身 */
 export async function deleteProject(id: string): Promise<void> {
   if (getMode() === 'ipc') {
     await ipcCall('deleteProject', { id });

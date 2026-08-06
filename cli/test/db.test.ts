@@ -295,10 +295,11 @@ describe('db data layer', () => {
     expect(newest.order).toBe(1);
   });
 
-  it('deleteProject 连带删除其下 todos 与归档', () => {
+  it('deleteProject 归档其下 todos 并删除项目（保留历史记录）', () => {
     openDatabase(fixture.filePath, false);
     const now = new Date().toISOString();
-    const t: Todo = {
+    // 当前 todo（待归档）
+    const active: Todo = {
       id: generateId(),
       projectId: fixture.projectId,
       title: 'a',
@@ -309,12 +310,20 @@ describe('db data layer', () => {
       order: 1,
       pinned: false,
     };
-    insertTodo(t);
-    softDeleteTodo(t, now, now);
+    insertTodo(active);
+    // 既有归档行（历史记录）：deleteProject 不应清空它
+    const archived: Todo = {
+      ...active,
+      id: generateId(),
+      title: 'b',
+    };
+    softDeleteTodo(archived, now, now);
     deleteProject(fixture.projectId);
     expect(getProjectById(fixture.projectId)).toBeNull();
+    // todos 表清空
     expect(getAllTodos()).toHaveLength(0);
-    expect(getAllDeletedTodos()).toHaveLength(0);
+    // 归档保留：既有 1 条 + 当前 todos 中 1 条移入归档 = 2 条
+    expect(getAllDeletedTodos()).toHaveLength(2);
   });
 
   it('getDataVersion 读取 settings.dataVersion', () => {

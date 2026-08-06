@@ -817,11 +817,16 @@ export function reorderProjects(ids: string[]): void {
   });
 }
 
-/** 删除项目（同时删除其下所有 Todo） */
+/**
+ * 归档项目：其下所有 todos 移入归档（历史记录），再删除项目本身。
+ * 项目原先的已归档行保留在 deleted_todos 中（历史记录不丢）。
+ * 归档后事项仍可在历史记录页恢复或永久删除。
+ */
 export function deleteProject(id: string): void {
   runTransaction(() => {
-    execute('DELETE FROM todos WHERE project_id = ?', [id]);
-    execute('DELETE FROM deleted_todos WHERE project_id = ?', [id]);
+    // 先把当前 todos 移入归档（同批次共用时间戳），再删项目。
+    // archiveTodos 内部会删除 todos 表对应行，不触碰 deleted_todos。
+    archiveTodos(getTodosByProject(id));
     execute('DELETE FROM projects WHERE id = ?', [id]);
   });
 }

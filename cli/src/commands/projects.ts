@@ -19,11 +19,11 @@ const ALLOWED_COLORS = ['red', 'green', 'yellow', 'blue', 'purple', 'cyan', 'ora
 export function makeProjectsCommand(): Command {
   return new Command('projects')
     .alias('proj')
-    .description('列出 / 新增 / 删除 项目')
+    .description('列出 / 新增 / 归档 项目')
     .option('--add <name>', '新建项目')
-    .option('--delete <name|id>', '删除项目（连同其下所有待办与归档）')
+    .option('--delete <name|id>', '归档项目（其下待办进入历史记录）')
     .option('-c, --color <name>', '项目颜色（与 --add 配合）')
-    .option('-y, --yes', '跳过删除确认提示')
+    .option('-y, --yes', '跳过归档确认提示')
     .action(
       withRuntime(async (opts: ProjectsOpts) => {
         const rt = getRuntime();
@@ -53,10 +53,10 @@ export function makeProjectsCommand(): Command {
           const project = await resolveProject(opts.delete);
           const todos = (await getAllTodos()).filter((t) => t.projectId === project.id);
           println(
-            color.yellow(`将删除项目「${project.name}」及其 ${todos.length} 个待办（含归档）`),
+            color.yellow(`将归档项目「${project.name}」及其 ${todos.length} 个待办（进入历史记录）`),
           );
           if (!opts.yes) {
-            const ok = await confirm('确认删除项目？', false);
+            const ok = await confirm('确认归档项目？', false);
             if (!ok) {
               println(color.gray('已取消'));
               return;
@@ -64,7 +64,7 @@ export function makeProjectsCommand(): Command {
           }
           await rt.openReadWrite();
           await deleteProject(project.id);
-          println(color.green('已删除项目 ✓'));
+          println(color.green('已归档项目 ✓'));
           return;
         }
 

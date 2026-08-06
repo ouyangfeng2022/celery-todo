@@ -551,7 +551,7 @@ function ProjectSidebarComponent({
               },
               { separator: true },
               {
-                label: '删除项目',
+                label: '归档项目',
                 danger: true,
                 onClick: () => {
                   setDeleteTarget(ctxMenu.project!);
@@ -803,12 +803,12 @@ function ProjectSidebarComponent({
         </button>
       </div>
 
-      {/* 删除确认对话框 */}
+      {/* 归档确认对话框 */}
       <ConfirmDialog
         open={deleteTarget !== null}
-        title="删除项目"
-        message={`确定要删除项目「${deleteTarget?.name}」吗？该项目下的所有事项将移入归档（历史记录），可在历史记录页恢复或永久删除。`}
-        confirmText="删除"
+        title="归档项目"
+        message={`确定要归档项目「${deleteTarget?.name}」吗？该项目及其下所有事项将从项目列表移除，事项可在历史记录页恢复或永久删除。`}
+        confirmText="归档"
         danger
         onConfirm={() => {
           if (deleteTarget) onDelete(deleteTarget.id);

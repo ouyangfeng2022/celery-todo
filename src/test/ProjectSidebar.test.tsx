@@ -204,7 +204,7 @@ describe('ProjectSidebar 设置菜单', () => {
     fireEvent.contextMenu(sectionHeader);
 
     // 空白菜单不包含项目级操作
-    expect(screen.queryByRole('button', { name: '删除项目' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '归档项目' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '重命名' })).not.toBeInTheDocument();
 
     // 但包含这 3 项
