@@ -163,9 +163,9 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                 // hover 任意项都回报：有子菜单的父项展开并重定位；
                 // hover 普通项（无 submenu）则收起当前子菜单，避免子菜单悬空不关。
                 if (item.submenu) {
-                  setOpenSubmenu({ key: item.label, rowRect: rect })
+                  setOpenSubmenu({ key: item.label, rowRect: rect });
                 } else {
-                  setOpenSubmenu(null)
+                  setOpenSubmenu(null);
                 }
               }}
             >
@@ -196,8 +196,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
           >
             {items
               .filter(
-                (it): it is ContextMenuAction =>
-                  !isSeparator(it) && it.label === openSubmenu.key,
+                (it): it is ContextMenuAction => !isSeparator(it) && it.label === openSubmenu.key,
               )[0]
               ?.submenu?.map((sub, sIdx) =>
                 isSeparator(sub) ? (
@@ -212,7 +211,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
                     item={sub}
                     onClick={() => {
                       onClose();
-                      sub.onClick?.()
+                      sub.onClick?.();
                     }}
                   >
                     {sub.label}
@@ -251,7 +250,7 @@ function MenuRow({
       onMouseEnter={(e) => {
         // 所有行都上报 hover：父项据此展开/重定位子菜单，
         // 普通项则触发父组件清空 openSubmenu（否则子菜单悬空不关）。
-        onHover?.(e.currentTarget.getBoundingClientRect())
+        onHover?.(e.currentTarget.getBoundingClientRect());
       }}
       className={cn(
         'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors',
@@ -273,7 +272,13 @@ function MenuRow({
           style={{ opacity: 0.5, flexShrink: 0 }}
           aria-hidden
         >
-          <path d="M3 1.5L7 5L3 8.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M3 1.5L7 5L3 8.5"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
       )}
     </button>
