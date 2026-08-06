@@ -8,6 +8,19 @@
 
 ## [Unreleased]
 
+## [v2.15.1] - 2026-08-06
+### Added
+- streamline filter transitions
+- enhance cross-window data synchronization with incremental patches
+- add performance measurement utilities for sync and async tasks
+- add virtual list tests for scrolling and drag-and-drop functionality
+- virtualize large todo lists
+- optimize data updates and list rendering
+
+### Fixed
+- resolve bundled sql wasm asset
+- update moduleResolution to node10 for consistency
+
 ## [v2.15.0] - 2026-08-05
 ### Added
 - 右键菜单支持归档当前事项
@@ -376,3 +389,5 @@
 [v2.14.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.14.0
 
 [v2.15.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.0
+
+[v2.15.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.1
