@@ -249,7 +249,9 @@ function MenuRow({
       onClick={onClick}
       disabled={item.disabled}
       onMouseEnter={(e) => {
-        if (hasSubmenu && onHover) onHover(e.currentTarget.getBoundingClientRect())
+        // 所有行都上报 hover：父项据此展开/重定位子菜单，
+        // 普通项则触发父组件清空 openSubmenu（否则子菜单悬空不关）。
+        onHover?.(e.currentTarget.getBoundingClientRect())
       }}
       className={cn(
         'w-full flex items-center gap-2 px-3 py-1.5 text-sm text-left transition-colors',
