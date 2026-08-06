@@ -405,7 +405,10 @@ const HeatmapSection = memo(function HeatmapSection({ cells, mode, weeks }: Heat
             {monthLabels.map((label, idx) => (
               <div
                 key={idx}
-                className="text-[10px] leading-none w-[11px]"
+                // 容器宽度对齐单列（11px），但文字用 whitespace-nowrap 允许溢出。
+                // 同一个月后续列的 label 都是 null，自然留出空间放完整「X月」，
+                // 否则会被压在 11px 里折成「2 / 月」两行。
+                className="text-[10px] leading-none w-[11px] whitespace-nowrap"
                 style={{ color: 'var(--text-tertiary)' }}
               >
                 {label}
