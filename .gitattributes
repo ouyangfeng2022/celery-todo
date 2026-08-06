@@ -1,0 +1,25 @@
+# Line-ending normalization policy.
+#
+# Repository and working tree both use LF, matching ".prettierrc" -> "endOfLine": "lf".
+# This keeps `git status` clean (no fake "modified" entries caused by core.autocrlf
+# CRLF conversion) and prevents `prettier --check` from complaining about CRLF.
+#
+# See https://git-scm.com/docs/gitattributes#_checking-out_and_checking_in
+
+# Default: store every text file as LF and check out as LF.
+* text=auto eol=lf
+
+# Binary assets: never convert line endings or attempt textual merge.
+*.png  binary
+*.ico  binary
+*.wasm binary
+*.zip  binary
+*.7z   binary
+
+# NSIS installer scripts conventionally use CRLF (the compiler accepts either,
+# keep the Windows convention).
+*.nsh  text eol=crlf
+
+# Shell scripts must be LF, otherwise Git Bash / MSYS reports "bad interpreter"
+# on the shebang line.
+*.sh   text eol=lf
