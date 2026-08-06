@@ -52,6 +52,10 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   // 当前 available 版本是否尚未被用户「查看过」（即尚未写盘到 NOTIFIED_VERSION_KEY）。
   // 为 true 时 Header 徽标会高亮提示；用户打开设置面板或点击徽标后通过 acknowledgeUpdate 置 false。
   const [isNewlyAvailable, setIsNewlyAvailable] = useState<boolean>(false);
+  // 用户是否已手动关闭侧边栏更新卡片。仅影响侧边栏卡片显隐——
+  // 设置面板「关于」里的更新状态仍完整可见，不会丢失信息。
+  // 发现新版本（version 变化）时自动复位，保证下次启动新版本仍可提醒。
+  const [sidebarDismissed, setSidebarDismissed] = useState<boolean>(false);
 
   const autoUpdateEnabled = useSettingsStore((s) => s.autoUpdateEnabled);
 
@@ -60,6 +64,8 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
 
   // 防止启动时重复检查（StrictMode 双重渲染 + 多次 dbReady 变化）
   const autoCheckedRef = useRef(false);
+  // 最近一次见到的 available 版本号（在事件回调里读最新值，规避闭包陈旧问题）。
+  const lastSeenVersionRef = useRef<string | null>(null);
   // 是否在桌面端
   const isDesktop = typeof window !== 'undefined' && !!window.electronAPI?.updaterCheck;
 
@@ -73,6 +79,11 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       setUpdateInfo(info);
       setStatus('available');
       setErrorMsg('');
+      // 版本变化时复位侧边栏卡片的「已关闭」标记，让新版本重新可见。
+      if (info.version !== lastSeenVersionRef.current) {
+        setSidebarDismissed(false);
+      }
+      lastSeenVersionRef.current = info.version;
       // 同一版本只在首次发现时标记为「新提示」并写盘，避免每次启动重复打扰
       const alreadyNotified = db.getSetting(NOTIFIED_VERSION_KEY) === info.version;
       setIsNewlyAvailable(!alreadyNotified);
@@ -163,6 +174,15 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
     }
   }, [updateInfo]);
 
+  /**
+   * 用户点击侧边栏卡片右上角叉号关闭卡片。
+   * 仅隐藏侧边栏卡片，不影响 status / 设置面板内的更新状态。
+   * 出现新版本（version 变化）时自动复位。
+   */
+  const dismissSidebarUpdate = useCallback(() => {
+    setSidebarDismissed(true);
+  }, []);
+
   return {
     isDesktop,
     status,
@@ -170,10 +190,12 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
     progress,
     errorMsg,
     isNewlyAvailable,
+    sidebarDismissed,
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
     dismissDownloaded,
     acknowledgeUpdate,
+    dismissSidebarUpdate,
   };
 }

@@ -29,13 +29,13 @@ import type { SettingsSectionId } from '../settings/SettingsPanel';
 import {
   PlusIcon,
   DownloadIcon,
-  ChevronRightIcon,
   RefreshIcon,
   CheckIcon,
   SettingsIcon,
   StickerIcon,
   InboxIcon,
   GithubIcon,
+  XIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
@@ -56,8 +56,12 @@ interface ProjectSidebarProps {
   updateProgress?: DownloadProgress | null;
   /** 本次启动首次发现该版本且未查看 —— 驱动卡片上的「未读」红点 */
   isNewlyAvailable?: boolean;
+  /** 用户已点击叉号关闭侧边栏卡片（仅影响本卡片显隐，设置面板内仍可见） */
+  sidebarDismissed?: boolean;
   onDownloadUpdate?: () => void;
   onRestartToUpdate?: () => void;
+  /** 关闭侧边栏更新卡片（叉号） */
+  onDismissSidebarUpdate?: () => void;
   onOpenSettings: (section: SettingsSectionId) => void;
   /** 打开历史记录（归档）弹窗 */
   onOpenHistory: () => void;
@@ -83,8 +87,12 @@ interface SidebarUpdateCardProps {
   progress?: DownloadProgress | null;
   /** 本次启动首次发现该版本且未查看 —— 仅在 available 分支显示红点 */
   isNewlyAvailable?: boolean;
+  /** 用户已点击叉号关闭本卡片（设置面板内的更新状态仍完整可见） */
+  sidebarDismissed?: boolean;
   onDownload?: () => void;
   onRestart?: () => void;
+  /** 关闭本卡片（叉号） */
+  onDismiss?: () => void;
 }
 
 /** 侧栏内的升级状态卡：升级过程始终留在用户视线内，不再打断当前工作。 */
@@ -93,10 +101,16 @@ export function SidebarUpdateCard({
   info,
   progress,
   isNewlyAvailable,
+  sidebarDismissed,
   onDownload,
   onRestart,
+  onDismiss,
 }: SidebarUpdateCardProps) {
-  if (!status || !['available', 'downloading', 'downloaded', 'dismissed'].includes(status)) {
+  if (
+    !status ||
+    !['available', 'downloading', 'downloaded', 'dismissed'].includes(status) ||
+    sidebarDismissed
+  ) {
     return null;
   }
 
@@ -140,7 +154,30 @@ export function SidebarUpdateCard({
               更新已准备好
             </span>
           </span>
-          <ChevronRightIcon size={15} />
+          {onDismiss && (
+            // 关闭卡片：阻止冒泡到外层 button（onDownload），仅触发 onDismiss。
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="关闭更新提示"
+              title="关闭"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDismiss();
+                }
+              }}
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-active)]"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              <XIcon size={13} />
+            </span>
+          )}
         </span>
       </button>
     );
@@ -209,7 +246,30 @@ export function SidebarUpdateCard({
             {info?.version ? `v${info.version} 已下载完成` : '新版本已下载完成'}
           </span>
         </span>
-        <ChevronRightIcon size={15} />
+        {onDismiss && (
+          // 关闭卡片：阻止冒泡到外层 button（onRestart），仅触发 onDismiss。
+          <span
+            role="button"
+            tabIndex={0}
+            aria-label="关闭更新提示"
+            title="关闭"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDismiss();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onDismiss();
+              }
+            }}
+            className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-active)]"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            <XIcon size={13} />
+          </span>
+        )}
       </span>
     </button>
   );
@@ -358,8 +418,10 @@ function ProjectSidebarComponent({
   updateInfo,
   updateProgress,
   isNewlyAvailable,
+  sidebarDismissed,
   onDownloadUpdate,
   onRestartToUpdate,
+  onDismissSidebarUpdate,
   onOpenSettings,
   onOpenHistory,
   onOpenHelp,
@@ -647,8 +709,10 @@ function ProjectSidebarComponent({
           info={updateInfo}
           progress={updateProgress}
           isNewlyAvailable={isNewlyAvailable}
+          sidebarDismissed={sidebarDismissed}
           onDownload={onDownloadUpdate}
           onRestart={onRestartToUpdate}
+          onDismiss={onDismissSidebarUpdate}
         />
 
         <AnimatePresence>

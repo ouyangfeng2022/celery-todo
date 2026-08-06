@@ -158,10 +158,12 @@ function App() {
     progress: updateProgress,
     errorMsg: updateError,
     isNewlyAvailable,
+    sidebarDismissed,
     checkForUpdates,
     downloadUpdate,
     quitAndInstall,
     acknowledgeUpdate,
+    dismissSidebarUpdate,
   } = useAutoUpdate({ dbReady });
 
   // 更新入口不再唤出模态框：下载与重启状态固定显示在侧边栏底部。
@@ -712,8 +714,10 @@ function App() {
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
                 updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
                 isNewlyAvailable={isAutoUpdateAvailable ? isNewlyAvailable : undefined}
+                sidebarDismissed={isAutoUpdateAvailable ? sidebarDismissed : undefined}
                 onDownloadUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
+                onDismissSidebarUpdate={isAutoUpdateAvailable ? dismissSidebarUpdate : undefined}
                 onOpenSettings={openSettings}
                 onOpenHistory={() => openSettings('history')}
                 onOpenHelp={() =>
