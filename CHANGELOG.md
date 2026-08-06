@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+## [v2.16.0] - 2026-08-06
+### Added
+- 归档项目替代硬删除并优化确认弹窗布局
+- allow dismissing sidebar update card
+- add sticker entry to footer menu
+
+### Fixed
+- keep hover background on right-clicked project
+
 ## [v2.15.1] - 2026-08-06
 ### Added
 - streamline filter transitions
@@ -391,3 +400,5 @@
 [v2.15.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.0
 
 [v2.15.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.1
+
+[v2.16.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.16.0
