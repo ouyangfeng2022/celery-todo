@@ -78,6 +78,7 @@ function extractMatchedText(todo: Todo, lowerKeyword: string): string {
 }
 
 function App() {
+  const [mainScrollElement, setMainScrollElement] = useState<HTMLElement | null>(null);
   // === 初始化数据库 ===
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -739,7 +740,7 @@ function App() {
             </>
           )}
 
-          <main className="flex-1 overflow-y-auto">
+          <main ref={setMainScrollElement} className="flex-1 overflow-y-auto">
             {projects.length === 0 ? (
               // 无项目：引导创建第一个项目（优先于专注模式判断）
               <div className="mx-auto max-w-4xl px-5 py-8 lg:px-10 lg:py-12">
@@ -843,6 +844,7 @@ function App() {
                       // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
                       key={activeProjectId}
                       todos={filteredTodos}
+                      scrollElement={mainScrollElement}
                       selectedIds={selectedIds}
                       sort={sort}
                       filter={filter}
