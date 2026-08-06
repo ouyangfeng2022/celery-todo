@@ -535,15 +535,20 @@ function ProjectSidebarComponent({
               },
               {
                 label: '导出项目',
-                onClick: () => {
-                  onExport(ctxMenu.project!.id);
-                },
-              },
-              {
-                label: '导出为图片…',
-                onClick: () => {
-                  onExportImage(ctxMenu.project!.id);
-                },
+                submenu: [
+                  {
+                    label: '导出为 JSON',
+                    onClick: () => {
+                      onExport(ctxMenu.project!.id);
+                    },
+                  },
+                  {
+                    label: '导出为图片…',
+                    onClick: () => {
+                      onExportImage(ctxMenu.project!.id);
+                    },
+                  },
+                ],
               },
               {
                 label: '重命名',
