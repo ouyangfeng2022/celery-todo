@@ -27,9 +27,9 @@ interface ElectronAPI {
   /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用），返回取消订阅函数 */
   onStickerStyleChanged: (callback: () => void) => () => void;
   /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
-  notifyDataChanged: () => Promise<void>;
+  notifyDataChanged: (patch?: import('./sync').DataSyncPatch) => Promise<void>;
   /** 监听"其它窗口修改了数据库"广播（携带单调版本号），返回取消订阅函数 */
-  onDataChanged: (callback: (version: number) => void) => () => void;
+  onDataChanged: (callback: (event: import('./sync').DataChangedEvent) => void) => () => void;
   /** 监听安装阶段勾选了"开机自启"事件（一次性同步用），返回取消订阅函数 */
   onInstallOptionsAutoStart: (callback: (enabled: boolean) => void) => () => void;
   /** 显示托盘通知 */

@@ -14,6 +14,10 @@ const titles = Array.from(
   { length: 101 },
   (_, index) => `虚拟事项 ${String(index + 1).padStart(3, '0')}`,
 );
+const thousandScaleTitles = Array.from(
+  { length: 900 },
+  (_, index) => `千条基准事项 ${String(index + 1).padStart(4, '0')}`,
+);
 
 test.beforeEach(async () => {
   appInfo = await launchApp();
@@ -34,14 +38,15 @@ test.afterEach(async () => {
 test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', async () => {
   const lastTitle = titles[titles.length - 1]!;
   const main = win.locator('main');
+  const list = win.getByLabel('待办事项列表');
 
   // 未滚动时末行不应挂载，证明这里确实走了虚拟列表分支而非普通完整 DOM。
-  await expect(win.getByText(lastTitle, { exact: true })).toHaveCount(0);
+  await expect(list.getByText(lastTitle, { exact: true })).toHaveCount(0);
 
   await main.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
-  await expect(win.getByText(lastTitle, { exact: true })).toBeVisible();
+  await expect(list.getByText(lastTitle, { exact: true })).toBeVisible();
 
   // 回到顶部再通过搜索选择末行：TodoList 应先 scrollToIndex，再挂载并高亮目标行。
   await main.evaluate((element) => {
@@ -52,13 +57,13 @@ test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', a
   await search.fill(lastTitle);
   await win.getByRole('option', { name: new RegExp(lastTitle) }).click();
 
-  await expect(win.getByText(lastTitle, { exact: true })).toBeVisible();
+  await expect(list.getByText(lastTitle, { exact: true })).toBeVisible();
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
-test('101 条事项中末行可通过键盘拖拽上移', async () => {
+test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', async () => {
   const lastTitle = titles[titles.length - 1]!;
-  const previousTitle = titles[titles.length - 2]!;
+  const targetTitle = titles[80]!;
   const main = win.locator('main');
   await main.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
@@ -71,18 +76,44 @@ test('101 条事项中末行可通过键盘拖拽上移', async () => {
   const handle = lastRow.getByRole('button', { name: '拖拽排序' });
   await handle.focus();
   await win.keyboard.press('Space');
-  await win.keyboard.press('ArrowUp');
+  // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
+  for (let index = 0; index < 20; index += 1) {
+    await win.keyboard.press('ArrowUp');
+  }
   await win.keyboard.press('Space');
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   await expect
     .poll(async () => {
       const lastBox = await lastRow.boundingBox();
-      const previousBox = await win
+      const targetBox = await win
         .locator('div.group.relative.flex.items-center.gap-3')
-        .filter({ has: win.getByText(previousTitle, { exact: true }) })
+        .filter({ has: win.getByText(targetTitle, { exact: true }) })
         .boundingBox();
-      return lastBox && previousBox ? lastBox.y < previousBox.y : false;
+      return lastBox && targetBox ? lastBox.y < targetBox.y : false;
     })
     .toBe(true);
+});
+
+test('1,001 条事项仅挂载有限 DOM 行，且可定位末行', async () => {
+  const input = win.getByLabel('新事项标题');
+  const list = win.getByLabel('待办事项列表');
+  const lastTitle = thousandScaleTitles[thousandScaleTitles.length - 1]!;
+
+  // 在已有 101 条的真实 UI 数据上继续批量添加，覆盖超过千条时的渲染路径。
+  await input.fill(thousandScaleTitles.join('\n'));
+  await win.keyboard.press('Enter');
+  await expect(input).toHaveValue('');
+  // 等待 React 提交新的总行数；否则紧接着读取的 scrollHeight 仍是旧的 101 条高度。
+  await expect(win.getByRole('button', { name: '全部 1001' })).toBeVisible();
+
+  // 搜索定位会走 virtualizer.scrollToIndex，覆盖大数据量下末行的按需挂载。
+  await win.getByRole('button', { name: '搜索所有项目中的事项' }).click();
+  const search = win.getByPlaceholder('搜索所有项目中的事项...');
+  await search.fill(lastTitle);
+  await win.getByRole('option', { name: new RegExp(lastTitle) }).click();
+  await expect(list.getByText(lastTitle, { exact: true })).toBeVisible();
+
+  // 视口行 + overscan 应始终远少于总量，避免 Markdown / dnd-kit 为千条事项建完整 DOM。
+  await expect.poll(async () => list.locator(':scope > div').count()).toBeLessThan(80);
 });

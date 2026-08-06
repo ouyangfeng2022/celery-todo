@@ -55,6 +55,9 @@ let windowStateSaveTimer: NodeJS.Timeout | null = null;
 let dataChangeVersion = 0;
 let dataChangeBroadcastTimer: NodeJS.Timeout | null = null;
 const pendingDataChangeSenderIds = new Set<number>();
+const pendingDataChangePatches = new Map<number, unknown>();
+/** 同一发送者在合并窗口内多次落盘时，局部补丁无法代表中间所有项目变更。 */
+const pendingFullSyncSenderIds = new Set<number>();
 
 /** 仅完整主窗口可调用会改变系统或应用级配置的 IPC。 */
 function isMainWindowSender(event: IpcMainInvokeEvent): boolean {
@@ -72,21 +75,45 @@ function requireMainWindowSender(event: IpcMainInvokeEvent): void {
 }
 
 /** 合并短时间内的多次持久化通知，并仅通知确实需要同步的窗口。 */
-function scheduleDataChangedBroadcast(senderId: number): void {
+function scheduleDataChangedBroadcast(senderId: number, patch?: unknown): void {
   pendingDataChangeSenderIds.add(senderId);
+  // 单个补丁只覆盖“本次保存以来”变动的项目，不能用后一份补丁覆盖前一份。
+  // 同一窗口在 50ms 内连续落盘时，接收端改为完整重载，保证不会遗漏早一轮的项目。
+  if (pendingDataChangePatches.has(senderId)) {
+    pendingFullSyncSenderIds.add(senderId);
+  } else {
+    pendingDataChangePatches.set(senderId, patch);
+  }
   if (dataChangeBroadcastTimer) return;
 
   dataChangeBroadcastTimer = setTimeout(() => {
     dataChangeBroadcastTimer = null;
     const changedBy = new Set(pendingDataChangeSenderIds);
     pendingDataChangeSenderIds.clear();
+    const patches = new Map(pendingDataChangePatches);
+    pendingDataChangePatches.clear();
+    const needsFullSync = pendingFullSyncSenderIds.size > 0;
+    pendingFullSyncSenderIds.clear();
     const version = ++dataChangeVersion;
+    // 多写入者的快照不存在全序保证；此时宁可走既有整库重载，不能错误合并补丁。
+    const patch =
+      changedBy.size === 1 && !needsFullSync ? patches.get([...changedBy][0]!) : undefined;
+
+    // 仅开发环境输出：可直接量化一次合并广播压缩了多少次 renderer 持久化通知。
+    // 生产环境不记录，避免主进程日志噪声。
+    if (!app.isPackaged) {
+      console.debug('[perf] data-sync-batch', {
+        version,
+        senderCount: changedBy.size,
+      });
+    }
 
     const notify = (window: BrowserWindow | null) => {
       if (!window || window.isDestroyed()) return;
-      // 单一发起者无需同步自己的内存库；但这一批若还有其它窗口写入，仍必须重载。
-      if (changedBy.size === 1 && changedBy.has(window.webContents.id)) return;
-      window.webContents.send('data:changed', version);
+      // 发送者也接收版本号，以便后续远端事件能可靠检测版本断档；单一发送者无需
+      // 再应用自己的补丁。多写入者统一回退整库重载，避免并发快照相互覆盖。
+      const shouldApply = changedBy.size > 1 || !changedBy.has(window.webContents.id);
+      window.webContents.send('data:changed', { version, shouldApply, patch });
     };
 
     notify(mainWindow);
@@ -577,12 +604,12 @@ ipcMain.handle('sticker:style-changed', (event) => {
 });
 
 // 数据库已落盘：由发起方 renderer（database.persistDatabase 自动调用）触发。
-// 主进程以 50ms 窗口合并连续通知，再携带单调递增版本号转发给需要同步的 renderer。
-// 主进程不读文件、不解释数据，仅做事件路由；单一发起者不接收自己的广播，避免无谓
-// reload。若同一批有其它窗口写入，发起者仍会收到通知，避免遗漏并发变更。
-ipcMain.handle('data:changed', (event) => {
+// 主进程以 50ms 窗口合并连续通知，并携带单调递增版本号转发。Todo 局部补丁由
+// renderer 生成，主进程只路由；同一批多发送者回退整库同步。单一发送者也接收版本
+// 事件（但不重复应用自己的补丁），确保各窗口可检测后续版本断档。
+ipcMain.handle('data:changed', (event, patch?: unknown) => {
   requireAuthorizedSender(event, isAppWindowSender);
-  scheduleDataChangedBroadcast(event.sender.id);
+  scheduleDataChangedBroadcast(event.sender.id, patch);
 });
 
 /** 显示托盘通知 */

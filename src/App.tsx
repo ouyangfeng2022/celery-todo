@@ -324,8 +324,8 @@ function App() {
 
   // === 跨窗口数据同步 ===
   // 贴图窗口是独立 renderer，各自维护一份 sql.js 内存库。任一窗口写盘后由
-  // database.persistDatabase 触发 notifyDataChanged，主进程转发给除发起者外的
-  // 其它窗口；这里订阅后重读内存库并刷新当前视图，即可看到对方的修改。
+  // database.persistDatabase 触发 notifyDataChanged。Todo 局部变更带项目快照，
+  // 可直接合并到本窗口 sql.js；复杂/并发写入和版本断档才重读完整内存库。
   // 注意：此处不能先 flushSave() 再 reload —— flushSave 会无条件把"本窗口内存库"
   // 整个写盘，而本窗口的内存库可能尚未看到对方的写（如贴图刚 toggle 完成的那条
   // 仍是旧值）。那样会用旧内存覆盖磁盘上对方刚写的更新，导致写-写冲突（例如
@@ -335,6 +335,7 @@ function App() {
   // 此处与本窗口内存对账。
   useEffect(() => {
     let disposed = false;
+    let lastSeenVersion = 0;
     const sync = createCoalescedAsyncTask(async () => {
       await db.reloadDatabase();
       if (disposed) return;
@@ -344,7 +345,22 @@ function App() {
       // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
       useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     });
-    const off = window.electronAPI?.onDataChanged?.(sync.schedule);
+    const off = window.electronAPI?.onDataChanged?.(({ version, shouldApply, patch }) => {
+      const hasGap = lastSeenVersion !== 0 && version !== lastSeenVersion + 1;
+      lastSeenVersion = version;
+      if (!shouldApply) return;
+
+      if (patch && !hasGap) {
+        // Todo-only 变更可直接合并到本窗口 sql.js；无需读取并重建整个 SQLite 二进制。
+        db.applyRemoteSyncPatch(patch);
+        // 项目数组引用变化会刷新侧边栏计数；实际只做轻量 SQL 查询，不重载数据库。
+        useProjectStore.getState().loadProjects();
+        useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+        return;
+      }
+      // 复杂写入、并发写入或版本断档时以磁盘快照作为权威来源。
+      sync.schedule();
+    });
     return () => {
       disposed = true;
       sync.dispose();

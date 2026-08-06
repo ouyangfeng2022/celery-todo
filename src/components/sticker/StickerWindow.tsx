@@ -171,16 +171,28 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
 
   // 订阅"其它窗口修改了数据库"广播（主窗口的增删改/完成操作）—— 重读内存库
   // 后刷新当前项目列表，让贴图与主窗口保持一致。本窗口自己 toggle 完成时不会
-  // 收到此广播（主进程按 sender.id 过滤了发起者），故不会触发无谓 reload。
+  // 单发送者的发起方仅推进同步版本，不会重复应用自己的补丁。
   useEffect(() => {
     let disposed = false;
+    let lastSeenVersion = 0;
     const sync = createCoalescedAsyncTask(async () => {
       await db.reloadDatabase();
       if (disposed) return;
       useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       refresh();
     });
-    const off = window.electronAPI?.onDataChanged?.(sync.schedule);
+    const off = window.electronAPI?.onDataChanged?.(({ version, shouldApply, patch }) => {
+      const hasGap = lastSeenVersion !== 0 && version !== lastSeenVersion + 1;
+      lastSeenVersion = version;
+      if (!shouldApply) return;
+
+      if (patch && !hasGap) {
+        db.applyRemoteSyncPatch(patch);
+        refresh();
+        return;
+      }
+      sync.schedule();
+    });
     return () => {
       disposed = true;
       sync.dispose();

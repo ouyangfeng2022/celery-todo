@@ -33,6 +33,7 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Todo } from '../../types';
+import { markPerformance } from '../../utils/performance';
 import { TodoItem } from './TodoItem';
 import { EmptyState } from '../common/EmptyState';
 import type { SortType, FilterType } from '../../types';
@@ -174,7 +175,11 @@ function TodoListComponent({
   onSnapshotOrder,
   focusTarget,
 }: TodoListProps) {
-  const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD;
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  // 拖拽期间临时挂载完整列表。dnd-kit 的碰撞检测只能识别已挂载的 droppable；
+  // 保持虚拟化会让跨越视口/overscan 的拖拽（尤其键盘连续 ArrowUp/Down）找不到目标。
+  // 拖拽结束即恢复按需挂载，日常滚动仍保有虚拟列表的性能收益。
+  const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD && activeDragId === null;
   const listContainerRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
@@ -184,6 +189,18 @@ function TodoListComponent({
     overscan: 8,
     scrollMargin,
   });
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // 大列表中真实挂载的行数应远小于总数；开发期将该数字写入 Performance Timeline，
+  // 便于 1,000+ 条手工 profiling 时观察 overscan、Markdown 行高与拖拽测量的影响。
+  useEffect(() => {
+    if (isVirtualized) {
+      markPerformance('virtual-list-mounted-rows', {
+        mountedRows: virtualItems.length,
+        totalRows: todos.length,
+      });
+    }
+  }, [isVirtualized, todos.length, virtualItems.length]);
 
   // 主滚动区的顶部还包含统计与筛选栏。virtualizer 的 scrollOffset 是相对 main 的，
   // 需减掉列表本身的起始位置，否则滚动后会错误地提前回收仍在视口内的行。
@@ -229,6 +246,7 @@ function TodoListComponent({
         }
         onReorder(active.id as string, over.id as string);
       }
+      setActiveDragId(null);
     },
     [onReorder, onSortChange, onSnapshotOrder, sort, todos],
   );
@@ -278,7 +296,7 @@ function TodoListComponent({
       style={{ height: virtualizer.getTotalSize() }}
       aria-label="待办事项列表"
     >
-      {virtualizer.getVirtualItems().map((virtualItem) => {
+      {virtualItems.map((virtualItem) => {
         const todo = todos[virtualItem.index];
         if (!todo) return null;
         return (
@@ -306,7 +324,9 @@ function TodoListComponent({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={(event) => setActiveDragId(String(event.active.id))}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDragId(null)}
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>

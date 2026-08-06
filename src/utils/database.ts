@@ -11,6 +11,8 @@ import initSqlJs from 'sql.js/dist/sql-wasm-browser.js';
 import type { Database, SqlJsStatic } from 'sql.js';
 import { EXPORT_FORMAT_VERSION } from './export';
 import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
+import { measureAsync, measureSync } from './performance';
+import type { DataSyncPatch, ProjectSyncSnapshot } from '../types/sync';
 
 // ============================================
 // 类型定义
@@ -137,6 +139,12 @@ let transactionDepth = 0;
 let transactionDirty = false;
 let isInitialized = false;
 let initPromise: Promise<Database> | null = null;
+/** 尚未持久化的 Todo 变更所属项目；用于生成跨窗口增量补丁。 */
+const pendingSyncProjectIds = new Set<string>();
+/** 项目/设置/导入等无法安全局部合并的写入，接收方回退整库重载。 */
+let pendingFullSync = false;
+/** 应用远端补丁时不应再次自动保存或产生同步回声。 */
+let applyingRemotePatch = false;
 
 /** 当前持久化模式：Electron 文件 / Web IndexedDB。首次加载时确定。 */
 let currentStorageMode: 'electron' | 'web' | null = null;
@@ -201,12 +209,14 @@ async function idbSet(key: string, value: Uint8Array): Promise<void> {
  * 首次调用会锁定本会话的存储模式。
  */
 async function loadDbBinary(): Promise<Uint8Array | null> {
-  if (window.electronAPI?.storageLoad) {
-    currentStorageMode = 'electron';
-    return (await window.electronAPI.storageLoad()) ?? null;
-  }
-  currentStorageMode = 'web';
-  return idbGet(DB_STORAGE_KEY);
+  return measureAsync('database.load', async () => {
+    if (window.electronAPI?.storageLoad) {
+      currentStorageMode = 'electron';
+      return (await window.electronAPI.storageLoad()) ?? null;
+    }
+    currentStorageMode = 'web';
+    return idbGet(DB_STORAGE_KEY);
+  });
 }
 
 /**
@@ -557,15 +567,16 @@ async function migrateFromIndexedDbIfNeeded(): Promise<Uint8Array | null> {
  */
 async function persistDatabase(): Promise<void> {
   if (!db) return;
-  const data = db.export();
-  await saveDbBinary(data);
-  // 通知除本窗口外的其它 renderer：磁盘数据已变更，需 reload 内存库。
+  const syncPatch = takePendingSyncPatch();
+  const data = measureSync('database.export', () => db!.export());
+  await measureAsync('database.save', () => saveDbBinary(data));
+  // 通知主进程：磁盘数据已变更；Todo 局部变更附带项目快照供其它 renderer 增量合并。
   // 这是单一广播点 —— store action / import / reset / 贴图 toggle 全部经
   // execute() → scheduleSave()（debounce 500ms 合并）或 flushSave() 汇聚到这里，
   // 自动覆盖所有写路径，无需在每处 mutate action 手动加广播。
   // Web 端无 electronAPI，可选链安全跳过。catch 兜底：旧版主进程未注册
   // 'data:changed' handler 时 invoke 会 reject，此时不应让写盘点失败。
-  void window.electronAPI?.notifyDataChanged?.().catch(() => {});
+  void window.electronAPI?.notifyDataChanged?.(syncPatch).catch(() => {});
 }
 
 /** 将一次持久化排到前一次完成之后，保证快照写入顺序。 */
@@ -629,14 +640,68 @@ function queryOne<T = DbRow>(sql: string, params: unknown[] = []): T | null {
 /**
  * 执行写操作（INSERT/UPDATE/DELETE）
  */
-function execute(sql: string, params: unknown[] = []): void {
+type SyncScope = 'full' | { projectIds: readonly string[] };
+
+function recordSyncScope(scope: SyncScope): void {
+  if (scope === 'full') {
+    pendingFullSync = true;
+    pendingSyncProjectIds.clear();
+    return;
+  }
+  if (!pendingFullSync) {
+    scope.projectIds.forEach((id) => pendingSyncProjectIds.add(id));
+  }
+}
+
+/** 取走本次落盘对应的同步信息，避免后续编辑混入已导出的快照。 */
+function takePendingSyncPatch(): DataSyncPatch | undefined {
+  if (pendingFullSync) {
+    pendingFullSync = false;
+    pendingSyncProjectIds.clear();
+    return undefined;
+  }
+  if (pendingSyncProjectIds.size === 0) return undefined;
+
+  const snapshots: ProjectSyncSnapshot[] = [...pendingSyncProjectIds].map((projectId) => ({
+    projectId,
+    todos: getTodosByProject(projectId),
+    deletedTodos: getDeletedTodosByProject(projectId),
+  }));
+  pendingSyncProjectIds.clear();
+  return { projectSnapshots: snapshots };
+}
+
+function execute(sql: string, params: unknown[] = [], syncScope: SyncScope = 'full'): void {
   if (!db) throw new Error('Database not initialized');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db.run(sql, params as any);
+  if (applyingRemotePatch) return;
+  recordSyncScope(syncScope);
   if (transactionDepth > 0) {
     transactionDirty = true;
   } else {
     scheduleSave();
+  }
+}
+
+/**
+ * 将其它 renderer 送来的项目快照合并到当前 sql.js 内存库。
+ * 不触发保存/广播：该快照已由来源窗口成功落盘，避免形成同步回声。
+ */
+export function applyRemoteSyncPatch(patch: DataSyncPatch): void {
+  if (!db) return;
+  applyingRemotePatch = true;
+  try {
+    runTransaction(() => {
+      for (const snapshot of patch.projectSnapshots) {
+        execute('DELETE FROM todos WHERE project_id = ?', [snapshot.projectId]);
+        execute('DELETE FROM deleted_todos WHERE project_id = ?', [snapshot.projectId]);
+        snapshot.todos.forEach(insertTodo);
+        snapshot.deletedTodos.forEach(insertDeletedTodo);
+      }
+    });
+  } finally {
+    applyingRemotePatch = false;
   }
 }
 
@@ -865,6 +930,7 @@ export function insertTodo(todo: import('../types').Todo): void {
       todo.order,
       todo.pinned ? 1 : 0,
     ],
+    { projectIds: [todo.projectId] },
   );
 }
 
@@ -892,6 +958,7 @@ export function updateTodo(todo: import('../types').Todo): void {
       todo.pinned ? 1 : 0,
       todo.id,
     ],
+    { projectIds: [todo.projectId] },
   );
 }
 
@@ -908,23 +975,34 @@ export function updateTodoOrders(
   items: ReadonlyArray<Pick<import('../types').Todo, 'id' | 'order'>>,
 ): void {
   if (items.length === 0) return;
+  const projectIds = [
+    ...new Set(
+      items
+        .map(({ id }) => getTodoById(id)?.projectId)
+        .filter((id): id is string => id !== undefined),
+    ),
+  ];
   runTransaction(() => {
     items.forEach(({ id, order }) => {
-      execute('UPDATE todos SET sort_order = ? WHERE id = ?', [order, id]);
+      execute('UPDATE todos SET sort_order = ? WHERE id = ?', [order, id], { projectIds });
     });
   });
 }
 
 /** 删除 Todo（从 todos 表移除；调用方负责先插入到归档表） */
 export function deleteTodo(id: string): void {
-  execute('DELETE FROM todos WHERE id = ?', [id]);
+  const projectId = getTodoById(id)?.projectId;
+  execute('DELETE FROM todos WHERE id = ?', [id], projectId ? { projectIds: [projectId] } : 'full');
 }
 
 /** 批量删除 Todo */
 export function deleteTodos(ids: string[]): void {
   if (ids.length === 0) return;
   const placeholders = ids.map(() => '?').join(',');
-  execute(`DELETE FROM todos WHERE id IN (${placeholders})`, ids);
+  const projectIds = ids
+    .map((id) => getTodoById(id)?.projectId)
+    .filter((id): id is string => id !== undefined);
+  execute(`DELETE FROM todos WHERE id IN (${placeholders})`, ids, { projectIds });
 }
 
 // ============================================
@@ -1013,6 +1091,7 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
       todo.deletedAt,
       todo.expiresAt,
     ],
+    { projectIds: [todo.projectId] },
   );
 }
 
@@ -1033,7 +1112,14 @@ export function archiveTodos(todos: import('../types').Todo[]): import('../types
 
 /** 从归档永久删除 */
 export function permanentlyDeleteTodo(id: string): void {
-  execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
+  const projectId = queryOne<DeletedTodoRow>('SELECT project_id FROM deleted_todos WHERE id = ?', [
+    id,
+  ])?.project_id;
+  execute(
+    'DELETE FROM deleted_todos WHERE id = ?',
+    [id],
+    projectId ? { projectIds: [projectId] } : 'full',
+  );
 }
 
 /** 从归档恢复（重新插入到 todos 表） */
@@ -1058,16 +1144,19 @@ export function restoreTodo(id: string): void {
         row.sort_order,
         row.pinned,
       ],
+      { projectIds: [row.project_id] },
     );
     // 从归档删除
-    execute('DELETE FROM deleted_todos WHERE id = ?', [id]);
+    execute('DELETE FROM deleted_todos WHERE id = ?', [id], { projectIds: [row.project_id] });
   });
 }
 
 /** 清空归档（历史记录）。传 projectId 时只清该项目，否则清全部 */
 export function emptyArchive(projectId?: string): void {
   if (projectId) {
-    execute('DELETE FROM deleted_todos WHERE project_id = ?', [projectId]);
+    execute('DELETE FROM deleted_todos WHERE project_id = ?', [projectId], {
+      projectIds: [projectId],
+    });
   } else {
     execute('DELETE FROM deleted_todos', []);
   }

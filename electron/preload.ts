@@ -4,6 +4,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+type DataChangedEvent = { version: number; shouldApply: boolean; patch?: unknown };
 
 // 暴露给渲染进程的 API
 const electronAPI = {
@@ -75,11 +76,11 @@ const electronAPI = {
     };
   },
   /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
-  notifyDataChanged: (): Promise<void> => ipcRenderer.invoke('data:changed'),
+  notifyDataChanged: (patch?: unknown): Promise<void> => ipcRenderer.invoke('data:changed', patch),
   /** 监听"其它窗口修改了数据库"广播（携带单调版本号），返回取消订阅函数 */
-  onDataChanged: (callback: (version: number) => void): (() => void) => {
-    const listener = (_event: Electron.IpcRendererEvent, version: number): void =>
-      callback(version);
+  onDataChanged: (callback: (event: DataChangedEvent) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, event: DataChangedEvent): void =>
+      callback(event);
     ipcRenderer.on('data:changed', listener);
     return () => {
       ipcRenderer.removeListener('data:changed', listener);
