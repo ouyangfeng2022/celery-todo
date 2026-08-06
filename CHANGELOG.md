@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+## [v2.17.0] - 2026-08-06
+### Added
+- 合并「导出当前项目」入口为统一对话框
+- 支持导出项目为图片
+
+### Fixed
+- 让普通项的 hover 也触发回调以收起子菜单
+- 修复子菜单 key 冲突与不自动收起
+
 ## [v2.16.0] - 2026-08-06
 ### Added
 - 归档项目替代硬删除并优化确认弹窗布局
@@ -402,3 +411,5 @@
 [v2.15.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.1
 
 [v2.16.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.16.0
+
+[v2.17.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.17.0
