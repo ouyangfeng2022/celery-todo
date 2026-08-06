@@ -76,9 +76,10 @@ const electronAPI = {
   },
   /** 数据已落盘，请求其它窗口重新加载内存库（database.persistDatabase 自动调用） */
   notifyDataChanged: (): Promise<void> => ipcRenderer.invoke('data:changed'),
-  /** 监听"其它窗口修改了数据库"广播，收到后需重读内存库并刷新视图，返回取消订阅函数 */
-  onDataChanged: (callback: () => void): (() => void) => {
-    const listener = (): void => callback();
+  /** 监听"其它窗口修改了数据库"广播（携带单调版本号），返回取消订阅函数 */
+  onDataChanged: (callback: (version: number) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, version: number): void =>
+      callback(version);
     ipcRenderer.on('data:changed', listener);
     return () => {
       ipcRenderer.removeListener('data:changed', listener);

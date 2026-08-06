@@ -45,6 +45,16 @@ type StartupTheme =
 let stickerStates: StickerState[] = [];
 let pendingWindowBounds: Electron.Rectangle | undefined;
 let windowStateSaveTimer: NodeJS.Timeout | null = null;
+/**
+ * 数据库落盘事件的全局序号与短窗口合并器。
+ *
+ * renderer 的保存队列已保证单窗口内快照按序写入，但主窗口与多个贴图可在很短时间
+ * 内分别完成保存。逐条转发会让每个接收 renderer 连续重建 sql.js 数据库；在这里
+ * 合成一轮广播后，接收端现有的 coalesced task 只需重载一次最终快照。
+ */
+let dataChangeVersion = 0;
+let dataChangeBroadcastTimer: NodeJS.Timeout | null = null;
+const pendingDataChangeSenderIds = new Set<number>();
 
 /** 仅完整主窗口可调用会改变系统或应用级配置的 IPC。 */
 function isMainWindowSender(event: IpcMainInvokeEvent): boolean {
@@ -59,6 +69,29 @@ function isAppWindowSender(event: IpcMainInvokeEvent): boolean {
 
 function requireMainWindowSender(event: IpcMainInvokeEvent): void {
   requireAuthorizedSender(event, isMainWindowSender);
+}
+
+/** 合并短时间内的多次持久化通知，并仅通知确实需要同步的窗口。 */
+function scheduleDataChangedBroadcast(senderId: number): void {
+  pendingDataChangeSenderIds.add(senderId);
+  if (dataChangeBroadcastTimer) return;
+
+  dataChangeBroadcastTimer = setTimeout(() => {
+    dataChangeBroadcastTimer = null;
+    const changedBy = new Set(pendingDataChangeSenderIds);
+    pendingDataChangeSenderIds.clear();
+    const version = ++dataChangeVersion;
+
+    const notify = (window: BrowserWindow | null) => {
+      if (!window || window.isDestroyed()) return;
+      // 单一发起者无需同步自己的内存库；但这一批若还有其它窗口写入，仍必须重载。
+      if (changedBy.size === 1 && changedBy.has(window.webContents.id)) return;
+      window.webContents.send('data:changed', version);
+    };
+
+    notify(mainWindow);
+    for (const window of stickerWindows.values()) notify(window);
+  }, 50);
 }
 
 const STARTUP_THEME_COLORS = {
@@ -543,21 +576,13 @@ ipcMain.handle('sticker:style-changed', (event) => {
   }
 });
 
-// 数据库已落盘：由发起方 renderer（database.persistDatabase 自动调用）触发，
-// 转发给除发起者外的所有 renderer（主窗口 + 已打开贴图），让它们 reload 内存库。
-// 主进程不读文件、不解释数据，仅做事件路由。过滤 event.sender.id 是为了避免
-// 发起者收到自己的广播而做无谓 reload（它本地状态早已更新）。
+// 数据库已落盘：由发起方 renderer（database.persistDatabase 自动调用）触发。
+// 主进程以 50ms 窗口合并连续通知，再携带单调递增版本号转发给需要同步的 renderer。
+// 主进程不读文件、不解释数据，仅做事件路由；单一发起者不接收自己的广播，避免无谓
+// reload。若同一批有其它窗口写入，发起者仍会收到通知，避免遗漏并发变更。
 ipcMain.handle('data:changed', (event) => {
   requireAuthorizedSender(event, isAppWindowSender);
-  const senderId = event.sender.id;
-  if (mainWindow && mainWindow.webContents.id !== senderId) {
-    mainWindow.webContents.send('data:changed');
-  }
-  for (const window of stickerWindows.values()) {
-    if (window.webContents.id !== senderId) {
-      window.webContents.send('data:changed');
-    }
-  }
+  scheduleDataChangedBroadcast(event.sender.id);
 });
 
 /** 显示托盘通知 */
@@ -575,15 +600,12 @@ ipcMain.handle('show-tray-notification', (event, title: string, body: string) =>
  * 更新标题栏 overlay 颜色（与渲染进程主题同步）
  * 仅 Windows / Linux 生效，macOS 红绿灯按钮不受影响
  */
-ipcMain.handle(
-  'set-titlebar-overlay',
-  (event, options: { color: string; symbolColor: string }) => {
-    requireMainWindowSender(event);
-    if (mainWindow && typeof mainWindow.setTitleBarOverlay === 'function') {
-      mainWindow.setTitleBarOverlay(options);
-    }
-  },
-);
+ipcMain.handle('set-titlebar-overlay', (event, options: { color: string; symbolColor: string }) => {
+  requireMainWindowSender(event);
+  if (mainWindow && typeof mainWindow.setTitleBarOverlay === 'function') {
+    mainWindow.setTitleBarOverlay(options);
+  }
+});
 
 /**
  * 更新 Windows 任务栏与系统托盘图标。
