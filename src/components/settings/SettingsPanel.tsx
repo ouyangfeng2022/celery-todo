@@ -15,6 +15,7 @@ import type { AppSettings, DeletedTodo, Project } from '../../types';
 import * as Icons from '../common/Icons';
 import { Header } from '../layout/Header';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
+import type { ExportFormat } from './sections/ExportProjectDialog';
 import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
 import { DesktopSection } from './sections/DesktopSection';
@@ -34,9 +35,12 @@ interface SettingsPanelProps {
   onClose: () => void;
   onUpdateSettings: (updates: Partial<AppSettings>) => void;
   onExportAll: () => void;
+  /** 当前活跃项目 id（导出项目对话框默认选中项） */
+  activeProjectId: string;
+  /** 项目级导出：format 决定走 JSON / CSV / 图片 */
+  onExportProject: (projectId: string, format: ExportFormat) => void;
+  /** Header 工具栏「数据」级联里「导出当前列表(CSV)」的回调（不在本次合并范围） */
   onExportCsv: () => void;
-  /** 导出当前项目为图片（打开预览弹窗） */
-  onExportImage: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
   // ===== 顶部 Header 工具组(与主页面 App.tsx 接线一致) =====
@@ -88,8 +92,9 @@ function SettingsPanelComponent({
   onClose,
   onUpdateSettings,
   onExportAll,
+  activeProjectId,
+  onExportProject,
   onExportCsv,
-  onExportImage,
   onImportAll,
   onResetData,
   sidebarOpen,
@@ -310,8 +315,9 @@ function SettingsPanelComponent({
                 {activeSection === 'data' && (
                   <DataSection
                     onExportAll={onExportAll}
-                    onExportCsv={onExportCsv}
-                    onExportImage={onExportImage}
+                    projects={projects}
+                    activeProjectId={activeProjectId}
+                    onExportProject={onExportProject}
                     onImportAll={handleImportWithClose}
                     onResetData={onResetData}
                   />

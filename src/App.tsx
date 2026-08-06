@@ -485,6 +485,19 @@ function App() {
     downloadFile(csv, `todos-${activeProject?.name ?? 'export'}.csv`, 'text/csv;charset=utf-8');
   }, [todos, activeProject]);
 
+  // 按项目导出 CSV：不依赖当前已加载的 todos，直接查指定项目，供设置页「导出项目」
+  // 对话框使用（用户选的不一定是当前活跃项目）。
+  const handleExportCsvForProject = useCallback(
+    (projectId: string) => {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+      const rows = db.getTodosByProject(projectId);
+      const csv = todosToCsv(rows);
+      downloadFile(csv, `todos-${project.name}.csv`, 'text/csv;charset=utf-8');
+    },
+    [projects],
+  );
+
   // 导出历史记录（归档）为独立 JSON 快照。跨项目全量，按归档时间倒序。
   // 注意：这是只读备份，刻意不被 parseImportData 识别，不可导回。
   const handleExportHistory = useCallback(() => {
@@ -523,9 +536,16 @@ function App() {
     [projects],
   );
 
-  const handleExportImageCurrent = useCallback(() => {
-    if (activeProjectId) handleExportImage(activeProjectId);
-  }, [activeProjectId, handleExportImage]);
+  // 设置页「导出项目」对话框的统一分发：根据格式转给对应处理函数。
+  // JSON / 图片复用侧栏右键菜单的同款实现，CSV 走按项目查库的版本。
+  const handleExportProjectWithFormat = useCallback(
+    (projectId: string, format: 'json' | 'csv' | 'image') => {
+      if (format === 'json') handleExportProject(projectId);
+      else if (format === 'image') handleExportImage(projectId);
+      else handleExportCsvForProject(projectId);
+    },
+    [handleExportProject, handleExportImage, handleExportCsvForProject],
+  );
 
   const handleImportProject = useCallback(
     async (file: File) => {
@@ -964,8 +984,9 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
         onExportAll={handleExportAll}
+        activeProjectId={activeProjectId}
+        onExportProject={handleExportProjectWithFormat}
         onExportCsv={handleExportCsv}
-        onExportImage={handleExportImageCurrent}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
         // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====

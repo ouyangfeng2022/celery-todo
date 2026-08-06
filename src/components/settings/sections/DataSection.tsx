@@ -1,29 +1,37 @@
 /**
  * @file DataSection - 设置页「数据」子页面
- * @description 导出全部/导出当前/导入/重置。从 SettingsPanel 拆出。
+ * @description 导出全部 / 导出项目 / 导入 / 重置。从 SettingsPanel 拆出。
+ *   「导出项目」打开单独的对话框，由用户选择项目与格式(JSON / CSV / 图片)。
  */
 
 import { useState, useCallback } from 'react';
 import { DownloadIcon, UploadIcon, RefreshIcon } from '../../common/Icons';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
+import { ExportProjectDialog, type ExportFormat } from './ExportProjectDialog';
+import type { Project } from '../../../types';
 
 interface DataSectionProps {
   onExportAll: () => void;
-  onExportCsv: () => void;
-  /** 导出当前项目为图片（打开预览弹窗） */
-  onExportImage: () => void;
+  /** 全部项目（导出项目对话框下拉来源） */
+  projects: Project[];
+  /** 当前活跃项目 id（对话框默认选中项） */
+  activeProjectId: string;
+  /** 执行项目级导出，format 决定走 JSON / CSV / 图片 */
+  onExportProject: (projectId: string, format: ExportFormat) => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
 }
 
 export function DataSection({
   onExportAll,
-  onExportCsv,
-  onExportImage,
+  projects,
+  activeProjectId,
+  onExportProject,
   onImportAll,
   onResetData,
 }: DataSectionProps) {
   const [confirmReset, setConfirmReset] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -52,20 +60,12 @@ export function DataSection({
             导出全部数据 (JSON)
           </button>
           <button
-            onClick={onExportCsv}
+            onClick={() => setExportOpen(true)}
             className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
           >
             <DownloadIcon size={15} />
-            导出当前项目 (CSV)
-          </button>
-          <button
-            onClick={onExportImage}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
-            style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
-          >
-            <DownloadIcon size={15} />
-            导出当前项目为图片
+            导出项目…
           </button>
           <button
             onClick={handleImportClick}
@@ -85,6 +85,14 @@ export function DataSection({
           </button>
         </div>
       </section>
+
+      <ExportProjectDialog
+        open={exportOpen}
+        projects={projects}
+        defaultProjectId={activeProjectId}
+        onClose={() => setExportOpen(false)}
+        onExport={onExportProject}
+      />
 
       <ConfirmDialog
         open={confirmReset}
