@@ -58,6 +58,29 @@ test('从项目右键菜单创建贴图，显示该项目未完成 todo', async 
   await expect(sticker.getByText('2 项待完成')).toBeVisible();
 });
 
+test('一个贴图新增事项后，另一个贴图经合并同步通知刷新', async () => {
+  await createProject(win, '同步项目');
+  await addTodo(win, '已有事项');
+  await waitForSave(win);
+
+  const sticker = await createSticker('同步项目');
+  await expect(sticker.getByText('已有事项')).toBeVisible();
+
+  // 创建第二个贴图，避免主窗口被隐藏后在窗口管理器/CI 上不可操作。
+  await sticker.locator('.sticker-shell').click({ button: 'right' });
+  const duplicatePromise = appInfo.app.waitForEvent('window');
+  await sticker.getByRole('button', { name: '复制贴图', exact: true }).click();
+  const duplicate = await duplicatePromise;
+  await duplicate.waitForLoadState('domcontentloaded');
+  await expect(duplicate.getByText('已有事项')).toBeVisible();
+
+  // 保存完成后主进程将 data:changed 合并为一轮广播，另一贴图应重载最新快照。
+  await sticker.getByRole('button', { name: '新建待办' }).click();
+  await sticker.getByLabel('新事项标题').fill('同步新增事项');
+  await sticker.getByLabel('新事项标题').press('Enter');
+  await expect(duplicate.getByText('同步新增事项')).toBeVisible();
+});
+
 test('贴图切换项目后列表随之刷新', async () => {
   await createProject(win, '项目甲');
   await addTodo(win, '甲任务');

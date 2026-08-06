@@ -35,6 +35,7 @@ import { useAutoUpdate } from './hooks/useAutoUpdate';
 import { useCliBridge } from './cli-bridge';
 
 import * as db from './utils/database';
+import { createCoalescedAsyncTask } from './utils/coalescedAsyncTask';
 import {
   EXPORT_FORMAT_VERSION,
   exportAppAsJson,
@@ -77,6 +78,7 @@ function extractMatchedText(todo: Todo, lowerKeyword: string): string {
 }
 
 function App() {
+  const [mainScrollElement, setMainScrollElement] = useState<HTMLElement | null>(null);
   // === 初始化数据库 ===
   const [dbReady, setDbReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -253,17 +255,15 @@ function App() {
   }, [todoFocusTarget]);
 
   // === 各项目未完成 todo 计数 ===
-  // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，
-  // 故直接从 DB 全量取并按 projectId 聚合。todos/deletedTodos 作为 store 变更信号：
-  // 它们的引用在任意增删改/切换/导入/重置后都会更新，从而驱动重算（body 内并不直接读取）。
+  // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos。
+  // 聚合交给 SQLite，避免每次当前项目变动都把全表拉到 JS 再遍历。todos/deletedTodos
+  // 仍作为数据库内容变动信号，驱动聚合结果刷新。
   // dbReady 守卫：useMemo 在首渲染即执行，此时 DB 尚未异步初始化完成，直接查询会抛错。
   const incompleteCounts = useMemo<Record<string, number>>(() => {
     if (!dbReady) return {};
     const counts: Record<string, number> = {};
     for (const p of projects) counts[p.id] = 0;
-    for (const t of db.getAllTodos()) {
-      if (!t.completed) counts[t.projectId] = (counts[t.projectId] ?? 0) + 1;
-    }
+    Object.assign(counts, db.getIncompleteCountsByProject());
     return counts;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
   }, [projects, todos, deletedTodos, dbReady]);
@@ -324,8 +324,8 @@ function App() {
 
   // === 跨窗口数据同步 ===
   // 贴图窗口是独立 renderer，各自维护一份 sql.js 内存库。任一窗口写盘后由
-  // database.persistDatabase 触发 notifyDataChanged，主进程转发给除发起者外的
-  // 其它窗口；这里订阅后重读内存库并刷新当前视图，即可看到对方的修改。
+  // database.persistDatabase 触发 notifyDataChanged。Todo 局部变更带项目快照，
+  // 可直接合并到本窗口 sql.js；复杂/并发写入和版本断档才重读完整内存库。
   // 注意：此处不能先 flushSave() 再 reload —— flushSave 会无条件把"本窗口内存库"
   // 整个写盘，而本窗口的内存库可能尚未看到对方的写（如贴图刚 toggle 完成的那条
   // 仍是旧值）。那样会用旧内存覆盖磁盘上对方刚写的更新，导致写-写冲突（例如
@@ -334,15 +334,36 @@ function App() {
   // 先让它在下一轮 debounce 落盘，或由 store action 的本地刷新兜底，不能在
   // 此处与本窗口内存对账。
   useEffect(() => {
-    const off = window.electronAPI?.onDataChanged?.(async () => {
+    let disposed = false;
+    let lastSeenVersion = 0;
+    const sync = createCoalescedAsyncTask(async () => {
       await db.reloadDatabase();
+      if (disposed) return;
       useSettingsStore.getState().loadSettings();
       useProjectStore.getState().loadProjects();
       // 用当前 activeProjectId（不是 settings.lastActiveProjectId，
       // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
       useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     });
+    const off = window.electronAPI?.onDataChanged?.(({ version, shouldApply, patch }) => {
+      const hasGap = lastSeenVersion !== 0 && version !== lastSeenVersion + 1;
+      lastSeenVersion = version;
+      if (!shouldApply) return;
+
+      if (patch && !hasGap) {
+        // Todo-only 变更可直接合并到本窗口 sql.js；无需读取并重建整个 SQLite 二进制。
+        db.applyRemoteSyncPatch(patch);
+        // 项目数组引用变化会刷新侧边栏计数；实际只做轻量 SQL 查询，不重载数据库。
+        useProjectStore.getState().loadProjects();
+        useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+        return;
+      }
+      // 复杂写入、并发写入或版本断档时以磁盘快照作为权威来源。
+      sync.schedule();
+    });
     return () => {
+      disposed = true;
+      sync.dispose();
       off?.();
     };
   }, []);
@@ -489,9 +510,9 @@ function App() {
         if ('project' in data) {
           // 导入单个项目
           const newId = createProject(data.project.name);
-          data.todos.forEach((t) => {
-            db.insertTodo({ ...t, id: crypto.randomUUID(), projectId: newId });
-          });
+          db.insertTodos(
+            data.todos.map((t) => ({ ...t, id: crypto.randomUUID(), projectId: newId })),
+          );
           useTodoStore.getState().loadProject(newId);
           switchProject(newId);
         } else {
@@ -735,7 +756,7 @@ function App() {
             </>
           )}
 
-          <main className="flex-1 overflow-y-auto">
+          <main ref={setMainScrollElement} className="flex-1 overflow-y-auto">
             {projects.length === 0 ? (
               // 无项目：引导创建第一个项目（优先于专注模式判断）
               <div className="mx-auto max-w-4xl px-5 py-8 lg:px-10 lg:py-12">
@@ -839,6 +860,7 @@ function App() {
                       // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
                       key={activeProjectId}
                       todos={filteredTodos}
+                      scrollElement={mainScrollElement}
                       selectedIds={selectedIds}
                       sort={sort}
                       filter={filter}

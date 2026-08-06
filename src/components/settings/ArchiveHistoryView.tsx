@@ -79,9 +79,15 @@ function ArchiveHistoryViewComponent({
   );
   const groupedItems = useMemo(() => {
     const groups = new Map<string, DeletedTodo[]>();
-    visibleItems.forEach((todo) =>
-      groups.set(todo.projectId, [...(groups.get(todo.projectId) ?? []), todo]),
-    );
+    // 直接追加到已有分组，避免同一项目每多一条记录都复制一次整个数组。
+    visibleItems.forEach((todo) => {
+      const group = groups.get(todo.projectId);
+      if (group) {
+        group.push(todo);
+      } else {
+        groups.set(todo.projectId, [todo]);
+      }
+    });
     return (
       [...groups.entries()]
         .map(([id, todos]) => ({

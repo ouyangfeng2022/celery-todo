@@ -3,8 +3,17 @@
  * @description 渲染筛选后的事项列表，支持拖拽排序（使用 @dnd-kit）
  */
 
-import { forwardRef, memo, useCallback, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   DndContext,
   closestCenter,
@@ -23,12 +32,15 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Todo } from '../../types';
+import { markPerformance } from '../../utils/performance';
 import { TodoItem } from './TodoItem';
 import { EmptyState } from '../common/EmptyState';
 import type { SortType, FilterType } from '../../types';
 
 interface TodoListProps {
   todos: Todo[];
+  /** 主内容区滚动容器；虚拟列表以它为滚动基准。 */
+  scrollElement: HTMLElement | null;
   selectedIds: Set<string>;
   sort: SortType;
   /** 当前筛选类型，透传给 EmptyState 用于空态文案分支 */
@@ -48,7 +60,7 @@ interface TodoListProps {
   focusTarget?: { id: string; signal: number } | null;
 }
 
-/** 可排序的 TodoItem 包装器 */
+/** 可排序的 TodoItem 包装器：dnd-kit 的节点与虚拟列表的定位节点共用此元素。 */
 interface SortableTodoItemProps {
   todo: Todo;
   isSelected: boolean;
@@ -57,66 +69,86 @@ interface SortableTodoItemProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
+  /** 虚拟列表中该行相对于占位容器的偏移。 */
+  virtualStart?: number;
+  /** 动态测量可变高度的 Markdown / 编辑态行。 */
+  measureElement?: (element: HTMLElement | null) => void;
+  virtualIndex?: number;
 }
 
-/**
- * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局。
- * 直接子节点的布局盒是本组件返回的外层 div；dnd-kit 也需要同一个节点，因此把
- * 两个 ref 合并。若把 Presence ref 传给内部 TodoItem，popLayout 测量盒与实际
- * 占位盒不同，退出时可能造成不稳定的重排。
- *
- * 注意：子元素【不能】带 `layout` 属性。`popLayout + layout + opacity-exit` 三者
- * 同时存在会命中 framer-motion 已知 bug motion#2416 ——快速连续切换 filter 时退出
- * 动画被跳过/卡住，列表内容"切不过去"。popLayout 单独使用（退出元素 position:
- * absolute 让位 + 淡出）即可，无需 layout 做位移动画。拖拽位移走 dnd-kit 的
- * transform，不依赖 motion layout。
- */
-const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
-  function SortableTodoItem(props, ref) {
+/** 超过此数量时按需挂载行，避免 DnD、Markdown 和动画同时占用大量 DOM。 */
+const VIRTUALIZE_THRESHOLD = 100;
+
+const SortableTodoItem = memo(
+  forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
+    {
+      todo,
+      isSelected,
+      focusSignal,
+      onToggle,
+      onEdit,
+      onDelete,
+      onToggleSelect,
+      virtualStart,
+      measureElement,
+      virtualIndex,
+    },
+    ref,
+  ) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-      id: props.todo.id,
+      id: todo.id,
     });
 
     const style: React.CSSProperties = {
-      transform: CSS.Transform.toString(transform),
+      transform: [
+        virtualStart === undefined ? undefined : `translateY(${virtualStart}px)`,
+        CSS.Transform.toString(transform),
+      ]
+        .filter(Boolean)
+        .join(' '),
       transition,
       opacity: isDragging ? 0.5 : 1,
       zIndex: isDragging ? 50 : undefined,
+      position: virtualStart === undefined ? undefined : 'absolute',
+      left: virtualStart === undefined ? undefined : 0,
+      width: virtualStart === undefined ? undefined : '100%',
     };
 
     const setRefs = useCallback(
       (node: HTMLDivElement | null) => {
         setNodeRef(node);
+        measureElement?.(node);
         if (typeof ref === 'function') {
           ref(node);
         } else if (ref) {
           ref.current = node;
         }
       },
-      [ref, setNodeRef],
+      [measureElement, ref, setNodeRef],
     );
 
     return (
-      <div ref={setRefs} id={`todo-${props.todo.id}`} style={style}>
+      <div ref={setRefs} id={`todo-${todo.id}`} data-index={virtualIndex} style={style}>
         <TodoItem
-          todo={props.todo}
-          isSelected={props.isSelected}
-          focusSignal={props.focusSignal}
-          onToggle={props.onToggle}
-          onEdit={props.onEdit}
-          onDelete={props.onDelete}
-          onToggleSelect={props.onToggleSelect}
+          todo={todo}
+          isSelected={isSelected}
+          focusSignal={focusSignal}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onToggleSelect={onToggleSelect}
           dragHandleProps={
             { ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>
           }
         />
       </div>
     );
-  },
+  }),
 );
 
 function TodoListComponent({
   todos,
+  scrollElement,
   selectedIds,
   sort,
   filter,
@@ -130,6 +162,53 @@ function TodoListComponent({
   onSnapshotOrder,
   focusTarget,
 }: TodoListProps) {
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  // 拖拽期间临时挂载完整列表。dnd-kit 的碰撞检测只能识别已挂载的 droppable；
+  // 保持虚拟化会让跨越视口/overscan 的拖拽（尤其键盘连续 ArrowUp/Down）找不到目标。
+  // 拖拽结束即恢复按需挂载，日常滚动仍保有虚拟列表的性能收益。
+  const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD && activeDragId === null;
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const virtualizer = useVirtualizer({
+    count: todos.length,
+    getScrollElement: () => scrollElement,
+    estimateSize: () => 76,
+    overscan: 8,
+    scrollMargin,
+  });
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // 大列表中真实挂载的行数应远小于总数；开发期将该数字写入 Performance Timeline，
+  // 便于 1,000+ 条手工 profiling 时观察 overscan、Markdown 行高与拖拽测量的影响。
+  useEffect(() => {
+    if (isVirtualized) {
+      markPerformance('virtual-list-mounted-rows', {
+        mountedRows: virtualItems.length,
+        totalRows: todos.length,
+      });
+    }
+  }, [isVirtualized, todos.length, virtualItems.length]);
+
+  // 主滚动区的顶部还包含统计与筛选栏。virtualizer 的 scrollOffset 是相对 main 的，
+  // 需减掉列表本身的起始位置，否则滚动后会错误地提前回收仍在视口内的行。
+  useLayoutEffect(() => {
+    const list = listContainerRef.current;
+    if (!list || !scrollElement || !isVirtualized) {
+      setScrollMargin(0);
+      return;
+    }
+    const updateScrollMargin = () => {
+      setScrollMargin(
+        list.getBoundingClientRect().top -
+          scrollElement.getBoundingClientRect().top +
+          scrollElement.scrollTop,
+      );
+    };
+    updateScrollMargin();
+    const observer = new ResizeObserver(updateScrollMargin);
+    observer.observe(scrollElement);
+    return () => observer.disconnect();
+  }, [isVirtualized, scrollElement, todos]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
@@ -154,39 +233,73 @@ function TodoListComponent({
         }
         onReorder(active.id as string, over.id as string);
       }
+      setActiveDragId(null);
     },
     [onReorder, onSortChange, onSnapshotOrder, sort, todos],
   );
 
   useEffect(() => {
-    if (!focusTarget || !todos.some((todo) => todo.id === focusTarget.id)) return;
+    if (!focusTarget) return;
+    const targetIndex = todos.findIndex((todo) => todo.id === focusTarget.id);
+    if (targetIndex === -1) return;
+    if (isVirtualized) virtualizer.scrollToIndex(targetIndex, { align: 'center' });
     requestAnimationFrame(() => {
       document.getElementById(`todo-${focusTarget.id}`)?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
     });
-  }, [focusTarget, todos]);
+  }, [focusTarget, isVirtualized, todos, virtualizer]);
+
+  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
+  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
+  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
 
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
 
-  const listContent = (
-    <AnimatePresence mode="popLayout" initial={false}>
-      {todos.map((todo) => (
-        <SortableTodoItem
-          key={todo.id}
-          todo={todo}
-          isSelected={selectedIds.has(todo.id)}
-          focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
-          onToggle={onToggle}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
-    </AnimatePresence>
+  // 筛选时直接更新行，避免每项进退场动画与 dnd-kit 同时参与布局计算。
+  const listContent = todos.map((todo) => (
+    <SortableTodoItem
+      key={todo.id}
+      todo={todo}
+      isSelected={selectedIds.has(todo.id)}
+      focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
+      onToggle={onToggle}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onToggleSelect={onToggleSelect}
+    />
+  ));
+
+  const virtualListContent = (
+    <div
+      ref={listContainerRef}
+      className="relative"
+      style={{ height: virtualizer.getTotalSize() }}
+      aria-label="待办事项列表"
+    >
+      {virtualItems.map((virtualItem) => {
+        const todo = todos[virtualItem.index];
+        if (!todo) return null;
+        return (
+          <SortableTodoItem
+            key={todo.id}
+            todo={todo}
+            isSelected={selectedIds.has(todo.id)}
+            focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
+            onToggle={onToggle}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onToggleSelect={onToggleSelect}
+            virtualStart={virtualItem.start - scrollMargin}
+            virtualIndex={virtualItem.index}
+            measureElement={virtualizer.measureElement}
+          />
+        );
+      })}
+    </div>
   );
 
   // 任意排序模式下都允许拖拽；非手动排序时拖拽会自动切到手动排序（见 handleDragEnd）
@@ -195,11 +308,21 @@ function TodoListComponent({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={(event) => setActiveDragId(String(event.active.id))}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDragId(null)}
       modifiers={[restrictToVerticalAxis]}
     >
-      <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="relative space-y-1">{listContent}</div>
+      <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>
+        {/* 仅动画一个容器；key 让筛选切换重播短暂淡入，而不保留上一批事项等待退出。 */}
+        <div
+          key={filter ?? 'all'}
+          className={
+            isVirtualized ? 'todo-filter-content' : 'todo-filter-content relative space-y-1'
+          }
+        >
+          {isVirtualized ? virtualListContent : listContent}
+        </div>
       </SortableContext>
     </DndContext>
   );

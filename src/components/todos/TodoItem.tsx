@@ -220,12 +220,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   );
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
-      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       className={cn(
         'group relative flex items-center gap-3 pl-3.5 pr-2 py-2.5 rounded-claude transition-colors',
         'hover:bg-[var(--bg-hover)]',
@@ -462,7 +458,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           </label>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 });
 

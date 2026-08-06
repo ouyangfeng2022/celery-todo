@@ -71,6 +71,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
 
   loadSettings: ({ syncStartupTheme = true } = {}) => {
+    const stored = db.getSettings();
     // 专注模式已废弃：升级时清理旧键，始终进入完整主窗口。
     // 仅当该 key 仍存在时才执行删除 —— deleteSetting 内部走 execute() →
     // scheduleSave()，会在 500ms 后触发 persistDatabase 并向其它窗口广播
@@ -78,45 +79,44 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // 都会调 loadSettings）会把"自己内存库的旧快照"写盘，覆盖主窗口尚未落盘
     // 的 addTodo，表现为「主窗口创建待办闪现约 1 秒后消失」。幂等删除让该写
     // 只在真正需要时发生一次。
-    if (db.getSetting('focusMode') !== null) {
+    if (stored.focusMode !== undefined) {
       db.deleteSetting('focusMode');
     }
     // autoUpdateEnabled 同上：老数据无该键时走默认 true
-    const storedAutoUpdate = db.getSetting('autoUpdateEnabled');
-    const storedTheme = db.getSetting('theme');
-    const normalizedTheme = normalizeTheme(storedTheme, db.getSetting('colorMode'));
+    const storedAutoUpdate = stored.autoUpdateEnabled ?? null;
+    const storedTheme = stored.theme ?? null;
+    const normalizedTheme = normalizeTheme(storedTheme, stored.colorMode ?? null);
     if (storedTheme !== normalizedTheme.theme) db.setSetting('theme', normalizedTheme.theme);
-    if (db.getSetting('colorMode') !== normalizedTheme.colorMode) {
+    if (stored.colorMode !== normalizedTheme.colorMode) {
       db.setSetting('colorMode', normalizedTheme.colorMode);
     }
     const settings: AppSettings = {
       ...normalizedTheme,
-      autoStart: db.getSetting('autoStart') === 'true',
-      minimizeToTray: db.getSetting('minimizeToTray') !== 'false',
-      dataVersion: Number(db.getSetting('dataVersion') ?? DEFAULT_SETTINGS.dataVersion),
+      autoStart: stored.autoStart === 'true',
+      minimizeToTray: stored.minimizeToTray !== 'false',
+      dataVersion: Number(stored.dataVersion ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: false,
       autoUpdateEnabled:
         storedAutoUpdate === null
           ? DEFAULT_SETTINGS.autoUpdateEnabled
           : storedAutoUpdate === 'true',
       // lastActiveProjectId：字符串型，缺失键优雅回退空串（首次启动 / 老数据）
-      lastActiveProjectId:
-        db.getSetting('lastActiveProjectId') ?? DEFAULT_SETTINGS.lastActiveProjectId,
+      lastActiveProjectId: stored.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
       // timeFormat：老数据无该键时默认相对时间
-      timeFormat: db.getSetting('timeFormat') === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
+      timeFormat: stored.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（老数据缺失键时整套回退到玻璃预设的默认值） =====
       stickerPreset:
-        (db.getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
-      stickerRadius: Number(db.getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
-      stickerBlur: Number(db.getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
+        (stored.stickerPreset as StickerPreset | undefined) ?? DEFAULT_SETTINGS.stickerPreset,
+      stickerRadius: Number(stored.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius),
+      stickerBlur: Number(stored.stickerBlur ?? DEFAULT_SETTINGS.stickerBlur),
       // stickerOpacity 不再读 DB：当前版本设置面板已移除独立的透明度滑块，
       // 它只能随预设整体变化。直接由当前 preset 派生，避免老 DB 里残留的
       // 旧 opacity 值（如 65）覆盖预设的合理值，导致贴图永久偏淡（issue #12）。
       stickerOpacity:
         STICKER_PRESET_VALUES[
-          (db.getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset
+          (stored.stickerPreset as StickerPreset | undefined) ?? DEFAULT_SETTINGS.stickerPreset
         ].opacity,
-      stickerShadow: db.getSetting('stickerShadow') !== 'false',
+      stickerShadow: stored.stickerShadow !== 'false',
     };
     set(settings);
     // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，

@@ -141,10 +141,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         order: ++baseOrder,
         pinned: false,
       };
-      db.insertTodo(todo);
       return todo;
     });
 
+    db.insertTodos(newTodos);
     set({ todos: [...todos, ...newTodos] });
   },
 
@@ -233,9 +233,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
               }
             : t,
         );
-        updated.forEach((t) => {
-          if (selectedIds.has(t.id)) db.updateTodo(t);
-        });
+        db.updateTodos(updated.filter((t) => selectedIds.has(t.id)));
         set({ todos: updated, selectedIds: new Set() });
         break;
       }
@@ -251,9 +249,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
               }
             : t,
         );
-        updated.forEach((t) => {
-          if (selectedIds.has(t.id)) db.updateTodo(t);
-        });
+        db.updateTodos(updated.filter((t) => selectedIds.has(t.id)));
         set({ todos: updated, selectedIds: new Set() });
         break;
       }
@@ -273,9 +269,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         const updated = todos.map((t) =>
           selectedIds.has(t.id) ? { ...t, priority, updatedAt: now } : t,
         );
-        updated.forEach((t) => {
-          if (selectedIds.has(t.id)) db.updateTodo(t);
-        });
+        db.updateTodos(updated.filter((t) => selectedIds.has(t.id)));
         set({ todos: updated, selectedIds: new Set() });
         break;
       }
@@ -297,7 +291,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
     // 重新分配 order
     const reordered = newTodos.map((t, idx) => ({ ...t, order: idx + 1 }));
-    reordered.forEach((t) => db.updateTodo(t));
+    db.updateTodoOrders(reordered);
     set({ todos: reordered });
   },
 
@@ -315,7 +309,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       .filter((t): t is Todo => t !== undefined);
     const rest = todos.filter((t) => !displayedSet.has(t.id));
     const reordered = [...displayed, ...rest].map((t, idx) => ({ ...t, order: idx + 1 }));
-    reordered.forEach((t) => db.updateTodo(t));
+    db.updateTodoOrders(reordered);
     set({ todos: reordered });
   },
 

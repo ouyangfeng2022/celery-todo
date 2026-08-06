@@ -43,8 +43,8 @@ export function HistorySection({
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  /** 下一页的 offset（已加载数量） */
-  const offsetRef = useRef(0);
+  /** 下一页从最后一项的 (deleted_at, id) 继续，避免 OFFSET 深页线性退化。 */
+  const cursorRef = useRef<db.ArchivedTodoCursor | undefined>();
   /** reload 防重入：避免 effect 与回调同时触发造成重复查询/竞态 */
   const reloadingRef = useRef(false);
 
@@ -57,8 +57,9 @@ export function HistorySection({
     reloadingRef.current = true;
     try {
       const count = db.getArchivedTodosCount();
-      const firstPage = db.getDeletedTodosPaged(PAGE_SIZE, 0);
-      offsetRef.current = firstPage.length;
+      const firstPage = db.getDeletedTodosPage(PAGE_SIZE);
+      const lastItem = firstPage.at(-1);
+      cursorRef.current = lastItem ? { deletedAt: lastItem.deletedAt, id: lastItem.id } : undefined;
       setItems(firstPage);
       setTotalCount(count);
       setHasMore(firstPage.length < count);
@@ -72,16 +73,16 @@ export function HistorySection({
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
-      const nextOffset = offsetRef.current;
-      const page = db.getDeletedTodosPaged(PAGE_SIZE, nextOffset);
-      offsetRef.current = nextOffset + page.length;
+      const page = db.getDeletedTodosPage(PAGE_SIZE, cursorRef.current);
+      const lastItem = page.at(-1);
+      if (lastItem) cursorRef.current = { deletedAt: lastItem.deletedAt, id: lastItem.id };
       setItems((prev) => [...prev, ...page]);
-      // 以「已加载数量 < 总数」判定是否还有更多；page 不足一页时自然收敛
-      setHasMore(offsetRef.current < totalCount);
+      // 本页不足一页即到尾；刚好一页时保留哨兵，下一次查询会自然收敛。
+      setHasMore(page.length === PAGE_SIZE);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [hasMore, isLoadingMore, totalCount]);
+  }, [hasMore, isLoadingMore]);
 
   // === 挂载时 + 外部归档变动时刷新 ===
   useEffect(() => {

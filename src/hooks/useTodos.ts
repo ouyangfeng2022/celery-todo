@@ -9,78 +9,88 @@ import { hasBulkSeparator } from '../utils/helpers';
 import type { Priority, BatchAction } from '../types';
 
 export function useTodos() {
-  const store = useTodoStore();
+  // 分字段订阅：事项列表每次变动都会让 App 重渲染，但操作函数本身在 Zustand
+  // store 生命周期内稳定。不要订阅整个 state，否则每次 set 都会让下面的
+  // useCallback 生成新引用，进而破坏 TodoList / TodoItem 的 memo。
+  const todos = useTodoStore((state) => state.todos);
+  const deletedTodos = useTodoStore((state) => state.deletedTodos);
+  const selectedIds = useTodoStore((state) => state.selectedIds);
+  const loading = useTodoStore((state) => state.loading);
+  const addTodoAction = useTodoStore((state) => state.addTodo);
+  const addTodosBulk = useTodoStore((state) => state.addTodosBulk);
+  const updateTodoAction = useTodoStore((state) => state.updateTodo);
+  const deleteTodoAction = useTodoStore((state) => state.deleteTodo);
+  const toggleTodoAction = useTodoStore((state) => state.toggleTodo);
+  const toggleSelected = useTodoStore((state) => state.toggleSelected);
+  const selectAll = useTodoStore((state) => state.selectAll);
+  const clearSelection = useTodoStore((state) => state.clearSelection);
+  const batchActionAction = useTodoStore((state) => state.batchAction);
+  const clearCompleted = useTodoStore((state) => state.clearCompleted);
+  const reorderTodos = useTodoStore((state) => state.reorderTodos);
+  const snapshotOrder = useTodoStore((state) => state.snapshotOrder);
+  const restoreTodo = useTodoStore((state) => state.restoreTodo);
+  const permanentlyDelete = useTodoStore((state) => state.permanentlyDelete);
+  const emptyArchive = useTodoStore((state) => state.emptyArchive);
 
   const addTodo = useCallback(
     (title: string, priority: Priority = 'medium', description?: string) => {
       // 包含换行符时走批量添加（逗号/分号视为普通字符）
       if (hasBulkSeparator(title)) {
-        store.addTodosBulk(title, priority);
+        addTodosBulk(title, priority);
       } else {
-        store.addTodo({ title, priority, description });
+        addTodoAction({ title, priority, description });
       }
     },
-    [store],
+    [addTodoAction, addTodosBulk],
   );
 
   const updateTodo = useCallback(
-    (id: string, updates: Parameters<typeof store.updateTodo>[1]) => {
-      store.updateTodo(id, updates);
+    (id: string, updates: Parameters<typeof updateTodoAction>[1]) => {
+      updateTodoAction(id, updates);
     },
-    [store],
+    [updateTodoAction],
   );
 
   const deleteTodo = useCallback(
     (id: string) => {
-      store.deleteTodo(id);
+      deleteTodoAction(id);
     },
-    [store],
+    [deleteTodoAction],
   );
 
   const toggleTodo = useCallback(
     (id: string) => {
-      store.toggleTodo(id);
+      toggleTodoAction(id);
     },
-    [store],
+    [toggleTodoAction],
   );
 
   const batchAction = useCallback(
     (action: BatchAction, priority?: Priority) => {
-      store.batchAction(action, priority);
+      batchActionAction(action, priority);
     },
-    [store],
-  );
-
-  const clearCompleted = useCallback(() => {
-    store.clearCompleted();
-  }, [store]);
-
-  const reorderTodos = useCallback(
-    (sourceId: string, targetId: string) => {
-      store.reorderTodos(sourceId, targetId);
-    },
-    [store],
+    [batchActionAction],
   );
 
   return {
-    todos: store.todos,
-    deletedTodos: store.deletedTodos,
-    selectedIds: store.selectedIds,
-    loading: store.loading,
+    todos,
+    deletedTodos,
+    selectedIds,
+    loading,
     addTodo,
     updateTodo,
     deleteTodo,
     toggleTodo,
-    toggleSelected: store.toggleSelected,
-    selectAll: store.selectAll,
-    clearSelection: store.clearSelection,
+    toggleSelected,
+    selectAll,
+    clearSelection,
     batchAction,
     clearCompleted,
     reorderTodos,
     // store action 引用稳定，直接透传
-    snapshotOrder: store.snapshotOrder,
-    restoreTodo: store.restoreTodo,
-    permanentlyDelete: store.permanentlyDelete,
-    emptyArchive: store.emptyArchive,
+    snapshotOrder,
+    restoreTodo,
+    permanentlyDelete,
+    emptyArchive,
   };
 }
