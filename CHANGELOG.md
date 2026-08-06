@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+## [v2.18.0] - 2026-08-06
+### Added
+- 新增统计页（设置页内）支持热力图/优先级/项目分布
+
+### Fixed
+- 热力图月份标签不再被压缩折行
+- 返回待办后立即点击不再被退场浮层拦截
+
 ## [v2.17.0] - 2026-08-06
 ### Added
 - 合并「导出当前项目」入口为统一对话框
@@ -413,3 +421,5 @@
 [v2.16.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.16.0
 
 [v2.17.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.17.0
+
+[v2.18.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.18.0
