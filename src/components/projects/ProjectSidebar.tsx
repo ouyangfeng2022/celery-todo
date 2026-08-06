@@ -290,6 +290,8 @@ interface SortableProjectItemProps {
   onContextMenu: (e: React.MouseEvent, project: Project) => void;
   /** 在该项目下新建事项 */
   onNewTodo: (project: Project) => void;
+  /** 右键菜单正打开在该项上：保持持久深色背景，避免鼠标移开后高亮消失 */
+  isContextMenuOpen?: boolean;
 }
 
 function SortableProjectItem({
@@ -304,6 +306,7 @@ function SortableProjectItem({
   onCancelRename,
   onContextMenu,
   onNewTodo,
+  isContextMenuOpen,
 }: SortableProjectItemProps) {
   // 用 useSortable（而非 useDraggable）：前者同时注册 droppable，
   // 才能与 SortableContext 配合产出 over≠null，从而触发 onDragEnd 排序。
@@ -355,9 +358,14 @@ function SortableProjectItem({
           {...attributes}
           {...listeners}
           // 主要操作是「点击切换项目」（光标 pointer），仅在按下拖拽时短暂变 grabbing。
-          // 背景：选中态用 accent-subtle 强调色（且 hover 不变）；未选中时 hover 才出现 bg-hover。
+          // 背景：选中态用 accent-subtle 强调色（且 hover 不变）；
+          // 未选中时 hover 出现 bg-hover；右键菜单打开期间保持同样的持久背景。
           className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-sm text-left rounded-md cursor-pointer active:cursor-grabbing transition-colors ${
-            isActive ? 'bg-[var(--accent-subtle)]' : 'hover:bg-[var(--bg-hover)]'
+            isActive
+              ? 'bg-[var(--accent-subtle)]'
+              : isContextMenuOpen
+                ? 'bg-[var(--bg-hover)]'
+                : 'hover:bg-[var(--bg-hover)]'
           }`}
           style={{
             color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
@@ -679,6 +687,7 @@ function ProjectSidebarComponent({
               {projects.map((project) => {
                 const isActive = project.id === activeProjectId;
                 const isEditing = editingId === project.id;
+                const isCtxTarget = ctxMenu?.project?.id === project.id;
 
                 return (
                   <SortableProjectItem
@@ -694,6 +703,7 @@ function ProjectSidebarComponent({
                     onCancelRename={() => setEditingId(null)}
                     onContextMenu={handleItemContextMenu}
                     onNewTodo={(p) => onNewTodoInProject(p.id)}
+                    isContextMenuOpen={isCtxTarget}
                   />
                 );
               })}
