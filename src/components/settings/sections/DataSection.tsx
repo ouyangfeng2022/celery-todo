@@ -10,6 +10,8 @@ import { ConfirmDialog } from '../../common/ConfirmDialog';
 interface DataSectionProps {
   onExportAll: () => void;
   onExportCsv: () => void;
+  /** 导出当前项目为图片（打开预览弹窗） */
+  onExportImage: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
 }
@@ -17,6 +19,7 @@ interface DataSectionProps {
 export function DataSection({
   onExportAll,
   onExportCsv,
+  onExportImage,
   onImportAll,
   onResetData,
 }: DataSectionProps) {
@@ -55,6 +58,14 @@ export function DataSection({
           >
             <DownloadIcon size={15} />
             导出当前项目 (CSV)
+          </button>
+          <button
+            onClick={onExportImage}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+            style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-secondary)' }}
+          >
+            <DownloadIcon size={15} />
+            导出当前项目为图片
           </button>
           <button
             onClick={handleImportClick}

@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
+    "html-to-image": "^1.11.13",
     "katex": "^0.18.1",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",

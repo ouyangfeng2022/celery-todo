@@ -35,6 +35,8 @@ interface SettingsPanelProps {
   onUpdateSettings: (updates: Partial<AppSettings>) => void;
   onExportAll: () => void;
   onExportCsv: () => void;
+  /** 导出当前项目为图片（打开预览弹窗） */
+  onExportImage: () => void;
   onImportAll: (file: File) => void;
   onResetData: () => void;
   // ===== 顶部 Header 工具组(与主页面 App.tsx 接线一致) =====
@@ -87,6 +89,7 @@ function SettingsPanelComponent({
   onUpdateSettings,
   onExportAll,
   onExportCsv,
+  onExportImage,
   onImportAll,
   onResetData,
   sidebarOpen,
@@ -308,6 +311,7 @@ function SettingsPanelComponent({
                   <DataSection
                     onExportAll={onExportAll}
                     onExportCsv={onExportCsv}
+                    onExportImage={onExportImage}
                     onImportAll={handleImportWithClose}
                     onResetData={onResetData}
                   />

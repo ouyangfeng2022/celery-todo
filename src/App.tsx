@@ -25,6 +25,7 @@ import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
+import { ExportImageDialog } from './components/export/ExportImageDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
@@ -45,7 +46,7 @@ import {
   todosToCsv,
 } from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
-import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Todo } from './types';
+import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Project, Todo } from './types';
 
 /**
  * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
@@ -504,6 +505,28 @@ function App() {
     downloadFile(json, `archive-${new Date().toISOString().split('T')[0]}.json`);
   }, [projects]);
 
+  // === 导出项目为图片 ===
+  // 打开预览弹窗；项目元信息 + 该项目全量 todos 在打开瞬间拍快照，
+  // 弹窗里的筛选/截图都基于这份快照，与外部状态变化隔离。
+  const [exportImageTarget, setExportImageTarget] = useState<{
+    project: Project;
+    todos: Todo[];
+  } | null>(null);
+
+  const handleExportImage = useCallback(
+    (projectId: string) => {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+      const projectTodos = db.getTodosByProject(projectId);
+      setExportImageTarget({ project, todos: projectTodos });
+    },
+    [projects],
+  );
+
+  const handleExportImageCurrent = useCallback(() => {
+    if (activeProjectId) handleExportImage(activeProjectId);
+  }, [activeProjectId, handleExportImage]);
+
   const handleImportProject = useCallback(
     async (file: File) => {
       try {
@@ -709,6 +732,7 @@ function App() {
                 onRename={renameProject}
                 onDelete={deleteProject}
                 onExport={handleExportProject}
+                onExportImage={handleExportImage}
                 onReorder={reorderProjects}
                 updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
@@ -941,6 +965,7 @@ function App() {
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
         onExportAll={handleExportAll}
         onExportCsv={handleExportCsv}
+        onExportImage={handleExportImageCurrent}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
         // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====
@@ -978,6 +1003,16 @@ function App() {
         onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
         onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
       />
+
+      {/* 导出项目为图片预览弹窗 */}
+      {exportImageTarget && (
+        <ExportImageDialog
+          open={exportImageTarget !== null}
+          project={exportImageTarget.project}
+          todos={exportImageTarget.todos}
+          onClose={() => setExportImageTarget(null)}
+        />
+      )}
     </div>
   );
 }
