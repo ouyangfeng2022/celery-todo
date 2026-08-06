@@ -10,7 +10,7 @@
  */
 
 import { memo, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { AppSettings, DeletedTodo, Project } from '../../types';
 import * as Icons from '../common/Icons';
 import { Header } from '../layout/Header';
@@ -153,14 +153,19 @@ function SettingsPanelComponent({
   const activeNavItem = navItems.find((item) => item.id === activeSection) ?? navItems[0];
 
   return (
-    <AnimatePresence mode="wait">
+    // 刻意不用 AnimatePresence：本浮层是 fixed inset-0 全屏覆盖，退场动画期间
+    // 元素仍在 DOM 中且 opacity:0 不会取消 pointer-events，会拦截对主页面的点击 ——
+    // 用户从设置页返回后立即点击待办会「点不动」。改为 open 立即挂载（保留 fade-in）、
+    // 关闭立即卸载（无 fade-out），视觉上几乎无差（页面切换本就不需要退场过渡），
+    // 且彻底杜绝退场浮层吞点击。下方 activeSection 切换的 motion.div 仍保留 fade。
+    <>
       {open && (
         <motion.section
           className="fixed inset-0 z-50 flex min-h-0 flex-col"
           style={{ backgroundColor: 'var(--bg-frame)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
           onKeyDown={handleKeyDown}
           aria-label="设置"
         >
@@ -355,7 +360,7 @@ function SettingsPanelComponent({
           </div>
         </motion.section>
       )}
-    </AnimatePresence>
+    </>
   );
 }
 

@@ -6,7 +6,9 @@ import {
   launchApp,
   closeApp,
   addTodo,
+  addTodosBulk,
   createProject,
+  todoRow,
   openSettings,
   openSettingsSection,
   type LaunchedApp,
@@ -86,4 +88,28 @@ test('设置作为独立页面打开，并可返回待办页', async () => {
   await win.getByRole('button', { name: '返回待办' }).click();
   await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
   await expect(win.locator('main')).toBeVisible();
+});
+
+test('返回待办页后立即点击主页面，不被退场浮层拦截', async () => {
+  // 回归：SettingsPanel 关闭时若残留 fixed inset-0 浮层（如 framer-motion exit 淡出
+  // 期间元素仍在 DOM 且 opacity:0 不取消 pointer-events），会吞掉对主页面的点击 ——
+  // 用户从设置页返回后立即点击待办会「点不动」。
+  //
+  // 复现关键：toggle.click({ force: true }) 跳过 Playwright 的 actionability 等待
+  // （否则会自动等到浮层消失再点，测不出 bug）。force 仍把点击派发到 toggle 元素本身，
+  // 所以能稳定验证「点击是否落到主页面」：若退场浮层拦截，则点击被吞、切换不发生。
+  //
+  // 用两条事项：完成其一不会触发 AllDoneCelebration（否则列表被替换、行内按钮消失）。
+  await createProject(win, '回归项目');
+  await addTodosBulk(win, ['回归事项A', '回归事项B']);
+  const row = todoRow(win, '回归事项A');
+  const toggle = row.getByRole('button', { name: '标记为已完成' });
+  await expect(toggle).toBeVisible();
+
+  await openSettings(win);
+  await win.getByRole('button', { name: '返回待办' }).click();
+  // 关键：force=true 立刻派发点击，不等浮层消失 —— 复现「点不动」的时序
+  await toggle.click({ force: true });
+  // 切换成功 = 按钮变成「标记为未完成」。若退场浮层吞掉了点击，这里会超时失败。
+  await expect(row.getByRole('button', { name: '标记为未完成' })).toBeVisible();
 });
