@@ -53,7 +53,9 @@ export function makeProjectsCommand(): Command {
           const project = await resolveProject(opts.delete);
           const todos = (await getAllTodos()).filter((t) => t.projectId === project.id);
           println(
-            color.yellow(`将归档项目「${project.name}」及其 ${todos.length} 个待办（进入历史记录）`),
+            color.yellow(
+              `将归档项目「${project.name}」及其 ${todos.length} 个待办（进入历史记录）`,
+            ),
           );
           if (!opts.yes) {
             const ok = await confirm('确认归档项目？', false);

@@ -25,6 +25,7 @@ import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
+import { ExportImageDialog } from './components/export/ExportImageDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
@@ -45,7 +46,7 @@ import {
   todosToCsv,
 } from './utils/export';
 import { cn, downloadFile, readFileAsText } from './utils/helpers';
-import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Todo } from './types';
+import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Project, Todo } from './types';
 
 /**
  * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
@@ -484,6 +485,19 @@ function App() {
     downloadFile(csv, `todos-${activeProject?.name ?? 'export'}.csv`, 'text/csv;charset=utf-8');
   }, [todos, activeProject]);
 
+  // 按项目导出 CSV：不依赖当前已加载的 todos，直接查指定项目，供设置页「导出项目」
+  // 对话框使用（用户选的不一定是当前活跃项目）。
+  const handleExportCsvForProject = useCallback(
+    (projectId: string) => {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+      const rows = db.getTodosByProject(projectId);
+      const csv = todosToCsv(rows);
+      downloadFile(csv, `todos-${project.name}.csv`, 'text/csv;charset=utf-8');
+    },
+    [projects],
+  );
+
   // 导出历史记录（归档）为独立 JSON 快照。跨项目全量，按归档时间倒序。
   // 注意：这是只读备份，刻意不被 parseImportData 识别，不可导回。
   const handleExportHistory = useCallback(() => {
@@ -503,6 +517,35 @@ function App() {
     });
     downloadFile(json, `archive-${new Date().toISOString().split('T')[0]}.json`);
   }, [projects]);
+
+  // === 导出项目为图片 ===
+  // 打开预览弹窗；项目元信息 + 该项目全量 todos 在打开瞬间拍快照，
+  // 弹窗里的筛选/截图都基于这份快照，与外部状态变化隔离。
+  const [exportImageTarget, setExportImageTarget] = useState<{
+    project: Project;
+    todos: Todo[];
+  } | null>(null);
+
+  const handleExportImage = useCallback(
+    (projectId: string) => {
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+      const projectTodos = db.getTodosByProject(projectId);
+      setExportImageTarget({ project, todos: projectTodos });
+    },
+    [projects],
+  );
+
+  // 设置页「导出项目」对话框的统一分发：根据格式转给对应处理函数。
+  // JSON / 图片复用侧栏右键菜单的同款实现，CSV 走按项目查库的版本。
+  const handleExportProjectWithFormat = useCallback(
+    (projectId: string, format: 'json' | 'csv' | 'image') => {
+      if (format === 'json') handleExportProject(projectId);
+      else if (format === 'image') handleExportImage(projectId);
+      else handleExportCsvForProject(projectId);
+    },
+    [handleExportProject, handleExportImage, handleExportCsvForProject],
+  );
 
   const handleImportProject = useCallback(
     async (file: File) => {
@@ -709,6 +752,7 @@ function App() {
                 onRename={renameProject}
                 onDelete={deleteProject}
                 onExport={handleExportProject}
+                onExportImage={handleExportImage}
                 onReorder={reorderProjects}
                 updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
@@ -940,6 +984,8 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
         onExportAll={handleExportAll}
+        activeProjectId={activeProjectId}
+        onExportProject={handleExportProjectWithFormat}
         onExportCsv={handleExportCsv}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
@@ -978,6 +1024,16 @@ function App() {
         onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
         onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
       />
+
+      {/* 导出项目为图片预览弹窗 */}
+      {exportImageTarget && (
+        <ExportImageDialog
+          open={exportImageTarget !== null}
+          project={exportImageTarget.project}
+          todos={exportImageTarget.todos}
+          onClose={() => setExportImageTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -50,6 +50,8 @@ interface ProjectSidebarProps {
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
   onExport: (projectId: string) => void;
+  /** 导出该项目为图片（打开预览弹窗） */
+  onExportImage: (projectId: string) => void;
   onReorder: (sourceId: string, targetId: string) => void;
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
@@ -421,6 +423,7 @@ function ProjectSidebarComponent({
   onRename,
   onDelete,
   onExport,
+  onExportImage,
   onReorder,
   updateStatus,
   updateInfo,
@@ -532,9 +535,20 @@ function ProjectSidebarComponent({
               },
               {
                 label: '导出项目',
-                onClick: () => {
-                  onExport(ctxMenu.project!.id);
-                },
+                submenu: [
+                  {
+                    label: '导出为 JSON',
+                    onClick: () => {
+                      onExport(ctxMenu.project!.id);
+                    },
+                  },
+                  {
+                    label: '导出为图片…',
+                    onClick: () => {
+                      onExportImage(ctxMenu.project!.id);
+                    },
+                  },
+                ],
               },
               {
                 label: '重命名',
