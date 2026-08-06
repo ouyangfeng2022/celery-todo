@@ -1,14 +1,22 @@
 /**
  * @file DataSection - 设置页「数据」子页面
- * @description 导出全部 / 导出项目 / 导入 / 重置。从 SettingsPanel 拆出。
+ * @description 导出全部 / 导出项目 / 导入 / 重置 + 数据存储位置（仅桌面端渲染）。
  *   「导出项目」打开单独的对话框，由用户选择项目与格式(JSON / CSV / 图片)。
  */
 
-import { useState, useCallback } from 'react';
-import { DownloadIcon, UploadIcon, RefreshIcon } from '../../common/Icons';
+import { useState, useCallback, useEffect } from 'react';
+import { DownloadIcon, UploadIcon, RefreshIcon, FolderIcon } from '../../common/Icons';
 import { ConfirmDialog } from '../../common/ConfirmDialog';
 import { ExportProjectDialog, type ExportFormat } from './ExportProjectDialog';
 import type { Project } from '../../../types';
+import {
+  getStorageInfo,
+  chooseStorageDirectory,
+  changeStorageDirectory,
+  resetStorageDirectory,
+  openStorageInFolder,
+  type StorageInfo,
+} from '../../../utils/database';
 
 interface DataSectionProps {
   onExportAll: () => void;
@@ -32,6 +40,9 @@ export function DataSection({
 }: DataSectionProps) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | null>(null);
+  const [storageBusy, setStorageBusy] = useState(false);
+  const [confirmResetStorage, setConfirmResetStorage] = useState(false);
 
   const handleImportClick = useCallback(() => {
     const input = document.createElement('input');
@@ -44,8 +55,50 @@ export function DataSection({
     input.click();
   }, [onImportAll]);
 
+  // 子页面挂载即加载存储位置信息（仅桌面端会被 isStorageCustomizable 渲染）
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const info = await getStorageInfo();
+      if (!cancelled) setStorageInfo(info);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isStorageCustomizable = storageInfo?.mode === 'electron';
+
+  // 选择并切换存储目录
+  const handleChooseStorageDir = useCallback(async () => {
+    try {
+      setStorageBusy(true);
+      const dir = await chooseStorageDirectory();
+      if (!dir) return;
+      await changeStorageDirectory(dir);
+      setStorageInfo(await getStorageInfo());
+    } catch (err) {
+      alert(`切换存储位置失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, []);
+
+  // 重置为默认存储位置
+  const handleResetStorage = useCallback(async () => {
+    try {
+      setStorageBusy(true);
+      await resetStorageDirectory();
+      setStorageInfo(await getStorageInfo());
+    } catch (err) {
+      alert(`重置存储位置失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    } finally {
+      setStorageBusy(false);
+    }
+  }, []);
+
   return (
-    <>
+    <div className="space-y-7">
       <section>
         <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
           数据管理
@@ -86,6 +139,55 @@ export function DataSection({
         </div>
       </section>
 
+      {isStorageCustomizable && storageInfo && (
+        <section>
+          <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+            数据存储位置
+          </h3>
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-md mb-2 text-xs"
+            style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+          >
+            <FolderIcon size={14} className="flex-shrink-0" />
+            <span className="truncate font-mono" title={storageInfo.filePath ?? ''}>
+              {storageInfo.filePath}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={handleChooseStorageDir}
+              disabled={storageBusy}
+              className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+              style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+            >
+              <FolderIcon size={14} />
+              更改位置
+            </button>
+            <button
+              onClick={() => void openStorageInFolder()}
+              disabled={storageBusy}
+              className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+              style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+            >
+              <FolderIcon size={14} />
+              打开文件夹
+            </button>
+            <button
+              onClick={() => setConfirmResetStorage(true)}
+              disabled={storageBusy}
+              className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs rounded-md transition-colors hover:bg-[var(--bg-hover)] disabled:opacity-50"
+              style={{ color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)' }}
+            >
+              <FolderIcon size={14} />
+              重置为默认
+            </button>
+          </div>
+          <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            更改位置时，已有数据会自动迁移到新目录。
+          </p>
+        </section>
+      )}
+
       <ExportProjectDialog
         open={exportOpen}
         projects={projects}
@@ -106,6 +208,18 @@ export function DataSection({
         }}
         onCancel={() => setConfirmReset(false)}
       />
-    </>
+
+      <ConfirmDialog
+        open={confirmResetStorage}
+        title="重置存储位置"
+        message="数据将被迁移回应用的默认目录。确定继续吗？"
+        confirmText="重置位置"
+        onConfirm={() => {
+          void handleResetStorage();
+          setConfirmResetStorage(false);
+        }}
+        onCancel={() => setConfirmResetStorage(false)}
+      />
+    </div>
   );
 }
