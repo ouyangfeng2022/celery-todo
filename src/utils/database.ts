@@ -8,6 +8,7 @@
 
 // sql.js 浏览器 WASM 构建（Vite 预构建）
 import initSqlJs from 'sql.js/dist/sql-wasm-browser.js';
+import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import type { Database, SqlJsStatic } from 'sql.js';
 import { EXPORT_FORMAT_VERSION } from './export';
 import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
@@ -474,13 +475,9 @@ export async function initDatabase(): Promise<Database> {
     // 加载 sql.js WASM
     if (!SQL) {
       SQL = await initSqlJs({
-        // sql.js 默认请求 sql-wasm.wasm，恰好与 public/ 下的文件同名，无需改名。
-        // 必须用相对路径：dev 下相对 http://localhost:5173 解析，
-        // 生产 Electron 下 loadFile 让文档运行在 file:// 协议，
-        // 此时 window.location.origin 是字符串 "null"，用 origin 拼 URL 会得到
-        // "null/sql-wasm.wasm" 导致加载失败 —— 应用卡在初始化界面。
-        // 相对路径在 file:// 下基于文档目录解析，能正确定位到 dist/sql-wasm.wasm。
-        locateFile: () => './sql-wasm.wasm',
+        // 始终引用与当前 sql.js JS 胶水层同版本的 WASM，避免 public/ 中手工复制的
+        // 文件与依赖升级后不匹配。Vite 会在开发和生产构建中生成正确的资源 URL。
+        locateFile: () => sqlWasmUrl,
       });
     }
 
