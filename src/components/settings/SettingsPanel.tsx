@@ -20,13 +20,14 @@ import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
 import { DesktopSection } from './sections/DesktopSection';
 import { DataSection } from './sections/DataSection';
+import { StatsSection } from './sections/StatsSection';
 import { HistorySection } from './sections/HistorySection';
 import { ShortcutsSection } from './sections/ShortcutsSection';
 import { AboutSection } from './sections/AboutSection';
 
 /** 子页面 id。desktop 仅在桌面端渲染入口，故路由层 union 包含但导航项条件渲染。 */
 export type SettingsSectionId =
-  'general' | 'sticker' | 'desktop' | 'data' | 'history' | 'shortcuts' | 'about';
+  'general' | 'sticker' | 'desktop' | 'data' | 'stats' | 'history' | 'shortcuts' | 'about';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -80,6 +81,7 @@ const NAV_ITEMS: { id: SettingsSectionId; label: string; icon: typeof Icons.Sett
   { id: 'sticker', label: '贴图', icon: Icons.StickerIcon },
   { id: 'desktop', label: '桌面', icon: Icons.MonitorIcon },
   { id: 'data', label: '数据', icon: Icons.FolderIcon },
+  { id: 'stats', label: '统计', icon: Icons.ChartIcon },
   { id: 'history', label: '已归档事项', icon: Icons.ArchiveIcon },
   { id: 'shortcuts', label: '快捷键', icon: Icons.KeyboardIcon },
   { id: 'about', label: '关于', icon: Icons.GithubIcon },
@@ -322,6 +324,8 @@ function SettingsPanelComponent({
                     onResetData={onResetData}
                   />
                 )}
+
+                {activeSection === 'stats' && <StatsSection projects={projects} />}
 
                 {activeSection === 'history' && (
                   <HistorySection

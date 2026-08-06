@@ -18,6 +18,7 @@
  * - Ctrl/Cmd + Shift + E: 导出全部数据
  * - Ctrl/Cmd + Shift + L: 导出当前列表
  * - Ctrl/Cmd + Shift + K: 进入简洁模式（贴图浮窗）
+ * - Ctrl/Cmd + Shift + S: 打开统计页
  */
 
 import { useEffect } from 'react';
@@ -39,6 +40,7 @@ export interface ShortcutHandlers {
   onExportAll?: () => void;
   onExportCsv?: () => void;
   onEnterCompactMode?: () => void;
+  onOpenStats?: () => void;
 }
 
 /** 判断是否在输入框中 */
@@ -89,6 +91,10 @@ export function useKeyboardShortcuts(handlers: ShortcutHandlers): void {
           case 'k':
             e.preventDefault();
             handlers.onEnterCompactMode?.();
+            return;
+          case 's':
+            e.preventDefault();
+            handlers.onOpenStats?.();
             return;
         }
       }

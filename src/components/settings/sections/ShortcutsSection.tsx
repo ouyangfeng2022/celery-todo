@@ -16,6 +16,7 @@ const SHORTCUTS: [string, string][] = [
   ['Ctrl + Shift + E', '导出全部数据'],
   ['Ctrl + Shift + L', '导出当前列表'],
   ['Ctrl + Shift + K', '进入简洁模式'],
+  ['Ctrl + Shift + S', '打开统计页'],
 ];
 
 export function ShortcutsSection() {

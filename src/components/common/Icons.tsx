@@ -326,3 +326,14 @@ export const GithubIcon = memo((props: IconProps) => (
     />
   </BaseIcon>
 ));
+
+// 统计：柱状图 + 上升趋势线，对应统计全屏浮层入口
+export const ChartIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <path d="M3 3v18h18" />
+    <path d="M7 14v4" />
+    <path d="M12 9v9" />
+    <path d="M17 5v13" />
+    <path d="M7 9l5-4 5 3" />
+  </BaseIcon>
+));

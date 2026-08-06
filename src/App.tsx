@@ -179,6 +179,12 @@ function App() {
     setSettingsOpen(true);
   }, []);
 
+  // 统计入口：作为设置页的一个子页面（不再有独立浮层，避免双浮层的点击陷阱）
+  const openStats = useCallback(() => {
+    setSettingsSection('stats');
+    setSettingsOpen(true);
+  }, []);
+
   const showArchiveNotice = useCallback((ids: string[]) => {
     if (ids.length > 0) setArchiveNoticeIds(ids);
   }, []);
@@ -627,6 +633,7 @@ function App() {
     onEnterCompactMode: () => {
       void window.electronAPI?.createSticker(activeProjectId);
     },
+    onOpenStats: openStats,
   });
 
   // === 加载状态 ===
@@ -763,6 +770,7 @@ function App() {
                 onRestartToUpdate={isAutoUpdateAvailable ? handleUpdateAction : undefined}
                 onDismissSidebarUpdate={isAutoUpdateAvailable ? dismissSidebarUpdate : undefined}
                 onOpenSettings={openSettings}
+                onOpenStats={openStats}
                 onOpenHistory={() => openSettings('history')}
                 onOpenHelp={() =>
                   window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')

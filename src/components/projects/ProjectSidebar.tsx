@@ -35,6 +35,7 @@ import {
   StickerIcon,
   InboxIcon,
   GithubIcon,
+  ChartIcon,
   XIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
@@ -67,6 +68,8 @@ interface ProjectSidebarProps {
   onOpenSettings: (section: SettingsSectionId) => void;
   /** 打开历史记录（归档）弹窗 */
   onOpenHistory: () => void;
+  /** 打开统计全屏浮层 */
+  onOpenStats: () => void;
   /** 打开帮助与反馈（GitHub README） */
   onOpenHelp: () => void;
   /** 在指定项目下新建事项：切换到该项目并唤出新建事项输入框 */
@@ -435,6 +438,7 @@ function ProjectSidebarComponent({
   onDismissSidebarUpdate,
   onOpenSettings,
   onOpenHistory,
+  onOpenStats,
   onOpenHelp,
   onNewTodoInProject,
   onCreateSticker,
@@ -759,6 +763,11 @@ function ProjectSidebarComponent({
                   label: '设置',
                   icon: SettingsIcon,
                   onSelect: () => onOpenSettings('general'),
+                },
+                {
+                  label: '统计',
+                  icon: ChartIcon,
+                  onSelect: onOpenStats,
                 },
                 {
                   label: '简洁模式',
