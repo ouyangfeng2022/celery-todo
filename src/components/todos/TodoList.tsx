@@ -13,7 +13,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   DndContext,
@@ -61,7 +60,7 @@ interface TodoListProps {
   focusTarget?: { id: string; signal: number } | null;
 }
 
-/** 可排序的 TodoItem 包装器 */
+/** 可排序的 TodoItem 包装器：dnd-kit 的节点与虚拟列表的定位节点共用此元素。 */
 interface SortableTodoItemProps {
   todo: Todo;
   isSelected: boolean;
@@ -80,18 +79,6 @@ interface SortableTodoItemProps {
 /** 超过此数量时按需挂载行，避免 DnD、Markdown 和动画同时占用大量 DOM。 */
 const VIRTUALIZE_THRESHOLD = 100;
 
-/**
- * AnimatePresence 的 popLayout 模式会向直接子节点注入 ref 以测量退出元素的布局。
- * 直接子节点的布局盒是本组件返回的外层 div；dnd-kit 也需要同一个节点，因此把
- * 两个 ref 合并。若把 Presence ref 传给内部 TodoItem，popLayout 测量盒与实际
- * 占位盒不同，退出时可能造成不稳定的重排。
- *
- * 注意：子元素【不能】带 `layout` 属性。`popLayout + layout + opacity-exit` 三者
- * 同时存在会命中 framer-motion 已知 bug motion#2416 ——快速连续切换 filter 时退出
- * 动画被跳过/卡住，列表内容"切不过去"。popLayout 单独使用（退出元素 position:
- * absolute 让位 + 淡出）即可，无需 layout 做位移动画。拖拽位移走 dnd-kit 的
- * transform，不依赖 motion layout。
- */
 const SortableTodoItem = memo(
   forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
     {
@@ -272,22 +259,19 @@ function TodoListComponent({
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
 
-  const listContent = (
-    <AnimatePresence mode="popLayout" initial={false}>
-      {todos.map((todo) => (
-        <SortableTodoItem
-          key={todo.id}
-          todo={todo}
-          isSelected={selectedIds.has(todo.id)}
-          focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
-          onToggle={onToggle}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
-    </AnimatePresence>
-  );
+  // 筛选时直接更新行，避免每项进退场动画与 dnd-kit 同时参与布局计算。
+  const listContent = todos.map((todo) => (
+    <SortableTodoItem
+      key={todo.id}
+      todo={todo}
+      isSelected={selectedIds.has(todo.id)}
+      focusSignal={todo.id === focusTarget?.id ? focusTarget.signal : undefined}
+      onToggle={onToggle}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onToggleSelect={onToggleSelect}
+    />
+  ));
 
   const virtualListContent = (
     <div
@@ -330,7 +314,13 @@ function TodoListComponent({
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>
-        <div className={isVirtualized ? undefined : 'relative space-y-1'}>
+        {/* 仅动画一个容器；key 让筛选切换重播短暂淡入，而不保留上一批事项等待退出。 */}
+        <div
+          key={filter ?? 'all'}
+          className={
+            isVirtualized ? 'todo-filter-content' : 'todo-filter-content relative space-y-1'
+          }
+        >
           {isVirtualized ? virtualListContent : listContent}
         </div>
       </SortableContext>

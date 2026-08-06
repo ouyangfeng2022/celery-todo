@@ -1090,10 +1090,29 @@
     transform: translate3d(-12px, 0, 0);
   }
 
+  /* 筛选只让整个列表短暂淡入。逐项进退场会在快速切换时叠加大量 motion / DnD 布局工作。 */
+  @keyframes todo-filter-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 3px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .todo-filter-content {
+    animation: todo-filter-enter 120ms ease-out both;
+    will-change: opacity, transform;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .sidebar-grid,
-    .sidebar-inner {
+    .sidebar-inner,
+    .todo-filter-content {
       transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
     }
   }
 
