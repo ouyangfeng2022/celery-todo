@@ -33,6 +33,7 @@ import {
   RefreshIcon,
   CheckIcon,
   SettingsIcon,
+  StickerIcon,
   InboxIcon,
   GithubIcon,
 } from '../common/Icons';
@@ -670,6 +671,11 @@ function ProjectSidebarComponent({
                   label: '设置',
                   icon: SettingsIcon,
                   onSelect: () => onOpenSettings('general'),
+                },
+                {
+                  label: '简洁模式',
+                  icon: StickerIcon,
+                  onSelect: () => onCreateSticker(activeProjectId),
                 },
                 {
                   label: '已归档事项',
