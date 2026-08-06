@@ -40,9 +40,11 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   await createProject(win, '导出测试');
   await addTodo(win, '被导出任务');
 
-  // 「导出项目」入口在项目行的右键菜单（原 hover 按钮已迁移）
+  // 「导出项目」在右键菜单里是父项，hover 后展开子菜单，再点「导出为 JSON」。
+  // （4557ba1 把 JSON/图片合并为级联子菜单；CSV 仅在设置页「导出项目…」对话框。）
   await openProjectContextMenu(win, '导出测试');
-  await win.getByRole('button', { name: '导出项目', exact: true }).click();
+  await win.getByRole('button', { name: '导出项目', exact: true }).hover();
+  await win.getByRole('button', { name: '导出为 JSON', exact: true }).click();
 
   const dl = await getLastDownload(win);
   expect(dl.filename).toBe('导出测试-export.json');
@@ -75,9 +77,18 @@ test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
   await addTodo(win, 'CSV任务');
   await openSettingsSection(win, '数据');
 
-  await win.getByText('导出当前项目 (CSV)', { exact: true }).click();
-  const dl = await getLastDownload(win);
+  // 「导出当前项目 (CSV)」入口已并入「导出项目…」统一对话框（0956372）：
+  // 打开对话框 → 默认选中当前活跃项目 → 选 CSV 格式 → 点「导出」。
+  await win.getByText('导出项目…', { exact: true }).click();
+  // 对话框标题 h3「导出项目」与项目名 h1「CSV导出项目」都会匹配 heading name，
+  // 用 exact + role=h3 锚定对话框标题作为就绪信号。
+  await expect(
+    win.getByRole('heading', { name: '导出项目', exact: true, level: 3 }),
+  ).toBeVisible();
+  await win.getByText('CSV', { exact: true }).click();
+  await win.getByRole('button', { name: '导出', exact: true }).click();
 
+  const dl = await getLastDownload(win);
   expect(dl.filename).toBe('todos-CSV导出项目.csv');
   // UTF-8 BOM：第一个字节应为 0xEF（BOM = EF BB BF）
   expect(dl.content.charCodeAt(0)).toBe(0xef);
