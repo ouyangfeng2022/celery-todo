@@ -128,6 +128,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
   return createPortal(
     <AnimatePresence>
       <motion.div
+        key="ctx-menu-main"
         ref={menuRef}
         initial={{ opacity: 0, y: 4, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -159,8 +160,13 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               isSubmenuOpen={openSubmenu?.key === item.label}
               onClick={() => handleItemClick(item)}
               onHover={(rect) => {
-                // hover 父项即展开子菜单（若有）；切换到其它父项时自动重定位
-                if (item.submenu) setOpenSubmenu({ key: item.label, rowRect: rect })
+                // hover 任意项都回报：有子菜单的父项展开并重定位；
+                // hover 普通项（无 submenu）则收起当前子菜单，避免子菜单悬空不关。
+                if (item.submenu) {
+                  setOpenSubmenu({ key: item.label, rowRect: rect })
+                } else {
+                  setOpenSubmenu(null)
+                }
               }}
             >
               {item.label}
@@ -171,7 +177,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
 
       {/* 子菜单：独立 portal，但纳入父菜单的「外部点击」判断 */}
       {openSubmenu && (
-        <AnimatePresence>
+        <AnimatePresence key="ctx-menu-sub">
           <motion.div
             ref={submenuRef}
             initial={{ opacity: 0, x: -4, scale: 0.97 }}
