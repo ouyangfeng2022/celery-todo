@@ -35,6 +35,7 @@ import { useAutoUpdate } from './hooks/useAutoUpdate';
 import { useCliBridge } from './cli-bridge';
 
 import * as db from './utils/database';
+import { createCoalescedAsyncTask } from './utils/coalescedAsyncTask';
 import {
   EXPORT_FORMAT_VERSION,
   exportAppAsJson,
@@ -253,17 +254,15 @@ function App() {
   }, [todoFocusTarget]);
 
   // === 各项目未完成 todo 计数 ===
-  // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos，
-  // 故直接从 DB 全量取并按 projectId 聚合。todos/deletedTodos 作为 store 变更信号：
-  // 它们的引用在任意增删改/切换/导入/重置后都会更新，从而驱动重算（body 内并不直接读取）。
+  // 侧边栏需要展示所有项目的未完成数，而 useTodoStore 只持有当前项目的 todos。
+  // 聚合交给 SQLite，避免每次当前项目变动都把全表拉到 JS 再遍历。todos/deletedTodos
+  // 仍作为数据库内容变动信号，驱动聚合结果刷新。
   // dbReady 守卫：useMemo 在首渲染即执行，此时 DB 尚未异步初始化完成，直接查询会抛错。
   const incompleteCounts = useMemo<Record<string, number>>(() => {
     if (!dbReady) return {};
     const counts: Record<string, number> = {};
     for (const p of projects) counts[p.id] = 0;
-    for (const t of db.getAllTodos()) {
-      if (!t.completed) counts[t.projectId] = (counts[t.projectId] ?? 0) + 1;
-    }
+    Object.assign(counts, db.getIncompleteCountsByProject());
     return counts;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
   }, [projects, todos, deletedTodos, dbReady]);
@@ -334,15 +333,20 @@ function App() {
   // 先让它在下一轮 debounce 落盘，或由 store action 的本地刷新兜底，不能在
   // 此处与本窗口内存对账。
   useEffect(() => {
-    const off = window.electronAPI?.onDataChanged?.(async () => {
+    let disposed = false;
+    const sync = createCoalescedAsyncTask(async () => {
       await db.reloadDatabase();
+      if (disposed) return;
       useSettingsStore.getState().loadSettings();
       useProjectStore.getState().loadProjects();
       // 用当前 activeProjectId（不是 settings.lastActiveProjectId，
       // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
       useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     });
+    const off = window.electronAPI?.onDataChanged?.(sync.schedule);
     return () => {
+      disposed = true;
+      sync.dispose();
       off?.();
     };
   }, []);
@@ -489,9 +493,9 @@ function App() {
         if ('project' in data) {
           // 导入单个项目
           const newId = createProject(data.project.name);
-          data.todos.forEach((t) => {
-            db.insertTodo({ ...t, id: crypto.randomUUID(), projectId: newId });
-          });
+          db.insertTodos(
+            data.todos.map((t) => ({ ...t, id: crypto.randomUUID(), projectId: newId })),
+          );
           useTodoStore.getState().loadProject(newId);
           switchProject(newId);
         } else {

@@ -52,6 +52,14 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_todos_project_order
+  ON todos(project_id, pinned DESC, sort_order ASC, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_todos_completed_project
+  ON todos(completed, project_id);
+CREATE INDEX IF NOT EXISTS idx_deleted_project_deleted_at
+  ON deleted_todos(project_id, deleted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_deleted_deleted_at_id
+  ON deleted_todos(deleted_at DESC, id DESC);
 `;
 
 export interface SeedFixture {
@@ -64,14 +72,14 @@ export interface SeedFixture {
 }
 
 /**
- * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=2。
+ * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=5。
  */
 export function createSeedDb(opts: { withProject?: boolean } = {}): SeedFixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'celery-cli-test-'));
   const filePath = path.join(tmpDir, 'celery-todo.db');
   const db = new Database(filePath);
   db.exec(SCHEMA_SQL);
-  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '2')").run();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '5')").run();
   let projectId = 'default-project-id';
   if (opts.withProject !== false) {
     projectId = '11111111-1111-1111-1111-111111111111';

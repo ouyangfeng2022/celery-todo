@@ -43,6 +43,8 @@ type StartupTheme =
   | 'celery-dark'
   | 'celery-system';
 let stickerStates: StickerState[] = [];
+let pendingWindowBounds: Electron.Rectangle | undefined;
+let windowStateSaveTimer: NodeJS.Timeout | null = null;
 
 /** 仅完整主窗口可调用会改变系统或应用级配置的 IPC。 */
 function isMainWindowSender(event: IpcMainInvokeEvent): boolean {
@@ -76,16 +78,43 @@ function getStartupThemeColors(theme: StartupTheme) {
   return STARTUP_THEME_COLORS[theme as keyof typeof STARTUP_THEME_COLORS];
 }
 
-function saveStickerStates(): void {
+/** 合并写入窗口与贴图状态；只在拖拽结束后的防抖窗口或退出时实际落盘。 */
+function writeWindowState(): void {
   try {
     const storePath = getStorePath();
     const existing = fs.existsSync(storePath)
       ? JSON.parse(fs.readFileSync(storePath, 'utf-8'))
       : {};
-    fs.writeFileSync(storePath, JSON.stringify({ ...existing, stickers: stickerStates }, null, 2));
+    fs.writeFileSync(
+      storePath,
+      JSON.stringify(
+        { ...existing, bounds: pendingWindowBounds ?? existing.bounds, stickers: stickerStates },
+        null,
+        2,
+      ),
+    );
   } catch {
     // 写入失败时保留当前会话状态，不中断贴图操作。
   }
+}
+
+/** move / resize 事件可在拖拽期间高频触发，合并为一次状态文件写入。 */
+function scheduleWindowStateSave(bounds?: Electron.Rectangle): void {
+  if (bounds) pendingWindowBounds = bounds;
+  if (windowStateSaveTimer) clearTimeout(windowStateSaveTimer);
+  windowStateSaveTimer = setTimeout(() => {
+    windowStateSaveTimer = null;
+    writeWindowState();
+  }, 300);
+}
+
+/** 退出/关闭时同步刷盘，避免防抖窗口内的最后一次位置变化丢失。 */
+function flushWindowStateSave(): void {
+  if (windowStateSaveTimer) {
+    clearTimeout(windowStateSaveTimer);
+    windowStateSaveTimer = null;
+  }
+  writeWindowState();
 }
 
 function createStickerWindow(id: string, projectId = ''): void {
@@ -128,14 +157,14 @@ function createStickerWindow(id: string, projectId = ''): void {
   stickerWindows.set(id, window);
   const persist = () => {
     state.bounds = window.getBounds();
-    saveStickerStates();
+    scheduleWindowStateSave();
   };
   window.on('move', persist);
   window.on('resize', persist);
   window.on('closed', () => {
     stickerWindows.delete(id);
     stickerStates = stickerStates.filter((item) => item.id !== id);
-    saveStickerStates();
+    flushWindowStateSave();
   });
   if (isDev)
     window.loadURL(
@@ -348,15 +377,7 @@ function getSavedBounds(): { x: number; y: number; width: number; height: number
 }
 
 function saveBoundsToStore(bounds: { x: number; y: number; width: number; height: number }): void {
-  try {
-    const storePath = getStorePath();
-    const existing = fs.existsSync(storePath)
-      ? JSON.parse(fs.readFileSync(storePath, 'utf-8'))
-      : {};
-    fs.writeFileSync(storePath, JSON.stringify({ ...existing, bounds }, null, 2));
-  } catch {
-    // 保存失败时静默处理
-  }
+  scheduleWindowStateSave(bounds);
 }
 
 // ============================================
@@ -443,6 +464,7 @@ app.on('window-all-closed', () => {
 // 应用退出前清理
 app.on('before-quit', () => {
   (app as AppWithIsQuitting).isQuitting = true;
+  flushWindowStateSave();
   shutdownCliServer();
   tray?.destroy();
 });
@@ -496,7 +518,7 @@ ipcMain.handle('sticker:duplicate', (event, sourceId: string, projectId: string)
     projectId,
     bounds: { ...bounds, x: bounds.x + 28, y: bounds.y + 28 },
   });
-  saveStickerStates();
+  scheduleWindowStateSave();
   createStickerWindow(id, projectId);
 });
 ipcMain.handle('sticker:set-project', (event, id: string, projectId: string) => {
@@ -505,7 +527,7 @@ ipcMain.handle('sticker:set-project', (event, id: string, projectId: string) => 
   const state = stickerStates.find((item) => item.id === id);
   if (state) {
     state.projectId = projectId;
-    saveStickerStates();
+    scheduleWindowStateSave();
   }
 });
 ipcMain.handle('sticker:close', (event, id: string) => {

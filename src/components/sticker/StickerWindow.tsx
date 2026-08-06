@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as db from '../../utils/database';
+import { createCoalescedAsyncTask } from '../../utils/coalescedAsyncTask';
 import { readProjectSort, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import {
@@ -172,12 +173,17 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   // 后刷新当前项目列表，让贴图与主窗口保持一致。本窗口自己 toggle 完成时不会
   // 收到此广播（主进程按 sender.id 过滤了发起者），故不会触发无谓 reload。
   useEffect(() => {
-    const off = window.electronAPI?.onDataChanged?.(async () => {
+    let disposed = false;
+    const sync = createCoalescedAsyncTask(async () => {
       await db.reloadDatabase();
+      if (disposed) return;
       useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       refresh();
     });
+    const off = window.electronAPI?.onDataChanged?.(sync.schedule);
     return () => {
+      disposed = true;
+      sync.dispose();
       off?.();
     };
   }, [refresh]);
@@ -255,10 +261,11 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     const existing = db.getTodosByProject(pid);
     let baseOrder = existing.length > 0 ? Math.max(...existing.map((t) => t.order)) : 0;
     const now = new Date().toISOString();
+    const newTodos: Todo[] = [];
     for (const rawTitle of titles) {
       const trimmed = rawTitle.trim();
       if (!trimmed) continue;
-      const newTodo: Todo = {
+      newTodos.push({
         id: generateId(),
         projectId: pid,
         title: trimmed,
@@ -268,9 +275,9 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         updatedAt: now,
         order: ++baseOrder,
         pinned: false,
-      };
-      db.insertTodo(newTodo);
+      });
     }
+    db.insertTodos(newTodos);
     await db.flushSave();
     refresh();
   };

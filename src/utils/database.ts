@@ -24,7 +24,7 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 4;
+const DB_VERSION = 6;
 
 /**
  * Schema 迁移表。
@@ -95,6 +95,27 @@ const MIGRATIONS: SchemaMigration[] = [
       // 仅老库升级时需要重建表删除该列。rebuildTableWithoutDueDate 内部幂等。
       rebuildTableWithoutDueDate(database, 'todos');
       rebuildTableWithoutDueDate(database, 'deleted_todos');
+    },
+  },
+  {
+    version: 5,
+    description: '以复合索引覆盖事项列表、未完成计数和历史记录分页查询',
+    run: (database) => {
+      createPerformanceIndexes(database);
+      // v1 的单列索引已被复合索引的左前缀覆盖；移除后可降低新增、更新和归档时的写放大。
+      database.run('DROP INDEX IF EXISTS idx_todos_project');
+      database.run('DROP INDEX IF EXISTS idx_todos_completed');
+      database.run('DROP INDEX IF EXISTS idx_deleted_project');
+      database.run('DROP INDEX IF EXISTS idx_deleted_expires');
+    },
+  },
+  {
+    version: 6,
+    description: '归档历史分页索引补充 id，使 (deleted_at, id) 游标查询保持索引顺序扫描',
+    run: (database) => {
+      createPerformanceIndexes(database);
+      // v6 的复合索引以 deleted_at 为左前缀，替代 v5 的单列索引。
+      database.run('DROP INDEX IF EXISTS idx_deleted_deleted_at');
     },
   },
 ];
@@ -258,11 +279,26 @@ function createTables(database: Database): void {
       value TEXT NOT NULL
     );
 
-    -- 索引
-    CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id);
-    CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
-    CREATE INDEX IF NOT EXISTS idx_deleted_project ON deleted_todos(project_id);
-    CREATE INDEX IF NOT EXISTS idx_deleted_expires ON deleted_todos(expires_at);
+  `);
+
+  // 旧库会先走 createTables()、再跑 v3 的 pinned 列迁移；列尚不存在时不能创建
+  // 依赖它的索引。v5 迁移会在升级完成后补齐，已是最新版的库则在这里自修复索引。
+  if (hasColumn(database, 'todos', 'pinned') && hasColumn(database, 'deleted_todos', 'pinned')) {
+    createPerformanceIndexes(database);
+  }
+}
+
+/** 为既有数据库补齐高频查询的复合索引（迁移可重复执行）。 */
+function createPerformanceIndexes(database: Database): void {
+  database.run(`
+    CREATE INDEX IF NOT EXISTS idx_todos_project_order
+      ON todos(project_id, pinned DESC, sort_order ASC, created_at ASC);
+    CREATE INDEX IF NOT EXISTS idx_todos_completed_project
+      ON todos(completed, project_id);
+    CREATE INDEX IF NOT EXISTS idx_deleted_project_deleted_at
+      ON deleted_todos(project_id, deleted_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_deleted_deleted_at_id
+      ON deleted_todos(deleted_at DESC, id DESC);
   `);
 }
 
@@ -340,8 +376,7 @@ function rebuildTableWithoutDueDate(database: Database, table: 'todos' | 'delete
     database.run('DROP TABLE todos');
     database.run('ALTER TABLE todos_new RENAME TO todos');
     // 恢复索引（DROP TABLE 会带走索引）
-    database.run('CREATE INDEX IF NOT EXISTS idx_todos_project ON todos(project_id)');
-    database.run('CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed)');
+    createPerformanceIndexes(database);
   } else {
     // deleted_todos：多 deleted_at / expires_at 列
     database.run(`
@@ -368,8 +403,7 @@ function rebuildTableWithoutDueDate(database: Database, table: 'todos' | 'delete
     `);
     database.run('DROP TABLE deleted_todos');
     database.run('ALTER TABLE deleted_todos_new RENAME TO deleted_todos');
-    database.run('CREATE INDEX IF NOT EXISTS idx_deleted_project ON deleted_todos(project_id)');
-    database.run('CREATE INDEX IF NOT EXISTS idx_deleted_expires ON deleted_todos(expires_at)');
+    createPerformanceIndexes(database);
   }
 }
 
@@ -779,6 +813,14 @@ export function getAllTodos(): import('../types').Todo[] {
   return queryAll<TodoRow>('SELECT * FROM todos ORDER BY created_at DESC').map(rowToTodo);
 }
 
+/** 按项目汇总未完成事项数，供侧边栏一次性读取，避免把全部事项拉到 JS 再计数。 */
+export function getIncompleteCountsByProject(): Record<string, number> {
+  const rows = queryAll<{ project_id: string; count: number }>(
+    'SELECT project_id, COUNT(*) AS count FROM todos WHERE completed = 0 GROUP BY project_id',
+  );
+  return Object.fromEntries(rows.map((row) => [row.project_id, row.count]));
+}
+
 /**
  * 跨项目关键词搜索：标题或描述命中即返回，结果按 created_at 倒序取前 limit 条。
  * 直接在 SQL 层做 LIKE + LIMIT，避免拉全表后在 JS 侧过滤（全局搜索每次按键触发）。
@@ -826,6 +868,14 @@ export function insertTodo(todo: import('../types').Todo): void {
   );
 }
 
+/** 批量插入事项：单个事务提交，避免多行导入时产生大量隐式 SQLite 提交。 */
+export function insertTodos(todos: import('../types').Todo[]): void {
+  if (todos.length === 0) return;
+  runTransaction(() => {
+    todos.forEach(insertTodo);
+  });
+}
+
 /** 更新 Todo */
 export function updateTodo(todo: import('../types').Todo): void {
   execute(
@@ -843,6 +893,26 @@ export function updateTodo(todo: import('../types').Todo): void {
       todo.id,
     ],
   );
+}
+
+/** 批量更新事项：调用方已生成完整的新对象时，用单个事务持久化。 */
+export function updateTodos(todos: import('../types').Todo[]): void {
+  if (todos.length === 0) return;
+  runTransaction(() => {
+    todos.forEach(updateTodo);
+  });
+}
+
+/** 仅更新手动排序字段，避免拖拽重排时写入每条事项的全部列。 */
+export function updateTodoOrders(
+  items: ReadonlyArray<Pick<import('../types').Todo, 'id' | 'order'>>,
+): void {
+  if (items.length === 0) return;
+  runTransaction(() => {
+    items.forEach(({ id, order }) => {
+      execute('UPDATE todos SET sort_order = ? WHERE id = ?', [order, id]);
+    });
+  });
 }
 
 /** 删除 Todo（从 todos 表移除；调用方负责先插入到归档表） */
@@ -897,15 +967,30 @@ export function getArchivedTodosCount(): number {
   return row?.count ?? 0;
 }
 
-/** 分页获取归档事项（历史记录页无限滚动按需加载） */
-export function getDeletedTodosPaged(
+/**
+ * 归档历史的稳定分页游标。归档批次会共用 deleted_at，必须同时携带 id，
+ * 才能避免同一时间戳下翻页时漏项或重复项。
+ */
+export interface ArchivedTodoCursor {
+  deletedAt: string;
+  id: string;
+}
+
+/**
+ * 以 (deleted_at, id) 游标分页读取归档事项。
+ * 相比 OFFSET，深页无需扫描并丢弃此前所有行；排序字段与 idx_deleted_deleted_at_id 一致。
+ */
+export function getDeletedTodosPage(
   limit: number,
-  offset: number,
+  cursor?: ArchivedTodoCursor,
 ): import('../types').DeletedTodo[] {
-  return queryAll<DeletedTodoRow>(
-    'SELECT * FROM deleted_todos ORDER BY deleted_at DESC LIMIT ? OFFSET ?',
-    [limit, offset],
-  ).map(rowToDeletedTodo);
+  const query = cursor
+    ? `SELECT * FROM deleted_todos
+       WHERE deleted_at < ? OR (deleted_at = ? AND id < ?)
+       ORDER BY deleted_at DESC, id DESC LIMIT ?`
+    : 'SELECT * FROM deleted_todos ORDER BY deleted_at DESC, id DESC LIMIT ?';
+  const params = cursor ? [cursor.deletedAt, cursor.deletedAt, cursor.id, limit] : [limit];
+  return queryAll<DeletedTodoRow>(query, params).map(rowToDeletedTodo);
 }
 
 /** 插入归档事项 */
@@ -1000,6 +1085,16 @@ export function getSetting(key: string): string | null {
   return row?.value ?? null;
 }
 
+/** 一次读取全部设置，供启动加载和全量导出复用，减少重复 prepare / 查询。 */
+export function getSettings(): Record<string, string> {
+  return Object.fromEntries(
+    queryAll<{ key: string; value: string }>('SELECT key, value FROM settings').map((row) => [
+      row.key,
+      row.value,
+    ]),
+  );
+}
+
 /** 设置设置值 */
 export function setSetting(key: string, value: string): void {
   execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
@@ -1018,6 +1113,9 @@ export function deleteSetting(key: string): void {
  * 导出完整应用数据
  */
 export function exportAllData(): import('../types').AppExportData {
+  const settingsMap = getSettings();
+  const stickerPreset =
+    (settingsMap.stickerPreset as StickerPreset | undefined) ?? DEFAULT_SETTINGS.stickerPreset;
   return {
     version: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
@@ -1025,32 +1123,28 @@ export function exportAllData(): import('../types').AppExportData {
     todos: getAllTodos(),
     deletedTodos: getAllDeletedTodos(),
     settings: {
-      theme: (getSetting('theme') as import('../types').ThemeName) ?? 'default',
-      colorMode: (getSetting('colorMode') as import('../types').ThemeMode) ?? 'system',
-      autoStart: getSetting('autoStart') === 'true',
-      minimizeToTray: getSetting('minimizeToTray') !== 'false',
+      theme: (settingsMap.theme as import('../types').ThemeName | undefined) ?? 'default',
+      colorMode: (settingsMap.colorMode as import('../types').ThemeMode | undefined) ?? 'system',
+      autoStart: settingsMap.autoStart === 'true',
+      minimizeToTray: settingsMap.minimizeToTray !== 'false',
       dataVersion: DB_VERSION,
       // 专注模式已废弃；导出中保持当前默认值，避免旧键影响备份内容。
       focusMode: DEFAULT_SETTINGS.focusMode,
       autoUpdateEnabled:
-        getSetting('autoUpdateEnabled') === null
+        settingsMap.autoUpdateEnabled === undefined
           ? true
-          : getSetting('autoUpdateEnabled') === 'true',
+          : settingsMap.autoUpdateEnabled === 'true',
       // 与 useSettingsStore.loadSettings 保持一致：缺失键回退空串
-      lastActiveProjectId: getSetting('lastActiveProjectId') ?? '',
+      lastActiveProjectId: settingsMap.lastActiveProjectId ?? '',
       // 时间格式：缺失键回退默认相对时间，与 loadSettings 对齐
-      timeFormat: getSetting('timeFormat') === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
+      timeFormat: settingsMap.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（缺失时回退玻璃预设默认值，与 loadSettings 对齐） =====
-      stickerPreset:
-        (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset,
-      stickerRadius: Number(getSetting('stickerRadius') ?? DEFAULT_SETTINGS.stickerRadius),
-      stickerBlur: Number(getSetting('stickerBlur') ?? DEFAULT_SETTINGS.stickerBlur),
+      stickerPreset,
+      stickerRadius: Number(settingsMap.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius),
+      stickerBlur: Number(settingsMap.stickerBlur ?? DEFAULT_SETTINGS.stickerBlur),
       // stickerOpacity 由 preset 派生（与 loadSettings 对齐），不直读 DB 旧值
-      stickerOpacity:
-        STICKER_PRESET_VALUES[
-          (getSetting('stickerPreset') as StickerPreset | null) ?? DEFAULT_SETTINGS.stickerPreset
-        ].opacity,
-      stickerShadow: getSetting('stickerShadow') !== 'false',
+      stickerOpacity: STICKER_PRESET_VALUES[stickerPreset].opacity,
+      stickerShadow: settingsMap.stickerShadow !== 'false',
     },
   };
 }

@@ -319,10 +319,10 @@ describe('db data layer', () => {
 
   it('getDataVersion 读取 settings.dataVersion', () => {
     openDatabase(fixture.filePath, false);
-    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 2
+    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 5
     const rows = readAllRows<{ key: string; value: string }>(fixture.filePath, 'settings');
     const dv = rows.find((r) => r.key === 'dataVersion');
-    expect(dv?.value).toBe('2');
+    expect(dv?.value).toBe('5');
   });
 
   it('只读模式下写入抛错', () => {

@@ -3,7 +3,7 @@
  * @description 渲染筛选后的事项列表，支持拖拽排序（使用 @dnd-kit）
  */
 
-import { forwardRef, memo, useCallback, useEffect } from 'react';
+import { forwardRef, memo, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -71,8 +71,8 @@ interface SortableTodoItemProps {
  * absolute 让位 + 淡出）即可，无需 layout 做位移动画。拖拽位移走 dnd-kit 的
  * transform，不依赖 motion layout。
  */
-const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
-  function SortableTodoItem(props, ref) {
+const SortableTodoItem = memo(
+  forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(props, ref) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: props.todo.id,
     });
@@ -112,7 +112,7 @@ const SortableTodoItem = forwardRef<HTMLDivElement, SortableTodoItemProps>(
         />
       </div>
     );
-  },
+  }),
 );
 
 function TodoListComponent({
@@ -168,6 +168,10 @@ function TodoListComponent({
     });
   }, [focusTarget, todos]);
 
+  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
+  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
+  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
+
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
@@ -198,7 +202,7 @@ function TodoListComponent({
       onDragEnd={handleDragEnd}
       modifiers={[restrictToVerticalAxis]}
     >
-      <SortableContext items={todos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>
         <div className="relative space-y-1">{listContent}</div>
       </SortableContext>
     </DndContext>
