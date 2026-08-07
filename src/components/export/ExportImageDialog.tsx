@@ -88,8 +88,7 @@ export function ExportImageDialog({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, busy, onClose]);
 
-  const todayStamp = new Date().toISOString().split('T')[0];
-  const filename = `${project.name}-${todayStamp}.png`;
+  const filename = `Celery-Todo-${project.name}.png`;
 
   const handleDownload = useCallback(async () => {
     if (!cardRef.current) return;

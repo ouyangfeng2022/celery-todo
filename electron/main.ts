@@ -54,6 +54,7 @@ let windowStateSaveTimer: NodeJS.Timeout | null = null;
  */
 let dataChangeVersion = 0;
 let dataChangeBroadcastTimer: NodeJS.Timeout | null = null;
+let downloadEventsRegistered = false;
 const pendingDataChangeSenderIds = new Set<number>();
 const pendingDataChangePatches = new Map<number, unknown>();
 /** 同一发送者在合并窗口内多次落盘时，局部补丁无法代表中间所有项目变更。 */
@@ -72,6 +73,23 @@ function isAppWindowSender(event: IpcMainInvokeEvent): boolean {
 
 function requireMainWindowSender(event: IpcMainInvokeEvent): void {
   requireAuthorizedSender(event, isMainWindowSender);
+}
+
+/** 下载完成后才回传实际落盘路径，避免在文件仍写入时误报“导出成功”。 */
+function registerDownloadEvents(window: BrowserWindow): void {
+  if (downloadEventsRegistered) return;
+  downloadEventsRegistered = true;
+  window.webContents.session.on('will-download', (event, item, webContents) => {
+    item.once('done', (_doneEvent, state) => {
+      if (state !== 'completed' || webContents.isDestroyed()) return;
+      const filePath = item.getSavePath();
+      webContents.send('export:completed', {
+        // Chromium 可能为重名文件追加 " (1)"；提示要展示真实写入的文件名。
+        fileName: path.basename(filePath),
+        filePath,
+      });
+    });
+  });
 }
 
 /** 合并短时间内的多次持久化通知，并仅通知确实需要同步的窗口。 */
@@ -291,6 +309,8 @@ function createMainWindow(): BrowserWindow {
       nodeIntegration: false,
     },
   });
+
+  registerDownloadEvents(window);
 
   // 窗口准备好后再显示，避免白屏
   window.once('ready-to-show', () => {
@@ -539,6 +559,13 @@ ipcMain.handle('set-auto-start', (event, enabled: boolean) => {
   app.setLoginItemSettings({
     openAtLogin: enabled,
   });
+});
+
+/** 在系统文件管理器中选中已完成导出的文件。 */
+ipcMain.handle('export:open-in-folder', (event, filePath: string) => {
+  requireMainWindowSender(event);
+  if (typeof filePath !== 'string' || !fs.existsSync(filePath)) return;
+  shell.showItemInFolder(filePath);
 });
 
 /** 获取窗口位置 */

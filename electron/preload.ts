@@ -132,6 +132,20 @@ const electronAPI = {
   storageResetToDefault: (): Promise<{ filePath: string }> =>
     ipcRenderer.invoke('storage:reset-to-default'),
 
+  /** 监听导出文件已完成写入，返回文件名与实际保存路径。 */
+  onExportCompleted: (
+    callback: (result: { fileName: string; filePath: string }) => void,
+  ): (() => void) => {
+    const listener = (_event: unknown, result: { fileName: string; filePath: string }): void =>
+      callback(result);
+    ipcRenderer.on('export:completed', listener);
+    return () => ipcRenderer.removeListener('export:completed', listener);
+  },
+
+  /** 在系统文件管理器中显示已导出的文件。 */
+  exportOpenInFolder: (filePath: string): Promise<void> =>
+    ipcRenderer.invoke('export:open-in-folder', filePath),
+
   // ===== CLI IPC 桥接 =====
 
   /**

@@ -67,6 +67,12 @@ interface ElectronAPI {
   storageOpenInFolder: () => Promise<void>;
   /** 重置到默认存储位置 */
   storageResetToDefault: () => Promise<{ filePath: string }>;
+  /** 监听导出文件写入完成，返回文件名与实际保存路径。 */
+  onExportCompleted: (
+    callback: (result: { fileName: string; filePath: string }) => void,
+  ) => () => void;
+  /** 在系统文件管理器中显示已导出的文件。 */
+  exportOpenInFolder: (filePath: string) => Promise<void>;
   // ===== CLI IPC 桥接 =====
   /** 监听来自 CLI 的请求（主进程转发），返回取消订阅函数 */
   onCliRequest: (

@@ -35,6 +35,7 @@ import {
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
+import { ExportNotice } from './components/common/ExportNotice';
 import { FocusIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 
@@ -115,6 +116,9 @@ function App() {
     projectId: string;
     filter: FilterType;
   } | null>(null);
+  const [exportNotice, setExportNotice] = useState<{ fileName: string; filePath: string } | null>(
+    null,
+  );
 
   // === Stores ===
   const settings = useSettingsStore();
@@ -473,6 +477,12 @@ function App() {
     };
   }, [focusNewTodo]);
 
+  // Chromium 下载完成事件由主进程在文件写入成功后回传，路径可用于“在文件夹中显示”。
+  useEffect(() => {
+    const off = window.electronAPI?.onExportCompleted?.(setExportNotice);
+    return () => off?.();
+  }, []);
+
   // === 导入导出 ===
   const handleExportProject = useCallback(
     (projectId: string) => {
@@ -481,7 +491,7 @@ function App() {
       const projectTodos = db.getTodosByProject(projectId);
       const projectDeleted = db.getDeletedTodosByProject(projectId);
       const json = exportProjectAsJson(project, projectTodos, projectDeleted);
-      downloadFile(json, `${project.name}-export.json`);
+      downloadFile(json, `Celery-Todo-${project.name}.json`);
     },
     [projects],
   );
@@ -489,7 +499,7 @@ function App() {
   const handleExportAll = useCallback(() => {
     const data = db.exportAllData();
     const json = exportAppAsJson(data);
-    downloadFile(json, `celery-todo-backup-${new Date().toISOString().split('T')[0]}.json`);
+    downloadFile(json, `Celery-Todo-All-${new Date().toISOString().split('T')[0]}.json`);
   }, []);
 
   // 按项目导出 Excel：不依赖当前已加载的 todos，直接查指定项目。
@@ -504,7 +514,7 @@ function App() {
         new Blob([content], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         }),
-        `todos-${project.name}.xlsx`,
+        `Celery-Todo-${project.name}.xlsx`,
       );
     },
     [projects],
@@ -522,7 +532,7 @@ function App() {
       new Blob([content], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       }),
-      `celery-todo-${new Date().toISOString().split('T')[0]}.xlsx`,
+      `Celery-Todo-All-${new Date().toISOString().split('T')[0]}.xlsx`,
     );
   }, [projects]);
 
@@ -543,7 +553,7 @@ function App() {
       archivedTodos,
       projectNames,
     });
-    downloadFile(json, `archive-${new Date().toISOString().split('T')[0]}.json`);
+    downloadFile(json, `Celery-Todo-Archive-${new Date().toISOString().split('T')[0]}.json`);
   }, [projects]);
 
   // === 导出项目为图片 ===
@@ -597,21 +607,21 @@ function App() {
         return;
       }
 
-      const previewProjects = scope === 'all'
-        ? projects
-        : projects.filter((project) => project.id === projectId);
+      const previewProjects =
+        scope === 'all' ? projects : projects.filter((project) => project.id === projectId);
       const projectTodos = Object.fromEntries(
         previewProjects.map((project) => [project.id, db.getTodosByProject(project.id)]),
       );
-      const jsonPreview = scope === 'all'
-        ? exportAppAsJson(db.exportAllData())
-        : previewProjects[0]
-          ? exportProjectAsJson(
-              previewProjects[0],
-              projectTodos[previewProjects[0].id],
-              db.getDeletedTodosByProject(previewProjects[0].id),
-            )
-          : '{}';
+      const jsonPreview =
+        scope === 'all'
+          ? exportAppAsJson(db.exportAllData())
+          : previewProjects[0]
+            ? exportProjectAsJson(
+                previewProjects[0],
+                projectTodos[previewProjects[0].id],
+                db.getDeletedTodosByProject(previewProjects[0].id),
+              )
+            : '{}';
       setExportDataPreviewTarget({
         request: { scope, projectId, format },
         projects: previewProjects,
@@ -1047,6 +1057,15 @@ function App() {
         }}
         onDismiss={() => setArchiveNoticeIds([])}
       />
+
+      {exportNotice && (
+        <ExportNotice
+          fileName={exportNotice.fileName}
+          filePath={exportNotice.filePath}
+          horizontalOffset={!focusMode && sidebarOpen ? 140 : 0}
+          onDismiss={() => setExportNotice(null)}
+        />
+      )}
 
       {restoreNotice && (
         <ArchiveNotice
