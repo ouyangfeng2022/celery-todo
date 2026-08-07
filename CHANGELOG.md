@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+## [v2.19.1] - 2026-08-07
+### Added
+- move desktop persistence to main process
+
 ## [v2.19.0] - 2026-08-07
 ### Added
 - show completed export location
@@ -430,3 +434,5 @@
 [v2.18.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.18.0
 
 [v2.19.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.0
+
+[v2.19.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.1
