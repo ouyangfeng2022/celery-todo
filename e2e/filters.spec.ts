@@ -25,6 +25,13 @@ test.beforeEach(async () => {
     await row.hover();
     await row.getByRole('button', { name: '标记为已完成' }).click();
   }
+  // click() 只在事件派发时返回，不等完成状态提交 + 重渲染；慢机器上「已完成1」可能
+  // 还停在未完成态，导致后续 filter 断言在 active/completed 间错位。等 aria-label
+  // 翻转为「标记为未完成」（完成态的稳定信号）再进入测试体。
+  for (const t of ['已完成1', '已完成2']) {
+    const row = win.getByText(t, { exact: true }).locator('xpath=ancestor::div[contains(@class,"group")][1]');
+    await expect(row.getByRole('button', { name: '标记为未完成' })).toBeVisible();
+  }
 });
 
 test.afterEach(async () => {
@@ -189,9 +196,11 @@ test('"归档已完成"按钮仅在有已完成时显示，点击后归档到历
 });
 
 // 回归：快速连续切换 filter 不应卡死。
-// 触发条件：AnimatePresence popLayout + 子元素 layout + opacity-exit 三者同时存在
-// 命中 framer-motion#2416，退出动画被跳过/滞留，列表内容"切不过去"。
-// 不带 toHaveCount 断言等待会掩盖卡死，故每轮立即断言可见性以暴露问题。
+// 历史触发条件是 framer-motion#2416（AnimatePresence popLayout + layout +
+// opacity-exit 三者叠加导致退出动画滞留、列表切不过去）；commit 4ee10f4 已把
+// AnimatePresence 从 TodoList 移除，该路径结构上不可能再滞留。本测试现在作为
+// filter 快速切换的通用压力回归保留 —— 不带 toHaveCount 等待会掩盖卡死，故每轮
+// 立即断言可见性以暴露问题。
 test('快速连续切换 filter 不卡死（回归 framer-motion#2416）', async () => {
   const btnAll = win.getByRole('button', { name: /全部/ });
   const btnActive = win.getByRole('button', { name: /进行中/ });

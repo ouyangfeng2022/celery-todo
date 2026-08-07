@@ -164,14 +164,20 @@ function TodoListComponent({
 }: TodoListProps) {
   // 大列表拖拽时也保持虚拟化。目标限制在当前视口和 overscan 已挂载范围，
   // 避免一次拖拽将数百个 Markdown/DnD 节点同时插入 DOM。
+  // 但键盘拖拽需要能跨越视口：dnd-kit 的 droppable 只识别已挂载的行，若拖拽中
+  // 不临时挂载完整列表，ArrowUp 撞到视口顶就到头，无法落到屏外目标。
   const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD;
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const dragInProgress = activeDragId !== null;
   const listContainerRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
     count: todos.length,
     getScrollElement: () => scrollElement,
     estimateSize: () => 76,
-    overscan: 8,
+    // 拖拽中扩到全表 overscan，让屏外行也挂载为 droppable。布局仍是虚拟化的
+    // （每行仍由 virtualizer 测量定位），仅临时多挂载节点；拖拽结束立即收回。
+    overscan: isVirtualized && dragInProgress ? todos.length : 8,
     scrollMargin,
   });
   const virtualItems = virtualizer.getVirtualItems();
@@ -218,6 +224,7 @@ function TodoListComponent({
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      setActiveDragId(null);
       const { active, over } = event;
       if (over && active.id !== over.id) {
         // 当前非「手动排序」时，先快照当前显示顺序到 order，再切到手动排序。
@@ -305,7 +312,9 @@ function TodoListComponent({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
+      onDragStart={(event) => setActiveDragId(String(event.active.id))}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveDragId(null)}
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>

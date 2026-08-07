@@ -140,6 +140,9 @@ test('编辑时 Esc 取消，保留原值', async () => {
   await addTodo(win, '保留原文');
   await win.getByText('保留原文', { exact: true }).dblclick();
   const titleEditor = win.getByPlaceholder('事项标题');
+  // dblclick 只在事件派发时返回，不等 React 提交 isEditing=true 的渲染；慢机器上
+  // fill 立即针对未挂载的 textarea 会空轮询 30s 超时。先等编辑态挂载（同 :130）。
+  await expect(titleEditor).toBeVisible();
   await titleEditor.fill('被取消的修改');
   await win.keyboard.press('Escape');
 
@@ -150,7 +153,9 @@ test('编辑时 Esc 取消，保留原值', async () => {
 test('编辑态点"保存"按钮也能保存', async () => {
   await addTodo(win, '点按钮保存');
   await win.getByText('点按钮保存', { exact: true }).dblclick();
-  await win.getByPlaceholder('事项标题').fill('已保存');
+  const titleEditor = win.getByPlaceholder('事项标题');
+  await expect(titleEditor).toBeVisible();
+  await titleEditor.fill('已保存');
   // 点编辑区右下角"保存"按钮
   await win.getByRole('button', { name: '保存', exact: true }).click();
   await expect(win.getByText('已保存', { exact: true })).toBeVisible();

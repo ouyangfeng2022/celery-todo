@@ -254,8 +254,12 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
 
   const handleProjectChange = (nextProjectId: string) => {
     // 项目 id 与对应列表必须在同一次 React 提交中更新，避免中间一帧显示新项目名和旧事项。
+    // loadStickerTodos 在 PR #15 后改成异步 IPC（data.getTodos 往返），setTodos 落在后续
+    // 微任务里，会出现 key=新项目 的列表实例先用旧 todos 渲染一帧的中间态。这里同步清空，
+    // 保证切换瞬间新列表为空、旧 todo 不残留，异步结果回来后再填充。
     projectIdRef.current = nextProjectId;
     setProjectId(nextProjectId);
+    setTodos([]);
     void loadStickerTodos(nextProjectId).then(setTodos);
     setProjectMenuOpen(false);
     void window.electronAPI?.setStickerProject(stickerId, nextProjectId);
