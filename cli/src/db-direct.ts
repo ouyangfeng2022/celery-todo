@@ -21,6 +21,9 @@ import type { Database as DbConnection, Statement } from 'better-sqlite3';
 import * as crypto from 'node:crypto';
 import type { DeletedTodo, Priority, Project, Todo } from './types';
 
+/** 必须与 renderer 的 database.ts 保持一致，给拖拽插入预留稀疏 rank。 */
+const SORT_RANK_STEP = 1024;
+
 /** 数据库行原始类型（snake_case） */
 interface ProjectRow {
   id: string;
@@ -238,10 +241,10 @@ export function resolveProject(input: string): Project {
 }
 
 export function insertProject(project: Project): void {
-  // 与 src/utils/database.ts insertProject 一致：未指定 order 时取 MAX+1
+  // 与 src/utils/database.ts insertProject 一致：未指定 order 时按稀疏 rank 追加。
   exec(
     `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM projects)))`,
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)))`,
     [
       project.id,
       project.name,
@@ -350,13 +353,13 @@ export function updateTodo(todo: Todo): void {
   );
 }
 
-/** 取项目内最大 sort_order + 1（新 todo 默认追加到末尾） */
+/** 取项目内最大稀疏 rank（新 todo 默认追加到末尾）。 */
 export function nextSortOrder(projectId: string): number {
   const row = queryOne<{ m: number | null }>(
     'SELECT MAX(sort_order) AS m FROM todos WHERE project_id = ?',
     [projectId],
   );
-  return (row?.m ?? 0) + 1;
+  return (row?.m ?? 0) + SORT_RANK_STEP;
 }
 
 // ============================================

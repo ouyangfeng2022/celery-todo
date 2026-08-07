@@ -13,7 +13,7 @@ import {
   resetStorageDirectory,
   openStorageInFolder,
   type StorageInfo,
-} from '../../../utils/database';
+} from '../../../utils/storageGateway';
 
 interface DataSectionProps {
   /** 打开统一导出选项卡片 */

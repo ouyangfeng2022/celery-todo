@@ -63,6 +63,11 @@ function getCurrentDbPath(): string {
   return path.join(readConfig().dataDir, DB_FILENAME);
 }
 
+/** 供主进程数据库仓储取得当前数据文件；不暴露给 renderer。 */
+export function getCurrentDatabasePath(): string {
+  return getCurrentDbPath();
+}
+
 // ============================================
 // 文件读写（原子写入避免损坏）
 // ============================================
@@ -183,11 +188,17 @@ function switchDataDir(newDir: string): { filePath: string } {
 export function registerStorageIpc({
   isAppWindowSender,
   isMainWindowSender,
+  beforeStoragePathChange,
+  afterStoragePathChange,
 }: {
   /** 主窗口和贴图窗口都要读写同一份数据库。 */
   isAppWindowSender: IpcSenderValidator;
   /** 迁移位置、打开资源管理器等系统操作只属于主窗口。 */
   isMainWindowSender: IpcSenderValidator;
+  /** 迁移前关闭数据库连接，释放 Windows 文件句柄。 */
+  beforeStoragePathChange?: () => void;
+  /** 迁移完成后通知所有窗口重新读取当前数据文件。 */
+  afterStoragePathChange?: () => void;
 }): void {
   /** 获取当前存储配置 */
   ipcMain.handle('storage:get-config', (event) => {
@@ -225,7 +236,10 @@ export function registerStorageIpc({
   /** 切换存储目录并迁移数据 */
   ipcMain.handle('storage:set-path', (event, newDir: string) => {
     requireAuthorizedSender(event, isMainWindowSender);
-    return switchDataDir(newDir);
+    beforeStoragePathChange?.();
+    const result = switchDataDir(newDir);
+    afterStoragePathChange?.();
+    return result;
   });
 
   /** 在系统资源管理器中显示数据库文件 */
@@ -243,7 +257,9 @@ export function registerStorageIpc({
   /** 重置到默认存储位置（同时迁移数据） */
   ipcMain.handle('storage:reset-to-default', (event) => {
     requireAuthorizedSender(event, isMainWindowSender);
+    beforeStoragePathChange?.();
     const result = switchDataDir(getDefaultDataDir());
+    afterStoragePathChange?.();
     return result;
   });
 }

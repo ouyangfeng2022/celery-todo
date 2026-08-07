@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DeletedTodo, Project } from '../../../types';
 import { ArchiveHistoryView } from '../ArchiveHistoryView';
 import { useTodoStore } from '../../../store/useTodoStore';
-import * as db from '../../../utils/database';
+import * as data from '../../../utils/dataGateway';
 
 /** 每页加载条数 */
 const PAGE_SIZE = 50;
@@ -44,7 +44,7 @@ export function HistorySection({
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   /** 下一页从最后一项的 (deleted_at, id) 继续，避免 OFFSET 深页线性退化。 */
-  const cursorRef = useRef<db.ArchivedTodoCursor | undefined>();
+  const cursorRef = useRef<{ deletedAt: string; id: string } | undefined>();
   /** reload 防重入：避免 effect 与回调同时触发造成重复查询/竞态 */
   const reloadingRef = useRef(false);
 
@@ -52,12 +52,14 @@ export function HistorySection({
   const deletedTodos = useTodoStore((s) => s.deletedTodos);
 
   /** 重置到第一页并重查总数 */
-  const reload = useCallback(() => {
+  const reload = useCallback(async () => {
     if (reloadingRef.current) return;
     reloadingRef.current = true;
     try {
-      const count = db.getArchivedTodosCount();
-      const firstPage = db.getDeletedTodosPage(PAGE_SIZE);
+      const [count, firstPage] = await Promise.all([
+        data.getDeletedCount(),
+        data.getDeletedPage(PAGE_SIZE),
+      ]);
       const lastItem = firstPage.at(-1);
       cursorRef.current = lastItem ? { deletedAt: lastItem.deletedAt, id: lastItem.id } : undefined;
       setItems(firstPage);
@@ -69,11 +71,11 @@ export function HistorySection({
   }, []);
 
   /** 加载下一页（由 ArchiveHistoryView 的 IntersectionObserver 触发） */
-  const handleLoadMore = useCallback(() => {
+  const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
-      const page = db.getDeletedTodosPage(PAGE_SIZE, cursorRef.current);
+      const page = await data.getDeletedPage(PAGE_SIZE, cursorRef.current);
       const lastItem = page.at(-1);
       if (lastItem) cursorRef.current = { deletedAt: lastItem.deletedAt, id: lastItem.id };
       setItems((prev) => [...prev, ...page]);
@@ -86,7 +88,7 @@ export function HistorySection({
 
   // === 挂载时 + 外部归档变动时刷新 ===
   useEffect(() => {
-    reload();
+    void reload();
   }, [reload, deletedTodos]);
 
   // === 内部操作包装：执行回调（写 DB + 更新 store）后刷新分页 ===
@@ -95,20 +97,20 @@ export function HistorySection({
   const handleRestore = useCallback(
     (todo: DeletedTodo) => {
       onRestoreTodo(todo);
-      reload();
+      void reload();
     },
     [onRestoreTodo, reload],
   );
   const handlePermanentDelete = useCallback(
     (id: string) => {
       onPermanentDeleteTodo(id);
-      reload();
+      void reload();
     },
     [onPermanentDeleteTodo, reload],
   );
   const handleEmptyAll = useCallback(() => {
     onEmptyArchive();
-    reload();
+    void reload();
   }, [onEmptyArchive, reload]);
 
   return (

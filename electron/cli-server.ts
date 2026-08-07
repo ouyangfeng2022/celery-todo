@@ -1,26 +1,24 @@
 /**
  * @file CLI IPC 服务器（主进程侧）
  * @description 在主进程起一个 Unix domain socket（macOS/Linux）或 Windows 命名管道，
- *              接收 CLI 的 JSON-RPC 请求，转发给渲染进程执行，再把结果回传给 CLI。
+ *              接收 CLI 的 JSON-RPC 请求并直接调用主进程数据库仓储。
  *
  * 数据流：
- *   CLI ──net──► 本 server ──webContents.send('cli:request')──► 渲染进程
- *     渲染进程执行 store action / database 查询
- *     渲染进程 ──ipcRenderer.invoke('cli:response')──► 本 server ──net──► CLI
+ *   CLI ──net──► 本 server ──► database-repository ──► SQLite
  *
  * 协议：每条消息单行 JSON（\n 分隔）。
  *   请求：  { id: string, method: string, params?: unknown }
  *   响应：  { id: string, result?: unknown, error?: { message: string } }
  *
- * 主进程自身不解读 method/params —— 它只做透传与 ID 配对，真正的业务逻辑
- * 全部在渲染进程的 src/cli-bridge.ts 里。这样主进程保持薄层，store/database
- * 的访问权集中在渲染进程，与现有架构一致。
+ * GUI 运行时与 renderer 使用同一个仓储连接；GUI 未运行时 CLI 保留直连 SQLite 回退。
  */
 
-import { app, BrowserWindow, ipcMain, IpcMainInvokeEvent } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
+import { commandData, queryData } from './database-repository';
 
 // ============================================
 // 常量
@@ -32,8 +30,6 @@ const PIPE_NAME = 'celery-todo';
 const SOCK_FILENAME = 'celery-todo.sock';
 /** 请求/响应单条消息最大字节，防御异常客户端 */
 const MAX_MESSAGE_BYTES = 8 * 1024 * 1024; // 8 MiB
-/** 渲染进程响应超时：CLI 请求发出后等待回包的最长时间 */
-const RENDERER_TIMEOUT_MS = 15000;
 
 // ============================================
 // 主窗口引用（注入）
@@ -57,44 +53,85 @@ export function getCliEndpoint(): string {
   return path.join(app.getPath('userData'), SOCK_FILENAME);
 }
 
-// ============================================
-// 渲染进程请求/响应配对
-// ============================================
-
-/** 待决请求：主进程发出 cli:request 后，等待渲染进程 cli:response 回包 */
-interface PendingRequest {
-  resolve: (result: unknown) => void;
-  reject: (err: Error) => void;
-  timer: NodeJS.Timeout;
-}
-
-/** id → 待决请求。响应到达或超时后删除 */
-const pending = new Map<string, PendingRequest>();
-
-let nextSeq = 0;
-function nextId(): string {
-  // 进程内自增 + 时间戳，确保单次运行内唯一
-  nextSeq += 1;
-  return `${Date.now()}-${nextSeq}`;
-}
-
 /**
- * 把一个 CLI 请求转发给渲染进程执行，返回 Promise（结果或错误）。
+ * 把一个 CLI 请求路由到主进程仓储，返回 Promise（结果或错误）。
  * 窗口未就绪/已销毁时立即 reject。
  */
 function dispatchToRenderer(method: string, params: unknown): Promise<unknown> {
   if (!mainWindowRef || mainWindowRef.isDestroyed()) {
     return Promise.reject(new Error('GUI 窗口未就绪，请确认桌面应用已完全启动'));
   }
-  const id = nextId();
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      pending.delete(id);
-      reject(new Error(`渲染进程响应超时（${RENDERER_TIMEOUT_MS}ms）`));
-    }, RENDERER_TIMEOUT_MS);
-    pending.set(id, { resolve, reject, timer });
-    mainWindowRef!.webContents.send('cli:request', { id, method, params });
-  });
+  return Promise.resolve(dispatchToRepository(method, params));
+}
+
+type Row = Record<string, unknown>;
+
+function todo(row: Row): Row {
+  return {
+    id: String(row.id), projectId: String(row.project_id), title: String(row.title),
+    description: (row.description as string | null) ?? undefined, completed: Number(row.completed) === 1,
+    priority: row.priority, createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    completedAt: (row.completed_at as string | null) ?? undefined, order: Number(row.sort_order),
+    pinned: Number(row.pinned) === 1,
+  };
+}
+
+function project(row: Row): Row {
+  return { id: String(row.id), name: String(row.name), color: (row.color as string | null) ?? undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at), order: Number(row.sort_order) };
+}
+
+/** GUI 在线时直接访问主进程仓储，避免 renderer 参与读写与同步。 */
+function dispatchToRepository(method: string, params: unknown): unknown {
+  const input = (params ?? {}) as Row;
+  const todos = (): Row[] => (queryData('allTodos') as Row[]).map(todo);
+  const deleted = (): Row[] => (queryData('allDeleted') as Row[]).map((row) => ({ ...todo(row), deletedAt: String(row.deleted_at), expiresAt: String(row.expires_at) }));
+  switch (method) {
+    case 'getAllTodos': return todos();
+    case 'getAllProjects': return (queryData('projects') as Row[]).map(project);
+    case 'getAllDeletedTodos': return deleted();
+    case 'getSetting': return queryData('setting', { key: String(input.key) }) ?? null;
+    case 'addTodo': {
+      const projectId = String(input.projectId ?? '');
+      if (!projectId) throw new Error('addTodo 需要 projectId');
+      const existing = (queryData('todosByProject', { projectId }) as Row[]);
+      const now = new Date().toISOString();
+      const created = { id: crypto.randomUUID(), projectId, title: String(input.title).trim(), description: input.description || undefined, completed: false, priority: input.priority ?? 'medium', createdAt: now, updatedAt: now, order: Math.max(0, ...existing.map((item) => Number(item.sort_order))) + 1024, pinned: false };
+      commandData('insertTodo', { todo: created });
+      return { id: created.id };
+    }
+    case 'updateTodo': {
+      const current = todos().find((item) => item.id === String(input.id));
+      if (!current) throw new Error(`未找到待办 ${String(input.id)}`);
+      commandData('updateTodo', { todo: { ...current, ...(input.updates as Row), updatedAt: new Date().toISOString() } });
+      return { ok: true };
+    }
+    case 'toggleTodo': {
+      const current = todos().find((item) => item.id === String(input.id));
+      if (!current) throw new Error(`未找到待办 ${String(input.id)}`);
+      const completed = !current.completed;
+      commandData('updateTodo', { todo: { ...current, completed, completedAt: completed ? new Date().toISOString() : undefined, updatedAt: new Date().toISOString() } });
+      return { ok: true };
+    }
+    case 'deleteTodo': {
+      const current = todos().find((item) => item.id === String(input.id));
+      if (!current) throw new Error(`未找到待办 ${String(input.id)}`);
+      const now = new Date().toISOString();
+      commandData('archiveTodos', { todos: [{ ...current, deletedAt: now, expiresAt: new Date(Date.now() + 30 * 86400000).toISOString() }] });
+      return { ok: true };
+    }
+    case 'restoreTodo': commandData('restoreTodo', { id: String(input.id) }); return { ok: true };
+    case 'permanentlyDelete': commandData('permanentlyDelete', { id: String(input.id) }); return { ok: true };
+    case 'emptyArchive': commandData('emptyArchive', { projectId: input.projectId }); return { ok: true };
+    case 'emptyArchiveAll': commandData('emptyArchive'); return { ok: true };
+    case 'createProject': {
+      const now = new Date().toISOString();
+      const created = { id: crypto.randomUUID(), name: String(input.name).trim(), color: input.color || undefined, createdAt: now, updatedAt: now };
+      commandData('insertProject', { project: created });
+      return { id: created.id };
+    }
+    case 'deleteProject': commandData('deleteProject', { id: String(input.id) }); return { ok: true };
+    default: throw new Error(`未知的 CLI 方法: ${method}`);
+  }
 }
 
 // ============================================
@@ -177,7 +214,6 @@ function sendError(socket: net.Socket, id: string, message: string): void {
  */
 export function initCliServer(mainWindow: BrowserWindow): void {
   mainWindowRef = mainWindow;
-  registerResponseHandler();
 
   const endpoint = getCliEndpoint();
   server = net.createServer(handleClient);
@@ -202,38 +238,9 @@ export function initCliServer(mainWindow: BrowserWindow): void {
 }
 
 /**
- * 注册渲染进程回包的 ipcMain.handle。
- * 幂等：多次调用只注册一次。
- */
-let responseRegistered = false;
-function registerResponseHandler(): void {
-  if (responseRegistered) return;
-  responseRegistered = true;
-  ipcMain.handle('cli:response', (event: IpcMainInvokeEvent, payload: { id: string; result?: unknown; error?: { message: string } }) => {
-    if (event.sender !== mainWindowRef?.webContents) return;
-    const req = pending.get(payload.id);
-    if (!req) return; // 已超时或未知 id，忽略
-    clearTimeout(req.timer);
-    pending.delete(payload.id);
-    if (payload.error) {
-      req.reject(new Error(payload.error.message));
-    } else {
-      req.resolve(payload.result);
-    }
-  });
-}
-
-/**
  * 停止服务器并清理 socket 文件。在 before-quit 时调用。
  */
 export function shutdownCliServer(): void {
-  // 让所有待决请求失败，避免 CLI 侧无限等待
-  for (const [, req] of pending) {
-    clearTimeout(req.timer);
-    req.reject(new Error('应用正在退出'));
-  }
-  pending.clear();
-
   if (server) {
     server.close();
     server = null;

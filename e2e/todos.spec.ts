@@ -43,7 +43,9 @@ test('按需展开描述并在创建时渲染 Markdown', async () => {
   await descriptionInput.fill('**重要** 内容');
   await win.keyboard.press('Control+Enter');
 
-  await expect(win.getByText('创建时带描述', { exact: true })).toBeVisible();
+  const row = todoRow(win, '创建时带描述');
+  await expect(row.getByRole('button', { name: '**重要** 内容' })).toBeVisible();
+  await row.getByRole('button', { name: '**重要** 内容' }).click();
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
   await expect(titleInput).toHaveValue('');
   await expect(win.getByLabel('新事项描述')).toHaveCount(0);
@@ -160,7 +162,9 @@ test('编辑态可填写描述，渲染 Markdown', async () => {
   await win.getByLabel('事项描述').fill('**重要** 内容');
   await win.keyboard.press('Control+Enter');
 
-  // Markdown 渲染为 <strong>重要</strong>
+  // 默认只显示纯文本摘要；点击后再按需加载 Markdown。
+  const row = todoRow(win, '带描述的任务');
+  await row.getByRole('button', { name: '**重要** 内容' }).click();
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
 });
 

@@ -11,10 +11,10 @@
  * 筛选条件短暂残留到新项目」问题。
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
-import * as db from '../utils/database';
-import { DEFAULT_SORT, readProjectSort, sortKey, sortTodos } from '../utils/sortTodos';
+import * as data from '../utils/dataGateway';
+import { DEFAULT_SORT, sortKey, sortTodos } from '../utils/sortTodos';
 
 /** 默认值 */
 const DEFAULT_FILTER: FilterType = 'all';
@@ -26,11 +26,6 @@ const FILTER_VALUES: readonly FilterType[] = ['all', 'active', 'completed'];
 const filterKey = (pid: string) => `filter.${pid}`;
 
 /** 从 settings 表读取该项目持久化的筛选值（无值或脏值回退默认） */
-function readFilter(pid: string): FilterType {
-  const v = db.getSetting(filterKey(pid));
-  return v && (FILTER_VALUES as readonly string[]).includes(v) ? (v as FilterType) : DEFAULT_FILTER;
-}
-
 /**
  * @param overrideFilter 临时覆盖当前项目的筛选值（不写盘、不替换用户选择）。
  *   供全局搜索定位时强制展示目标事项：跳到结果后 FilterBar 仍显示用户原筛选，
@@ -41,16 +36,30 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
   const [filterOverrides, setFilterOverrides] = useState<Record<string, FilterType>>({});
   const [sortOverrides, setSortOverrides] = useState<Record<string, SortType>>({});
 
-  // === 同步派生 filter / sort：projectId 变化时在渲染阶段即读取 DB，不滞后一帧 ===
-  // 优先级：临时覆盖 > 用户本次显式选择 > DB 持久值 > 默认值
+  // 优先级：临时覆盖 > 用户本次显式选择 > 已异步读取的持久值 > 默认值。
+  // Electron 中不能在 render 阶段同步读 SQLite，故切换项目时先显示默认值。
+  useEffect(() => {
+    if (!projectId) return;
+    void Promise.all([data.getSetting(filterKey(projectId)), data.getSetting(sortKey(projectId))]).then(
+      ([storedFilter, storedSort]) => {
+        if (storedFilter && (FILTER_VALUES as readonly string[]).includes(storedFilter)) {
+          setFilterOverrides((prev) => prev[projectId] ? prev : { ...prev, [projectId]: storedFilter as FilterType });
+        }
+        if (storedSort && (['created-desc', 'priority', 'manual'] as const).includes(storedSort as SortType)) {
+          setSortOverrides((prev) => prev[projectId] ? prev : { ...prev, [projectId]: storedSort as SortType });
+        }
+      },
+    );
+  }, [projectId]);
+
   const filter = useMemo((): FilterType => {
     if (!projectId) return DEFAULT_FILTER;
-    return overrideFilter ?? filterOverrides[projectId] ?? readFilter(projectId);
+    return overrideFilter ?? filterOverrides[projectId] ?? DEFAULT_FILTER;
   }, [projectId, filterOverrides, overrideFilter]);
 
   const sort = useMemo((): SortType => {
     if (!projectId) return DEFAULT_SORT;
-    return sortOverrides[projectId] ?? readProjectSort(projectId);
+    return sortOverrides[projectId] ?? DEFAULT_SORT;
   }, [projectId, sortOverrides]);
 
   /** 筛选后的 Todo 列表 */
@@ -90,7 +99,7 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
       if (!projectId) return;
       // 同时写入本地覆盖 + 持久化到 DB（同一值避免无意义重渲染）
       setFilterOverrides((prev) => (prev[projectId] === f ? prev : { ...prev, [projectId]: f }));
-      db.setSetting(filterKey(projectId), f);
+      void data.setSetting(filterKey(projectId), f);
     },
     [projectId],
   );
@@ -98,7 +107,7 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
     (s: SortType) => {
       if (!projectId) return;
       setSortOverrides((prev) => (prev[projectId] === s ? prev : { ...prev, [projectId]: s }));
-      db.setSetting(sortKey(projectId), s);
+      void data.setSetting(sortKey(projectId), s);
     },
     [projectId],
   );

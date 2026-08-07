@@ -4,6 +4,19 @@
 
 /** Electron 预加载脚本暴露的 API */
 interface ElectronAPI {
+  dataQuery: (name: string, params?: Record<string, unknown>) => Promise<unknown>;
+  dataCommand: (name: string, params?: Record<string, unknown>) => Promise<unknown>;
+  onRepositoryDataChanged: (
+    callback: (event: {
+      revision: number;
+      projectIds: string[];
+      projectsChanged: boolean;
+      settingsChanged: boolean;
+      archiveChanged: boolean;
+      fullRefresh: boolean;
+    }) => void,
+  ) => () => void;
+  /** 主进程数据库的只读白名单查询。 */
   /** 设置开机自启 */
   setAutoStart: (enabled: boolean) => Promise<void>;
   /** 获取窗口位置和大小 */
@@ -73,17 +86,6 @@ interface ElectronAPI {
   ) => () => void;
   /** 在系统文件管理器中显示已导出的文件。 */
   exportOpenInFolder: (filePath: string) => Promise<void>;
-  // ===== CLI IPC 桥接 =====
-  /** 监听来自 CLI 的请求（主进程转发），返回取消订阅函数 */
-  onCliRequest: (
-    callback: (req: { id: string; method: string; params?: unknown }) => void,
-  ) => () => void;
-  /** 把 CLI 请求的处理结果回传给主进程 */
-  cliRespond: (payload: {
-    id: string;
-    result?: unknown;
-    error?: { message: string };
-  }) => Promise<void>;
   // ===== 自动升级 =====
   /** 检查更新（开发环境直接视为"无更新"） */
   updaterCheck: () => Promise<void>;

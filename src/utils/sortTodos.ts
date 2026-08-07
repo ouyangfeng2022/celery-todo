@@ -7,7 +7,6 @@
  */
 
 import type { SortType, Todo } from '../types';
-import * as db from './database';
 
 /** 默认排序值（与历史行为保持一致） */
 export const DEFAULT_SORT: SortType = 'created-desc';
@@ -17,6 +16,7 @@ export const SORT_VALUES: readonly SortType[] = ['created-desc', 'priority', 'ma
 
 /** per-project settings 命名键 */
 export const sortKey = (pid: string) => `sort.${pid}`;
+
 
 /** 优先级排序权重（high > medium > low，与 PRIORITY 顺序一致） */
 const PRIORITY_WEIGHT: Record<string, number> = {
@@ -29,11 +29,6 @@ const PRIORITY_WEIGHT: Record<string, number> = {
  * 从 settings 表读取该项目持久化的排序值（无值或脏值回退默认）。
  * 贴图窗口直接复用此函数读取主窗口写下的排序偏好。
  */
-export function readProjectSort(pid: string): SortType {
-  if (!pid) return DEFAULT_SORT;
-  const v = db.getSetting(sortKey(pid));
-  return v && (SORT_VALUES as readonly string[]).includes(v) ? (v as SortType) : DEFAULT_SORT;
-}
 
 /**
  * 按 sort 规则排序 todo 列表，置顶项（pinned）始终作为一组浮在最前，

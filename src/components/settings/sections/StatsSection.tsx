@@ -11,11 +11,11 @@
  *   零图表依赖，颜色随主题（橙/celery 绿）自动切换。
  */
 
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { Project, Todo } from '../../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID, type Priority } from '../../../types';
-import * as db from '../../../utils/database';
+import * as data from '../../../utils/dataGateway';
 import {
   buildHeatmap,
   computeStreaks,
@@ -67,32 +67,49 @@ const MONTH_LABELS = [
  * 与 useFilter 的 `filter.<pid>` 同一模式：默认 false，老数据缺失键时回退默认。
  */
 const ARCHIVED_KEY = 'stats.includeArchived';
-const readIncludeArchived = (): boolean => db.getSetting(ARCHIVED_KEY) === 'true';
-
 export function StatsSection({ projects }: StatsSectionProps) {
+  // 只有统计页挂载时才订阅 revision。日常待办操作只递增轻量计数，
+  // 不会触发 getAllTodos() 或图表计算。
+  const [dataRevision, setDataRevision] = useState(0);
   // 范围：'all' = 全部项目；其他 = 单个项目 id（会话状态，不持久化）
   const [scope, setScope] = useState<string>('all');
   // 热力图模式：按完成日 / 按新建日
   const [mode, setMode] = useState<HeatmapMode>('completedAt');
   // 是否把已归档事项（deleted_todos）一并纳入统计（持久化到 settings 表）
-  const [includeArchived, setIncludeArchivedState] = useState<boolean>(readIncludeArchived);
+  const [includeArchived, setIncludeArchivedState] = useState(false);
+  const [activeTodos, setActiveTodos] = useState<Todo[]>([]);
+  const [archivedTodos, setArchivedTodos] = useState<Todo[]>([]);
+
+  useEffect(() => {
+    void data.getSetting(ARCHIVED_KEY).then((value) => setIncludeArchivedState(value === 'true'));
+    if (data.isNativeDatabase()) {
+      return data.onDataChanged(() => setDataRevision((revision) => revision + 1));
+    }
+    let unsubscribe: (() => void) | undefined;
+    void import('../../../utils/database').then((db) => {
+      unsubscribe = db.subscribeDataRevision(() => setDataRevision((revision) => revision + 1));
+    });
+    return () => unsubscribe?.();
+  }, []);
 
   const setIncludeArchived = useCallback((value: boolean) => {
     setIncludeArchivedState(value);
-    db.setSetting(ARCHIVED_KEY, String(value));
+    void data.setSetting(ARCHIVED_KEY, String(value));
   }, []);
 
   // ===== 数据源：正常事项 + （可选）归档事项 =====
-  // 归档事项的删除/恢复通过 useTodoStore.deletedTodos 引用变化触发本组件重算。
-  // 正常事项的增删改通过 App 层 todos 引用变化触发——但本组件不接收 todos prop，
-  // 故额外把 db.getAllTodos() 包在 useMemo 里，依赖 deletedTodos 的引用变化 + 自身 state
-  // 切换作为重算信号（实际 SQLite 数据已变，重新调用即返回最新结果）。
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const activeTodos = useMemo<Todo[]>(() => db.getAllTodos(), [projects, includeArchived]);
-  const archivedTodos = useMemo<Todo[]>(
-    () => (includeArchived ? db.getAllDeletedTodos() : []),
-    [includeArchived],
-  );
+  // revision 覆盖正常事项、归档、导入/恢复与其它窗口同步；统计页打开后才读取全量数据。
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([data.getAllTodos(), includeArchived ? data.getAllDeletedTodos() : Promise.resolve([])])
+      .then(([normal, archived]) => {
+        if (!cancelled) {
+          setActiveTodos(normal);
+          setArchivedTodos(archived);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [dataRevision, includeArchived]);
   const allTodos = useMemo(
     () => (archivedTodos.length > 0 ? [...activeTodos, ...archivedTodos] : activeTodos),
     [activeTodos, archivedTodos],

@@ -8,6 +8,28 @@ type DataChangedEvent = { version: number; shouldApply: boolean; patch?: unknown
 
 // 暴露给渲染进程的 API
 const electronAPI = {
+  /** 主进程数据库的固定只读查询（不接受 SQL）。 */
+  dataQuery: (name: string, params?: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('data:query', name, params),
+  /** 主进程数据库的固定写命令（不接受 SQL）。 */
+  dataCommand: (name: string, params?: Record<string, unknown>): Promise<unknown> =>
+    ipcRenderer.invoke('data:command', name, params),
+  /** 订阅主进程数据库提交后的细粒度影响范围事件。 */
+  onRepositoryDataChanged: (
+    callback: (event: {
+      revision: number;
+      projectIds: string[];
+      projectsChanged: boolean;
+      settingsChanged: boolean;
+      archiveChanged: boolean;
+      fullRefresh: boolean;
+    }) => void,
+  ): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: Parameters<typeof callback>[0]) =>
+      callback(data);
+    ipcRenderer.on('data:changed:v2', listener);
+    return () => ipcRenderer.removeListener('data:changed:v2', listener);
+  },
   /** 设置开机自启 */
   setAutoStart: (enabled: boolean): Promise<void> => ipcRenderer.invoke('set-auto-start', enabled),
 
@@ -145,38 +167,6 @@ const electronAPI = {
   /** 在系统文件管理器中显示已导出的文件。 */
   exportOpenInFolder: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('export:open-in-folder', filePath),
-
-  // ===== CLI IPC 桥接 =====
-
-  /**
-   * 监听来自 CLI 的请求（经主进程转发）。handler 在渲染进程上下文执行，
-   * 处理完后必须调用 cliRespond(id, result) 把结果回传给主进程，最终回到 CLI。
-   * 请求体：{ id: string; method: string; params?: unknown }
-   * 返回取消订阅函数。
-   */
-  onCliRequest: (
-    callback: (req: { id: string; method: string; params?: unknown }) => void,
-  ): (() => void) => {
-    const listener = (
-      _event: unknown,
-      req: { id: string; method: string; params?: unknown },
-    ): void => callback(req);
-    ipcRenderer.on('cli:request', listener);
-    return () => {
-      ipcRenderer.removeListener('cli:request', listener);
-    };
-  },
-
-  /**
-   * 把 CLI 请求的处理结果回传给主进程。无论成功或失败都要回包，
-   * 否则主进程的待决 Promise 会一直挂起直到超时。
-   * payload: { id: string; result?: unknown; error?: { message: string } }
-   */
-  cliRespond: (payload: {
-    id: string;
-    result?: unknown;
-    error?: { message: string };
-  }): Promise<void> => ipcRenderer.invoke('cli:response', payload),
 
   // ===== 自动升级 =====
 
