@@ -20,6 +20,7 @@ interface ExportDataPreviewDialogProps {
 }
 
 const PREVIEW_ROW_COUNT = 8;
+const PREVIEW_SHEET_COUNT = 3;
 const JSON_PREVIEW_LINE_COUNT = 36;
 
 function priorityLabel(priority: Todo['priority']): string {
@@ -45,9 +46,11 @@ export function ExportDataPreviewDialog({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, open]);
 
-  // 全量工作簿仍会包含每个项目；预览只取第一张代表性工作表，避免把所有项目塞进预览页。
-  const previewProject = projects[0];
-  const previewTodos = previewProject ? (projectTodos[previewProject.id] ?? []) : [];
+  // 全量工作簿仍会包含每个项目；预览最多展示前三张工作表，避免把所有项目塞进预览页。
+  const previewProjects =
+    format === 'excel' && scope === 'all'
+      ? projects.slice(0, PREVIEW_SHEET_COUNT)
+      : projects.slice(0, 1);
   const jsonLines = useMemo(
     () => jsonPreview.split('\n').slice(0, JSON_PREVIEW_LINE_COUNT),
     [jsonPreview],
@@ -89,79 +92,201 @@ export function ExportDataPreviewDialog({
             exit={{ scale: 0.96, opacity: 0, y: 12 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
-            <div className="flex items-center justify-between gap-4 border-b px-6 py-4" style={{ borderColor: 'var(--border-color)' }}>
+            <div
+              className="flex items-center justify-between gap-4 border-b px-6 py-4"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
               <div className="min-w-0">
-                <h3 id="export-data-preview-title" className="font-serif text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
+                <h3
+                  id="export-data-preview-title"
+                  className="font-serif text-base font-semibold"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {title}
                 </h3>
                 <p className="mt-0.5 text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   {format === 'excel' && scope === 'all'
-                    ? `预览工作表 · ${previewProject?.name ?? '项目'} · 最终文件含 ${projects.length} 个工作表`
+                    ? `预览 ${previewProjects.length} 个工作表 · 最终文件含 ${projects.length} 个工作表`
                     : scope === 'all'
-                    ? `${projects.length} 个项目 · ${totalTodos} 项事项`
-                    : `${projects[0]?.name ?? '项目'} · ${totalTodos} 项事项`}
+                      ? `${projects.length} 个项目 · ${totalTodos} 项事项`
+                      : `${projects[0]?.name ?? '项目'} · ${totalTodos} 项事项`}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium" style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-subtle)' }}>
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{ color: 'var(--accent)', backgroundColor: 'var(--accent-subtle)' }}
+              >
                 {format === 'json' ? '.json' : '.xlsx'}
               </span>
             </div>
 
             {format === 'json' ? (
-              <div className="flex-1 overflow-auto p-6" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-                  <div className="flex items-center gap-1.5 border-b px-4 py-2.5" style={{ borderColor: 'var(--border-color)' }}>
+              <div
+                className="flex-1 overflow-auto p-6"
+                style={{ backgroundColor: 'var(--bg-secondary)' }}
+              >
+                <div
+                  className="overflow-hidden rounded-lg border"
+                  style={{
+                    borderColor: 'var(--border-color)',
+                    backgroundColor: 'var(--bg-primary)',
+                  }}
+                >
+                  <div
+                    className="flex items-center gap-1.5 border-b px-4 py-2.5"
+                    style={{ borderColor: 'var(--border-color)' }}
+                  >
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#e57373' }} />
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#e6b65d' }} />
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: '#7ebd8a' }} />
-                    <span className="ml-2 text-[11px]" style={{ color: 'var(--text-quaternary)' }}>backup.json</span>
+                    <span className="ml-2 text-[11px]" style={{ color: 'var(--text-quaternary)' }}>
+                      backup.json
+                    </span>
                   </div>
-                  <pre className="overflow-x-auto p-4 font-mono text-xs leading-6" style={{ color: 'var(--text-secondary)' }}>
+                  <pre
+                    className="overflow-x-auto p-4 font-mono text-xs leading-6"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
                     {jsonLines.join('\n')}
                     {jsonLines.length < jsonPreview.split('\n').length && '\n…'}
                   </pre>
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-0 flex-1 flex-col" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div className="border-b px-5 py-3 text-xs" style={{ borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}>
-                  Sheet · <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{previewProject?.name ?? '项目'}</span>
-                </div>
+              <div
+                className="flex min-h-0 flex-1 flex-col"
+                style={{ backgroundColor: 'var(--bg-secondary)' }}
+              >
                 <div className="min-h-0 flex-1 overflow-auto p-4">
-                  <div className="min-w-[700px] overflow-hidden rounded-lg border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-tertiary)' }}>
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}>
-                        <tr>
-                          {['标题', '描述', '已完成', '优先级', '创建时间'].map((header) => <th key={header} className="border-b px-3 py-2.5 font-medium" style={{ borderColor: 'var(--border-color)' }}>{header}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody style={{ color: 'var(--text-primary)' }}>
-                        {previewTodos.slice(0, PREVIEW_ROW_COUNT).map((todo) => (
-                          <tr key={todo.id}>
-                            <td className="max-w-[180px] truncate border-b px-3 py-2.5 font-medium" style={{ borderColor: 'var(--border-color)' }}>{todo.title}</td>
-                            <td className="max-w-[220px] truncate border-b px-3 py-2.5" style={{ borderColor: 'var(--border-color)', color: 'var(--text-tertiary)' }}>{todo.description || '—'}</td>
-                            <td className="border-b px-3 py-2.5" style={{ borderColor: 'var(--border-color)' }}>{todo.completed ? '是' : '否'}</td>
-                            <td className="border-b px-3 py-2.5" style={{ borderColor: 'var(--border-color)' }}>{priorityLabel(todo.priority)}</td>
-                            <td className="whitespace-nowrap border-b px-3 py-2.5" style={{ borderColor: 'var(--border-color)', color: 'var(--text-tertiary)' }}>{todo.createdAt.slice(0, 16).replace('T', ' ')}</td>
-                          </tr>
-                        ))}
-                        {previewTodos.length === 0 && <tr><td className="px-3 py-8 text-center" colSpan={5} style={{ color: 'var(--text-quaternary)' }}>这个工作表暂无事项</td></tr>}
-                      </tbody>
-                    </table>
+                  <div className="space-y-5">
+                    {previewProjects.map((project) => {
+                      const previewTodos = projectTodos[project.id] ?? [];
+                      return (
+                        <section key={project.id}>
+                          <div
+                            className="mb-2 px-1 text-xs"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Sheet ·{' '}
+                            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                              {project.name}
+                            </span>
+                          </div>
+                          <div
+                            className="min-w-[700px] overflow-hidden rounded-lg border"
+                            style={{
+                              borderColor: 'var(--border-color)',
+                              backgroundColor: 'var(--bg-tertiary)',
+                            }}
+                          >
+                            <table className="w-full border-collapse text-left text-xs">
+                              <thead
+                                style={{
+                                  backgroundColor: 'var(--bg-primary)',
+                                  color: 'var(--text-secondary)',
+                                }}
+                              >
+                                <tr>
+                                  {['标题', '描述', '已完成', '优先级', '创建时间'].map(
+                                    (header) => (
+                                      <th
+                                        key={header}
+                                        className="border-b px-3 py-2.5 font-medium"
+                                        style={{ borderColor: 'var(--border-color)' }}
+                                      >
+                                        {header}
+                                      </th>
+                                    ),
+                                  )}
+                                </tr>
+                              </thead>
+                              <tbody style={{ color: 'var(--text-primary)' }}>
+                                {previewTodos.slice(0, PREVIEW_ROW_COUNT).map((todo) => (
+                                  <tr key={todo.id}>
+                                    <td
+                                      className="max-w-[180px] truncate border-b px-3 py-2.5 font-medium"
+                                      style={{ borderColor: 'var(--border-color)' }}
+                                    >
+                                      {todo.title}
+                                    </td>
+                                    <td
+                                      className="max-w-[220px] truncate border-b px-3 py-2.5"
+                                      style={{
+                                        borderColor: 'var(--border-color)',
+                                        color: 'var(--text-tertiary)',
+                                      }}
+                                    >
+                                      {todo.description || '—'}
+                                    </td>
+                                    <td
+                                      className="border-b px-3 py-2.5"
+                                      style={{ borderColor: 'var(--border-color)' }}
+                                    >
+                                      {todo.completed ? '是' : '否'}
+                                    </td>
+                                    <td
+                                      className="border-b px-3 py-2.5"
+                                      style={{ borderColor: 'var(--border-color)' }}
+                                    >
+                                      {priorityLabel(todo.priority)}
+                                    </td>
+                                    <td
+                                      className="whitespace-nowrap border-b px-3 py-2.5"
+                                      style={{
+                                        borderColor: 'var(--border-color)',
+                                        color: 'var(--text-tertiary)',
+                                      }}
+                                    >
+                                      {todo.createdAt.slice(0, 16).replace('T', ' ')}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {previewTodos.length === 0 && (
+                                  <tr>
+                                    <td
+                                      className="px-3 py-8 text-center"
+                                      colSpan={5}
+                                      style={{ color: 'var(--text-quaternary)' }}
+                                    >
+                                      这个工作表暂无事项
+                                    </td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                          {previewTodos.length > PREVIEW_ROW_COUNT && (
+                            <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                              已展示前 {PREVIEW_ROW_COUNT} 行；此工作表导出时将包含全部{' '}
+                              {previewTodos.length} 项。
+                            </p>
+                          )}
+                        </section>
+                      );
+                    })}
                   </div>
-                  {previewTodos.length > PREVIEW_ROW_COUNT && <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>已展示前 {PREVIEW_ROW_COUNT} 行；此工作表导出时将包含全部 {previewTodos.length} 项。</p>}
                 </div>
               </div>
             )}
 
-            <div className="flex items-center gap-3 border-t px-6 py-3" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="min-w-0 flex-1 truncate text-xs" style={{ color: 'var(--text-quaternary)' }}>
+            <div
+              className="flex items-center gap-3 border-t px-6 py-3"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              <p
+                className="min-w-0 flex-1 truncate text-xs"
+                style={{ color: 'var(--text-quaternary)' }}
+              >
                 {format === 'excel' && scope === 'all'
-                  ? '仅预览一个工作表；导出文件将包含全部项目工作表。'
+                  ? `最多预览 ${PREVIEW_SHEET_COUNT} 个工作表；导出文件将包含全部项目工作表。`
                   : '这是内容预览；下载文件将保留全部数据。'}
               </p>
-              <button type="button" className="btn-secondary" onClick={onClose}>关闭</button>
-              <button type="button" className="btn-primary" onClick={onDownload}>导出</button>
+              <button type="button" className="btn-secondary" onClick={onClose}>
+                关闭
+              </button>
+              <button type="button" className="btn-primary" onClick={onDownload}>
+                导出
+              </button>
             </div>
           </motion.div>
         </motion.div>

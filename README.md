@@ -273,7 +273,7 @@ celery-todo/
 │   └── test/               # Vitest 单元/组件测试
 ├── cli/                    # 独立 CLI（celery）：better-sqlite3 + commander
 ├── e2e/                    # Playwright Electron E2E 测试
-├── public/                 # 静态资源（含 sql-wasm.wasm）
+├── public/                 # 静态资源（图标 / favicon；sql-wasm 由 Vite 托管）
 ├── build/                  # NSIS 安装脚本（installer.nsh）
 ├── scripts/                # 构建与发版辅助脚本
 └── package.json

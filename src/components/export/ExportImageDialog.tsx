@@ -265,13 +265,13 @@ export function ExportImageDialog({
               </div>
 
               <button className="btn-secondary" onClick={onClose} disabled={busy !== null}>
-                返回
+                关闭
               </button>
               <button className="btn-secondary" onClick={handleCopy} disabled={busy !== null}>
                 {busy === 'copy' ? '复制中…' : '复制到剪贴板'}
               </button>
               <button className="btn-primary" onClick={handleDownload} disabled={busy !== null}>
-                {busy === 'download' ? '导出中…' : '下载 PNG'}
+                {busy === 'download' ? '导出中…' : '导出'}
               </button>
             </div>
           </motion.div>

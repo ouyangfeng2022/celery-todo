@@ -22,7 +22,7 @@ src/utils/       # database.ts (SQLite layer), export.ts, helpers.ts
 src/types/       # Shared TS types
 src/test/        # Vitest specs + setup
 e2e/             # Playwright Electron E2E specs + helpers + fixtures
-public/          # Static assets incl. sql-wasm.wasm
+public/          # Static assets (icons, favicon) — sql-wasm is Vite-managed via ?url
 scripts/         # Build helpers (fix-electron-cjs.mjs, verify-render.mjs)
 cli/             # Standalone CLI (celery) — better-sqlite3 + commander,
                  # independent tsconfig → dist-cli/, separate vitest config.
@@ -221,8 +221,11 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
 - `tsconfig.json` has `noEmit: true` and uses project references
   (`tsconfig.node.json` for Vite config). `tsc -b` is the canonical build; don't
   call `tsc` directly without `-b`.
-- `public/sql-wasm.wasm` must ship with the app — it's loaded at runtime by
-  sql.js. Don't remove it from `public/`.
+- `sql.js` WASM is loaded via `import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'`
+  in `src/utils/database.ts`. Vite resolves it from `node_modules` in dev and
+  emits a hashed asset in prod — **don't** hand-copy a `sql-wasm.wasm` into
+  `public/`; that creates a stale duplicate that drifts from the JS glue layer
+  on every `sql.js` upgrade.
 - electron-builder config is inlined in `package.json` (`build` field). Windows
   target is NSIS; output goes to `release/`.
 - Windows 无框窗口（`titleBarStyle: 'hidden'` + `titleBarOverlay`）在拖拽改窗口

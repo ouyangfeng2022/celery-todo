@@ -50,10 +50,13 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   await win.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(win.getByRole('dialog', { name: '导出' })).toBeVisible();
   await win.getByRole('button', { name: '预览', exact: true }).click();
-  await win.getByRole('dialog', { name: 'JSON 备份预览' }).getByRole('button', { name: '导出', exact: true }).click();
+  await win
+    .getByRole('dialog', { name: 'JSON 备份预览' })
+    .getByRole('button', { name: '导出', exact: true })
+    .click();
 
   const dl = await getLastDownload(win);
-  expect(dl.filename).toBe('导出测试-export.json');
+  expect(dl.filename).toBe('Celery-Todo-导出测试.json');
   const data = JSON.parse(decodeUtf8(dl.content));
   expect(data.version).toBe(3);
   expect(data.project.name).toBe('导出测试');
@@ -73,7 +76,7 @@ test('导出全部数据为 JSON，文件名含日期', async () => {
   const dl = await getLastDownload(win);
 
   const today = new Date().toISOString().slice(0, 10);
-  expect(dl.filename).toBe(`celery-todo-backup-${today}.json`);
+  expect(dl.filename).toBe(`Celery-Todo-All-${today}.json`);
   const data = JSON.parse(decodeUtf8(dl.content));
   expect(Array.isArray(data.projects)).toBe(true);
   expect(Array.isArray(data.todos)).toBe(true);
@@ -86,6 +89,10 @@ test('全量导出为 Excel 时每个项目对应一个工作表', async () => {
   await addTodo(win, '完成报告');
   await createProject(win, '生活');
   await addTodo(win, '购买食材');
+  await createProject(win, '健康');
+  await addTodo(win, '晨跑');
+  await createProject(win, '阅读');
+  await addTodo(win, '阅读计划');
   await openSettingsSection(win, '数据');
 
   await win.getByText('导出数据…', { exact: true }).click();
@@ -94,11 +101,13 @@ test('全量导出为 Excel 时每个项目对应一个工作表', async () => {
   await expect(win.getByRole('dialog', { name: 'Excel 工作簿预览' })).toBeVisible();
   const excelPreview = win.getByRole('dialog', { name: 'Excel 工作簿预览' });
   await expect(excelPreview.getByText('Sheet · 工作', { exact: true })).toBeVisible();
-  await expect(excelPreview.getByText('生活', { exact: true })).toHaveCount(0);
+  await expect(excelPreview.getByText('Sheet · 生活', { exact: true })).toBeVisible();
+  await expect(excelPreview.getByText('Sheet · 健康', { exact: true })).toBeVisible();
+  await expect(excelPreview.getByText('Sheet · 阅读', { exact: true })).toHaveCount(0);
   await excelPreview.getByRole('button', { name: '导出', exact: true }).click();
 
   const dl = await getLastDownload(win);
-  expect(dl.filename).toMatch(/^celery-todo-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  expect(dl.filename).toMatch(/^Celery-Todo-All-\d{4}-\d{2}-\d{2}\.xlsx$/);
   const bytes = new Uint8Array([...dl.content].map((char) => char.charCodeAt(0)));
   const workbook = XLSX.read(bytes, { type: 'array' });
   expect(workbook.SheetNames).toEqual(expect.arrayContaining(['工作', '生活']));
@@ -107,6 +116,9 @@ test('全量导出为 Excel 时每个项目对应一个工作表', async () => {
   );
   expect(XLSX.utils.sheet_to_json<string[]>(workbook.Sheets['生活'], { header: 1 })[1][0]).toBe(
     '购买食材',
+  );
+  expect(XLSX.utils.sheet_to_json<string[]>(workbook.Sheets['阅读'], { header: 1 })[1][0]).toBe(
+    '阅读计划',
   );
 });
 
@@ -123,10 +135,13 @@ test('导出当前项目为 Excel，文件结构正确', async () => {
   await win.getByRole('button', { name: /Excel 工作簿/ }).click();
   await win.getByRole('button', { name: '预览', exact: true }).click();
   await expect(win.getByRole('dialog', { name: 'Excel 工作簿预览' })).toBeVisible();
-  await win.getByRole('dialog', { name: 'Excel 工作簿预览' }).getByRole('button', { name: '导出', exact: true }).click();
+  await win
+    .getByRole('dialog', { name: 'Excel 工作簿预览' })
+    .getByRole('button', { name: '导出', exact: true })
+    .click();
 
   const dl = await getLastDownload(win);
-  expect(dl.filename).toBe('todos-CSV导出项目.xlsx');
+  expect(dl.filename).toBe('Celery-Todo-CSV导出项目.xlsx');
   // XLSX 是 ZIP 容器，文件头为 PK。
   expect(dl.content.slice(0, 2)).toBe('PK');
 });
@@ -143,7 +158,7 @@ test('导出当前项目为 PNG 时跳过可见预览并直接下载', async () 
 
   await expect(win.getByRole('dialog', { name: '导出为图片' })).toHaveCount(0);
   const dl = await getLastDownload(win);
-  expect(dl.filename).toMatch(/^图片导出项目-\d{4}-\d{2}-\d{2}\.png$/);
+  expect(dl.filename).toBe('Celery-Todo-图片导出项目.png');
   expect(dl.content.slice(0, 8)).toBe('\x89PNG\r\n\x1a\n');
 });
 
