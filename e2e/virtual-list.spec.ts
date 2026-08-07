@@ -75,22 +75,45 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
   await lastRow.hover();
   const handle = lastRow.getByRole('button', { name: '拖拽排序' });
   await handle.focus();
+  await win.waitForTimeout(200);
+
+  // Space 拾起，ArrowUp × 20 移过整屏，Space 放下。
+  // dnd-kit 的 KeyboardSensor 每次按键需一个动画帧推进碰撞/坐标，背靠背连发会让
+  // 后续按键在 sensor 处理完上一帧前到达，dragStart/dragEnd 可能完全不触发
+  // （见同仓 e2e/dnd.spec.ts 同样在每次按键间等 200ms）。
   await win.keyboard.press('Space');
+  await win.waitForTimeout(300);
+
   // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
   for (let index = 0; index < 20; index += 1) {
     await win.keyboard.press('ArrowUp');
+    await win.waitForTimeout(150);
   }
   await win.keyboard.press('Space');
+  await win.waitForTimeout(500);
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
+  // 跨视口拖拽后，源行（101）应落在目标行（081）之前。两条行此时都不一定挂载
+  // （虚拟化 + 拖拽后视口位置变化），boundingBox 会返回 null、且不在同一视口时无法
+  // 直接比较 y 坐标。改为查主进程 dataQuery('todosByProject') 的 DB 序
+  // （pinned DESC, sort_order）比较两条 todo 的索引 —— manual 排序视图唯一权威顺序。
+  // moveTodoRank 是主进程同步 DB 写，drop 完即生效。
+  const indexOfInSorted = async (title: string) => {
+    const projectId = (
+      (await win.evaluate(() =>
+        window.electronAPI!.dataQuery('projects'),
+      )) as { id: string; name: string }[]
+    ).find((p) => p.name === '虚拟列表测试项目')!.id;
+    const rows = (await win.evaluate((id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }), projectId)) as {
+      title: string;
+    }[];
+    return rows.findIndex((r) => r.title === title);
+  };
   await expect
     .poll(async () => {
-      const lastBox = await lastRow.boundingBox();
-      const targetBox = await win
-        .locator('div.group.relative.flex.items-center.gap-3')
-        .filter({ has: win.getByText(targetTitle, { exact: true }) })
-        .boundingBox();
-      return lastBox && targetBox ? lastBox.y < targetBox.y : false;
+      const lastIdx = await indexOfInSorted(lastTitle);
+      const targetIdx = await indexOfInSorted(targetTitle);
+      return lastIdx >= 0 && targetIdx >= 0 ? lastIdx < targetIdx : false;
     })
     .toBe(true);
 });
