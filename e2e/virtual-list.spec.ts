@@ -94,7 +94,27 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
     await win.waitForTimeout(200);
   }
   await win.keyboard.press('Space');
-  await win.waitForTimeout(500);
+  await win.waitForTimeout(800);
+
+  // DEBUG-CI: 看 101/081 实际落在哪
+  const projectIdDbg = (
+    (await win.evaluate(() => window.electronAPI!.dataQuery('projects'))) as {
+      id: string;
+      name: string;
+    }[]
+  ).find((p) => p.name === '虚拟列表测试项目')!.id;
+  const rowsDbg = (await win.evaluate(
+    (id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }),
+    projectIdDbg,
+  )) as { title: string }[];
+  const titles101 = rowsDbg.map((r) => r.title);
+  const debugInfo = {
+    pos101: titles101.indexOf(lastTitle),
+    pos081: titles101.indexOf(targetTitle),
+    sampleAround80: titles101.slice(78, 84),
+    sort: await win.getByLabel('排序方式').inputValue(),
+  };
+  console.error('[DEBUG-CI-POS]', JSON.stringify(debugInfo));
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   // 跨视口拖拽后，源行（101）应落在目标行（081）之前。两条行此时都不一定挂载
