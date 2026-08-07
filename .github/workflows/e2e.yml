@@ -35,6 +35,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # better-sqlite3 是原生 Node 模块，bun install 会按 Node ABI（NODE_MODULE_VERSION 127）
+      # 编译，而 Electron 31 用自己的 ABI（125）。E2E 驱动真实 Electron 主进程，
+      # 必须用 electron-builder install-app-deps 重新编译为 Electron ABI，否则
+      # require('better-sqlite3') 在主进程崩溃，<main> 永不渲染，所有 spec 超时。
+      # 与 electron:dev / electron:build 里的 rebuild:electron 保持一致。
+      - name: Rebuild native modules for Electron
+        run: bun run rebuild:electron
+
       - name: Install Playwright browsers
         run: bun run e2e:install
 
