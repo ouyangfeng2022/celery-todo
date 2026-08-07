@@ -142,7 +142,8 @@ test('导出归档为 JSON 快照，文件名含日期且含全部归档', async
   const dl = await getLastDownload(win);
 
   const today = new Date().toISOString().slice(0, 10);
-  expect(dl.filename).toBe(`archive-${today}.json`);
+  // 760a0ae 统一了导出命名空间为 Celery-Todo-*；归档快照为 Celery-Todo-Archive-<date>.json
+  expect(dl.filename).toBe(`Celery-Todo-Archive-${today}.json`);
 
   const data = JSON.parse(decodeUtf8(dl.content));
   expect(data.kind).toBe('celery-todo-history');
