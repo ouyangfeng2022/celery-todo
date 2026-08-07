@@ -5,7 +5,7 @@
 
 import { memo, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckIcon, DownloadIcon, XIcon } from './Icons';
+import { CheckIcon, XIcon } from './Icons';
 
 interface ExportNoticeProps {
   fileName: string;
@@ -64,7 +64,6 @@ function ExportNoticeComponent({
             </button>
             <span>。</span>
           </div>
-          <DownloadIcon aria-hidden="true" size={15} style={{ color: 'var(--text-tertiary)' }} />
           <button
             type="button"
             onClick={onDismiss}
