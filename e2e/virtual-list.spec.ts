@@ -82,63 +82,44 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
   // 后续按键在 sensor 处理完上一帧前到达，dragStart/dragEnd 可能完全不触发
   // （见同仓 e2e/dnd.spec.ts 同样在每次按键间等 200ms）。
   await win.keyboard.press('Space');
-  await win.waitForTimeout(300);
-
-  // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
-  // 每次按键间等 200ms：dnd-kit KeyboardSensor 每次按键需一帧推进碰撞/坐标，CI
-  // runner 较慢，背靠背连发会丢键、导致移动距离不足（对齐 e2e/dnd.spec.ts 的节奏）。
-  // 22 次而非正好 20 次：101 在索引 100、目标 081 在索引 80，正 20 次只能落在目标位
-  // （over===active 不触发 reorder）；多 2 次留出余量让 101 落到 081 之前。
-  for (let index = 0; index < 22; index += 1) {
-    await win.keyboard.press('ArrowUp');
-    await win.waitForTimeout(200);
-  }
-  await win.keyboard.press('Space');
   await win.waitForTimeout(800);
 
-  // DEBUG-CI: 看 101/081 实际落在哪
-  const projectIdDbg = (
+  // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
+  // 持续 ArrowUp 直到 101 落到 081 之前，而不是固定按 N 次：dnd-kit KeyboardSensor
+  // 在不同机器（尤其 CI runner）上每次按键推进的碰撞距离不一致，本地 22 次能到顶、
+  // CI 同样 22 次可能只移 16 位。改成基于主进程 DB 实际顺序收敛，保证测试稳定且仍
+  // 验证「能跨视口上移」这一核心行为。每次按键后等 180ms 给 sensor 一帧推进碰撞；
+  // 上限 40 次防止异常时死循环。todosByProject 序 = pinned DESC, sort_order，
+  // 是 manual 视图唯一权威顺序；moveTodoRank 是主进程同步 DB 写，按键间即生效。
+  const projectId = (
     (await win.evaluate(() => window.electronAPI!.dataQuery('projects'))) as {
       id: string;
       name: string;
     }[]
   ).find((p) => p.name === '虚拟列表测试项目')!.id;
-  const rowsDbg = (await win.evaluate(
-    (id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }),
-    projectIdDbg,
-  )) as { title: string }[];
-  const titles101 = rowsDbg.map((r) => r.title);
-  const debugInfo = {
-    pos101: titles101.indexOf(lastTitle),
-    pos081: titles101.indexOf(targetTitle),
-    sampleAround80: titles101.slice(78, 84),
-    sort: await win.getByLabel('排序方式').inputValue(),
+  const indexOfInSorted = async () => {
+    const rows = (await win.evaluate(
+      (id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }),
+      projectId,
+    )) as { title: string }[];
+    return { p101: rows.findIndex((r) => r.title === lastTitle), p081: rows.findIndex((r) => r.title === targetTitle) };
   };
-  console.error('[DEBUG-CI-POS]', JSON.stringify(debugInfo));
+  for (let i = 0; i < 40; i += 1) {
+    const { p101, p081 } = await indexOfInSorted();
+    if (p101 >= 0 && p081 >= 0 && p101 < p081) break;
+    await win.keyboard.press('ArrowUp');
+    await win.waitForTimeout(180);
+  }
+  await win.keyboard.press('Space');
+  await win.waitForTimeout(800);
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
-  // 跨视口拖拽后，源行（101）应落在目标行（081）之前。两条行此时都不一定挂载
-  // （虚拟化 + 拖拽后视口位置变化），boundingBox 会返回 null、且不在同一视口时无法
-  // 直接比较 y 坐标。改为查主进程 dataQuery('todosByProject') 的 DB 序
-  // （pinned DESC, sort_order）比较两条 todo 的索引 —— manual 排序视图唯一权威顺序。
-  // moveTodoRank 是主进程同步 DB 写，drop 完即生效。
-  const indexOfInSorted = async (title: string) => {
-    const projectId = (
-      (await win.evaluate(() =>
-        window.electronAPI!.dataQuery('projects'),
-      )) as { id: string; name: string }[]
-    ).find((p) => p.name === '虚拟列表测试项目')!.id;
-    const rows = (await win.evaluate((id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }), projectId)) as {
-      title: string;
-    }[];
-    return rows.findIndex((r) => r.title === title);
-  };
+  // 落定后再断言一次：源行（101）已稳定落在目标行（081）之前。
   await expect
     .poll(
       async () => {
-        const lastIdx = await indexOfInSorted(lastTitle);
-        const targetIdx = await indexOfInSorted(targetTitle);
-        return lastIdx >= 0 && targetIdx >= 0 ? lastIdx < targetIdx : false;
+        const { p101, p081 } = await indexOfInSorted();
+        return p101 >= 0 && p081 >= 0 ? p101 < p081 : false;
       },
       { timeout: 20_000 },
     )
