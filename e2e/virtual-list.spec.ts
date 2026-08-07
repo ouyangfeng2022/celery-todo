@@ -85,9 +85,13 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
   await win.waitForTimeout(300);
 
   // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
-  for (let index = 0; index < 20; index += 1) {
+  // 每次按键间等 200ms：dnd-kit KeyboardSensor 每次按键需一帧推进碰撞/坐标，CI
+  // runner 较慢，背靠背连发会丢键、导致移动距离不足（对齐 e2e/dnd.spec.ts 的节奏）。
+  // 22 次而非正好 20 次：101 在索引 100、目标 081 在索引 80，正 20 次只能落在目标位
+  // （over===active 不触发 reorder）；多 2 次留出余量让 101 落到 081 之前。
+  for (let index = 0; index < 22; index += 1) {
     await win.keyboard.press('ArrowUp');
-    await win.waitForTimeout(150);
+    await win.waitForTimeout(200);
   }
   await win.keyboard.press('Space');
   await win.waitForTimeout(500);
@@ -110,11 +114,14 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
     return rows.findIndex((r) => r.title === title);
   };
   await expect
-    .poll(async () => {
-      const lastIdx = await indexOfInSorted(lastTitle);
-      const targetIdx = await indexOfInSorted(targetTitle);
-      return lastIdx >= 0 && targetIdx >= 0 ? lastIdx < targetIdx : false;
-    })
+    .poll(
+      async () => {
+        const lastIdx = await indexOfInSorted(lastTitle);
+        const targetIdx = await indexOfInSorted(targetTitle);
+        return lastIdx >= 0 && targetIdx >= 0 ? lastIdx < targetIdx : false;
+      },
+      { timeout: 20_000 },
+    )
     .toBe(true);
 });
 
