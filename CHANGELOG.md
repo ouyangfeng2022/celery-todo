@@ -8,6 +8,11 @@
 
 ## [Unreleased]
 
+## [v2.19.0] - 2026-08-07
+### Added
+- show completed export location
+- Refactor data export functionality and introduce unified export dialog
+
 ## [v2.18.0] - 2026-08-06
 ### Added
 - 新增统计页（设置页内）支持热力图/优先级/项目分布
@@ -423,3 +428,5 @@
 [v2.17.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.17.0
 
 [v2.18.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.18.0
+
+[v2.19.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.0
