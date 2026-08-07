@@ -26,8 +26,8 @@ interface HeaderProps {
   searchResults?: GlobalSearchResult[];
   onSelectSearchResult?: (result: GlobalSearchResult) => void;
   onImport: (file: File) => void;
-  onExportAll: () => void;
-  onExportCsv: () => void;
+  /** 打开统一导出选项卡片 */
+  onOpenExport: () => void;
   onCreateProject: () => void;
   onEnterCompactMode: () => void;
   onCloseWindow: () => void;
@@ -46,7 +46,7 @@ interface HeaderProps {
   showSearch?: boolean;
 }
 
-type ToolAction = 'new-project' | 'import' | 'export-all' | 'export-csv' | 'compact' | 'close';
+type ToolAction = 'new-project' | 'import' | 'export' | 'compact' | 'close';
 
 interface ToolMenuItem {
   label: string;
@@ -70,8 +70,7 @@ const MENU_GROUPS: ToolMenuGroup[] = [
     title: '数据',
     items: [
       { label: '导入数据…', action: 'import' },
-      { label: '导出全部数据', action: 'export-all' },
-      { label: '导出当前列表', action: 'export-csv' },
+      { label: '导出数据…', action: 'export' },
     ],
   },
   {
@@ -92,8 +91,7 @@ function HeaderComponent({
   searchResults,
   onSelectSearchResult,
   onImport,
-  onExportAll,
-  onExportCsv,
+  onOpenExport,
   onCreateProject,
   onEnterCompactMode,
   onCloseWindow,
@@ -199,8 +197,7 @@ function HeaderComponent({
       closeAllPanels();
       if (action === 'new-project') onCreateProject();
       if (action === 'import') handleImportClick();
-      if (action === 'export-all') onExportAll();
-      if (action === 'export-csv') onExportCsv();
+      if (action === 'export') onOpenExport();
       if (action === 'compact') onEnterCompactMode();
       if (action === 'close') onCloseWindow();
     },
@@ -210,8 +207,7 @@ function HeaderComponent({
       onCloseWindow,
       onCreateProject,
       onEnterCompactMode,
-      onExportAll,
-      onExportCsv,
+      onOpenExport,
     ],
   );
 

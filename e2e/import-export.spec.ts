@@ -1,5 +1,5 @@
 /**
- * 导入导出：项目 JSON / 全量 JSON / CSV / 导入 / 非法导入。
+ * 导入导出：项目 JSON / 全量 JSON / Excel / 导入 / 非法导入。
  *
  * 注意：导出走 renderer <a download>，用 page.waitForEvent('download') 捕获。
  *      导入走动态创建的 <input type=file>，用 page.waitForEvent('filechooser') 捕获。
@@ -7,6 +7,7 @@
 import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as XLSX from 'xlsx';
 import {
   launchApp,
   closeApp,
@@ -40,11 +41,16 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   await createProject(win, '导出测试');
   await addTodo(win, '被导出任务');
 
-  // 「导出项目」在右键菜单里是父项，hover 后展开子菜单，再点「导出为 JSON」。
-  // （4557ba1 把 JSON/图片合并为级联子菜单；CSV 仅在设置页「导出项目…」对话框。）
+  // 所有入口都打开同一张导出选项卡；项目右键会预选当前项目。
   await openProjectContextMenu(win, '导出测试');
-  await win.getByRole('button', { name: '导出项目', exact: true }).hover();
-  await win.getByRole('button', { name: '导出为 JSON', exact: true }).click();
+  await win.getByRole('button', { name: '导出…', exact: true }).click();
+  await expect(win.getByRole('dialog', { name: '导出' })).toBeVisible();
+  await win.getByRole('button', { name: '预览', exact: true }).click();
+  await expect(win.getByRole('dialog', { name: 'JSON 备份预览' })).toBeVisible();
+  await win.getByRole('button', { name: '关闭', exact: true }).click();
+  await expect(win.getByRole('dialog', { name: '导出' })).toBeVisible();
+  await win.getByRole('button', { name: '预览', exact: true }).click();
+  await win.getByRole('dialog', { name: 'JSON 备份预览' }).getByRole('button', { name: '导出', exact: true }).click();
 
   const dl = await getLastDownload(win);
   expect(dl.filename).toBe('导出测试-export.json');
@@ -60,7 +66,10 @@ test('导出全部数据为 JSON，文件名含日期', async () => {
   await addTodo(win, '全量任务');
   await openSettingsSection(win, '数据');
 
-  await win.getByText('导出全部数据 (JSON)', { exact: true }).click();
+  await win.getByText('导出数据…', { exact: true }).click();
+  // 设置页的导出入口默认选择「全部项目」。
+  await expect(win.getByRole('dialog', { name: '导出' })).toBeVisible();
+  await win.getByRole('button', { name: '导出', exact: true }).click();
   const dl = await getLastDownload(win);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -71,31 +80,71 @@ test('导出全部数据为 JSON，文件名含日期', async () => {
   expect(data.todos.some((t: { title: string }) => t.title === '全量任务')).toBe(true);
 });
 
-test('导出当前项目为 CSV，含 UTF-8 BOM 和中文表头', async () => {
+test('全量导出为 Excel 时每个项目对应一个工作表', async () => {
+  await installDownloadCapture(win);
+  await createProject(win, '工作');
+  await addTodo(win, '完成报告');
+  await createProject(win, '生活');
+  await addTodo(win, '购买食材');
+  await openSettingsSection(win, '数据');
+
+  await win.getByText('导出数据…', { exact: true }).click();
+  await win.getByRole('button', { name: /Excel 工作簿/ }).click();
+  await win.getByRole('button', { name: '预览', exact: true }).click();
+  await expect(win.getByRole('dialog', { name: 'Excel 工作簿预览' })).toBeVisible();
+  const excelPreview = win.getByRole('dialog', { name: 'Excel 工作簿预览' });
+  await expect(excelPreview.getByText('Sheet · 工作', { exact: true })).toBeVisible();
+  await expect(excelPreview.getByText('生活', { exact: true })).toHaveCount(0);
+  await excelPreview.getByRole('button', { name: '导出', exact: true }).click();
+
+  const dl = await getLastDownload(win);
+  expect(dl.filename).toMatch(/^celery-todo-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const bytes = new Uint8Array([...dl.content].map((char) => char.charCodeAt(0)));
+  const workbook = XLSX.read(bytes, { type: 'array' });
+  expect(workbook.SheetNames).toEqual(expect.arrayContaining(['工作', '生活']));
+  expect(XLSX.utils.sheet_to_json<string[]>(workbook.Sheets['工作'], { header: 1 })[1][0]).toBe(
+    '完成报告',
+  );
+  expect(XLSX.utils.sheet_to_json<string[]>(workbook.Sheets['生活'], { header: 1 })[1][0]).toBe(
+    '购买食材',
+  );
+});
+
+test('导出当前项目为 Excel，文件结构正确', async () => {
   await installDownloadCapture(win);
   await createProject(win, 'CSV导出项目');
   await addTodo(win, 'CSV任务');
   await openSettingsSection(win, '数据');
 
-  // 「导出当前项目 (CSV)」入口已并入「导出项目…」统一对话框（0956372）：
-  // 打开对话框 → 默认选中当前活跃项目 → 选 CSV 格式 → 点「导出」。
-  await win.getByText('导出项目…', { exact: true }).click();
-  // 对话框标题 h3「导出项目」与项目名 h1「CSV导出项目」都会匹配 heading name，
-  // 用 exact + role=h3 锚定对话框标题作为就绪信号。
-  await expect(
-    win.getByRole('heading', { name: '导出项目', exact: true, level: 3 }),
-  ).toBeVisible();
-  await win.getByText('CSV', { exact: true }).click();
-  await win.getByRole('button', { name: '导出', exact: true }).click();
+  // 设置页也使用同一张导出选项卡；切换为单个项目后可选择 Excel。
+  await win.getByText('导出数据…', { exact: true }).click();
+  await expect(win.getByRole('dialog', { name: '导出' })).toBeVisible();
+  await win.getByRole('button', { name: '单个项目 选择一个项目及其事项' }).click();
+  await win.getByRole('button', { name: /Excel 工作簿/ }).click();
+  await win.getByRole('button', { name: '预览', exact: true }).click();
+  await expect(win.getByRole('dialog', { name: 'Excel 工作簿预览' })).toBeVisible();
+  await win.getByRole('dialog', { name: 'Excel 工作簿预览' }).getByRole('button', { name: '导出', exact: true }).click();
 
   const dl = await getLastDownload(win);
-  expect(dl.filename).toBe('todos-CSV导出项目.csv');
-  // UTF-8 BOM：第一个字节应为 0xEF（BOM = EF BB BF）
-  expect(dl.content.charCodeAt(0)).toBe(0xef);
-  // 解码后中文表头与任务行
-  const text = decodeUtf8(dl.content);
-  expect(text).toContain('标题,描述,已完成,优先级,创建时间,完成时间,置顶');
-  expect(text).toContain('CSV任务');
+  expect(dl.filename).toBe('todos-CSV导出项目.xlsx');
+  // XLSX 是 ZIP 容器，文件头为 PK。
+  expect(dl.content.slice(0, 2)).toBe('PK');
+});
+
+test('导出当前项目为 PNG 时跳过可见预览并直接下载', async () => {
+  await installDownloadCapture(win);
+  await createProject(win, '图片导出项目');
+  await addTodo(win, '图片任务');
+
+  await openProjectContextMenu(win, '图片导出项目');
+  await win.getByRole('button', { name: '导出…', exact: true }).click();
+  await win.getByRole('button', { name: /PNG 图片/ }).click();
+  await win.getByRole('button', { name: '导出', exact: true }).click();
+
+  await expect(win.getByRole('dialog', { name: '导出为图片' })).toHaveCount(0);
+  const dl = await getLastDownload(win);
+  expect(dl.filename).toMatch(/^图片导出项目-\d{4}-\d{2}-\d{2}\.png$/);
+  expect(dl.content.slice(0, 8)).toBe('\x89PNG\r\n\x1a\n');
 });
 
 test('导入完整应用数据后项目和 todo 都出现', async () => {
@@ -124,9 +173,9 @@ test('导入单个项目后新建该项目并自动切换', async () => {
   ]);
   await filechooser.setFiles(path.join(FIXTURES, 'import-project.json'));
 
-  await expect(
-    win.getByRole('button', { name: '单项目导入（拖动以排序）' }).first(),
-  ).toBeVisible({ timeout: 10_000 });
+  await expect(win.getByRole('button', { name: '单项目导入（拖动以排序）' }).first()).toBeVisible({
+    timeout: 10_000,
+  });
   await expect(win.getByText('单项目导入的任务', { exact: true })).toBeVisible();
 });
 

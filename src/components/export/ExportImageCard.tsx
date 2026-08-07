@@ -22,6 +22,8 @@ export interface ExportImageCardProps {
   todos: Todo[];
   /** 展示范围；切换只影响任务行列表 */
   filter: ExportImageFilter;
+  /** 仅用于弹窗内预览；省略时渲染完整事项列表，供最终图片导出使用。 */
+  maxItems?: number;
 }
 
 /** 卡片渲染宽度（CSS 像素）。导出时 pixelRatio: 2 → 1440px 物理像素 */
@@ -213,7 +215,7 @@ function ProgressBar({ total, completed }: { total: number; completed: number })
 }
 
 export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
-  function ExportImageCard({ project, todos, filter }, ref) {
+  function ExportImageCard({ project, todos, filter, maxItems }, ref) {
     // —— 统计口径始终基于全量 todos ——
     const total = todos.length;
     const completedCount = todos.filter((t) => t.completed).length;
@@ -239,6 +241,17 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
     const createdLabel = formatChineseDate(project.createdAt);
     const exportedLabel = formatChineseDate(new Date().toISOString());
     const isEmpty = pendingTodos.length === 0 && completedTodos.length === 0;
+    const displayedPending =
+      maxItems === undefined ? pendingTodos : pendingTodos.slice(0, maxItems);
+    const displayedCompleted =
+      maxItems === undefined
+        ? completedTodos
+        : completedTodos.slice(0, Math.max(0, maxItems - displayedPending.length));
+    const omittedCount =
+      pendingTodos.length +
+      completedTodos.length -
+      displayedPending.length -
+      displayedCompleted.length;
 
     return (
       <div
@@ -325,21 +338,36 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
             </div>
           ) : (
             <>
-              {pendingTodos.length > 0 && (
+              {displayedPending.length > 0 && (
                 <>
                   <GroupHeader label="待办" count={pendingCount} />
-                  {pendingTodos.map((todo) => (
+                  {displayedPending.map((todo) => (
                     <TodoRow key={todo.id} todo={todo} />
                   ))}
                 </>
               )}
-              {completedTodos.length > 0 && (
+              {displayedCompleted.length > 0 && (
                 <>
                   <GroupHeader label="已完成" count={completedCount} />
-                  {completedTodos.map((todo) => (
+                  {displayedCompleted.map((todo) => (
                     <TodoRow key={todo.id} todo={todo} />
                   ))}
                 </>
+              )}
+              {omittedCount > 0 && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    backgroundColor: 'var(--bg-hover)',
+                    color: 'var(--text-tertiary)',
+                    fontSize: 12.5,
+                    textAlign: 'center',
+                  }}
+                >
+                  预览省略其余 {omittedCount} 项，导出图片将包含全部事项
+                </div>
               )}
             </>
           )}

@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { todosToCsv, exportProjectAsJson, parseImportData } from '../utils/export';
+import * as XLSX from 'xlsx';
+import {
+  createTodosExcel,
+  todosToCsv,
+  exportProjectAsJson,
+  parseImportData,
+} from '../utils/export';
 import type { Todo, Project, DeletedTodo } from '../types';
 
 const mockTodo: Todo = {
@@ -49,6 +55,31 @@ describe('export utils', () => {
       const todoWithComma: Todo = { ...mockTodo, title: '包含,逗号的事项' };
       const csv = todosToCsv([todoWithComma]);
       expect(csv).toContain('"包含,逗号的事项"');
+    });
+  });
+
+  describe('createTodosExcel', () => {
+    it('为每个项目创建独立工作表，并保留中文列名', async () => {
+      const content = await createTodosExcel([
+        { projectName: '工作', todos: [mockTodo] },
+        { projectName: '生活', todos: [{ ...mockTodo, id: '2', title: '买菜' }] },
+      ]);
+      const workbook = XLSX.read(content, { type: 'array' });
+
+      expect(workbook.SheetNames).toEqual(['工作', '生活']);
+      const rows = XLSX.utils.sheet_to_json<string[]>(workbook.Sheets['工作'], { header: 1 });
+      expect(rows[0]).toEqual(['标题', '描述', '已完成', '优先级', '创建时间', '完成时间', '置顶']);
+      expect(rows[1][0]).toBe('测试事项');
+    });
+
+    it('会规范化重复或不合法的工作表名', async () => {
+      const content = await createTodosExcel([
+        { projectName: '计划/清单', todos: [] },
+        { projectName: '计划:清单', todos: [] },
+      ]);
+      const workbook = XLSX.read(content, { type: 'array' });
+
+      expect(workbook.SheetNames).toEqual(['计划 清单', '计划 清单 (2)']);
     });
   });
 

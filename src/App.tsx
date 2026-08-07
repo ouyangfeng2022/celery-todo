@@ -26,6 +26,12 @@ import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
 import { ExportImageDialog } from './components/export/ExportImageDialog';
+import { ExportDataPreviewDialog } from './components/export/ExportDataPreviewDialog';
+import {
+  ExportDialog,
+  type ExportRequest,
+  type ExportScope,
+} from './components/export/ExportDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
@@ -40,12 +46,12 @@ import { createCoalescedAsyncTask } from './utils/coalescedAsyncTask';
 import {
   EXPORT_FORMAT_VERSION,
   exportAppAsJson,
+  createTodosExcel,
   exportHistoryAsJson,
   exportProjectAsJson,
   parseImportData,
-  todosToCsv,
 } from './utils/export';
-import { cn, downloadFile, readFileAsText } from './utils/helpers';
+import { cn, downloadBlob, downloadFile, readFileAsText } from './utils/helpers';
 import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Project, Todo } from './types';
 
 /**
@@ -486,23 +492,39 @@ function App() {
     downloadFile(json, `celery-todo-backup-${new Date().toISOString().split('T')[0]}.json`);
   }, []);
 
-  const handleExportCsv = useCallback(() => {
-    const csv = todosToCsv(todos);
-    downloadFile(csv, `todos-${activeProject?.name ?? 'export'}.csv`, 'text/csv;charset=utf-8');
-  }, [todos, activeProject]);
-
-  // 按项目导出 CSV：不依赖当前已加载的 todos，直接查指定项目，供设置页「导出项目」
-  // 对话框使用（用户选的不一定是当前活跃项目）。
-  const handleExportCsvForProject = useCallback(
-    (projectId: string) => {
+  // 按项目导出 Excel：不依赖当前已加载的 todos，直接查指定项目。
+  const handleExportExcelForProject = useCallback(
+    async (projectId: string) => {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
-      const rows = db.getTodosByProject(projectId);
-      const csv = todosToCsv(rows);
-      downloadFile(csv, `todos-${project.name}.csv`, 'text/csv;charset=utf-8');
+      const content = await createTodosExcel([
+        { projectName: project.name, todos: db.getTodosByProject(projectId) },
+      ]);
+      downloadBlob(
+        new Blob([content], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+        `todos-${project.name}.xlsx`,
+      );
     },
     [projects],
   );
+
+  // 全量 Excel：每个项目写入一个同名工作表。
+  const handleExportAllExcel = useCallback(async () => {
+    const content = await createTodosExcel(
+      projects.map((project) => ({
+        projectName: project.name,
+        todos: db.getTodosByProject(project.id),
+      })),
+    );
+    downloadBlob(
+      new Blob([content], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      `celery-todo-${new Date().toISOString().split('T')[0]}.xlsx`,
+    );
+  }, [projects]);
 
   // 导出历史记录（归档）为独立 JSON 快照。跨项目全量，按归档时间倒序。
   // 注意：这是只读备份，刻意不被 parseImportData 识别，不可导回。
@@ -530,27 +552,89 @@ function App() {
   const [exportImageTarget, setExportImageTarget] = useState<{
     project: Project;
     todos: Todo[];
+    autoExport?: boolean;
   } | null>(null);
 
   const handleExportImage = useCallback(
-    (projectId: string) => {
+    (projectId: string, autoExport = false) => {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
       const projectTodos = db.getTodosByProject(projectId);
-      setExportImageTarget({ project, todos: projectTodos });
+      setExportImageTarget({ project, todos: projectTodos, autoExport });
     },
     [projects],
   );
 
   // 设置页「导出项目」对话框的统一分发：根据格式转给对应处理函数。
-  // JSON / 图片复用侧栏右键菜单的同款实现，CSV 走按项目查库的版本。
+  // JSON / 图片复用侧栏右键菜单的同款实现，Excel 走按项目查库的版本。
   const handleExportProjectWithFormat = useCallback(
-    (projectId: string, format: 'json' | 'csv' | 'image') => {
+    (projectId: string, format: 'json' | 'excel' | 'image') => {
       if (format === 'json') handleExportProject(projectId);
       else if (format === 'image') handleExportImage(projectId);
-      else handleExportCsvForProject(projectId);
+      else void handleExportExcelForProject(projectId);
     },
-    [handleExportProject, handleExportImage, handleExportCsvForProject],
+    [handleExportProject, handleExportImage, handleExportExcelForProject],
+  );
+
+  // 所有入口只负责唤起导出卡片；实际下载统一由卡片确认后分发。
+  const [exportDialogTarget, setExportDialogTarget] = useState<{
+    scope: ExportScope;
+    projectId?: string;
+  } | null>(null);
+  const openExportDialog = useCallback((projectId?: string) => {
+    setExportDialogTarget({ scope: projectId ? 'project' : 'all', projectId });
+  }, []);
+  const [exportDataPreviewTarget, setExportDataPreviewTarget] = useState<{
+    request: ExportRequest;
+    projects: Project[];
+    projectTodos: Record<string, Todo[]>;
+    jsonPreview: string;
+  } | null>(null);
+  const handleExportRequest = useCallback(
+    ({ scope, projectId, format }: ExportRequest) => {
+      if (format === 'image') {
+        handleExportImage(projectId);
+        return;
+      }
+
+      const previewProjects = scope === 'all'
+        ? projects
+        : projects.filter((project) => project.id === projectId);
+      const projectTodos = Object.fromEntries(
+        previewProjects.map((project) => [project.id, db.getTodosByProject(project.id)]),
+      );
+      const jsonPreview = scope === 'all'
+        ? exportAppAsJson(db.exportAllData())
+        : previewProjects[0]
+          ? exportProjectAsJson(
+              previewProjects[0],
+              projectTodos[previewProjects[0].id],
+              db.getDeletedTodosByProject(previewProjects[0].id),
+            )
+          : '{}';
+      setExportDataPreviewTarget({
+        request: { scope, projectId, format },
+        projects: previewProjects,
+        projectTodos,
+        jsonPreview,
+      });
+    },
+    [handleExportImage, projects],
+  );
+  const handleDirectExportRequest = useCallback(
+    ({ scope, projectId, format }: ExportRequest) => {
+      if (scope === 'all') {
+        if (format === 'excel') void handleExportAllExcel();
+        else handleExportAll();
+        return;
+      }
+      if (format === 'image') {
+        handleExportImage(projectId, true);
+        return;
+      }
+      handleExportProjectWithFormat(projectId, format);
+    },
+    [handleExportAll, handleExportAllExcel, handleExportImage, handleExportProjectWithFormat],
   );
 
   const handleImportProject = useCallback(
@@ -628,8 +712,8 @@ function App() {
       setCreateProjectSignal((signal) => signal + 1);
     },
     onImport: handleImportClick,
-    onExportAll: handleExportAll,
-    onExportCsv: handleExportCsv,
+    onExportAll: () => openExportDialog(),
+    onExportCsv: () => openExportDialog(activeProjectId),
     onEnterCompactMode: () => {
       void window.electronAPI?.createSticker(activeProjectId);
     },
@@ -690,8 +774,7 @@ function App() {
               searchResults={globalSearchResults}
               onSelectSearchResult={handleSelectGlobalSearchResult}
               onImport={handleImportProject}
-              onExportAll={handleExportAll}
-              onExportCsv={handleExportCsv}
+              onOpenExport={() => openExportDialog()}
               onCreateProject={() => {
                 setSidebarOpen(true);
                 setCreateProjectSignal((signal) => signal + 1);
@@ -758,8 +841,7 @@ function App() {
                 onCreate={createProject}
                 onRename={renameProject}
                 onDelete={deleteProject}
-                onExport={handleExportProject}
-                onExportImage={handleExportImage}
+                onOpenExport={openExportDialog}
                 onReorder={reorderProjects}
                 updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
@@ -778,7 +860,6 @@ function App() {
                 onNewTodoInProject={handleNewTodoInProject}
                 onCreateSticker={(projectId) => void window.electronAPI?.createSticker(projectId)}
                 onImport={handleImportClick}
-                onExportAll={handleExportAll}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}
               />
@@ -991,10 +1072,7 @@ function App() {
         settings={settings}
         onClose={() => setSettingsOpen(false)}
         onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
-        onExportAll={handleExportAll}
-        activeProjectId={activeProjectId}
-        onExportProject={handleExportProjectWithFormat}
-        onExportCsv={handleExportCsv}
+        onOpenExport={() => openExportDialog()}
         onImportAll={handleImportProject}
         onResetData={handleResetData}
         // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====
@@ -1039,7 +1117,39 @@ function App() {
           open={exportImageTarget !== null}
           project={exportImageTarget.project}
           todos={exportImageTarget.todos}
+          autoExport={exportImageTarget.autoExport}
           onClose={() => setExportImageTarget(null)}
+        />
+      )}
+
+      <ExportDialog
+        open={exportDialogTarget !== null}
+        projects={projects}
+        defaultScope={exportDialogTarget?.scope}
+        defaultProjectId={exportDialogTarget?.projectId ?? activeProjectId}
+        onClose={() => setExportDialogTarget(null)}
+        onPreview={handleExportRequest}
+        onExport={handleDirectExportRequest}
+      />
+
+      {exportDataPreviewTarget && (
+        <ExportDataPreviewDialog
+          open={exportDataPreviewTarget !== null}
+          scope={exportDataPreviewTarget.request.scope}
+          format={exportDataPreviewTarget.request.format as 'json' | 'excel'}
+          projects={exportDataPreviewTarget.projects}
+          projectTodos={exportDataPreviewTarget.projectTodos}
+          jsonPreview={exportDataPreviewTarget.jsonPreview}
+          onClose={() => setExportDataPreviewTarget(null)}
+          onDownload={() => {
+            const { scope, projectId, format } = exportDataPreviewTarget.request;
+            if (scope === 'all') {
+              if (format === 'excel') void handleExportAllExcel();
+              else handleExportAll();
+            } else {
+              handleExportProjectWithFormat(projectId, format);
+            }
+          }}
         />
       )}
     </div>

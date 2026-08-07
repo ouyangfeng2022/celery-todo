@@ -2,11 +2,11 @@
  * @file ExportImageDialog - 导出项目为图片的预览弹窗
  * @description 镜像 ConfirmDialog 的视觉模式（framer-motion + backdrop + Esc 关闭），
  *   但承载自定义内容：① 范围筛选单选（全部/未完成/已完成）
- *   ② 居中预览 ExportImageCard（实时跟随当前主题）
- *   ③ 底部三个操作：复制到剪贴板 / 下载 PNG / 取消
+ *   ② 居中展示事项摘要；完整卡片离屏渲染，仅用于生成 PNG
+ *   ③ 底部三个操作：复制到剪贴板 / 下载 PNG / 返回上一步
  *
- * 截图原理：预览里的 ExportImageCard 真实渲染在 DOM 中，html-to-image 通过 ref
- *   拿到根节点直接转 PNG。无需隐藏节点或额外离屏渲染。
+ * 截图原理：完整 ExportImageCard 离屏保留在 DOM 中，html-to-image 通过 ref
+ *   取得它生成 PNG；可见区域只展示前几项，避免长项目撑高弹窗。
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -19,6 +19,8 @@ export interface ExportImageDialogProps {
   open: boolean;
   project: Project;
   todos: Todo[];
+  /** 跳过可见预览，离屏渲染完整卡片后直接下载。 */
+  autoExport?: boolean;
   onClose: () => void;
 }
 
@@ -54,11 +56,18 @@ async function copyBlobToClipboard(blob: Blob): Promise<boolean> {
   }
 }
 
-export function ExportImageDialog({ open, project, todos, onClose }: ExportImageDialogProps) {
+export function ExportImageDialog({
+  open,
+  project,
+  todos,
+  autoExport = false,
+  onClose,
+}: ExportImageDialogProps) {
   const [filter, setFilter] = useState<ExportImageFilter>('all');
   const [busy, setBusy] = useState<'copy' | 'download' | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const autoExportStartedRef = useRef(false);
 
   // 每次打开重置局部状态（上次反馈/筛选不残留）
   useEffect(() => {
@@ -120,11 +129,39 @@ export function ExportImageDialog({ open, project, todos, onClose }: ExportImage
     }
   }, [filename]);
 
+  // 直接导出也复用同一张完整卡片，避免把可见预览中的截断事项写入 PNG。
+  const handleAutoExport = useCallback(async () => {
+    if (!cardRef.current) return;
+    try {
+      const blob = await exportNodeAsPngBlob(cardRef.current);
+      downloadBlob(blob, filename);
+    } catch (err) {
+      console.error('直接导出图片失败', err);
+    } finally {
+      onClose();
+    }
+  }, [filename, onClose]);
+
+  useEffect(() => {
+    if (!open || !autoExport || autoExportStartedRef.current) return;
+    // React 严格模式会重复执行 effect；直接下载必须保持幂等，避免弹出两个保存窗口。
+    autoExportStartedRef.current = true;
+    void handleAutoExport();
+  }, [autoExport, handleAutoExport, open]);
+
+  if (autoExport) {
+    return open ? (
+      <div aria-hidden="true" className="fixed left-[-10000px] top-0 pointer-events-none">
+        <ExportImageCard ref={cardRef} project={project} todos={todos} filter="all" />
+      </div>
+    ) : null;
+  }
+
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[75] flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -193,14 +230,19 @@ export function ExportImageDialog({ open, project, todos, onClose }: ExportImage
               </div>
             </div>
 
-            {/* 预览区：可滚动，底色用 bg-secondary 与卡片拉开层级 */}
+            {/* 预览区：只显示代表性事项，长项目不会撑高弹窗。 */}
             <div
               className="flex-1 overflow-auto flex justify-center p-6"
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
               <div style={{ flexShrink: 0 }}>
-                <ExportImageCard ref={cardRef} project={project} todos={todos} filter={filter} />
+                <ExportImageCard project={project} todos={todos} filter={filter} maxItems={6} />
               </div>
+            </div>
+
+            {/* 完整卡片仅供 PNG 生成；不影响用户看到的摘要预览。 */}
+            <div aria-hidden="true" className="fixed left-[-10000px] top-0 pointer-events-none">
+              <ExportImageCard ref={cardRef} project={project} todos={todos} filter={filter} />
             </div>
 
             {/* 底部操作栏 + 反馈 */}
@@ -220,11 +262,11 @@ export function ExportImageDialog({ open, project, todos, onClose }: ExportImage
                         : 'var(--text-quaternary)',
                 }}
               >
-                {feedback?.text ?? '预览随当前主题渲染，导出效果与所见一致'}
+                {feedback?.text ?? '预览仅显示部分事项；导出的 PNG 将包含全部事项'}
               </div>
 
               <button className="btn-secondary" onClick={onClose} disabled={busy !== null}>
-                取消
+                返回
               </button>
               <button className="btn-secondary" onClick={handleCopy} disabled={busy !== null}>
                 {busy === 'copy' ? '复制中…' : '复制到剪贴板'}

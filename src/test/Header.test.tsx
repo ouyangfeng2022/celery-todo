@@ -10,8 +10,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof Header>> = 
     onToggleSidebar: vi.fn(),
     onSearchChange: vi.fn(),
     onImport: vi.fn(),
-    onExportAll: vi.fn(),
-    onExportCsv: vi.fn(),
+    onOpenExport: vi.fn(),
     onCreateProject: vi.fn(),
     onEnterCompactMode: vi.fn(),
     onCloseWindow: vi.fn(),
@@ -118,9 +117,9 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: '窗口' })).toBeInTheDocument();
     // 帮助与反馈已移至左下角设置菜单,不应出现在这里
     expect(screen.queryByRole('button', { name: '帮助与反馈' })).not.toBeInTheDocument();
-    // 展开数据分组后才能点到「导出全部数据」
+    // 展开数据分组后才能打开统一导出卡片
     fireEvent.click(screen.getByRole('button', { name: '数据' }));
-    fireEvent.click(screen.getByRole('button', { name: '导出全部数据' }));
-    expect(props.onExportAll).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: '导出数据…' }));
+    expect(props.onOpenExport).toHaveBeenCalledOnce();
   });
 });

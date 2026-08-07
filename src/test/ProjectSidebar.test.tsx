@@ -50,8 +50,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onCreate={vi.fn()}
         onRename={vi.fn()}
         onDelete={vi.fn()}
-        onExport={vi.fn()}
-        onExportImage={vi.fn()}
+        onOpenExport={vi.fn()}
         onReorder={vi.fn()}
         onOpenSettings={onOpenSettings}
         onOpenHistory={onOpenHistory}
@@ -60,7 +59,6 @@ describe('ProjectSidebar 设置菜单', () => {
         onNewTodoInProject={vi.fn()}
         onCreateSticker={vi.fn()}
         onImport={vi.fn()}
-        onExportAll={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -102,8 +100,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onCreate={vi.fn()}
         onRename={vi.fn()}
         onDelete={vi.fn()}
-        onExport={vi.fn()}
-        onExportImage={vi.fn()}
+        onOpenExport={vi.fn()}
         onReorder={vi.fn()}
         onOpenSettings={vi.fn()}
         onOpenHistory={vi.fn()}
@@ -112,7 +109,6 @@ describe('ProjectSidebar 设置菜单', () => {
         onNewTodoInProject={vi.fn()}
         onCreateSticker={onCreateSticker}
         onImport={vi.fn()}
-        onExportAll={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -142,8 +138,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onCreate={onCreate}
         onRename={vi.fn()}
         onDelete={vi.fn()}
-        onExport={vi.fn()}
-        onExportImage={vi.fn()}
+        onOpenExport={vi.fn()}
         onReorder={vi.fn()}
         onOpenSettings={vi.fn()}
         onOpenHistory={vi.fn()}
@@ -152,7 +147,6 @@ describe('ProjectSidebar 设置菜单', () => {
         onNewTodoInProject={vi.fn()}
         onCreateSticker={vi.fn()}
         onImport={vi.fn()}
-        onExportAll={vi.fn()}
         incompleteCounts={{}}
       />,
     );
@@ -172,7 +166,7 @@ describe('ProjectSidebar 设置菜单', () => {
   it('列表空白处右键提供新建项目/导入/导出', () => {
     const onCreate = vi.fn();
     const onImport = vi.fn();
-    const onExportAll = vi.fn();
+    const onOpenExport = vi.fn();
     render(
       <ProjectSidebar
         projects={[
@@ -190,8 +184,7 @@ describe('ProjectSidebar 设置菜单', () => {
         onCreate={onCreate}
         onRename={vi.fn()}
         onDelete={vi.fn()}
-        onExport={vi.fn()}
-        onExportImage={vi.fn()}
+        onOpenExport={onOpenExport}
         onReorder={vi.fn()}
         onOpenSettings={vi.fn()}
         onOpenHistory={vi.fn()}
@@ -200,7 +193,6 @@ describe('ProjectSidebar 设置菜单', () => {
         onNewTodoInProject={vi.fn()}
         onCreateSticker={vi.fn()}
         onImport={onImport}
-        onExportAll={onExportAll}
         incompleteCounts={{}}
       />,
     );
@@ -222,8 +214,8 @@ describe('ProjectSidebar 设置菜单', () => {
 
     // 重新唤出菜单（点击项后菜单关闭）
     fireEvent.contextMenu(sectionHeader);
-    fireEvent.click(screen.getByRole('button', { name: '导出全部数据' }));
-    expect(onExportAll).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: '导出数据…' }));
+    expect(onOpenExport).toHaveBeenCalledTimes(1);
 
     // 新建项目走同一输入流程
     fireEvent.contextMenu(sectionHeader);

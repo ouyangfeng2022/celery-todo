@@ -50,9 +50,8 @@ interface ProjectSidebarProps {
   onCreate: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
-  onExport: (projectId: string) => void;
-  /** 导出该项目为图片（打开预览弹窗） */
-  onExportImage: (projectId: string) => void;
+  /** 打开统一导出选项卡片；项目右键会预选该项目 */
+  onOpenExport: (projectId?: string) => void;
   onReorder: (sourceId: string, targetId: string) => void;
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
@@ -78,8 +77,6 @@ interface ProjectSidebarProps {
   onCreateSticker: (projectId: string) => void;
   /** 导入数据（与 Header「数据 → 导入数据」同一条路径） */
   onImport: () => void;
-  /** 导出全部数据为 JSON 备份 */
-  onExportAll: () => void;
   /** 各项目未完成 todo 数：projectId → count */
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
@@ -425,8 +422,7 @@ function ProjectSidebarComponent({
   onCreate,
   onRename,
   onDelete,
-  onExport,
-  onExportImage,
+  onOpenExport,
   onReorder,
   updateStatus,
   updateInfo,
@@ -443,7 +439,6 @@ function ProjectSidebarComponent({
   onNewTodoInProject,
   onCreateSticker,
   onImport,
-  onExportAll,
   incompleteCounts,
   autofocusCreateSignal,
 }: ProjectSidebarProps) {
@@ -538,21 +533,10 @@ function ProjectSidebarComponent({
                 },
               },
               {
-                label: '导出项目',
-                submenu: [
-                  {
-                    label: '导出为 JSON',
-                    onClick: () => {
-                      onExport(ctxMenu.project!.id);
-                    },
-                  },
-                  {
-                    label: '导出为图片…',
-                    onClick: () => {
-                      onExportImage(ctxMenu.project!.id);
-                    },
-                  },
-                ],
+                label: '导出…',
+                onClick: () => {
+                  onOpenExport(ctxMenu.project!.id);
+                },
               },
               {
                 label: '重命名',
@@ -585,9 +569,9 @@ function ProjectSidebarComponent({
                 },
               },
               {
-                label: '导出全部数据',
+                label: '导出数据…',
                 onClick: () => {
-                  onExportAll();
+                  onOpenExport();
                 },
               },
             ] as ContextMenuItem[])),
