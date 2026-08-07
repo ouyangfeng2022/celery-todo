@@ -143,7 +143,7 @@ CLI 会探测候选目录，命中含 `storage-config.json` 或已有数据库�
 
 推荐做法：
 
-1. **GUI 运行时**：CLI 自动走 IPC 模式，无需任何顾虑
+1. **GUI 运行时**：CLI 自动走 IPC 模式；请求由 Electron 主进程的单一 SQLite 仓储执行，GUI 收到版本事件后刷新，无需担心 renderer 快照覆盖
 2. **GUI 未运行时**：用直连模式。如需同时使用，先退出 GUI，操作 CLI，再启动 GUI
 
 ## 命令设计细节
@@ -181,12 +181,9 @@ cli/
     db.test.ts            数据层 CRUD 集成测试（直连模式）
     ipc.test.ts           JSON-RPC over net 协议测试
 electron/
-  cli-server.ts           主进程 net server + JSON-RPC 路由 + ID 配对
+  cli-server.ts           主进程 net server + JSON-RPC 路由（直接调用 SQLite 仓储）
   main.ts                 初始化 cli-server + before-quit 清理
-  preload.ts              新增 onCliRequest/cliRespond IPC 通道
-src/
-  cli-bridge.ts           渲染进程 CLI handler（调 store action 实时更新 GUI）
-  App.tsx                 挂载 useCliBridge hook
+  preload.ts              renderer 数据网关与窗口 IPC
 scripts/fix-cli-cjs.mjs   写 dist-cli/package.json 标记 CommonJS（与 fix-electron-cjs.mjs 同模式）
 ```
 
@@ -201,17 +198,11 @@ db.ts 分派层
   ├─ IPC 模式 ────►  ipc.ts  ────►  Unix socket/   ────►  electron/cli-server.ts
   │                                     命名管道              │
   │                                                          ▼
-  │                                                   electron/preload.ts
+  │                                              electron/database-repository.ts
   │                                                          │
-  │                                                          ▼
-  │                                                   src/cli-bridge.ts
+  │                                                    SQLite 单连接
   │                                                          │
-  │                                                   Zustand store action
-  │                                                          │
-  │                                            ┌─────────────┼─────────────┐
-  │                                            ▼                         ▼
-  │                                       React 实时重渲染           database.ts
-  │                                        （GUI 即时刷新）          （500ms 保存）
+  │                                                data:changed:v2 事件
   │
   └─ 直连模式 ──►  db-direct.ts  ──►  better-sqlite3  ──►  SQLite 文件
 ```
@@ -220,7 +211,7 @@ db.ts 分派层
 
 ### 关键约束
 
-- **better-sqlite3 / commander / tsx 全部放 `devDependencies`**，绝不进 Electron 打包流程（`package.json` 的 `build.files` 只含 `dist`、`dist-electron`、`package.json`）。
+- **better-sqlite3 是 Electron 生产依赖**：`bun run rebuild:electron` 会在开发、构建与打包前重建为 Electron ABI；CLI 离线回退复用同一原生模块。
 - **CLI 独立 tsconfig**，不加入根 `tsconfig.json` 的 references，避免污染渲染端的 `tsc -b`。
 - **不修改 journal_mode**：App（sql.js）以 rollback journal 使用文件，CLI 保持一致，避免只读打开时改 journal 报错。
 - **不做 schema 迁移**：CLI 只对已初始化的库操作；缺表时报错并提示「请先启动一次 App」。

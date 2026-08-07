@@ -18,6 +18,13 @@ import type { IpcMainInvokeEvent } from 'electron';
 import * as path from 'path';
 import { createTray } from './tray';
 import { registerStorageIpc } from './storage';
+import {
+  closeRepository,
+  notifyRepositoryFullRefresh,
+  registerRepositoryIpc,
+  setDataChangedListener,
+  type DataChangedEvent as RepositoryDataChangedEvent,
+} from './database-repository';
 import { initUpdater, registerUpdaterIpc } from './updater';
 import { initCliServer, shutdownCliServer } from './cli-server';
 import { applyInstallOptionsOnce, consumePendingAutoStartSync } from './install-options';
@@ -137,6 +144,18 @@ function scheduleDataChangedBroadcast(senderId: number, patch?: unknown): void {
     notify(mainWindow);
     for (const window of stickerWindows.values()) notify(window);
   }, 50);
+}
+
+/** 原生仓储提交后广播细粒度影响范围；不与旧 renderer 同步事件混用。 */
+function broadcastRepositoryChanged(event: RepositoryDataChangedEvent): void {
+  const { originWebContentsId, ...publicEvent } = event;
+  const notify = (window: BrowserWindow | null): void => {
+    if (!window || window.isDestroyed()) return;
+    if (window.webContents.id === originWebContentsId) return;
+    window.webContents.send('data:changed:v2', publicEvent);
+  };
+  notify(mainWindow);
+  for (const window of stickerWindows.values()) notify(window);
 }
 
 const STARTUP_THEME_COLORS = {
@@ -505,7 +524,14 @@ if (!gotTheLock) {
       createSticker: () => createStickerWindow(crypto.randomUUID()),
       showStickers: () => stickerWindows.forEach((window) => window.show()),
     });
-    registerStorageIpc({ isAppWindowSender, isMainWindowSender });
+    registerStorageIpc({
+      isAppWindowSender,
+      isMainWindowSender,
+      beforeStoragePathChange: closeRepository,
+      afterStoragePathChange: notifyRepositoryFullRefresh,
+    });
+    registerRepositoryIpc(isAppWindowSender);
+    setDataChangedListener(broadcastRepositoryChanged);
     registerUpdaterIpc(isMainWindowSender);
     // 自动升级：绑定事件转发（开发环境下 IPC 内部会短路）
     if (mainWindow) initUpdater(mainWindow);
@@ -546,6 +572,7 @@ app.on('before-quit', () => {
   (app as AppWithIsQuitting).isQuitting = true;
   flushWindowStateSave();
   shutdownCliServer();
+  closeRepository();
   tray?.destroy();
 });
 

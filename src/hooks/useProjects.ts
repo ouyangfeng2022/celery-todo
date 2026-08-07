@@ -10,7 +10,7 @@ export function useProjects() {
   const store = useProjectStore();
 
   const createProject = useCallback(
-    (name: string, color?: string): string => {
+    async (name: string, color?: string): Promise<string> => {
       return store.createProject(name, color);
     },
     [store],

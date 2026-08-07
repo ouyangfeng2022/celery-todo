@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '../store/useSettingsStore';
-import * as db from '../utils/database';
+import * as data from '../utils/dataGateway';
 
 /** 升级状态 */
 export type UpdateStatus =
@@ -85,11 +85,11 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       }
       lastSeenVersionRef.current = info.version;
       // 同一版本只在首次发现时标记为「新提示」并写盘，避免每次启动重复打扰
-      const alreadyNotified = db.getSetting(NOTIFIED_VERSION_KEY) === info.version;
-      setIsNewlyAvailable(!alreadyNotified);
-      if (!alreadyNotified) {
-        db.setSetting(NOTIFIED_VERSION_KEY, info.version);
-      }
+      void data.getSetting(NOTIFIED_VERSION_KEY).then((storedVersion) => {
+        const alreadyNotified = storedVersion === info.version;
+        setIsNewlyAvailable(!alreadyNotified);
+        if (!alreadyNotified) void data.setSetting(NOTIFIED_VERSION_KEY, info.version);
+      });
     });
     const offNotAvailable = api.onUpdateNotAvailable(() => {
       setStatus('not-available');
@@ -154,7 +154,7 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   /** 退出并安装：先把数据库刷盘，避免数据丢失 */
   const quitAndInstall = useCallback(async () => {
     if (!isDesktop) return;
-    await db.flushSave();
+    await data.flush();
     window.electronAPI!.updaterQuitAndInstall();
   }, [isDesktop]);
 
@@ -170,7 +170,7 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   const acknowledgeUpdate = useCallback(() => {
     setIsNewlyAvailable(false);
     if (updateInfo) {
-      db.setSetting(NOTIFIED_VERSION_KEY, updateInfo.version);
+      void data.setSetting(NOTIFIED_VERSION_KEY, updateInfo.version);
     }
   }, [updateInfo]);
 

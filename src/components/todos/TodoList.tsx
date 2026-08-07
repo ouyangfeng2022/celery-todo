@@ -162,11 +162,9 @@ function TodoListComponent({
   onSnapshotOrder,
   focusTarget,
 }: TodoListProps) {
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  // 拖拽期间临时挂载完整列表。dnd-kit 的碰撞检测只能识别已挂载的 droppable；
-  // 保持虚拟化会让跨越视口/overscan 的拖拽（尤其键盘连续 ArrowUp/Down）找不到目标。
-  // 拖拽结束即恢复按需挂载，日常滚动仍保有虚拟列表的性能收益。
-  const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD && activeDragId === null;
+  // 大列表拖拽时也保持虚拟化。目标限制在当前视口和 overscan 已挂载范围，
+  // 避免一次拖拽将数百个 Markdown/DnD 节点同时插入 DOM。
+  const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD;
   const listContainerRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
@@ -233,7 +231,6 @@ function TodoListComponent({
         }
         onReorder(active.id as string, over.id as string);
       }
-      setActiveDragId(null);
     },
     [onReorder, onSortChange, onSnapshotOrder, sort, todos],
   );
@@ -308,9 +305,7 @@ function TodoListComponent({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={(event) => setActiveDragId(String(event.active.id))}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveDragId(null)}
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>

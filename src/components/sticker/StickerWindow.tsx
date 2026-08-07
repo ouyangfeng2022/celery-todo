@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import * as db from '../../utils/database';
+import * as data from '../../utils/dataGateway';
 import { createCoalescedAsyncTask } from '../../utils/coalescedAsyncTask';
-import { readProjectSort, sortTodos } from '../../utils/sortTodos';
+import { DEFAULT_SORT, SORT_VALUES, sortKey, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import {
   PRIORITY_LABELS,
   PRIORITY_SOLID,
   type Priority,
   type Project,
+  type SortType,
   type Todo,
 } from '../../types';
 import { generateId } from '../../utils/helpers';
@@ -45,10 +46,12 @@ function sameProjects(a: Project[], b: Project[]): boolean {
  * 注意：不直接改 sortTodos.ts —— 那是主窗口 + 贴图共用，主窗口仍保持
  * filter='all' 下的混排行为；此处"沉底"仅是贴图本地的展示策略。
  */
-function loadStickerTodos(pid: string): Todo[] {
+async function loadStickerTodos(pid: string): Promise<Todo[]> {
   if (!pid) return [];
-  const all = db.getTodosByProject(pid);
-  const sort = readProjectSort(pid);
+  const [all, storedSort] = await Promise.all([data.getTodos(pid), data.getSetting(sortKey(pid))]);
+  const sort = storedSort && (SORT_VALUES as readonly string[]).includes(storedSort)
+    ? storedSort as SortType
+    : DEFAULT_SORT;
   const active = sortTodos(
     all.filter((t) => !t.completed),
     sort,
@@ -137,32 +140,32 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   // 仅按"当前 projectId 重读项目列表 + 该项目的未完成 todo"。
   // 不再回写 setProjectId —— 回写会与 select 受控值互相打架，导致项目反复横跳。
   // 首次进入且 projectId 为空时，回落到第一个项目（仅在此一处补默认值）。
-  const refresh = useCallback(() => {
-    const ps = db.getAllProjects();
+  const refresh = useCallback(async () => {
+    const ps = await data.getProjects();
     setProjects((prev) => (sameProjects(prev, ps) ? prev : ps));
     const id = projectIdRef.current || ps[0]?.id || '';
-    setTodos(loadStickerTodos(id));
+    setTodos(await loadStickerTodos(id));
   }, []);
   useEffect(() => {
-    void db.initDatabase().then(() => {
+    void (async () => {
       // 同步读取本窗口应有的样式设置（首次加载 / 老数据缺失键时走默认）
-      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
+      await useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       // 首次加载时若 initialProjectId 缺失，回落到第一个项目并持久化，让 select 有值。
-      const ps = db.getAllProjects();
+      const ps = await data.getProjects();
       if (!projectIdRef.current && ps[0]) {
         setProjectId(ps[0].id);
         projectIdRef.current = ps[0].id;
         void window.electronAPI?.setStickerProject(stickerId, ps[0].id);
       }
-      refresh();
+      await refresh();
       setReady(true);
-    });
+    })();
   }, [refresh, stickerId]);
 
   // 订阅主窗口发起的"贴图样式已变更"广播 —— 重新读 DB 同步本地状态。
   useEffect(() => {
     const off = window.electronAPI?.onStickerStyleChanged?.(() => {
-      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
+      void useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
     });
     return () => {
       off?.();
@@ -173,13 +176,23 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   // 后刷新当前项目列表，让贴图与主窗口保持一致。本窗口自己 toggle 完成时不会
   // 单发送者的发起方仅推进同步版本，不会重复应用自己的补丁。
   useEffect(() => {
+    if (data.isNativeDatabase()) {
+      return data.onDataChanged((event) => {
+        const currentProject = projectIdRef.current;
+        if (event.fullRefresh || event.projectsChanged || event.settingsChanged || event.projectIds.includes(currentProject)) {
+          void refresh();
+        }
+        if (event.fullRefresh || event.settingsChanged) void useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
+      });
+    }
     let disposed = false;
     let lastSeenVersion = 0;
     const sync = createCoalescedAsyncTask(async () => {
+      const db = await import('../../utils/database');
       await db.reloadDatabase();
       if (disposed) return;
-      useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
-      refresh();
+      await useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
+      await refresh();
     });
     const off = window.electronAPI?.onDataChanged?.(({ version, shouldApply, patch }) => {
       const hasGap = lastSeenVersion !== 0 && version !== lastSeenVersion + 1;
@@ -187,8 +200,10 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       if (!shouldApply) return;
 
       if (patch && !hasGap) {
-        db.applyRemoteSyncPatch(patch);
-        refresh();
+        void import('../../utils/database').then((db) => {
+          db.applyRemoteSyncPatch(patch);
+          return refresh();
+        });
         return;
       }
       sync.schedule();
@@ -241,7 +256,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     // 项目 id 与对应列表必须在同一次 React 提交中更新，避免中间一帧显示新项目名和旧事项。
     projectIdRef.current = nextProjectId;
     setProjectId(nextProjectId);
-    setTodos(loadStickerTodos(nextProjectId));
+    void loadStickerTodos(nextProjectId).then(setTodos);
     setProjectMenuOpen(false);
     void window.electronAPI?.setStickerProject(stickerId, nextProjectId);
   };
@@ -249,28 +264,26 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     // 点击已完成项：取消完成，回到待办区；点击未完成项：标记完成并沉底。
     // 行为与主窗口勾选语义对齐（主窗口支持取消勾选，贴图以前只是隐藏，现在也允许反悔）。
     const nextCompleted = !todo.completed;
-    db.updateTodo({
+    await data.updateTodo({
       ...todo,
       completed: nextCompleted,
       completedAt: nextCompleted ? new Date().toISOString() : undefined,
       updatedAt: new Date().toISOString(),
     });
-    await db.flushSave();
-    refresh();
+    await refresh();
   };
   // 归档事项：复用 db.archiveTodos，与主窗口「归档」语义一致（移入历史记录，可恢复）。
   // 贴图窗口绕过 store，故直接走 db + flushSave + refresh。
   const archive = async (todo: Todo) => {
-    db.archiveTodos([todo]);
-    await db.flushSave();
-    refresh();
+    await data.archiveTodos([todo]);
+    await refresh();
   };
   // 新建待办：批量场景一次插入多条，order 接在当前项目最大 order 之后。
   // 复刻 useTodoStore.addTodo / addTodosBulk 的写入逻辑（贴图本就绕过 store 直连 db）。
   const handleAdd = async (titles: string[], priority: Priority) => {
     const pid = projectIdRef.current;
     if (!pid || titles.length === 0) return;
-    const existing = db.getTodosByProject(pid);
+    const existing = await data.getTodos(pid);
     let baseOrder = existing.length > 0 ? Math.max(...existing.map((t) => t.order)) : 0;
     const now = new Date().toISOString();
     const newTodos: Todo[] = [];
@@ -285,13 +298,12 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         priority,
         createdAt: now,
         updatedAt: now,
-        order: ++baseOrder,
+        order: (baseOrder += 1024),
         pinned: false,
       });
     }
-    db.insertTodos(newTodos);
-    await db.flushSave();
-    refresh();
+    await data.insertTodos(newTodos);
+    await refresh();
   };
   // 右键命中的事项：在菜单顶部额外提供「归档事项」。无命中时只显示贴图自身操作。
   const contextMenuTargetTodo = useMemo(

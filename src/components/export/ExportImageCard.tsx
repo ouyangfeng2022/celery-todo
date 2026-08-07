@@ -11,10 +11,11 @@
 import { forwardRef, useMemo } from 'react';
 import type { Project, Todo } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
-import { readProjectSort, sortTodos } from '../../utils/sortTodos';
+import { sortTodos } from '../../utils/sortTodos';
 
 /** 展示范围筛选 —— 头部统计始终基于全量，不受此影响 */
 export type ExportImageFilter = 'all' | 'pending' | 'completed';
+const DEFAULT_EXPORT_SORT = 'created-desc' as const;
 
 export interface ExportImageCardProps {
   project: Project;
@@ -45,8 +46,8 @@ function formatChineseDate(iso: string): string {
  * 这样图片里的任务顺序与用户在项目中看到的完全一致 —— 无论是
  * 创建时间降序、按优先级、还是手动拖拽顺序。置顶项恒居顶。
  */
-function orderAsProject(projectId: string, todos: Todo[]): Todo[] {
-  return sortTodos(todos, readProjectSort(projectId));
+function orderAsProject(todos: Todo[]): Todo[] {
+  return sortTodos(todos, DEFAULT_EXPORT_SORT);
 }
 
 /** 单行任务视觉：复选框 + 标题 + 优先级标签，与 TodoItem 风格对齐 */
@@ -225,7 +226,7 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
     //    先按项目排序偏好整体排序，再按完成态分到「待办 / 已完成」两组，
     //    分组不改变组内的相对顺序（保持稳定）。
     const { pendingTodos, completedTodos } = useMemo(() => {
-      const ordered = orderAsProject(project.id, todos);
+      const ordered = orderAsProject(todos);
       const pending = ordered.filter((t) => !t.completed);
       const done = ordered.filter((t) => t.completed);
       switch (filter) {
@@ -236,7 +237,7 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
         default:
           return { pendingTodos: pending, completedTodos: done };
       }
-    }, [project.id, todos, filter]);
+    }, [todos, filter]);
 
     const createdLabel = formatChineseDate(project.createdAt);
     const exportedLabel = formatChineseDate(new Date().toISOString());

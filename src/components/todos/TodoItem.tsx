@@ -3,7 +3,7 @@
  * @description 支持完成切换、编辑、归档、优先级、Markdown 渲染
  */
 
-import { memo, useState, useCallback, useRef, useEffect, forwardRef } from 'react';
+import { memo, useState, useCallback, useRef, useEffect, forwardRef, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
@@ -12,7 +12,12 @@ import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
-import { MarkdownContent } from '../common/MarkdownContent';
+
+// Markdown/GFM/KaTeX 仅在确有描述的事项上加载。加载期间保留纯文本，
+// 避免首次滚动大量描述时阻塞交互。
+const MarkdownContent = lazy(() =>
+  import('../common/MarkdownContent').then((module) => ({ default: module.MarkdownContent })),
+);
 
 export interface TodoItemProps {
   todo: Todo;
@@ -148,6 +153,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(todo.title);
   const [editDescription, setEditDescription] = useState(todo.description ?? '');
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [isSearchHighlighted, setIsSearchHighlighted] = useState(false);
   // 时间格式为全局设置：任一事项上点击都会切换全应用的相对/精确计时
   const timeFormat = useSettingsStore((s) => s.timeFormat);
@@ -327,14 +333,37 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
               {todo.title}
             </div>
 
-            {/* 描述（Markdown 渲染） */}
+            {/* 描述默认只显示纯文本摘要；用户展开后才加载 Markdown 渲染器。 */}
             {todo.description && (
               <div
                 className="markdown-body mt-1 text-[13px]"
                 style={{ color: 'var(--text-secondary)' }}
                 onDoubleClick={handleStartEdit}
               >
-                <MarkdownContent content={todo.description} />
+                {descriptionExpanded ? (
+                  <>
+                    <Suspense fallback={<span>{todo.description}</span>}>
+                      <MarkdownContent content={todo.description} />
+                    </Suspense>
+                    <button
+                      type="button"
+                      className="mt-1 text-xs hover:underline"
+                      style={{ color: 'var(--text-tertiary)' }}
+                      onClick={() => setDescriptionExpanded(false)}
+                    >
+                      收起描述
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="block max-w-full truncate text-left hover:underline"
+                    title={todo.description}
+                    onClick={() => setDescriptionExpanded(true)}
+                  >
+                    {todo.description.replace(/\s+/g, ' ').trim()}
+                  </button>
+                )}
               </div>
             )}
 

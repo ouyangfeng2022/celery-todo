@@ -22,9 +22,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "rebuild:electron": "electron-builder install-app-deps",
+    "rebuild:node": "npm rebuild better-sqlite3 --foreground-scripts",
     "build:electron": "tsc -b && vite build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs",
-    "electron:dev": "tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && concurrently \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
-    "electron:build": "bun run build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && electron-builder",
+    "electron:dev": "bun run rebuild:electron && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && concurrently \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "electron:build": "bun run rebuild:electron && bun run build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && electron-builder",
     "bump": "node scripts/bump-version.mjs",
     "extract-changelog": "node scripts/extract-changelog.mjs",
     "check-repo": "node scripts/check-repo-health.mjs",
@@ -42,9 +44,10 @@
     "e2e:install": "playwright install chromium",
     "cli": "tsx cli/src/index.ts",
     "build:cli": "tsc -p cli/tsconfig.json && node scripts/fix-cli-cjs.mjs",
-    "test:cli": "vitest run --config cli/vitest.config.ts"
+    "test:cli": "bun run rebuild:node && vitest run --config cli/vitest.config.ts"
   },
   "dependencies": {
+    "better-sqlite3": "^11.8.1",
     "electron-updater": "^6.8.9",
     "html-to-image": "^1.11.13",
     "katex": "^0.18.1",
@@ -75,7 +78,6 @@
     "@vitest/coverage-v8": "^2.0.2",
     "@vitest/ui": "^2.0.2",
     "autoprefixer": "^10.4.19",
-    "better-sqlite3": "^11.8.1",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "commander": "^12.1.0",
@@ -105,6 +107,7 @@
     "zustand": "^4.5.4"
   },
   "build": {
+    "npmRebuild": false,
     "appId": "com.celery.todo",
     "productName": "Celery Todo",
     "directories": {

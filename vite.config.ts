@@ -40,9 +40,26 @@ export default defineConfig({
           // - sqljs:        sql.js JS 胶水层（WASM 二进制是单独文件）
           // - vendor:       其余第三方（zustand/canvas-confetti/clsx/react-markdown 等）
           //
-          // 注：不再单拆 markdown——react-markdown 依赖链里的部分工具函数
-          // 被其他包（含 vendor 内）共享，强拆会触发 rollup 的 circular chunk 警告。
           if (id.includes('node_modules')) {
+            // 这些能力只在用户进入对应功能后才需要；切勿并入首屏 vendor，
+            // 否则 dynamic import 仍会被 HTML modulepreload 提前下载。
+            if (id.includes('node_modules/xlsx')) return 'xlsx';
+            if (id.includes('node_modules/html-to-image')) return 'image-export';
+            // 仅指定动态入口，让 Rollup 将其专属依赖留在异步图中；把整条
+            // remark/unified 链强塞入同一命名 chunk 会形成 vendor 循环依赖。
+            if (id.includes('node_modules/react-markdown')) {
+              return 'markdown';
+            }
+            if (
+              id.includes('node_modules/remark-') ||
+              id.includes('node_modules/rehype-') ||
+              id.includes('node_modules/katex') ||
+              id.includes('node_modules/unified') ||
+              id.includes('node_modules/unist-')
+            ) {
+              // 交给 Rollup 的动态导入图归属，避免进入首屏 vendor。
+              return undefined;
+            }
             if (id.includes('node_modules/framer-motion') || id.includes('node_modules/@dnd-kit')) {
               return 'motion-dnd';
             }

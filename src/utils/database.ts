@@ -27,7 +27,9 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
+/** 稀疏排序的相邻 rank 间隔；普通拖拽只改动被移动的一行。 */
+const SORT_RANK_STEP = 1024;
 
 /**
  * Schema 迁移表。
@@ -121,6 +123,18 @@ const MIGRATIONS: SchemaMigration[] = [
       database.run('DROP INDEX IF EXISTS idx_deleted_deleted_at');
     },
   },
+  {
+    version: 7,
+    description: '项目与事项排序改为稀疏 rank，降低拖拽重排写放大',
+    run: (database) => {
+      normalizeProjectRanks(database);
+      const projectRows = queryAllFromDatabase<{ id: string }>(
+        database,
+        'SELECT id FROM projects ORDER BY sort_order ASC, created_at ASC',
+      );
+      projectRows.forEach(({ id }) => normalizeTodoRanks(database, id));
+    },
+  },
 ];
 
 // ============================================
@@ -146,6 +160,24 @@ const pendingSyncProjectIds = new Set<string>();
 let pendingFullSync = false;
 /** 应用远端补丁时不应再次自动保存或产生同步回声。 */
 let applyingRemotePatch = false;
+let dataRevision = 0;
+const DATA_REVISION_EVENT = 'celery:data-revision';
+
+/** 仅给已打开的统计页发出失效信号；此处不做任何全量统计计算。 */
+function publishDataRevision(): void {
+  dataRevision += 1;
+  window.dispatchEvent(new CustomEvent<number>(DATA_REVISION_EVENT, { detail: dataRevision }));
+}
+
+export function getDataRevision(): number {
+  return dataRevision;
+}
+
+export function subscribeDataRevision(callback: (revision: number) => void): () => void {
+  const listener = (event: Event): void => callback((event as CustomEvent<number>).detail);
+  window.addEventListener(DATA_REVISION_EVENT, listener);
+  return () => window.removeEventListener(DATA_REVISION_EVENT, listener);
+}
 
 /** 当前持久化模式：Electron 文件 / Web IndexedDB。首次加载时确定。 */
 let currentStorageMode: 'electron' | 'web' | null = null;
@@ -535,6 +567,7 @@ export async function reloadDatabase(): Promise<void> {
   migrateDatabase();
   isInitialized = true;
   initPromise = Promise.resolve(db);
+  publishDataRevision();
 }
 
 /**
@@ -626,6 +659,46 @@ function queryAll<T = DbRow>(sql: string, params: unknown[] = []): T[] {
   return results;
 }
 
+/** 在迁移期间对指定连接查询，避免依赖尚未完成初始化的全局 db。 */
+function queryAllFromDatabase<T = DbRow>(
+  database: Database,
+  sql: string,
+  params: unknown[] = [],
+): T[] {
+  const stmt = database.prepare(sql);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  stmt.bind(params as any);
+  const results: T[] = [];
+  while (stmt.step()) results.push(stmt.getAsObject() as unknown as T);
+  stmt.free();
+  return results;
+}
+
+function normalizeProjectRanks(database: Database): void {
+  queryAllFromDatabase<{ id: string }>(
+    database,
+    'SELECT id FROM projects ORDER BY sort_order ASC, created_at ASC',
+  ).forEach(({ id }, index) => {
+    database.run('UPDATE projects SET sort_order = ? WHERE id = ?', [
+      (index + 1) * SORT_RANK_STEP,
+      id,
+    ]);
+  });
+}
+
+function normalizeTodoRanks(database: Database, projectId: string): void {
+  queryAllFromDatabase<{ id: string }>(
+    database,
+    'SELECT id FROM todos WHERE project_id = ? ORDER BY sort_order ASC, created_at ASC',
+    [projectId],
+  ).forEach(({ id }, index) => {
+    database.run('UPDATE todos SET sort_order = ? WHERE id = ?', [
+      (index + 1) * SORT_RANK_STEP,
+      id,
+    ]);
+  });
+}
+
 /**
  * 执行单条查询
  */
@@ -678,6 +751,7 @@ function execute(sql: string, params: unknown[] = [], syncScope: SyncScope = 'fu
     transactionDirty = true;
   } else {
     scheduleSave();
+    publishDataRevision();
   }
 }
 
@@ -700,6 +774,7 @@ export function applyRemoteSyncPatch(patch: DataSyncPatch): void {
   } finally {
     applyingRemotePatch = false;
   }
+  publishDataRevision();
 }
 
 /**
@@ -721,7 +796,10 @@ function runTransaction<T>(operation: () => T): T {
     const result = operation();
     if (isOutermost) {
       db.run('COMMIT');
-      if (transactionDirty) scheduleSave();
+      if (transactionDirty) {
+        scheduleSave();
+        publishDataRevision();
+      }
     }
     return result;
   } catch (error) {
@@ -781,7 +859,7 @@ export function insertProject(project: import('../types').Project): void {
   // MAX(sort_order) + 1 自动计算，避免迁移期/导入路径产生重复序号。
   execute(
     `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM projects)))`,
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)))`,
     [
       project.id,
       project.name,
@@ -809,12 +887,47 @@ export function updateProject(project: import('../types').Project): void {
  * @param ids 目标顺序的项目 ID 列表（应包含当前全部项目）
  */
 export function reorderProjects(ids: string[]): void {
-  // 按数组下标作为新的 sort_order，与 todos 的 reorder 写法一致。
+  // 切换到用户指定的完整顺序时才规范化；普通拖拽使用 moveProjectRank。
   runTransaction(() => {
     ids.forEach((id, idx) => {
-      execute('UPDATE projects SET sort_order = ? WHERE id = ?', [idx, id]);
+      execute('UPDATE projects SET sort_order = ? WHERE id = ?', [(idx + 1) * SORT_RANK_STEP, id]);
     });
   });
+}
+
+/** 移动项目时只写被移动项目；间隔耗尽才在一次事务内规范化。 */
+export function moveProjectRank(sourceId: string, targetId: string): import('../types').Project[] {
+  const projects = getAllProjects();
+  const sourceIndex = projects.findIndex((project) => project.id === sourceId);
+  const targetIndex = projects.findIndex((project) => project.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return projects;
+
+  const next = [...projects];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  const index = next.findIndex((project) => project.id === sourceId);
+  const before = next[index - 1]?.order;
+  const after = next[index + 1]?.order;
+  const rank =
+    before === undefined
+      ? (after ?? SORT_RANK_STEP) - SORT_RANK_STEP
+      : after === undefined
+        ? before + SORT_RANK_STEP
+        : (before + after) / 2;
+
+  runTransaction(() => {
+    if (after !== undefined && before !== undefined && after - before < 0.001) {
+      next.forEach((project, position) => {
+        execute('UPDATE projects SET sort_order = ? WHERE id = ?', [
+          (position + 1) * SORT_RANK_STEP,
+          project.id,
+        ]);
+      });
+    } else {
+      execute('UPDATE projects SET sort_order = ? WHERE id = ?', [rank, sourceId]);
+    }
+  });
+  return getAllProjects();
 }
 
 /**
@@ -975,20 +1088,64 @@ export function updateTodos(todos: import('../types').Todo[]): void {
 /** 仅更新手动排序字段，避免拖拽重排时写入每条事项的全部列。 */
 export function updateTodoOrders(
   items: ReadonlyArray<Pick<import('../types').Todo, 'id' | 'order'>>,
+  projectId: string,
 ): void {
   if (items.length === 0) return;
-  const projectIds = [
-    ...new Set(
-      items
-        .map(({ id }) => getTodoById(id)?.projectId)
-        .filter((id): id is string => id !== undefined),
-    ),
-  ];
   runTransaction(() => {
     items.forEach(({ id, order }) => {
-      execute('UPDATE todos SET sort_order = ? WHERE id = ?', [order, id], { projectIds });
+      // 调用方已持有项目上下文；不要为每一行再 SELECT 一次 project_id。
+      execute('UPDATE todos SET sort_order = ? WHERE id = ?', [order, id], {
+        projectIds: [projectId],
+      });
     });
   });
+}
+
+/**
+ * 在同一项目内移动事项。正常路径只更新 moved 行的稀疏 rank；rank 间隔耗尽时
+ * 才在单一事务中重编号。返回数据库排序后的列表，供 store 一次性发布。
+ */
+export function moveTodoRank(
+  projectId: string,
+  sourceId: string,
+  targetId: string,
+): import('../types').Todo[] {
+  const todos = getTodosByProject(projectId);
+  const sourceIndex = todos.findIndex((todo) => todo.id === sourceId);
+  const targetIndex = todos.findIndex((todo) => todo.id === targetId);
+  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return todos;
+
+  const next = [...todos];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  const index = next.findIndex((todo) => todo.id === sourceId);
+  const before = next[index - 1]?.order;
+  const after = next[index + 1]?.order;
+  const rank =
+    before === undefined
+      ? (after ?? SORT_RANK_STEP) - SORT_RANK_STEP
+      : after === undefined
+        ? before + SORT_RANK_STEP
+        : (before + after) / 2;
+
+  runTransaction(() => {
+    if (after !== undefined && before !== undefined && after - before < 0.001) {
+      next.forEach((todo, position) => {
+        execute(
+          'UPDATE todos SET sort_order = ? WHERE id = ?',
+          [(position + 1) * SORT_RANK_STEP, todo.id],
+          {
+            projectIds: [projectId],
+          },
+        );
+      });
+      return;
+    }
+    execute('UPDATE todos SET sort_order = ? WHERE id = ?', [rank, sourceId], {
+      projectIds: [projectId],
+    });
+  });
+  return getTodosByProject(projectId);
 }
 
 /** 删除 Todo（从 todos 表移除；调用方负责先插入到归档表） */

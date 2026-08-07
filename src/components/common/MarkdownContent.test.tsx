@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MarkdownContent } from './MarkdownContent';
 
 describe('MarkdownContent', () => {
@@ -16,12 +16,12 @@ describe('MarkdownContent', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
-  it('渲染行内与块级数学公式', () => {
+  it('渲染行内与块级数学公式', async () => {
     const { container } = render(
       <MarkdownContent content={'行内公式 $E = mc^2$\n\n$$\n\\frac{a}{b}\n$$'} />,
     );
 
-    expect(container.querySelectorAll('.katex')).toHaveLength(2);
+    await waitFor(() => expect(container.querySelectorAll('.katex')).toHaveLength(2));
     expect(container.querySelector('.katex-display')).toBeInTheDocument();
   });
 });

@@ -11,7 +11,14 @@
  *   否则 foreignObject 内的文本会 fallback 到系统字体
  */
 
-import { toPng } from 'html-to-image';
+type ToPng = typeof import('html-to-image').toPng;
+
+/** 图片导出极少使用，延迟加载以免进入首屏 vendor。 */
+let toPngPromise: Promise<ToPng> | null = null;
+function loadToPng(): Promise<ToPng> {
+  toPngPromise ??= import('html-to-image').then(({ toPng }) => toPng);
+  return toPngPromise;
+}
 
 /** 导出选项（对外暴露的最小集） */
 export interface ExportImageOptions {
@@ -44,6 +51,7 @@ export async function exportNodeAsPngBlob(
     }
   }
 
+  const toPng = await loadToPng();
   const dataUrl = await toPng(node, { ...DEFAULTS, pixelRatio: options.pixelRatio ?? 2 });
   const res = await fetch(dataUrl);
   return res.blob();
@@ -64,5 +72,6 @@ export async function exportNodeAsPngDataURL(
       /* ignore */
     }
   }
+  const toPng = await loadToPng();
   return toPng(node, { ...DEFAULTS, pixelRatio: options.pixelRatio ?? 2 });
 }

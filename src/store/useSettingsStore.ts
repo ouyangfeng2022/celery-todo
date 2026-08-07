@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import type { AppSettings, ThemeMode, ThemeName } from '../types';
 import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
-import * as db from '../utils/database';
+import * as data from '../utils/dataGateway';
 
 type StartupTheme = `${ThemeName}-${ThemeMode}`;
 const toStartupTheme = (theme: ThemeName, colorMode: ThemeMode): StartupTheme =>
@@ -48,30 +48,30 @@ function normalizeTheme(
 
 interface SettingsState extends AppSettings {
   /** 加载设置 */
-  loadSettings: (options?: { syncStartupTheme?: boolean }) => void;
+  loadSettings: (options?: { syncStartupTheme?: boolean }) => Promise<void>;
   /** 设置主题 */
-  setTheme: (theme: ThemeName) => void;
+  setTheme: (theme: ThemeName) => Promise<void>;
   /** 设置主题明暗模式 */
-  setColorMode: (colorMode: ThemeMode) => void;
+  setColorMode: (colorMode: ThemeMode) => Promise<void>;
   /** 设置开机自启 */
-  setAutoStart: (enabled: boolean) => void;
+  setAutoStart: (enabled: boolean) => Promise<void>;
   /** 设置最小化到托盘 */
-  setMinimizeToTray: (enabled: boolean) => void;
+  setMinimizeToTray: (enabled: boolean) => Promise<void>;
   /** 设置专注模式开关 */
-  setFocusMode: (enabled: boolean) => void;
+  setFocusMode: (enabled: boolean) => Promise<void>;
   /** 设置自动检查更新开关 */
-  setAutoUpdateEnabled: (enabled: boolean) => void;
+  setAutoUpdateEnabled: (enabled: boolean) => Promise<void>;
   /** 设置时间显示格式（relative=模糊 / exact=精确到分钟） */
-  setTimeFormat: (format: 'relative' | 'exact') => void;
+  setTimeFormat: (format: 'relative' | 'exact') => Promise<void>;
   /** 更新多个设置 */
-  updateSettings: (updates: Partial<AppSettings>) => void;
+  updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...DEFAULT_SETTINGS,
 
-  loadSettings: ({ syncStartupTheme = true } = {}) => {
-    const stored = db.getSettings();
+  loadSettings: async ({ syncStartupTheme = true } = {}) => {
+    const stored = await data.getSettings();
     // 专注模式已废弃：升级时清理旧键，始终进入完整主窗口。
     // 仅当该 key 仍存在时才执行删除 —— deleteSetting 内部走 execute() →
     // scheduleSave()，会在 500ms 后触发 persistDatabase 并向其它窗口广播
@@ -80,15 +80,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     // 的 addTodo，表现为「主窗口创建待办闪现约 1 秒后消失」。幂等删除让该写
     // 只在真正需要时发生一次。
     if (stored.focusMode !== undefined) {
-      db.deleteSetting('focusMode');
+      await data.deleteSetting('focusMode');
     }
     // autoUpdateEnabled 同上：老数据无该键时走默认 true
     const storedAutoUpdate = stored.autoUpdateEnabled ?? null;
     const storedTheme = stored.theme ?? null;
     const normalizedTheme = normalizeTheme(storedTheme, stored.colorMode ?? null);
-    if (storedTheme !== normalizedTheme.theme) db.setSetting('theme', normalizedTheme.theme);
+    if (storedTheme !== normalizedTheme.theme) await data.setSetting('theme', normalizedTheme.theme);
     if (stored.colorMode !== normalizedTheme.colorMode) {
-      db.setSetting('colorMode', normalizedTheme.colorMode);
+      await data.setSetting('colorMode', normalizedTheme.colorMode);
     }
     const settings: AppSettings = {
       ...normalizedTheme,
@@ -126,20 +126,20 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  setTheme: (theme) => {
-    db.setSetting('theme', theme);
+  setTheme: async (theme) => {
+    await data.setSetting('theme', theme);
     set({ theme });
     window.electronAPI?.setStartupTheme?.(toStartupTheme(theme, get().colorMode));
   },
 
-  setColorMode: (colorMode) => {
-    db.setSetting('colorMode', colorMode);
+  setColorMode: async (colorMode) => {
+    await data.setSetting('colorMode', colorMode);
     set({ colorMode });
     window.electronAPI?.setStartupTheme?.(toStartupTheme(get().theme, colorMode));
   },
 
-  setAutoStart: (autoStart) => {
-    db.setSetting('autoStart', String(autoStart));
+  setAutoStart: async (autoStart) => {
+    await data.setSetting('autoStart', String(autoStart));
     set({ autoStart });
     // 通知 Electron 主进程
     if (window.electronAPI?.setAutoStart) {
@@ -147,32 +147,30 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  setMinimizeToTray: (minimizeToTray) => {
-    db.setSetting('minimizeToTray', String(minimizeToTray));
+  setMinimizeToTray: async (minimizeToTray) => {
+    await data.setSetting('minimizeToTray', String(minimizeToTray));
     set({ minimizeToTray });
   },
 
-  setFocusMode: (focusMode) => {
-    db.setSetting('focusMode', String(focusMode));
+  setFocusMode: async (focusMode) => {
+    await data.setSetting('focusMode', String(focusMode));
     set({ focusMode });
   },
 
-  setAutoUpdateEnabled: (autoUpdateEnabled) => {
-    db.setSetting('autoUpdateEnabled', String(autoUpdateEnabled));
+  setAutoUpdateEnabled: async (autoUpdateEnabled) => {
+    await data.setSetting('autoUpdateEnabled', String(autoUpdateEnabled));
     set({ autoUpdateEnabled });
   },
 
-  setTimeFormat: (timeFormat) => {
-    db.setSetting('timeFormat', timeFormat);
+  setTimeFormat: async (timeFormat) => {
+    await data.setSetting('timeFormat', timeFormat);
     set({ timeFormat });
   },
 
-  updateSettings: (updates) => {
+  updateSettings: async (updates) => {
     const current = get();
     const newSettings = { ...current, ...updates };
-    Object.entries(updates).forEach(([key, value]) => {
-      db.setSetting(key, String(value));
-    });
+    await Promise.all(Object.entries(updates).map(([key, value]) => data.setSetting(key, String(value))));
     set(newSettings);
     if (updates.theme || updates.colorMode) {
       window.electronAPI?.setStartupTheme?.(

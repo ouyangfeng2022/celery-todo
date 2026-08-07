@@ -3,7 +3,7 @@
  * @description 组合所有组件，管理全局状态和布局
  */
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 
@@ -24,14 +24,8 @@ import { FilterBar } from './components/filters/FilterBar';
 import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { BatchToolbar } from './components/todos/BatchToolbar';
-import { SettingsPanel, type SettingsSectionId } from './components/settings/SettingsPanel';
-import { ExportImageDialog } from './components/export/ExportImageDialog';
-import { ExportDataPreviewDialog } from './components/export/ExportDataPreviewDialog';
-import {
-  ExportDialog,
-  type ExportRequest,
-  type ExportScope,
-} from './components/export/ExportDialog';
+import type { SettingsSectionId } from './components/settings/SettingsPanel';
+import type { ExportRequest, ExportScope } from './components/export/ExportDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
@@ -40,9 +34,8 @@ import { FocusIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 
 import { useAutoUpdate } from './hooks/useAutoUpdate';
-import { useCliBridge } from './cli-bridge';
 
-import * as db from './utils/database';
+import * as data from './utils/dataGateway';
 import { createCoalescedAsyncTask } from './utils/coalescedAsyncTask';
 import {
   EXPORT_FORMAT_VERSION,
@@ -54,6 +47,26 @@ import {
 } from './utils/export';
 import { cn, downloadBlob, downloadFile, readFileAsText } from './utils/helpers';
 import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Project, Todo } from './types';
+
+// 设置与导出不属于首屏工作流；只在用户打开相应入口时请求代码。
+const SettingsPanel = lazy(() =>
+  import('./components/settings/SettingsPanel').then((module) => ({
+    default: module.SettingsPanel,
+  })),
+);
+const ExportImageDialog = lazy(() =>
+  import('./components/export/ExportImageDialog').then((module) => ({
+    default: module.ExportImageDialog,
+  })),
+);
+const ExportDataPreviewDialog = lazy(() =>
+  import('./components/export/ExportDataPreviewDialog').then((module) => ({
+    default: module.ExportDataPreviewDialog,
+  })),
+);
+const ExportDialog = lazy(() =>
+  import('./components/export/ExportDialog').then((module) => ({ default: module.ExportDialog })),
+);
 
 /**
  * 全部完成庆祝撒花：从屏幕两侧各发射一束粒子，克制、短促。
@@ -119,6 +132,8 @@ function App() {
   const [exportNotice, setExportNotice] = useState<{ fileName: string; filePath: string } | null>(
     null,
   );
+  const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
+  const [incompleteCounts, setIncompleteCounts] = useState<Record<string, number>>({});
 
   // === Stores ===
   const settings = useSettingsStore();
@@ -218,9 +233,6 @@ function App() {
     [projects, restoreTodo],
   );
 
-  // === CLI IPC 桥接（顶层挂载一次，监听主进程转发的 CLI 请求）===
-  useCliBridge();
-
   // === 筛选 ===
   // overrideFilter 仅在全局搜索定位的瞬间视作 'all'，确保被用户当前筛选
   // （'active'/'completed'）隐藏的目标事项仍能渲染出来再高亮定位。
@@ -242,18 +254,21 @@ function App() {
   // === 全局事项搜索 ===
   // 当前项目 store 只缓存已打开项目；搜索直接读取正常事项表，确保跨项目结果完整。
   // 使用参数化 searchTodos 在 SQL 层 LIKE + LIMIT，避免每次按键拉全表。
-  const globalSearchResults = useMemo<GlobalSearchResult[]>(() => {
+  useEffect(() => {
     const keyword = globalSearch.trim();
-    if (!dbReady || !keyword) return [];
+    if (!dbReady || !keyword) {
+      setGlobalSearchResults([]);
+      return;
+    }
     const lower = keyword.toLowerCase();
     const projectById = new Map(projects.map((project) => [project.id, project]));
-    return db.searchTodos(keyword).flatMap((todo) => {
+    void data.searchTodos(keyword).then((todos) => {
+      setGlobalSearchResults(todos.flatMap((todo) => {
       const project = projectById.get(todo.projectId);
       if (!project) return [];
       return [{ todo, project, matchedText: extractMatchedText(todo, lower) }];
-    });
-    // todos / deletedTodos 是数据库内容变动的渲染信号；查询结果本身不直接引用它们。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      }));
+    }).catch(() => setGlobalSearchResults([]));
   }, [dbReady, globalSearch, projects, todos, deletedTodos]);
 
   const handleSelectGlobalSearchResult = useCallback(
@@ -278,13 +293,13 @@ function App() {
   // 聚合交给 SQLite，避免每次当前项目变动都把全表拉到 JS 再遍历。todos/deletedTodos
   // 仍作为数据库内容变动信号，驱动聚合结果刷新。
   // dbReady 守卫：useMemo 在首渲染即执行，此时 DB 尚未异步初始化完成，直接查询会抛错。
-  const incompleteCounts = useMemo<Record<string, number>>(() => {
-    if (!dbReady) return {};
-    const counts: Record<string, number> = {};
-    for (const p of projects) counts[p.id] = 0;
-    Object.assign(counts, db.getIncompleteCountsByProject());
-    return counts;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- todos/deletedTodos 作为 store 变更信号，非 body 内依赖
+  useEffect(() => {
+    if (!dbReady) return;
+    void data.getIncompleteCounts().then((stored) => {
+      const counts: Record<string, number> = {};
+      for (const project of projects) counts[project.id] = stored[project.id] ?? 0;
+      setIncompleteCounts(counts);
+    });
   }, [projects, todos, deletedTodos, dbReady]);
 
   // === 全部完成庆祝 ===
@@ -298,12 +313,14 @@ function App() {
   const prevAllDoneRef = useRef(false);
   useEffect(() => {
     const celebratedKey = activeProjectId ? `celebrated.${activeProjectId}` : '';
-    const alreadyCelebrated = !!celebratedKey && db.getSetting(celebratedKey) === 'true';
-    if (allDone && !prevAllDoneRef.current && !alreadyCelebrated) {
-      fireCelebration();
-      if (celebratedKey) db.setSetting(celebratedKey, 'true');
-    }
-    prevAllDoneRef.current = allDone;
+    void data.getSetting(celebratedKey).then((value) => {
+      const alreadyCelebrated = !!celebratedKey && value === 'true';
+      if (allDone && !prevAllDoneRef.current && !alreadyCelebrated) {
+        fireCelebration();
+        if (celebratedKey) void data.setSetting(celebratedKey, 'true');
+      }
+      prevAllDoneRef.current = allDone;
+    });
   }, [allDone, activeProjectId]);
 
   // 点击「全部搞定」对号：归档本项目所有已完成项（进回收站），并重置该项目庆祝键，
@@ -311,7 +328,7 @@ function App() {
   // 渲染切回 TodoList，因 filteredTodos 为空而自然显示「从一件小事开始」空状态。
   const handleAllDoneRestore = useCallback(() => {
     if (activeProjectId) {
-      db.setSetting(`celebrated.${activeProjectId}`, 'false');
+      void data.setSetting(`celebrated.${activeProjectId}`, 'false');
     }
     clearCompleted();
     showArchiveNotice(activeProjectTodos.filter((todo) => todo.completed).map((todo) => todo.id));
@@ -320,9 +337,9 @@ function App() {
   // === 初始化 ===
   useEffect(() => {
     (async () => {
-      await db.initDatabase();
-      useSettingsStore.getState().loadSettings();
-      useProjectStore.getState().loadProjects();
+      await data.initialize();
+      await useSettingsStore.getState().loadSettings();
+      await useProjectStore.getState().loadProjects();
       // 启动时恢复上次激活的项目：
       //   1) 读持久化的 lastActiveProjectId，若该项目仍在列表中 → 恢复；
       //   2) 否则回退到列表第一个项目（若有）；
@@ -336,7 +353,7 @@ function App() {
         useProjectStore.getState().setActiveProject(projects[0].id);
       }
       const activeId = useProjectStore.getState().activeProjectId;
-      useTodoStore.getState().loadProject(activeId);
+      await useTodoStore.getState().loadProject(activeId);
       setDbReady(true);
     })();
   }, []);
@@ -353,16 +370,27 @@ function App() {
   // 先让它在下一轮 debounce 落盘，或由 store action 的本地刷新兜底，不能在
   // 此处与本窗口内存对账。
   useEffect(() => {
+    if (data.isNativeDatabase()) {
+      return data.onDataChanged((event) => {
+        const currentProjectId = useProjectStore.getState().activeProjectId;
+        if (event.fullRefresh || event.projectsChanged) void useProjectStore.getState().loadProjects();
+        if (event.fullRefresh || event.settingsChanged) void useSettingsStore.getState().loadSettings();
+        if (event.fullRefresh || event.projectIds.includes(currentProjectId)) {
+          void useTodoStore.getState().loadProject(currentProjectId);
+        }
+      });
+    }
     let disposed = false;
     let lastSeenVersion = 0;
     const sync = createCoalescedAsyncTask(async () => {
+      const db = await import('./utils/database');
       await db.reloadDatabase();
       if (disposed) return;
-      useSettingsStore.getState().loadSettings();
-      useProjectStore.getState().loadProjects();
+      await useSettingsStore.getState().loadSettings();
+      await useProjectStore.getState().loadProjects();
       // 用当前 activeProjectId（不是 settings.lastActiveProjectId，
       // 后者是上次启动的快照，这里要的是用户当前正在看的项目）
-      useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+      await useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     });
     const off = window.electronAPI?.onDataChanged?.(({ version, shouldApply, patch }) => {
       const hasGap = lastSeenVersion !== 0 && version !== lastSeenVersion + 1;
@@ -371,10 +399,13 @@ function App() {
 
       if (patch && !hasGap) {
         // Todo-only 变更可直接合并到本窗口 sql.js；无需读取并重建整个 SQLite 二进制。
-        db.applyRemoteSyncPatch(patch);
-        // 项目数组引用变化会刷新侧边栏计数；实际只做轻量 SQL 查询，不重载数据库。
-        useProjectStore.getState().loadProjects();
-        useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+        void import('./utils/database').then((db) => {
+          db.applyRemoteSyncPatch(patch);
+          return Promise.all([
+            useProjectStore.getState().loadProjects(),
+            useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId),
+          ]);
+        });
         return;
       }
       // 复杂写入、并发写入或版本断档时以磁盘快照作为权威来源。
@@ -406,9 +437,9 @@ function App() {
   // 否则下次启动会恢复一个已不存在的 id（虽有存在性校验兜底，但语义不清）。
   useEffect(() => {
     if (!dbReady) return;
-    db.setSetting('lastActiveProjectId', activeProjectId);
+    void data.setSetting('lastActiveProjectId', activeProjectId);
     if (activeProjectId) {
-      useTodoStore.getState().loadProject(activeProjectId);
+      void useTodoStore.getState().loadProject(activeProjectId);
       clearSelection();
     }
   }, [activeProjectId, dbReady, clearSelection]);
@@ -423,7 +454,7 @@ function App() {
   // 在指定项目下新建事项：先切换到该项目（AddTodoInput 通过 store 的 currentProjectId
   // 决定写入哪个项目），再唤出输入框。切换项目会触发主区重渲染，需等下一帧再聚焦输入框。
   const handleNewTodoInProject = useCallback(
-    (projectId: string) => {
+    async (projectId: string) => {
       switchProject(projectId);
       // 切换项目后聚焦信号要排到 loadProject 之后，故延迟一帧
       requestAnimationFrame(() => focusNewTodo());
@@ -443,7 +474,7 @@ function App() {
       setSearchFocusSignal((n) => n + 1);
     },
     onSave: () => {
-      db.flushSave();
+      void data.flush();
     },
     onToggleSidebar: () => {
       // 专注模式下侧边栏被隐藏，Ctrl+B 优先退出专注模式以露出侧边栏
@@ -485,20 +516,21 @@ function App() {
 
   // === 导入导出 ===
   const handleExportProject = useCallback(
-    (projectId: string) => {
+    async (projectId: string) => {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
-      const projectTodos = db.getTodosByProject(projectId);
-      const projectDeleted = db.getDeletedTodosByProject(projectId);
+      const [projectTodos, projectDeleted] = await Promise.all([
+        data.getTodos(projectId), data.getDeletedTodos(projectId),
+      ]);
       const json = exportProjectAsJson(project, projectTodos, projectDeleted);
       downloadFile(json, `Celery-Todo-${project.name}.json`);
     },
     [projects],
   );
 
-  const handleExportAll = useCallback(() => {
-    const data = db.exportAllData();
-    const json = exportAppAsJson(data);
+  const handleExportAll = useCallback(async () => {
+    const exported = await data.exportAll();
+    const json = exportAppAsJson(exported);
     downloadFile(json, `Celery-Todo-All-${new Date().toISOString().split('T')[0]}.json`);
   }, []);
 
@@ -508,7 +540,7 @@ function App() {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
       const content = await createTodosExcel([
-        { projectName: project.name, todos: db.getTodosByProject(projectId) },
+        { projectName: project.name, todos: await data.getTodos(projectId) },
       ]);
       downloadBlob(
         new Blob([content], {
@@ -523,10 +555,10 @@ function App() {
   // 全量 Excel：每个项目写入一个同名工作表。
   const handleExportAllExcel = useCallback(async () => {
     const content = await createTodosExcel(
-      projects.map((project) => ({
+      await Promise.all(projects.map(async (project) => ({
         projectName: project.name,
-        todos: db.getTodosByProject(project.id),
-      })),
+        todos: await data.getTodos(project.id),
+      }))),
     );
     downloadBlob(
       new Blob([content], {
@@ -538,8 +570,8 @@ function App() {
 
   // 导出历史记录（归档）为独立 JSON 快照。跨项目全量，按归档时间倒序。
   // 注意：这是只读备份，刻意不被 parseImportData 识别，不可导回。
-  const handleExportHistory = useCallback(() => {
-    const archivedTodos = db.getAllDeletedTodos();
+  const handleExportHistory = useCallback(async () => {
+    const archivedTodos = await data.getAllDeletedTodos();
     // 仅保留归档事项涉及的项目，避免把无关项目名也写进快照
     const usedIds = new Set(archivedTodos.map((t) => t.projectId));
     const projectNames: Record<string, string> = {};
@@ -566,10 +598,10 @@ function App() {
   } | null>(null);
 
   const handleExportImage = useCallback(
-    (projectId: string, autoExport = false) => {
+    async (projectId: string, autoExport = false) => {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
-      const projectTodos = db.getTodosByProject(projectId);
+      const projectTodos = await data.getTodos(projectId);
       setExportImageTarget({ project, todos: projectTodos, autoExport });
     },
     [projects],
@@ -601,25 +633,25 @@ function App() {
     jsonPreview: string;
   } | null>(null);
   const handleExportRequest = useCallback(
-    ({ scope, projectId, format }: ExportRequest) => {
+    async ({ scope, projectId, format }: ExportRequest) => {
       if (format === 'image') {
-        handleExportImage(projectId);
+        void handleExportImage(projectId);
         return;
       }
 
       const previewProjects =
         scope === 'all' ? projects : projects.filter((project) => project.id === projectId);
-      const projectTodos = Object.fromEntries(
-        previewProjects.map((project) => [project.id, db.getTodosByProject(project.id)]),
-      );
+      const projectTodos = Object.fromEntries(await Promise.all(
+        previewProjects.map(async (project) => [project.id, await data.getTodos(project.id)]),
+      ));
       const jsonPreview =
         scope === 'all'
-          ? exportAppAsJson(db.exportAllData())
+          ? exportAppAsJson(await data.exportAll())
           : previewProjects[0]
             ? exportProjectAsJson(
                 previewProjects[0],
                 projectTodos[previewProjects[0].id],
-                db.getDeletedTodosByProject(previewProjects[0].id),
+                await data.getDeletedTodos(previewProjects[0].id),
               )
             : '{}';
       setExportDataPreviewTarget({
@@ -635,14 +667,14 @@ function App() {
     ({ scope, projectId, format }: ExportRequest) => {
       if (scope === 'all') {
         if (format === 'excel') void handleExportAllExcel();
-        else handleExportAll();
+        else void handleExportAll();
         return;
       }
       if (format === 'image') {
-        handleExportImage(projectId, true);
+        void handleExportImage(projectId, true);
         return;
       }
-      handleExportProjectWithFormat(projectId, format);
+      void handleExportProjectWithFormat(projectId, format);
     },
     [handleExportAll, handleExportAllExcel, handleExportImage, handleExportProjectWithFormat],
   );
@@ -651,20 +683,20 @@ function App() {
     async (file: File) => {
       try {
         const text = await readFileAsText(file);
-        const data = parseImportData(text);
-        if ('project' in data) {
+        const imported = parseImportData(text);
+        if ('project' in imported) {
           // 导入单个项目
-          const newId = createProject(data.project.name);
-          db.insertTodos(
-            data.todos.map((t) => ({ ...t, id: crypto.randomUUID(), projectId: newId })),
+          const newId = await createProject(imported.project.name);
+          await data.insertTodos(
+            imported.todos.map((t) => ({ ...t, id: crypto.randomUUID(), projectId: newId })),
           );
-          useTodoStore.getState().loadProject(newId);
+          await useTodoStore.getState().loadProject(newId);
           switchProject(newId);
         } else {
           // 导入完整应用数据
-          await db.importAllData(data);
-          loadProjects();
-          useSettingsStore.getState().loadSettings();
+          await data.replaceAll(imported);
+          await loadProjects();
+          await useSettingsStore.getState().loadSettings();
           // autoStart 同时存在于 SQLite 设置和操作系统登录项；全量导入恢复了前者，
           // 这里同步后者，避免设置面板与系统实际状态不一致。
           void window.electronAPI
@@ -681,7 +713,7 @@ function App() {
           if (store.activeProjectId !== targetId) {
             store.setActiveProject(targetId);
           }
-          useTodoStore.getState().loadProject(targetId);
+          await useTodoStore.getState().loadProject(targetId);
         }
       } catch (err) {
         alert(`导入失败: ${err instanceof Error ? err.message : '未知错误'}`);
@@ -691,12 +723,12 @@ function App() {
   );
 
   const handleResetData = useCallback(async () => {
-    await db.resetDatabase();
-    await db.initDatabase();
-    useProjectStore.getState().loadProjects();
+    await data.reset();
+    await data.initialize();
+    await useProjectStore.getState().loadProjects();
     // 重置后项目列表为空，activeProjectId 为空串；清空当前 todo 视图
-    useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
-    useSettingsStore.getState().loadSettings();
+    await useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
+    await useSettingsStore.getState().loadSettings();
     setSettingsOpen(false);
   }, []);
 
@@ -1085,92 +1117,94 @@ function App() {
       )}
 
       {/* 设置面板 */}
-      <SettingsPanel
-        open={settingsOpen}
-        initialSection={settingsSection}
-        settings={settings}
-        onClose={() => setSettingsOpen(false)}
-        onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
-        onOpenExport={() => openExportDialog()}
-        onImportAll={handleImportProject}
-        onResetData={handleResetData}
-        // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====
-        // 设置页是全屏浮层,遮盖主页面 TodoList/侧栏。Header 工具组里凡「结果落在
-        // 主页面」的操作(搜索/导入/新建项目/简洁模式),都先关设置页再触发,
-        // 让操作与反馈都在主页面语境发生,避免「点了看不见」。
-        // 注意:导入/导出回调与 DataSection 共用(onImportAll/onExportAll/onExportCsv),
-        // 「先关设置页」的包装在 SettingsPanel 内部统一处理,App 只提供单一来源。
-        sidebarOpen={sidebarOpen}
-        search={globalSearch}
-        onToggleSidebar={() => setSidebarOpen((value) => !value)}
-        onSearchChange={setGlobalSearch}
-        // 新建项目 / 进入简洁模式:同上,先关设置页再触发。
-        onCreateProject={() => {
-          setSettingsOpen(false);
-          setSidebarOpen(true);
-          setCreateProjectSignal((signal) => signal + 1);
-        }}
-        onEnterCompactMode={() => {
-          setSettingsOpen(false);
-          void window.electronAPI?.createSticker(activeProjectId);
-        }}
-        onCloseWindow={() => window.close()}
-        // ===== 历史记录（归档）页面所需 =====
-        projects={projects}
-        onRestoreTodo={handleRestoreFromHistory}
-        onPermanentDeleteTodo={permanentlyDelete}
-        onEmptyArchive={emptyArchive}
-        onExportHistory={handleExportHistory}
-        updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
-        updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
-        updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
-        updateError={isAutoUpdateAvailable ? updateError : undefined}
-        onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
-        onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
-        onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
-      />
-
-      {/* 导出项目为图片预览弹窗 */}
-      {exportImageTarget && (
-        <ExportImageDialog
-          open={exportImageTarget !== null}
-          project={exportImageTarget.project}
-          todos={exportImageTarget.todos}
-          autoExport={exportImageTarget.autoExport}
-          onClose={() => setExportImageTarget(null)}
-        />
-      )}
-
-      <ExportDialog
-        open={exportDialogTarget !== null}
-        projects={projects}
-        defaultScope={exportDialogTarget?.scope}
-        defaultProjectId={exportDialogTarget?.projectId ?? activeProjectId}
-        onClose={() => setExportDialogTarget(null)}
-        onPreview={handleExportRequest}
-        onExport={handleDirectExportRequest}
-      />
-
-      {exportDataPreviewTarget && (
-        <ExportDataPreviewDialog
-          open={exportDataPreviewTarget !== null}
-          scope={exportDataPreviewTarget.request.scope}
-          format={exportDataPreviewTarget.request.format as 'json' | 'excel'}
-          projects={exportDataPreviewTarget.projects}
-          projectTodos={exportDataPreviewTarget.projectTodos}
-          jsonPreview={exportDataPreviewTarget.jsonPreview}
-          onClose={() => setExportDataPreviewTarget(null)}
-          onDownload={() => {
-            const { scope, projectId, format } = exportDataPreviewTarget.request;
-            if (scope === 'all') {
-              if (format === 'excel') void handleExportAllExcel();
-              else handleExportAll();
-            } else {
-              handleExportProjectWithFormat(projectId, format);
-            }
+      <Suspense fallback={null}>
+        <SettingsPanel
+          open={settingsOpen}
+          initialSection={settingsSection}
+          settings={settings}
+          onClose={() => setSettingsOpen(false)}
+          onUpdateSettings={(updates) => useSettingsStore.getState().updateSettings(updates)}
+          onOpenExport={() => openExportDialog()}
+          onImportAll={handleImportProject}
+          onResetData={handleResetData}
+          // ===== 顶部 Header 工具组(与主页面 Header 接线一致) =====
+          // 设置页是全屏浮层,遮盖主页面 TodoList/侧栏。Header 工具组里凡「结果落在
+          // 主页面」的操作(搜索/导入/新建项目/简洁模式),都先关设置页再触发,
+          // 让操作与反馈都在主页面语境发生,避免「点了看不见」。
+          // 注意:导入/导出回调与 DataSection 共用(onImportAll/onExportAll/onExportCsv),
+          // 「先关设置页」的包装在 SettingsPanel 内部统一处理,App 只提供单一来源。
+          sidebarOpen={sidebarOpen}
+          search={globalSearch}
+          onToggleSidebar={() => setSidebarOpen((value) => !value)}
+          onSearchChange={setGlobalSearch}
+          // 新建项目 / 进入简洁模式:同上,先关设置页再触发。
+          onCreateProject={() => {
+            setSettingsOpen(false);
+            setSidebarOpen(true);
+            setCreateProjectSignal((signal) => signal + 1);
           }}
+          onEnterCompactMode={() => {
+            setSettingsOpen(false);
+            void window.electronAPI?.createSticker(activeProjectId);
+          }}
+          onCloseWindow={() => window.close()}
+          // ===== 历史记录（归档）页面所需 =====
+          projects={projects}
+          onRestoreTodo={handleRestoreFromHistory}
+          onPermanentDeleteTodo={permanentlyDelete}
+          onEmptyArchive={emptyArchive}
+          onExportHistory={handleExportHistory}
+          updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
+          updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
+          updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}
+          updateError={isAutoUpdateAvailable ? updateError : undefined}
+          onCheckUpdates={isAutoUpdateAvailable ? checkForUpdates : undefined}
+          onDownloadUpdate={isAutoUpdateAvailable ? downloadUpdate : undefined}
+          onRestartToUpdate={isAutoUpdateAvailable ? () => void quitAndInstall() : undefined}
         />
-      )}
+
+        {/* 导出项目为图片预览弹窗 */}
+        {exportImageTarget && (
+          <ExportImageDialog
+            open={exportImageTarget !== null}
+            project={exportImageTarget.project}
+            todos={exportImageTarget.todos}
+            autoExport={exportImageTarget.autoExport}
+            onClose={() => setExportImageTarget(null)}
+          />
+        )}
+
+        <ExportDialog
+          open={exportDialogTarget !== null}
+          projects={projects}
+          defaultScope={exportDialogTarget?.scope}
+          defaultProjectId={exportDialogTarget?.projectId ?? activeProjectId}
+          onClose={() => setExportDialogTarget(null)}
+          onPreview={handleExportRequest}
+          onExport={handleDirectExportRequest}
+        />
+
+        {exportDataPreviewTarget && (
+          <ExportDataPreviewDialog
+            open={exportDataPreviewTarget !== null}
+            scope={exportDataPreviewTarget.request.scope}
+            format={exportDataPreviewTarget.request.format as 'json' | 'excel'}
+            projects={exportDataPreviewTarget.projects}
+            projectTodos={exportDataPreviewTarget.projectTodos}
+            jsonPreview={exportDataPreviewTarget.jsonPreview}
+            onClose={() => setExportDataPreviewTarget(null)}
+            onDownload={() => {
+              const { scope, projectId, format } = exportDataPreviewTarget.request;
+              if (scope === 'all') {
+                if (format === 'excel') void handleExportAllExcel();
+                else handleExportAll();
+              } else {
+                handleExportProjectWithFormat(projectId, format);
+              }
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

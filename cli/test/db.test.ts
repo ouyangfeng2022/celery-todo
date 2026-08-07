@@ -279,10 +279,10 @@ describe('db data layer', () => {
     expect(() => resolveProject('不存在的项目名')).toThrow(/未找到/);
   });
 
-  it('insertProject 追加到末尾（order 自增）', () => {
+  it('insertProject 追加到末尾（使用稀疏 rank）', () => {
     openDatabase(fixture.filePath, false);
     const now = new Date().toISOString();
-    // 省略 order 触发 COALESCE 自增（MAX(0)+1 = 1）
+    // 省略 order 触发 COALESCE 稀疏 rank（MAX(0)+1024）
     insertProject({
       id: generateId(),
       name: '新项目',
@@ -292,7 +292,7 @@ describe('db data layer', () => {
     const projects = getAllProjects();
     expect(projects).toHaveLength(2);
     const newest = projects[1];
-    expect(newest.order).toBe(1);
+    expect(newest.order).toBe(1024);
   });
 
   it('deleteProject 归档其下 todos 并删除项目（保留历史记录）', () => {
