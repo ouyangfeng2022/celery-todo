@@ -61,12 +61,7 @@ test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', a
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
-// CI（windows-latest runner）上跨视口键盘拖拽极不稳定：dnd-kit KeyboardSensor 每次
-// ArrowUp 推进的碰撞距离随机器性能漂移（本地能到顶，CI 22 次只移 16 位），即使改成
-// 基于 DB 顺序的收敛循环也会被拖拽期间的 dataQuery IPC 往返拖垮（慢机器上往返耗时
-// 足以让 sensor 丢键）。本地（含 sticker/virtual-list/dnd/archive 18/18）稳定通过。
-// 等找到跨机器稳定的键盘拖拽驱动方式（或改成鼠标拖拽 + autoScroll）再恢复。
-test.skip('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', async () => {
+test('101 条事项中末行可通过指针跨越虚拟窗口拖拽上移', async () => {
   const lastTitle = titles[titles.length - 1]!;
   const targetTitle = titles[80]!;
   const main = win.locator('main');
@@ -77,25 +72,32 @@ test.skip('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移',
   const lastRow = win
     .locator('div.group.relative.flex.items-center.gap-3')
     .filter({ has: win.getByText(lastTitle, { exact: true }) });
-  await lastRow.hover();
+  const targetRow = win
+    .locator('div.group.relative.flex.items-center.gap-3')
+    .filter({ has: win.getByText(targetTitle, { exact: true }) });
   const handle = lastRow.getByRole('button', { name: '拖拽排序' });
-  await handle.focus();
-  await win.waitForTimeout(200);
+  const [handleBox, mainBox] = await Promise.all([handle.boundingBox(), main.boundingBox()]);
+  if (!handleBox || !mainBox) throw new Error('无法获取拖拽手柄或滚动容器的位置');
 
-  // Space 拾起，ArrowUp × 20 移过整屏，Space 放下。
-  // dnd-kit 的 KeyboardSensor 每次按键需一个动画帧推进碰撞/坐标，背靠背连发会让
-  // 后续按键在 sensor 处理完上一帧前到达，dragStart/dragEnd 可能完全不触发
-  // （见同仓 e2e/dnd.spec.ts 同样在每次按键间等 200ms）。
-  await win.keyboard.press('Space');
-  await win.waitForTimeout(800);
+  // PointerSensor 不受 KeyboardSensor 碰撞坐标步长影响。指针停在主滚动区上缘，
+  // 让 dnd-kit autoScroll 驱动虚拟列表向上滚动，直到原本屏外的 081 实际进入视口。
+  await win.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await win.mouse.down();
+  await win.mouse.move(handleBox.x + handleBox.width / 2, mainBox.y + 8, { steps: 8 });
+  await expect
+    .poll(() => main.evaluate((element) => element.scrollTop), { timeout: 5_000 })
+    .toBeLessThan(await main.evaluate((element) => element.scrollHeight - element.clientHeight));
+  await expect(targetRow).toBeVisible({ timeout: 10_000 });
 
-  // 超出末屏 overscan：拖拽开始后应临时挂载完整列表，供 dnd-kit 找到屏幕外目标。
-  // 持续 ArrowUp 直到 101 落到 081 之前，而不是固定按 N 次：dnd-kit KeyboardSensor
-  // 在不同机器（尤其 CI runner）上每次按键推进的碰撞距离不一致，本地 22 次能到顶、
-  // CI 同样 22 次可能只移 16 位。改成基于主进程 DB 实际顺序收敛，保证测试稳定且仍
-  // 验证「能跨视口上移」这一核心行为。每次按键后等 180ms 给 sensor 一帧推进碰撞；
-  // 上限 40 次防止异常时死循环。todosByProject 序 = pinned DESC, sort_order，
-  // 是 manual 视图唯一权威顺序；moveTodoRank 是主进程同步 DB 写，按键间即生效。
+  const targetBox = await targetRow.boundingBox();
+  if (!targetBox) throw new Error('自动滚动后目标事项仍未处于可拖放区域');
+  await win.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+    steps: 8,
+  });
+  await win.mouse.up();
+
+  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
+  // 落定后从 DB 读取持久化顺序：源行（101）已稳定落在目标行（081）之前。
   const projectId = (
     (await win.evaluate(() => window.electronAPI!.dataQuery('projects'))) as {
       id: string;
@@ -109,17 +111,6 @@ test.skip('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移',
     )) as { title: string }[];
     return { p101: rows.findIndex((r) => r.title === lastTitle), p081: rows.findIndex((r) => r.title === targetTitle) };
   };
-  for (let i = 0; i < 40; i += 1) {
-    const { p101, p081 } = await indexOfInSorted();
-    if (p101 >= 0 && p081 >= 0 && p101 < p081) break;
-    await win.keyboard.press('ArrowUp');
-    await win.waitForTimeout(180);
-  }
-  await win.keyboard.press('Space');
-  await win.waitForTimeout(800);
-
-  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
-  // 落定后再断言一次：源行（101）已稳定落在目标行（081）之前。
   await expect
     .poll(
       async () => {
