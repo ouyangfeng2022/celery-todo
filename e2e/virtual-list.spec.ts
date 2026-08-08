@@ -95,16 +95,13 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
       .getAttribute('data-index');
     return value === null ? Number.POSITIVE_INFINITY : Number(value);
   };
-  // 等待每一个 ArrowUp 实际推进当前碰撞目标后才发送下一键。固定 150/200ms
-  // 在 CI 会让事件积压、被 KeyboardSensor 合并，80 次按键最后也只能到 index 84。
-  // 这里的次数上限只防御逻辑回归；推进节奏完全由 dnd-kit 的真实状态决定。
-  let currentOver = await overIndex();
-  for (let i = 0; i < 40 && currentOver > 80; i += 1) {
+  // 触及视口边缘时，KeyboardSensor 会先滚动容器；该次按键不会改变 over。
+  // 因此只验证一段完整键盘操作后的最终目标，而不把“每次按键都移动一行”当契约。
+  for (let i = 0; i < 40; i += 1) {
     await win.keyboard.press('ArrowUp');
-    await expect.poll(overIndex, { timeout: 1_500 }).toBeLessThan(currentOver);
-    currentOver = await overIndex();
+    await win.waitForTimeout(150);
   }
-  expect(currentOver).toBeLessThanOrEqual(80);
+  await expect.poll(overIndex, { timeout: 5_000 }).toBeLessThanOrEqual(80);
   await win.keyboard.press('Space');
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
