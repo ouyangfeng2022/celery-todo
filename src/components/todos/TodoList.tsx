@@ -51,11 +51,11 @@ interface TodoListProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
-  onReorder: (sourceId: string, targetId: string) => void;
+  onReorder: (sourceId: string, targetId: string) => Promise<void>;
   /** 切换排序方式（拖拽时用于自动切到「手动排序」） */
   onSortChange: (sort: SortType) => void;
   /** 拖拽切入 manual 前快照当前显示顺序到 todo.order */
-  onSnapshotOrder: (ids: string[]) => void;
+  onSnapshotOrder: (ids: string[]) => Promise<void>;
   /** 全局搜索选中后定位并高亮的事项。 */
   focusTarget?: { id: string; signal: number } | null;
 }
@@ -223,20 +223,21 @@ function TodoListComponent({
   );
 
   const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+    async (event: DragEndEvent) => {
       setActiveDragId(null);
       const { active, over } = event;
       if (over && active.id !== over.id) {
         // 当前非「手动排序」时，先快照当前显示顺序到 order，再切到手动排序。
         // 否则 store.todos（DB 序，按 sort_order ASC ≈ 创建顺序）与视图（如
         // created-desc 是反向的）不一致，reorderTodos 的 splice 索引取自 DB 序，
-        // 切到 manual 后会跳序。快照 + setState 同步生效，紧接着的 onReorder
-        // 读到的 store.todos 已与视图对齐。
+        // 切到 manual 后会跳序。snapshotOrder 是异步数据库写入，必须等它完成
+        // 再调用 onReorder；并行执行时，慢机器上快照可能在 moveTodoRank 后落库，
+        // 覆盖刚完成的拖拽排序。
         if (sort !== 'manual') {
-          onSnapshotOrder(todos.map((t) => t.id));
+          await onSnapshotOrder(todos.map((t) => t.id));
           onSortChange('manual');
         }
-        onReorder(active.id as string, over.id as string);
+        await onReorder(active.id as string, over.id as string);
       }
     },
     [onReorder, onSortChange, onSnapshotOrder, sort, todos],
