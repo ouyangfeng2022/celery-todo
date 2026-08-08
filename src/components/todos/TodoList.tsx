@@ -17,11 +17,13 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   DndContext,
   closestCenter,
+  KeyboardCode,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -219,12 +221,48 @@ function TodoListComponent({
     observer.observe(scrollElement);
     return () => observer.disconnect();
   }, [isVirtualized, scrollElement, todos]);
+
+  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
+  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
+  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
+
+  // sortableKeyboardCoordinates 通过已挂载节点的几何位置寻找下一个目标。虚拟列表
+  // 在滚动过程中会重测这些位置，CI 的慢帧下可能停在中间窗口。大列表改为按当前
+  // 覆盖项在排序数组中的相邻索引取目标矩形，避免把一次按键的结果交给瞬时 DOM 布局。
+  const keyboardCoordinates = useCallback<KeyboardCoordinateGetter>(
+    (event, { active, context, currentCoordinates }) => {
+      if (
+        !isVirtualized ||
+        (event.code !== KeyboardCode.Up && event.code !== KeyboardCode.Down)
+      ) {
+        return sortableKeyboardCoordinates(event, { active, context, currentCoordinates });
+      }
+
+      const activeIndex = todoIds.indexOf(String(active));
+      const currentIndex = context.over
+        ? todoIds.indexOf(String(context.over.id))
+        : activeIndex;
+      const direction = event.code === KeyboardCode.Up ? -1 : 1;
+      const targetIndex = Math.max(
+        0,
+        Math.min(todoIds.length - 1, currentIndex + direction),
+      );
+      const targetId = todoIds[targetIndex];
+      const targetRect = targetId ? context.droppableRects.get(targetId) : undefined;
+
+      return targetRect
+        ? { x: currentCoordinates.x, y: targetRect.top }
+        : sortableKeyboardCoordinates(event, { active, context, currentCoordinates });
+    },
+    [isVirtualized, todoIds],
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
+      coordinateGetter: keyboardCoordinates,
     }),
   );
 
@@ -261,10 +299,6 @@ function TodoListComponent({
       });
     });
   }, [focusTarget, isVirtualized, todos, virtualizer]);
-
-  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
-  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
-  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
 
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
