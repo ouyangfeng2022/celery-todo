@@ -91,9 +91,20 @@ test('101 条事项中末行可通过指针跨越虚拟窗口拖拽上移', asyn
 
   const targetBox = await targetRow.boundingBox();
   if (!targetBox) throw new Error('自动滚动后目标事项仍未处于可拖放区域');
+  const targetVirtualRow = targetRow.locator('..');
+  const targetVirtualBox = await targetVirtualRow.boundingBox();
+  if (!targetVirtualBox) throw new Error('无法获取目标事项的虚拟行位置');
   await win.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
     steps: 8,
   });
+  // 不能在 mouse.move 后立即释放：慢 CI 上 dnd-kit 尚未把 `over` 更新为 081，
+  // 会按上一个碰撞目标落下。源行插入 081 前时，081 的虚拟行会向下让出一个行高；
+  // 等待这个可观察布局变化，确认最终落点已被传感器接收后再 mouse.up。
+  await expect
+    .poll(async () => (await targetVirtualRow.boundingBox())?.y ?? targetVirtualBox.y, {
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(targetVirtualBox.y);
   await win.mouse.up();
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
