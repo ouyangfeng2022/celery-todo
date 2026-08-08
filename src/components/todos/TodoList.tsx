@@ -95,7 +95,7 @@ const SortableTodoItem = memo(
     },
     ref,
   ) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
       id: todo.id,
     });
 
@@ -128,7 +128,13 @@ const SortableTodoItem = memo(
     );
 
     return (
-      <div ref={setRefs} id={`todo-${todo.id}`} data-index={virtualIndex} style={style}>
+      <div
+        ref={setRefs}
+        id={`todo-${todo.id}`}
+        data-index={virtualIndex}
+        data-drag-over={isOver || undefined}
+        style={style}
+      >
         <TodoItem
           todo={todo}
           isSelected={isSelected}

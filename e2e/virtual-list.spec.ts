@@ -61,7 +61,7 @@ test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', a
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
-test('101 条事项中末行可通过指针跨越虚拟窗口拖拽上移', async () => {
+test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', async () => {
   const lastTitle = titles[titles.length - 1]!;
   const targetTitle = titles[80]!;
   const main = win.locator('main');
@@ -76,36 +76,32 @@ test('101 条事项中末行可通过指针跨越虚拟窗口拖拽上移', asyn
     .locator('div.group.relative.flex.items-center.gap-3')
     .filter({ has: win.getByText(targetTitle, { exact: true }) });
   const handle = lastRow.getByRole('button', { name: '拖拽排序' });
-  const [handleBox, mainBox] = await Promise.all([handle.boundingBox(), main.boundingBox()]);
-  if (!handleBox || !mainBox) throw new Error('无法获取拖拽手柄或滚动容器的位置');
-
-  // PointerSensor 不受 KeyboardSensor 碰撞坐标步长影响。指针停在主滚动区上缘，
-  // 让 dnd-kit autoScroll 驱动虚拟列表向上滚动，直到原本屏外的 081 实际进入视口。
-  await win.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
-  await win.mouse.down();
-  await win.mouse.move(handleBox.x + handleBox.width / 2, mainBox.y + 8, { steps: 8 });
-  await expect
-    .poll(() => main.evaluate((element) => element.scrollTop), { timeout: 5_000 })
-    .toBeLessThan(await main.evaluate((element) => element.scrollHeight - element.clientHeight));
-  await expect(targetRow).toBeVisible({ timeout: 10_000 });
-
-  const targetBox = await targetRow.boundingBox();
-  if (!targetBox) throw new Error('自动滚动后目标事项仍未处于可拖放区域');
+  await lastRow.hover();
+  await handle.focus();
+  await win.waitForTimeout(200);
+  await win.keyboard.press('Space');
+  // 拖拽中 overscan 会扩展到全表，原本屏外的目标行必须已注册为 droppable。
   const targetVirtualRow = targetRow.locator('..');
-  const targetVirtualBox = await targetVirtualRow.boundingBox();
-  if (!targetVirtualBox) throw new Error('无法获取目标事项的虚拟行位置');
-  await win.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
-    steps: 8,
-  });
-  // 不能在 mouse.move 后立即释放：慢 CI 上 dnd-kit 尚未把 `over` 更新为 081，
-  // 会按上一个碰撞目标落下。源行插入 081 前时，081 的虚拟行会向下让出一个行高；
-  // 等待这个可观察布局变化，确认最终落点已被传感器接收后再 mouse.up。
-  await expect
-    .poll(async () => (await targetVirtualRow.boundingBox())?.y ?? targetVirtualBox.y, {
-      timeout: 5_000,
-    })
-    .toBeGreaterThan(targetVirtualBox.y);
-  await win.mouse.up();
+  await expect(targetVirtualRow).toBeAttached();
+  await win.waitForTimeout(600);
+
+  const overIndex = async () => {
+    const value = await win
+      .getByLabel('待办事项列表')
+      .locator('[data-drag-over="true"]')
+      .getAttribute('data-index');
+    return value === null ? Number.POSITIVE_INFINITY : Number(value);
+  };
+  // 每次按键后仅检查 dnd-kit 的真实碰撞状态。不同机器的每步距离可以不同，
+  // 但只要当前 `over` 已越过 081（index 80），放下的 101 必然位于 081 前；
+  // 不读取拖拽期间尚未写入的数据库顺序，也不要求刚好命中某一行。
+  for (let i = 0; i < 80; i += 1) {
+    if ((await overIndex()) <= 80) break;
+    await win.keyboard.press('ArrowUp');
+    await win.waitForTimeout(150);
+  }
+  await expect.poll(overIndex, { timeout: 5_000 }).toBeLessThanOrEqual(80);
+  await win.keyboard.press('Space');
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   // 落定后从 DB 读取持久化顺序：源行（101）已稳定落在目标行（081）之前。
