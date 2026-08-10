@@ -40,7 +40,7 @@ import {
   ChartIcon,
   XIcon,
   CalendarIcon,
-  SparkleIcon,
+  TemplateIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
@@ -693,7 +693,7 @@ function ProjectSidebarComponent({
                   aria-label="从模板新建项目"
                   title="模板"
                 >
-                  <SparkleIcon size={14} />
+                  <TemplateIcon size={14} />
                 </button>
                 <button onClick={handleStartCreate} className="btn-ghost p-1" aria-label="新建项目">
                   <PlusIcon size={14} />

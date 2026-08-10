@@ -96,6 +96,16 @@ export const PaperIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+/** 模板库：叠放页面强调内容结构可重复使用，避免与主题色的星形图标混淆。 */
+export const TemplateIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <rect x="7" y="7" width="13" height="13" rx="2" />
+    <path d="M16 7V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h1" />
+    <line x1="11" y1="11" x2="16" y2="11" />
+    <line x1="11" y1="15" x2="16" y2="15" />
+  </BaseIcon>
+));
+
 export const FolderIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
