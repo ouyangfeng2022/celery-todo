@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+## [v2.19.2] - 2026-08-10
+### Fixed
+- stabilize virtual keyboard drag in large lists
+- 修 PR #15 暴露出的 sticker/virtual-list 回归
+- rebuild native modules for Electron ABI in CI
+
 ## [v2.19.1] - 2026-08-07
 ### Added
 - move desktop persistence to main process
@@ -436,3 +442,5 @@
 [v2.19.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.0
 
 [v2.19.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.1
+
+[v2.19.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.2
