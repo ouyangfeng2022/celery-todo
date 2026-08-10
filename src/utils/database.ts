@@ -1493,6 +1493,7 @@ export function exportAllData(): import('../types').AppExportData {
           return [];
         }
       })(),
+      todoViewMode: settingsMap.todoViewMode === 'card' ? 'card' : DEFAULT_SETTINGS.todoViewMode,
       // 时间格式：缺失键回退默认相对时间，与 loadSettings 对齐
       timeFormat: settingsMap.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（缺失时回退玻璃预设默认值，与 loadSettings 对齐） =====
@@ -1556,6 +1557,7 @@ export async function importAllData(data: import('../types').AppExportData): Pro
       settings.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
     );
     setSetting('customTemplates', JSON.stringify(settings.customTemplates ?? []));
+    setSetting('todoViewMode', settings.todoViewMode ?? DEFAULT_SETTINGS.todoViewMode);
     setSetting('stickerPreset', settings.stickerPreset ?? DEFAULT_SETTINGS.stickerPreset);
     setSetting('stickerRadius', String(settings.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius));
     setSetting('stickerBlur', String(settings.stickerBlur ?? DEFAULT_SETTINGS.stickerBlur));

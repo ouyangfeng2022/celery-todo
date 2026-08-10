@@ -43,8 +43,7 @@ test('todo 拖拽：把最后一条移到第一位', async () => {
   await addTodo(win, 'T3');
 
   // 默认 created-desc：列表顺序为 T3, T2, T1（新增置顶）。
-  // 直接拖拽 —— TodoList onDragEnd 会自动 snapshot 当前显示顺序并切到 manual，
-  // 无需（也无法）事先在下拉框选择「手动排序」（它只在拖拽后作为只读指示项出现）。
+  // 直接拖拽 —— TodoList onDragEnd 会自动 snapshot 当前显示顺序并切到内部 manual 状态。
   const before = await todoTitles(win);
   expect(before).toEqual(['T3', 'T2', 'T1']);
 
@@ -69,8 +68,10 @@ test('todo 拖拽：把最后一条移到第一位', async () => {
 
   const after = await todoTitles(win);
   expect(after[0]).toBe('T1');
-  // 拖拽后下拉框应自动切到 manual（只读指示项出现）
-  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
+  // 拖拽后不向用户暴露内部 manual 值或“手动排序”文案。
+  const sortSelect = win.getByLabel('排序方式');
+  await expect(sortSelect).toHaveValue('');
+  await expect(sortSelect.locator('option', { hasText: '手动排序' })).toHaveCount(0);
 });
 
 test('项目拖拽：把最后一个项目移到第一个', async () => {
@@ -82,9 +83,7 @@ test('项目拖拽：把最后一个项目移到第一个', async () => {
   await win.getByRole('button', { name: '项目A（拖动以排序）' }).click();
 
   // 项目顺序：项目A、项目B、项目C（createProject 末尾 append）
-  const beforeButtons = await win
-    .getByRole('button', { name: /（拖动以排序）/ })
-    .allTextContents();
+  const beforeButtons = await win.getByRole('button', { name: /（拖动以排序）/ }).allTextContents();
 
   // 聚焦"项目C"按钮，键盘拖拽到顶部（用 first 避免潜在重复渲染）
   const projC = win.getByRole('button', { name: '项目C（拖动以排序）' }).first();
@@ -102,9 +101,7 @@ test('项目拖拽：把最后一个项目移到第一个', async () => {
   await win.waitForTimeout(500);
 
   // 取所有项目按钮文案（可能因 dnd 渲染有重复，去重后比较）
-  const allTexts = await win
-    .getByRole('button', { name: /（拖动以排序）/ })
-    .allTextContents();
+  const allTexts = await win.getByRole('button', { name: /（拖动以排序）/ }).allTextContents();
   const afterButtons = [...new Set(allTexts)];
 
   // 顺序应发生变化（项目C 不再是最后一个）

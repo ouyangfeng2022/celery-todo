@@ -5,19 +5,21 @@
 
 import { memo } from 'react';
 import { motion } from 'framer-motion';
-import type { FilterType, SortType } from '../../types';
-import { MANUAL_SORT_LABEL, SORT_LABELS } from '../../types';
+import type { FilterType, SortType, TodoViewMode } from '../../types';
+import { SORT_LABELS } from '../../types';
 import { CountBadge } from '../common/CountBadge';
-import { ArchiveIcon } from '../common/Icons';
+import { ArchiveIcon, BoardIcon, ListIcon } from '../common/Icons';
 
 interface FilterBarProps {
   filter: FilterType;
   sort: SortType;
   activeCount: number;
   completedCount: number;
+  viewMode: TodoViewMode;
   onFilterChange: (filter: FilterType) => void;
   onSortChange: (sort: SortType) => void;
   onClearCompleted: () => void;
+  onViewModeChange: (mode: TodoViewMode) => void;
 }
 
 const FILTER_OPTIONS: { value: FilterType; label: string }[] = [
@@ -31,9 +33,11 @@ function FilterBarComponent({
   sort,
   activeCount,
   completedCount,
+  viewMode,
   onFilterChange,
   onSortChange,
   onClearCompleted,
+  onViewModeChange,
 }: FilterBarProps) {
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -99,27 +103,65 @@ function FilterBarComponent({
         )}
       </div>
 
-      {/* 右侧：排序选择（外层 flex 直接子元素，由 justify-between 钉在最右，不随归档按钮出现/消失而跳动） */}
-      <select
-        value={sort}
-        onChange={(e) => onSortChange(e.target.value as SortType)}
-        className="text-[13px] px-2.5 py-1.5 rounded-md border-none cursor-pointer transition-colors"
-        style={{
-          backgroundColor: 'var(--bg-secondary)',
-          color: 'var(--text-secondary)',
-        }}
-        aria-label="排序方式"
-      >
-        {/* 「手动排序」仅作为只读指示项出现：用户无法主动选中它，
-            仅当 sort 已为 manual（由拖拽触发）时才在下拉框中渲染，
-            让用户感知「当前为自定义顺序」，再选其它项即可退出。 */}
-        {sort === 'manual' && <option value="manual">{MANUAL_SORT_LABEL}</option>}
-        {Object.entries(SORT_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </select>
+      {/* 右侧：排序与显示方式成组，避免切换卡片后找不到返回列表的入口。 */}
+      <div className="flex items-center gap-2">
+        <select
+          value={sort === 'manual' ? '' : sort}
+          onChange={(e) => onSortChange(e.target.value as SortType)}
+          className="cursor-pointer rounded-md border-none px-2.5 py-1.5 text-[13px] transition-colors"
+          style={{
+            backgroundColor: 'var(--bg-secondary)',
+            color: 'var(--text-secondary)',
+          }}
+          aria-label="排序方式"
+        >
+          {/* 拖拽后的自定义顺序属于内部状态，不向用户展示“手动排序”选项。
+              中性占位保证原生 select 始终拥有与受控 value 对应的 option。 */}
+          {sort === 'manual' && (
+            <option value="" disabled>
+              排序方式
+            </option>
+          )}
+          {Object.entries(SORT_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+
+        <div
+          className="flex items-center gap-0.5 rounded-lg p-0.5"
+          style={{ backgroundColor: 'var(--bg-secondary)' }}
+          aria-label="事项显示方式"
+        >
+          {(
+            [
+              ['list', '列表视图', ListIcon],
+              ['card', '卡片视图', BoardIcon],
+            ] as const
+          ).map(([mode, label, Icon]) => {
+            const isActive = viewMode === mode;
+            return (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => onViewModeChange(mode)}
+                className="flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+                style={{
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  backgroundColor: isActive ? 'var(--bg-tertiary)' : 'transparent',
+                  boxShadow: isActive ? 'var(--shadow-xs)' : 'none',
+                }}
+                aria-label={label}
+                aria-pressed={isActive}
+                title={label}
+              >
+                <Icon size={14} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

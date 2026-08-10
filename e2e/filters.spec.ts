@@ -21,7 +21,9 @@ test.beforeEach(async () => {
 
   // 完成后两条
   for (const t of ['已完成1', '已完成2']) {
-    const row = win.getByText(t, { exact: true }).locator('xpath=ancestor::div[contains(@class,"group")][1]');
+    const row = win
+      .getByText(t, { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"group")][1]');
     await row.hover();
     await row.getByRole('button', { name: '标记为已完成' }).click();
   }
@@ -29,7 +31,9 @@ test.beforeEach(async () => {
   // 还停在未完成态，导致后续 filter 断言在 active/completed 间错位。等 aria-label
   // 翻转为「标记为未完成」（完成态的稳定信号）再进入测试体。
   for (const t of ['已完成1', '已完成2']) {
-    const row = win.getByText(t, { exact: true }).locator('xpath=ancestor::div[contains(@class,"group")][1]');
+    const row = win
+      .getByText(t, { exact: true })
+      .locator('xpath=ancestor::div[contains(@class,"group")][1]');
     await expect(row.getByRole('button', { name: '标记为未完成' })).toBeVisible();
   }
 });
@@ -120,7 +124,12 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
       .locator('div.group.relative.flex.items-center.gap-3')
       .evaluateAll((rows) =>
         rows
-          .map((el) => (el.querySelector('div.text-\\[15px\\]') as HTMLElement | null)?.textContent?.trim() ?? '')
+          .map(
+            (el) =>
+              (
+                el.querySelector('div.text-\\[15px\\]') as HTMLElement | null
+              )?.textContent?.trim() ?? '',
+          )
           .filter((t) => t === 'H1' || t === 'H2'),
       );
     return all;
@@ -128,7 +137,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   expect(await highTitles()).toEqual(['H2', 'H1']);
 
   // 2) 拖拽把 H1 移到 H2 前面 —— 触发 snapshotOrder 把「H1, H2」写进 todo.order，
-  //    sort 自动切到 manual，此刻顺序是 H1 在前。
+  //    sort 自动切到内部 manual 状态，此刻顺序是 H1 在前。
   const h1Row = win
     .locator('div.group.relative.flex.items-center.gap-3')
     .filter({ has: win.getByText('H1', { exact: true }) });
@@ -142,7 +151,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   await win.waitForTimeout(200);
   await win.keyboard.press('Space');
   await win.waitForTimeout(500);
-  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
+  await expect(win.getByLabel('排序方式')).toHaveValue('');
   expect(await highTitles()).toEqual(['H1', 'H2']);
 
   // 3) 切回 priority —— 顺序必须回到 createdAt 降序（H2 在前），
@@ -152,7 +161,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   expect(await highTitles()).toEqual(['H2', 'H1']);
 });
 
-test('拖拽后自动进入「手动排序」并作为只读指示项出现，切回规则后消失', async () => {
+test('拖拽后保留自定义顺序但不显示「手动排序」，仍可切回规则排序', async () => {
   // 默认 created-desc 下列表顺序（最新在前）：
   //   已完成2, 已完成1, 进行中3, 进行中2, 进行中1
   // 把最后一条「进行中1」拖到第一位 —— TodoList onDragEnd 会自动 snapshot+切到 manual
@@ -173,12 +182,13 @@ test('拖拽后自动进入「手动排序」并作为只读指示项出现，�
   await win.keyboard.press('Space');
   await win.waitForTimeout(500);
 
-  // 拖拽完成后下拉框应自动切到 manual，并多出「手动排序」指示项
+  // 拖拽完成后内部进入 manual，但下拉框只显示中性占位。
   const select = win.getByLabel('排序方式');
-  await expect(select).toHaveValue('manual');
-  await expect(select.locator('option')).toHaveText(['手动排序', '创建时间', '优先级']);
+  await expect(select).toHaveValue('');
+  await expect(select.locator('option')).toHaveText(['排序方式', '创建时间', '优先级']);
+  await expect(select.locator('option', { hasText: '手动排序' })).toHaveCount(0);
 
-  // 切回规则排序后「手动排序」指示项应消失
+  // 切回规则排序后中性占位也随内部 manual 状态一起消失。
   await select.selectOption('created-desc');
   await expect(select).toHaveValue('created-desc');
   await expect(select.locator('option')).toHaveText(['创建时间', '优先级']);

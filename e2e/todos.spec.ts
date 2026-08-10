@@ -2,7 +2,16 @@
  * Todo 核心 CRUD：添加、批量、完成、编辑、删除、优先级、描述 Markdown。
  */
 import { test, expect } from '@playwright/test';
-import { launchApp, closeApp, addTodo, addTodosBulk, createProject, todoRow, getTodoTitlesInOrder, type LaunchedApp } from './helpers';
+import {
+  launchApp,
+  closeApp,
+  addTodo,
+  addTodosBulk,
+  createProject,
+  todoRow,
+  getTodoTitlesInOrder,
+  type LaunchedApp,
+} from './helpers';
 
 let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
@@ -21,6 +30,32 @@ test.afterEach(async () => {
 test('添加单条 todo 后出现在列表中', async () => {
   await addTodo(win, '买菜');
   await expect(win.getByText('买菜', { exact: true })).toBeVisible();
+});
+
+test('卡片视图按计划日期排列每周事项，并可切回列表', async () => {
+  const titleInput = win.getByLabel('新事项标题');
+  for (const [title, date] of [
+    ['周一计划', '2030-01-07'],
+    ['周二计划', '2030-01-08'],
+    ['随手记录', ''],
+  ] as const) {
+    await titleInput.click();
+    await win.getByLabel('计划日期').fill(date);
+    await titleInput.fill(title);
+    await win.keyboard.press('Enter');
+    await expect(win.getByText(title, { exact: true })).toBeVisible();
+  }
+
+  await win.getByRole('button', { name: '卡片视图' }).click();
+  const board = win.getByLabel('按计划日期排列的事项卡片');
+  await expect(board).toBeVisible();
+  await expect(board.getByRole('heading', { name: '周一' })).toBeVisible();
+  await expect(board.getByRole('heading', { name: '周二' })).toBeVisible();
+  await expect(board.getByRole('heading', { name: '未安排' })).toBeVisible();
+  await expect(board.getByRole('button', { name: '拖拽排序' })).toHaveCount(0);
+
+  await win.getByRole('button', { name: '列表视图' }).click();
+  await expect(win.getByLabel('待办事项列表')).toBeVisible();
 });
 
 test('Enter 提交后输入框清空', async () => {

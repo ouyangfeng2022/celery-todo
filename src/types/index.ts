@@ -42,24 +42,21 @@ export type FilterType = 'all' | 'active' | 'completed';
  * 排序方式
  * - `created-desc`：按 createdAt 降序（新增置顶），用户可选
  * - `priority`：按优先级排序，用户可选
- * - `manual`：用户拖拽重排后的内部状态，遵循 `todo.order`。
- *   不在排序下拉框中作为常规选项暴露——仅在 sort 已为 manual 时
- *   作为只读指示项渲染，让用户感知到「当前为自定义顺序」，
- *   再选「创建时间 / 优先级」即可退出该模式。
+ * - `manual`：用户拖拽重排后的内部状态，遵循 `todo.order`，不在界面中显示。
  */
 export type SortType = 'created-desc' | 'priority' | 'manual';
 
 /** 主工作区导航模式。 */
 export type NavigationMode = 'project' | 'time';
 
+/** 项目事项的展示方式。 */
+export type TodoViewMode = 'list' | 'card';
+
 /** 用户可在下拉框主动选择的排序选项（manual 不在其中） */
 export const SORT_LABELS: Record<Exclude<SortType, 'manual'>, string> = {
   'created-desc': '创建时间',
   priority: '优先级',
 };
-
-/** manual 模式下作为下拉框只读指示项出现的文案 */
-export const MANUAL_SORT_LABEL = '手动排序';
 
 // ============================================
 // 主题
@@ -219,6 +216,8 @@ export interface AppSettings {
   lastActiveProjectId: string;
   /** 用户保存的项目模板；内置模板不写入设置。 */
   customTemplates: TodoTemplate[];
+  /** 项目事项展示方式；卡片模式按计划日期分组。 */
+  todoViewMode: TodoViewMode;
   /** 时间显示格式：relative=模糊计时（如「5 分钟前」），exact=精确到分钟（如「2026-08-04 14:30」） */
   timeFormat: 'relative' | 'exact';
   // ===== 贴图样式（简洁模式浮窗） =====
@@ -248,6 +247,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // 首次启动无历史激活项目，空串 → 显示「请创建项目」
   lastActiveProjectId: '',
   customTemplates: [],
+  todoViewMode: 'list',
   // 默认模糊计时；点击事项上的时间标签可在两种格式间切换（全局生效）
   timeFormat: 'relative',
   // 贴图样式默认走「玻璃」预设的当前观感，保证老用户视觉零回归

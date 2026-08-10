@@ -31,6 +31,8 @@ export interface TodoItemProps {
   /** 拖拽手柄属性（由 dnd-kit 注入） */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   selectable?: boolean;
+  /** 列表行或卡片；卡片模式由外层按计划日期分组。 */
+  view?: 'list' | 'card';
 }
 
 /** 统一动作栏的图标按钮：固定 28×28 命中区，垂直居中 */
@@ -156,9 +158,11 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     onToggleSelect,
     dragHandleProps,
     selectable = true,
+    view = 'list',
   },
   ref,
 ) {
+  const isCard = view === 'card';
   // 平台相关快捷键提示：Mac 显示 ⌘，Win/Linux 显示 Ctrl
   const isMac = window.electronAPI?.platform === 'darwin';
   const [isEditing, setIsEditing] = useState(false);
@@ -240,8 +244,10 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     <div
       ref={ref}
       className={cn(
-        'group relative flex items-center gap-3 pl-3.5 pr-2 py-2.5 rounded-claude transition-colors',
-        'hover:bg-[var(--bg-hover)]',
+        'group relative flex transition-colors',
+        isCard
+          ? 'min-h-[164px] flex-col items-stretch gap-3 rounded-xl border bg-[var(--bg-secondary)] p-4 hover:bg-[var(--bg-tertiary)]'
+          : 'items-center gap-3 rounded-claude py-2.5 pl-3.5 pr-2 hover:bg-[var(--bg-hover)]',
         // 置顶行：加深底色 + 左侧珊瑚色条，强化置顶信号
         todo.pinned &&
           'bg-[var(--pinned-bg)] hover:bg-[var(--pinned-bg)] shadow-[inset_3px_0_var(--accent)]',
@@ -249,7 +255,9 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         isSearchHighlighted &&
           'bg-[var(--accent-subtle)] ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg-primary)]',
       )}
-      style={undefined}
+      style={
+        isCard ? { borderColor: 'var(--border-color)', boxShadow: 'var(--shadow-xs)' } : undefined
+      }
     >
       {/* 拖拽手柄：绝对定位，悬浮显示在左侧，不占布局空间 */}
       {dragHandleProps && (
@@ -268,6 +276,8 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         onClick={() => onToggle(todo.id)}
         className={cn(
           'flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all',
+          isCard && 'absolute right-4 top-4',
+          isCard && isEditing && 'hidden',
           todo.completed
             ? 'bg-[var(--accent)] border-[var(--accent)]'
             : 'border-[var(--border-strong)] hover:border-[var(--accent)]',
@@ -278,7 +288,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
       </button>
 
       {/* 内容区域 */}
-      <div className="flex-1 min-w-0">
+      <div className={cn('min-w-0 flex-1', isCard && !isEditing && 'pr-7')}>
         {isEditing ? (
           <div className="space-y-2" onKeyDown={handleKeyDown}>
             <textarea
@@ -409,7 +419,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 </span>
               )}
 
-              {todo.plannedDate && (
+              {!isCard && todo.plannedDate && (
                 <span
                   className="claude-tag inline-flex items-center gap-1"
                   style={{ color: 'var(--text-secondary)' }}
@@ -420,27 +430,29 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
               )}
 
               {/* 创建时间：点击在 模糊计时 ↔ 精确计时（精确到分钟）间切换（全局生效） */}
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
-                  }
-                }}
-                className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--text-tertiary)' }}
-                title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
-              >
-                {timeFormat === 'exact'
-                  ? `${formatDateTime(todo.createdAt)} 创建`
-                  : `${formatRelativeTime(todo.createdAt)}创建`}
-              </span>
+              {!isCard && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
+                    }
+                  }}
+                  className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
+                  style={{ color: 'var(--text-tertiary)' }}
+                  title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
+                >
+                  {timeFormat === 'exact'
+                    ? `${formatDateTime(todo.createdAt)} 创建`
+                    : `${formatRelativeTime(todo.createdAt)}创建`}
+                </span>
+              )}
 
               {/* 完成时间：与创建时间共用全局 timeFormat 设置 */}
-              {todo.completedAt && (
+              {!isCard && todo.completedAt && (
                 <span
                   role="button"
                   tabIndex={0}
@@ -470,10 +482,13 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         <div
           className={cn(
             'flex-shrink-0 flex items-center gap-0.5 rounded-md transition-opacity',
-            isSelected
-              ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
+            isCard
+              ? 'mt-auto w-full justify-end border-t pt-2 opacity-70 group-hover:opacity-100 focus-within:opacity-100'
+              : isSelected
+                ? 'opacity-100'
+                : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
           )}
+          style={isCard ? { borderColor: 'var(--border-color)' } : undefined}
         >
           <DockButton
             label={todo.pinned ? '取消置顶' : '置顶'}

@@ -114,6 +114,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // lastActiveProjectId：字符串型，缺失键优雅回退空串（首次启动 / 老数据）
       lastActiveProjectId: stored.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
       customTemplates: parseCustomTemplates(stored.customTemplates),
+      todoViewMode: stored.todoViewMode === 'card' ? 'card' : DEFAULT_SETTINGS.todoViewMode,
       // timeFormat：老数据无该键时默认相对时间
       timeFormat: stored.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（老数据缺失键时整套回退到玻璃预设的默认值） =====

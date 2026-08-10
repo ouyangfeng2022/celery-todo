@@ -30,6 +30,7 @@ import { TemplateDialog } from './components/templates/TemplateDialog';
 import { FilterBar } from './components/filters/FilterBar';
 import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
+import { TodoBoard } from './components/todos/TodoBoard';
 import { BatchToolbar } from './components/todos/BatchToolbar';
 import type { SettingsSectionId } from './components/settings/SettingsPanel';
 import type { ExportRequest, ExportScope } from './components/export/ExportDialog';
@@ -1038,7 +1039,16 @@ function App() {
                 />
               </div>
             ) : (
-              <div className={cn('mx-auto', focusMode ? 'max-w-2xl' : 'max-w-4xl')}>
+              <div
+                className={cn(
+                  'mx-auto',
+                  focusMode
+                    ? 'max-w-2xl'
+                    : settings.todoViewMode === 'card'
+                      ? 'max-w-6xl'
+                      : 'max-w-4xl',
+                )}
+              >
                 {/*
                 添加事项吸顶（sticky top-0）：列表过长向下滚动时输入框不再被推出视野。
                 分两层处理遮挡：
@@ -1105,8 +1115,13 @@ function App() {
                       sort={sort}
                       activeCount={stats.active}
                       completedCount={stats.completed}
+                      viewMode={settings.todoViewMode}
                       onFilterChange={changeFilter}
                       onSortChange={changeSort}
+                      onViewModeChange={(todoViewMode) => {
+                        clearSelection();
+                        void settings.updateSettings({ todoViewMode });
+                      }}
                       onClearCompleted={() => {
                         const ids = activeProjectTodos
                           .filter((todo) => todo.completed)
@@ -1122,6 +1137,22 @@ function App() {
                     <AllDoneCelebration
                       completed={stats.completed}
                       onRestore={handleAllDoneRestore}
+                    />
+                  ) : settings.todoViewMode === 'card' ? (
+                    <TodoBoard
+                      key={activeProjectId}
+                      todos={filteredTodos}
+                      selectedIds={selectedIds}
+                      filter={filter}
+                      hasTodos={stats.total > 0}
+                      focusTarget={todoFocusTarget}
+                      onToggle={toggleTodo}
+                      onEdit={updateTodo}
+                      onDelete={(id) => {
+                        deleteTodo(id);
+                        showArchiveNotice([id]);
+                      }}
+                      onToggleSelect={toggleSelected}
                     />
                   ) : (
                     <TodoList

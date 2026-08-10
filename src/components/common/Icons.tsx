@@ -279,6 +279,15 @@ export const ListIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+/** 卡片看板：多列矩形对应按日期排列的事项卡片。 */
+export const BoardIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <rect x="3" y="3" width="7" height="18" rx="2" />
+    <rect x="14" y="3" width="7" height="10" rx="2" />
+    <rect x="14" y="17" width="7" height="4" rx="2" />
+  </BaseIcon>
+));
+
 export const FocusIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <circle cx="12" cy="12" r="7" />

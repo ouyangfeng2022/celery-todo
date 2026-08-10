@@ -344,7 +344,6 @@ function TodoListComponent({
       ref={listContainerRef}
       className="relative"
       style={{ height: virtualizer.getTotalSize() }}
-      aria-label="待办事项列表"
     >
       {virtualItems.map((virtualItem) => {
         const todo = todos[virtualItem.index];
@@ -389,6 +388,7 @@ function TodoListComponent({
         {/* 仅动画一个容器；key 让筛选切换重播短暂淡入，而不保留上一批事项等待退出。 */}
         <div
           key={filter ?? 'all'}
+          aria-label="待办事项列表"
           className={
             isVirtualized ? 'todo-filter-content' : 'todo-filter-content relative space-y-1'
           }
