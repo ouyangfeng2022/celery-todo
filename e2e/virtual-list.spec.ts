@@ -95,13 +95,14 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
       .getAttribute('data-index');
     return value === null ? Number.POSITIVE_INFINITY : Number(value);
   };
-  // 触及视口边缘时，KeyboardSensor 会先滚动容器；该次按键不会改变 over。
-  // 因此只验证一段完整键盘操作后的最终目标，而不把“每次按键都移动一行”当契约。
-  for (let i = 0; i < 40; i += 1) {
+  // 持续发送按键直到碰撞目标到达或越过 081，不把固定按键数当作测试契约。
+  // 次数上限仅用于在键盘碰撞完全停止推进时快速暴露回归。
+  for (let i = 0; i < 100; i += 1) {
+    if ((await overIndex()) <= 80) break;
     await win.keyboard.press('ArrowUp');
     await win.waitForTimeout(150);
   }
-  await expect.poll(overIndex, { timeout: 5_000 }).toBeLessThanOrEqual(80);
+  await expect.poll(overIndex).toBeLessThanOrEqual(80);
   await win.keyboard.press('Space');
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
@@ -117,7 +118,10 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
       (id) => window.electronAPI!.dataQuery('todosByProject', { projectId: id }),
       projectId,
     )) as { title: string }[];
-    return { p101: rows.findIndex((r) => r.title === lastTitle), p081: rows.findIndex((r) => r.title === targetTitle) };
+    return {
+      p101: rows.findIndex((r) => r.title === lastTitle),
+      p081: rows.findIndex((r) => r.title === targetTitle),
+    };
   };
   await expect
     .poll(

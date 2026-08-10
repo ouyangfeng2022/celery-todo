@@ -17,11 +17,14 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   DndContext,
   closestCenter,
+  KeyboardCode,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
+  type KeyboardCoordinateGetter,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -95,9 +98,10 @@ const SortableTodoItem = memo(
     },
     ref,
   ) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({
-      id: todo.id,
-    });
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+      useSortable({
+        id: todo.id,
+      });
 
     const style: React.CSSProperties = {
       transform: [
@@ -220,20 +224,71 @@ function TodoListComponent({
     return () => observer.disconnect();
   }, [isVirtualized, scrollElement, todos]);
 
+  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
+  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
+  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
+  const keyboardOverIdRef = useRef<string | null>(null);
+
+  // 默认 sortableKeyboardCoordinates 依赖当前碰撞矩形寻找几何位置最近的行。
+  // 虚拟列表滚动后，活动项的碰撞矩形与绝对定位行可能不在同一坐标基准，导致
+  // 键盘拖拽停在视口边缘。这里直接按排序数组选择相邻行，并将它记录为本次键盘
+  // 碰撞目标；普通列表继续沿用 dnd-kit 默认行为。
+  const keyboardCoordinates = useCallback<KeyboardCoordinateGetter>(
+    (event, { active, context, currentCoordinates }) => {
+      if (!isVirtualized) {
+        return sortableKeyboardCoordinates(event, { active, context, currentCoordinates });
+      }
+      if (event.code !== KeyboardCode.Up && event.code !== KeyboardCode.Down) {
+        keyboardOverIdRef.current = null;
+        return sortableKeyboardCoordinates(event, { active, context, currentCoordinates });
+      }
+
+      const activeIndex = todoIds.indexOf(String(active));
+      const currentIndex = context.over ? todoIds.indexOf(String(context.over.id)) : activeIndex;
+      const direction = event.code === KeyboardCode.Up ? -1 : 1;
+      const targetIndex = Math.max(0, Math.min(todoIds.length - 1, currentIndex + direction));
+      const targetId = todoIds[targetIndex];
+
+      if (!targetId || targetIndex === currentIndex) {
+        return sortableKeyboardCoordinates(event, { active, context, currentCoordinates });
+      }
+
+      keyboardOverIdRef.current = targetId;
+      context.droppableContainers
+        .get(targetId)
+        ?.node.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      // 返回相同坐标仍会触发一次 drag move；碰撞策略从 ref 读取目标。
+      return currentCoordinates;
+    },
+    [isVirtualized, todoIds],
+  );
+
+  const collisionDetection = useCallback<CollisionDetection>((args) => {
+    const keyboardOverId = keyboardOverIdRef.current;
+    if (
+      keyboardOverId &&
+      args.droppableContainers.some(
+        (container) => container.id === keyboardOverId && !container.disabled,
+      )
+    ) {
+      return [{ id: keyboardOverId }];
+    }
+    return closestCenter(args);
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
     }),
     useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-      // 键盘拖拽越过视口时，dnd-kit 会先滚动而不改变碰撞目标。即时滚动可避免
-      // 平滑动画吞掉后续 Arrow 键，使下一次按键能马上继续推进拖拽。
+      coordinateGetter: keyboardCoordinates,
       scrollBehavior: 'auto',
     }),
   );
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
+      keyboardOverIdRef.current = null;
       setActiveDragId(null);
       const { active, over } = event;
       if (over && active.id !== over.id) {
@@ -265,10 +320,6 @@ function TodoListComponent({
       });
     });
   }, [focusTarget, isVirtualized, todos, virtualizer]);
-
-  // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
-  // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
-  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
 
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
@@ -322,10 +373,16 @@ function TodoListComponent({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={(event) => setActiveDragId(String(event.active.id))}
+      collisionDetection={collisionDetection}
+      onDragStart={(event) => {
+        keyboardOverIdRef.current = null;
+        setActiveDragId(String(event.active.id));
+      }}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveDragId(null)}
+      onDragCancel={() => {
+        keyboardOverIdRef.current = null;
+        setActiveDragId(null);
+      }}
       modifiers={[restrictToVerticalAxis]}
     >
       <SortableContext items={todoIds} strategy={verticalListSortingStrategy}>
