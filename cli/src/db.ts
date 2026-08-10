@@ -374,7 +374,7 @@ export async function createProject(name: string, color?: string): Promise<{ id:
   }
   const now = new Date().toISOString();
   const id = generateId();
-  direct.insertProject({ id, name, color, createdAt: now, updatedAt: now });
+  direct.insertProject({ id, name, kind: 'user', color, createdAt: now, updatedAt: now });
   return { id };
 }
 

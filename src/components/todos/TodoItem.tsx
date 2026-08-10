@@ -11,7 +11,7 @@ import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
-import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon } from '../common/Icons';
+import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon, CalendarIcon } from '../common/Icons';
 
 // Markdown/GFM/KaTeX 仅在确有描述的事项上加载。加载期间保留纯文本，
 // 避免首次滚动大量描述时阻塞交互。
@@ -30,6 +30,7 @@ export interface TodoItemProps {
   onToggleSelect: (id: string) => void;
   /** 拖拽手柄属性（由 dnd-kit 注入） */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  selectable?: boolean;
 }
 
 /** 统一动作栏的图标按钮：固定 28×28 命中区，垂直居中 */
@@ -145,7 +146,17 @@ function PriorityMenu({
 }
 
 const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function TodoItemComponent(
-  { todo, isSelected, focusSignal, onToggle, onEdit, onDelete, onToggleSelect, dragHandleProps },
+  {
+    todo,
+    isSelected,
+    focusSignal,
+    onToggle,
+    onEdit,
+    onDelete,
+    onToggleSelect,
+    dragHandleProps,
+    selectable = true,
+  },
   ref,
 ) {
   // 平台相关快捷键提示：Mac 显示 ⌘，Win/Linux 显示 Ctrl
@@ -398,6 +409,16 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
                 </span>
               )}
 
+              {todo.plannedDate && (
+                <span
+                  className="claude-tag inline-flex items-center gap-1"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <CalendarIcon size={11} />
+                  {todo.plannedDate}
+                </span>
+              )}
+
               {/* 创建时间：点击在 模糊计时 ↔ 精确计时（精确到分钟）间切换（全局生效） */}
               <span
                 role="button"
@@ -461,6 +482,21 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           >
             <PinIcon size={15} />
           </DockButton>
+          <label
+            className="relative flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)]"
+            title="安排日期"
+          >
+            <CalendarIcon size={15} />
+            <input
+              type="date"
+              value={todo.plannedDate ?? ''}
+              onChange={(event) =>
+                onEdit(todo.id, { plannedDate: event.target.value || undefined })
+              }
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="安排日期"
+            />
+          </label>
           <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
           <DockButton label="编辑" onClick={handleStartEdit}>
             <EditIcon size={15} />
@@ -469,22 +505,29 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             <ArchiveIcon size={15} />
           </DockButton>
           {/* 批量选择：与其它图标同高，但用复选框语义 */}
-          <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
-          <label
-            className={cn(
-              'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
-              'hover:bg-[var(--bg-hover)]',
-            )}
-            title="选择事项"
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => onToggleSelect(todo.id)}
-              className="w-[14px] h-[14px] cursor-pointer accent-[var(--accent)]"
-              aria-label="选择事项"
-            />
-          </label>
+          {selectable && (
+            <>
+              <span
+                className="mx-0.5 h-4 w-px"
+                style={{ backgroundColor: 'var(--border-color)' }}
+              />
+              <label
+                className={cn(
+                  'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
+                  'hover:bg-[var(--bg-hover)]',
+                )}
+                title="选择事项"
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleSelect(todo.id)}
+                  className="w-[14px] h-[14px] cursor-pointer accent-[var(--accent)]"
+                  aria-label="选择事项"
+                />
+              </label>
+            </>
+          )}
         </div>
       )}
     </div>

@@ -280,8 +280,8 @@ describe('groupByPriority', () => {
 
 describe('groupByProject', () => {
   const projects: Project[] = [
-    { id: 'p1', name: '工作', createdAt: '', updatedAt: '', order: 1 },
-    { id: 'p2', name: '生活', createdAt: '', updatedAt: '', order: 2 },
+    { id: 'p1', name: '工作', kind: 'user', createdAt: '', updatedAt: '', order: 1 },
+    { id: 'p2', name: '生活', kind: 'user', createdAt: '', updatedAt: '', order: 2 },
   ];
 
   it('按项目聚合 total/completed/rate', () => {

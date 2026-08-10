@@ -288,7 +288,7 @@ export async function openHistory(win: Page): Promise<void> {
 
 /** 新建项目并自动切换到它 */
 export async function createProject(win: Page, name: string): Promise<void> {
-  await win.getByRole('button', { name: '新建项目' }).click();
+  await win.getByRole('button', { name: '新建项目', exact: true }).click();
   const input = win.getByPlaceholder('项目名称...');
   await input.fill(name);
   await win.keyboard.press('Enter');

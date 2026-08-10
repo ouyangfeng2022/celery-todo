@@ -28,6 +28,7 @@ const SORT_RANK_STEP = 1024;
 interface ProjectRow {
   id: string;
   name: string;
+  kind: 'user' | 'inbox';
   color: string | null;
   created_at: string;
   updated_at: string;
@@ -46,6 +47,7 @@ interface TodoRow {
   completed_at: string | null;
   sort_order: number;
   pinned: number;
+  planned_date: string | null;
 }
 
 interface DeletedTodoRow extends TodoRow {
@@ -61,6 +63,7 @@ function rowToProject(row: ProjectRow): Project {
   return {
     id: row.id,
     name: row.name,
+    kind: row.kind === 'inbox' ? 'inbox' : 'user',
     color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -81,6 +84,7 @@ function rowToTodo(row: TodoRow): Todo {
     completedAt: row.completed_at ?? undefined,
     order: row.sort_order,
     pinned: row.pinned === 1,
+    plannedDate: row.planned_date ?? undefined,
   };
 }
 
@@ -198,9 +202,9 @@ export function generateId(): string {
 // ============================================
 
 export function getAllProjects(): Project[] {
-  return queryAll<ProjectRow>('SELECT * FROM projects ORDER BY sort_order ASC, created_at ASC').map(
-    rowToProject,
-  );
+  return queryAll<ProjectRow>(
+    "SELECT * FROM projects ORDER BY CASE kind WHEN 'inbox' THEN 0 ELSE 1 END, sort_order ASC, created_at ASC",
+  ).map(rowToProject);
 }
 
 export function getProjectById(id: string): Project | null {
@@ -243,8 +247,8 @@ export function resolveProject(input: string): Project {
 export function insertProject(project: Project): void {
   // 与 src/utils/database.ts insertProject 一致：未指定 order 时按稀疏 rank 追加。
   exec(
-    `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)))`,
+    `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order, kind)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)), ?)`,
     [
       project.id,
       project.name,
@@ -252,11 +256,44 @@ export function insertProject(project: Project): void {
       project.createdAt,
       project.updatedAt,
       project.order ?? null,
+      project.kind === 'inbox' ? 'inbox' : 'user',
     ],
   );
 }
 
+/** 收集箱是系统项目，不能由普通项目管理操作修改。 */
+function assertProjectMutable(id: string, action: string): void {
+  const project = getProjectById(id);
+  if (project?.kind === 'inbox') {
+    throw new Error(`收集箱不能${action}`);
+  }
+}
+
+/** 更新普通项目；收集箱名称、颜色和排序均由系统维护。 */
+export function updateProject(project: Project): void {
+  assertProjectMutable(project.id, '重命名或修改');
+  exec('UPDATE projects SET name = ?, color = ?, updated_at = ?, sort_order = ? WHERE id = ?', [
+    project.name,
+    project.color ?? null,
+    project.updatedAt,
+    project.order,
+    project.id,
+  ]);
+}
+
+/** 按给定 id 顺序重排普通项目；收集箱不能参与排序。 */
+export function reorderProjects(ids: string[]): void {
+  const inbox = getAllProjects().find(
+    (project) => project.kind === 'inbox' && ids.includes(project.id),
+  );
+  if (inbox) throw new Error('收集箱不能参与项目排序');
+  ids.forEach((id, index) => {
+    exec('UPDATE projects SET sort_order = ? WHERE id = ?', [(index + 1) * SORT_RANK_STEP, id]);
+  });
+}
+
 export function deleteProject(id: string): void {
+  assertProjectMutable(id, '归档或删除');
   // 与 App 一致：归档项目——其下 todos 移入 deleted_todos（历史记录），再删项目本身。
   // 同批次共用时间戳，便于历史记录按批次聚合展示。
   const now = new Date().toISOString();
@@ -317,8 +354,8 @@ function escapeLikePrefix(input: string): string {
 
 export function insertTodo(todo: Todo): void {
   exec(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -331,13 +368,14 @@ export function insertTodo(todo: Todo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
     ],
   );
 }
 
 export function updateTodo(todo: Todo): void {
   exec(
-    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
+    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?, planned_date = ?
      WHERE id = ?`,
     [
       todo.title,
@@ -348,6 +386,7 @@ export function updateTodo(todo: Todo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
       todo.id,
     ],
   );
@@ -398,8 +437,8 @@ export function resolveDeletedTodo(input: string): DeletedTodo {
 
 export function insertDeletedTodo(todo: DeletedTodo): void {
   exec(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -412,6 +451,7 @@ export function insertDeletedTodo(todo: DeletedTodo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
       todo.deletedAt,
       todo.expiresAt,
     ],
@@ -429,8 +469,8 @@ export function restoreFromArchive(id: string, now: string): void {
   const row = queryOne<DeletedTodoRow>('SELECT * FROM deleted_todos WHERE id = ?', [id]);
   if (!row) throw new Error(`归档中不存在 ${id}`);
   exec(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       row.id,
       row.project_id,
@@ -443,6 +483,7 @@ export function restoreFromArchive(id: string, now: string): void {
       row.completed_at,
       row.sort_order,
       row.pinned,
+      row.planned_date,
     ],
   );
   exec('DELETE FROM deleted_todos WHERE id = ?', [id]);

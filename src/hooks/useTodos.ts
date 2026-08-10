@@ -33,12 +33,12 @@ export function useTodos() {
   const emptyArchive = useTodoStore((state) => state.emptyArchive);
 
   const addTodo = useCallback(
-    (title: string, priority: Priority = 'medium', description?: string) => {
+    (title: string, priority: Priority = 'medium', description?: string, plannedDate?: string) => {
       // 包含换行符时走批量添加（逗号/分号视为普通字符）
       if (hasBulkSeparator(title)) {
-        addTodosBulk(title, priority);
+        addTodosBulk(title, priority, plannedDate);
       } else {
-        addTodoAction({ title, priority, description });
+        addTodoAction({ title, priority, description, plannedDate });
       }
     },
     [addTodoAction, addTodosBulk],

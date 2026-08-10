@@ -10,6 +10,11 @@ import confetti from 'canvas-confetti';
 import { useTodoStore } from './store/useTodoStore';
 import { useProjectStore } from './store/useProjectStore';
 import { useSettingsStore } from './store/useSettingsStore';
+import {
+  selectTimeBucketCounts,
+  TIME_BUCKET_LABELS,
+  useTimeViewStore,
+} from './store/useTimeViewStore';
 
 import { useTodos } from './hooks/useTodos';
 import { useProjects } from './hooks/useProjects';
@@ -20,6 +25,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { Header } from './components/layout/Header';
 import { ProjectSidebar } from './components/projects/ProjectSidebar';
 import { AddTodoInput } from './components/todos/AddTodoInput';
+import { TimeView } from './components/todos/TimeView';
+import { TemplateDialog } from './components/templates/TemplateDialog';
 import { FilterBar } from './components/filters/FilterBar';
 import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
@@ -46,7 +53,16 @@ import {
   parseImportData,
 } from './utils/export';
 import { cn, downloadBlob, downloadFile, readFileAsText } from './utils/helpers';
-import type { DeletedTodo, FilterType, GlobalSearchResult, Priority, Project, Todo } from './types';
+import type { TimeBucket } from './utils/planning';
+import type {
+  DeletedTodo,
+  FilterType,
+  GlobalSearchResult,
+  NavigationMode,
+  Priority,
+  Project,
+  Todo,
+} from './types';
 
 // 设置与导出不属于首屏工作流；只在用户打开相应入口时请求代码。
 const SettingsPanel = lazy(() =>
@@ -134,6 +150,12 @@ function App() {
   );
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
   const [incompleteCounts, setIncompleteCounts] = useState<Record<string, number>>({});
+  const [navigationMode, setNavigationMode] = useState<NavigationMode>('project');
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templateSaveTarget, setTemplateSaveTarget] = useState<{
+    project: Project;
+    todos: Todo[];
+  } | null>(null);
 
   // === Stores ===
   const settings = useSettingsStore();
@@ -168,6 +190,10 @@ function App() {
     permanentlyDelete,
     emptyArchive,
   } = useTodos();
+  const timeBucket = useTimeViewStore((state) => state.bucket);
+  const timeTodos = useTimeViewStore((state) => state.allTodos);
+  const setTimeBucket = useTimeViewStore((state) => state.setBucket);
+  const timeCounts = useMemo(() => selectTimeBucketCounts(timeTodos), [timeTodos]);
 
   // activeProjectId 先于 useEffect 中的 loadProject 更新。渲染端再做一次
   // projectId 约束，确保这一个提交里绝不会把上一项目的事项交给列表动画树。
@@ -262,13 +288,18 @@ function App() {
     }
     const lower = keyword.toLowerCase();
     const projectById = new Map(projects.map((project) => [project.id, project]));
-    void data.searchTodos(keyword).then((todos) => {
-      setGlobalSearchResults(todos.flatMap((todo) => {
-      const project = projectById.get(todo.projectId);
-      if (!project) return [];
-      return [{ todo, project, matchedText: extractMatchedText(todo, lower) }];
-      }));
-    }).catch(() => setGlobalSearchResults([]));
+    void data
+      .searchTodos(keyword)
+      .then((todos) => {
+        setGlobalSearchResults(
+          todos.flatMap((todo) => {
+            const project = projectById.get(todo.projectId);
+            if (!project) return [];
+            return [{ todo, project, matchedText: extractMatchedText(todo, lower) }];
+          }),
+        );
+      })
+      .catch(() => setGlobalSearchResults([]));
   }, [dbReady, globalSearch, projects, todos, deletedTodos]);
 
   const handleSelectGlobalSearchResult = useCallback(
@@ -354,6 +385,7 @@ function App() {
       }
       const activeId = useProjectStore.getState().activeProjectId;
       await useTodoStore.getState().loadProject(activeId);
+      await useTimeViewStore.getState().load();
       setDbReady(true);
     })();
   }, []);
@@ -373,11 +405,14 @@ function App() {
     if (data.isNativeDatabase()) {
       return data.onDataChanged((event) => {
         const currentProjectId = useProjectStore.getState().activeProjectId;
-        if (event.fullRefresh || event.projectsChanged) void useProjectStore.getState().loadProjects();
-        if (event.fullRefresh || event.settingsChanged) void useSettingsStore.getState().loadSettings();
+        if (event.fullRefresh || event.projectsChanged)
+          void useProjectStore.getState().loadProjects();
+        if (event.fullRefresh || event.settingsChanged)
+          void useSettingsStore.getState().loadSettings();
         if (event.fullRefresh || event.projectIds.includes(currentProjectId)) {
           void useTodoStore.getState().loadProject(currentProjectId);
         }
+        void useTimeViewStore.getState().load();
       });
     }
     let disposed = false;
@@ -404,6 +439,7 @@ function App() {
           return Promise.all([
             useProjectStore.getState().loadProjects(),
             useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId),
+            useTimeViewStore.getState().load(),
           ]);
         });
         return;
@@ -417,6 +453,17 @@ function App() {
       off?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (!dbReady) return;
+    if (navigationMode === 'time') {
+      void useTimeViewStore.getState().load();
+    } else if (activeProjectId) {
+      // 时间视图可修改当前项目；切回项目模式时强制从数据库刷新，避免同一项目 id
+      // 未变化而跳过 activeProjectId effect，导致刚添加/移动的事项暂时不可见。
+      void useTodoStore.getState().loadProject(activeProjectId);
+    }
+  }, [activeProjectId, dbReady, navigationMode]);
 
   // === 安装阶段勾选了"开机自启"时的同步 ===
   // 主进程已在 NSIS 安装时通过 app.setLoginItemSettings 写好注册表，
@@ -520,7 +567,8 @@ function App() {
       const project = projects.find((p) => p.id === projectId);
       if (!project) return;
       const [projectTodos, projectDeleted] = await Promise.all([
-        data.getTodos(projectId), data.getDeletedTodos(projectId),
+        data.getTodos(projectId),
+        data.getDeletedTodos(projectId),
       ]);
       const json = exportProjectAsJson(project, projectTodos, projectDeleted);
       downloadFile(json, `Celery-Todo-${project.name}.json`);
@@ -555,10 +603,12 @@ function App() {
   // 全量 Excel：每个项目写入一个同名工作表。
   const handleExportAllExcel = useCallback(async () => {
     const content = await createTodosExcel(
-      await Promise.all(projects.map(async (project) => ({
-        projectName: project.name,
-        todos: await data.getTodos(project.id),
-      }))),
+      await Promise.all(
+        projects.map(async (project) => ({
+          projectName: project.name,
+          todos: await data.getTodos(project.id),
+        })),
+      ),
     );
     downloadBlob(
       new Blob([content], {
@@ -626,6 +676,15 @@ function App() {
   const openExportDialog = useCallback((projectId?: string) => {
     setExportDialogTarget({ scope: projectId ? 'project' : 'all', projectId });
   }, []);
+  const openTemplateLibrary = useCallback(() => {
+    setTemplateSaveTarget(null);
+    setTemplatesOpen(true);
+  }, []);
+  const handleSaveAsTemplate = useCallback(async (project: Project) => {
+    if (project.kind === 'inbox') return;
+    setTemplateSaveTarget({ project, todos: await data.getTodos(project.id) });
+    setTemplatesOpen(true);
+  }, []);
   const [exportDataPreviewTarget, setExportDataPreviewTarget] = useState<{
     request: ExportRequest;
     projects: Project[];
@@ -641,9 +700,11 @@ function App() {
 
       const previewProjects =
         scope === 'all' ? projects : projects.filter((project) => project.id === projectId);
-      const projectTodos = Object.fromEntries(await Promise.all(
-        previewProjects.map(async (project) => [project.id, await data.getTodos(project.id)]),
-      ));
+      const projectTodos = Object.fromEntries(
+        await Promise.all(
+          previewProjects.map(async (project) => [project.id, await data.getTodos(project.id)]),
+        ),
+      );
       const jsonPreview =
         scope === 'all'
           ? exportAppAsJson(await data.exportAll())
@@ -714,6 +775,7 @@ function App() {
             store.setActiveProject(targetId);
           }
           await useTodoStore.getState().loadProject(targetId);
+          await useTimeViewStore.getState().load();
         }
       } catch (err) {
         alert(`导入失败: ${err instanceof Error ? err.message : '未知错误'}`);
@@ -729,6 +791,7 @@ function App() {
     // 重置后项目列表为空，activeProjectId 为空串；清空当前 todo 视图
     await useTodoStore.getState().loadProject(useProjectStore.getState().activeProjectId);
     await useSettingsStore.getState().loadSettings();
+    await useTimeViewStore.getState().load();
     setSettingsOpen(false);
   }, []);
 
@@ -846,7 +909,9 @@ function App() {
                 className="truncate text-lg font-serif font-semibold leading-tight"
                 style={{ color: 'var(--text-primary)' }}
               >
-                {activeProject?.name ?? 'Celery Todo'}
+                {navigationMode === 'time'
+                  ? TIME_BUCKET_LABELS[timeBucket]
+                  : (activeProject?.name ?? 'Celery Todo')}
               </h1>
             </div>
             {/* 更新提醒已移至左下角侧边栏卡片（SidebarUpdateCard），右上象限不再显示徽标。
@@ -904,6 +969,16 @@ function App() {
                 onImport={handleImportClick}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}
+                navigationMode={navigationMode}
+                onNavigationModeChange={(mode) => {
+                  setNavigationMode(mode);
+                  clearSelection();
+                }}
+                timeBucket={timeBucket}
+                onTimeBucketChange={(bucket: TimeBucket) => setTimeBucket(bucket)}
+                timeCounts={timeCounts}
+                onOpenTemplates={openTemplateLibrary}
+                onSaveAsTemplate={(project) => void handleSaveAsTemplate(project)}
               />
             </div>
           </div>
@@ -936,7 +1011,22 @@ function App() {
           )}
 
           <main ref={setMainScrollElement} className="flex-1 overflow-y-auto">
-            {projects.length === 0 ? (
+            {navigationMode === 'time' ? (
+              <TimeView
+                projects={projects}
+                onInboxCreated={(inbox) => {
+                  void loadProjects().then(() => switchProject(inbox.id));
+                }}
+                onOpenProject={(projectId, todoId) => {
+                  setNavigationMode('project');
+                  switchProject(projectId);
+                  setTodoFocusTarget((current) => ({
+                    id: todoId,
+                    signal: (current?.signal ?? 0) + 1,
+                  }));
+                }}
+              />
+            ) : projects.length === 0 ? (
               // 无项目：引导创建第一个项目（优先于专注模式判断）
               <div className="mx-auto max-w-4xl px-5 py-8 lg:px-10 lg:py-12">
                 <NoProjectsState
@@ -973,8 +1063,8 @@ function App() {
                     >
                       <AddTodoInput
                         projectId={activeProjectId}
-                        onAdd={(title, priority, description) => {
-                          addTodo(title, priority, description);
+                        onAdd={(title, priority, description, plannedDate) => {
+                          addTodo(title, priority, description, plannedDate);
                           // 专注模式下添加完成后收起 composer
                           if (focusMode) setComposerVisible(false);
                         }}
@@ -1118,6 +1208,21 @@ function App() {
 
       {/* 设置面板 */}
       <Suspense fallback={null}>
+        <TemplateDialog
+          open={templatesOpen}
+          saveTarget={templateSaveTarget}
+          onClose={() => {
+            setTemplatesOpen(false);
+            setTemplateSaveTarget(null);
+          }}
+          onCreated={(project) => {
+            void loadProjects().then(() => {
+              setNavigationMode('project');
+              switchProject(project.id);
+            });
+          }}
+        />
+
         <SettingsPanel
           open={settingsOpen}
           initialSection={settingsSection}

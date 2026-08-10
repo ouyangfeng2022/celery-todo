@@ -21,6 +21,16 @@ const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
   'stickerShadow',
 ]);
 
+function parseCustomTemplates(value: string | undefined): AppSettings['customTemplates'] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as AppSettings['customTemplates']) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** 将旧版「主题 + 明暗」合并值迁移为两个独立设置。 */
 function normalizeTheme(
   value: string | null,
@@ -86,7 +96,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const storedAutoUpdate = stored.autoUpdateEnabled ?? null;
     const storedTheme = stored.theme ?? null;
     const normalizedTheme = normalizeTheme(storedTheme, stored.colorMode ?? null);
-    if (storedTheme !== normalizedTheme.theme) await data.setSetting('theme', normalizedTheme.theme);
+    if (storedTheme !== normalizedTheme.theme)
+      await data.setSetting('theme', normalizedTheme.theme);
     if (stored.colorMode !== normalizedTheme.colorMode) {
       await data.setSetting('colorMode', normalizedTheme.colorMode);
     }
@@ -102,6 +113,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           : storedAutoUpdate === 'true',
       // lastActiveProjectId：字符串型，缺失键优雅回退空串（首次启动 / 老数据）
       lastActiveProjectId: stored.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
+      customTemplates: parseCustomTemplates(stored.customTemplates),
       // timeFormat：老数据无该键时默认相对时间
       timeFormat: stored.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（老数据缺失键时整套回退到玻璃预设的默认值） =====
@@ -170,7 +182,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateSettings: async (updates) => {
     const current = get();
     const newSettings = { ...current, ...updates };
-    await Promise.all(Object.entries(updates).map(([key, value]) => data.setSetting(key, String(value))));
+    await Promise.all(
+      Object.entries(updates).map(([key, value]) =>
+        data.setSetting(key, key === 'customTemplates' ? JSON.stringify(value) : String(value)),
+      ),
+    );
     set(newSettings);
     if (updates.theme || updates.colorMode) {
       window.electronAPI?.setStartupTheme?.(

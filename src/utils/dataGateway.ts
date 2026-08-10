@@ -3,7 +3,16 @@
  * @description Electron 只通过主进程仓储访问 SQLite；浏览器按需加载 sql.js 回退。
  */
 
-import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type AppExportData, type DeletedTodo, type Project, type Todo } from '../types';
+import {
+  DEFAULT_SETTINGS,
+  STICKER_PRESET_VALUES,
+  type AppExportData,
+  type DeletedTodo,
+  type Project,
+  type Todo,
+  type TodoTemplate,
+} from '../types';
+import { EXPORT_FORMAT_VERSION } from './export';
 import { nativeDatabaseGateway } from './nativeDatabaseGateway';
 
 type WebDatabase = typeof import('./database');
@@ -25,11 +34,16 @@ export async function flush(): Promise<void> {
 export async function exportAll(): Promise<AppExportData> {
   if (!isNativeDatabase()) return (await web()).exportAllData();
   const [projects, todos, deletedTodos, settings] = await Promise.all([
-    getProjects(), getAllTodos(), getAllDeletedTodos(), getSettings(),
+    getProjects(),
+    getAllTodos(),
+    getAllDeletedTodos(),
+    getSettings(),
   ]);
-  const stickerPreset = (settings.stickerPreset as keyof typeof STICKER_PRESET_VALUES | undefined) ?? DEFAULT_SETTINGS.stickerPreset;
+  const stickerPreset =
+    (settings.stickerPreset as keyof typeof STICKER_PRESET_VALUES | undefined) ??
+    DEFAULT_SETTINGS.stickerPreset;
   return {
-    version: 3,
+    version: EXPORT_FORMAT_VERSION,
     exportedAt: new Date().toISOString(),
     projects,
     todos,
@@ -37,11 +51,15 @@ export async function exportAll(): Promise<AppExportData> {
     settings: {
       ...DEFAULT_SETTINGS,
       theme: settings.theme === 'paper' || settings.theme === 'celery' ? settings.theme : 'default',
-      colorMode: settings.colorMode === 'light' || settings.colorMode === 'dark' ? settings.colorMode : 'system',
+      colorMode:
+        settings.colorMode === 'light' || settings.colorMode === 'dark'
+          ? settings.colorMode
+          : 'system',
       autoStart: settings.autoStart === 'true',
       minimizeToTray: settings.minimizeToTray !== 'false',
       autoUpdateEnabled: settings.autoUpdateEnabled !== 'false',
       lastActiveProjectId: settings.lastActiveProjectId ?? '',
+      customTemplates: parseTemplatesSetting(settings.customTemplates),
       timeFormat: settings.timeFormat === 'exact' ? 'exact' : 'relative',
       stickerPreset,
       stickerRadius: Number(settings.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius),
@@ -51,6 +69,16 @@ export async function exportAll(): Promise<AppExportData> {
       dataVersion: Number(settings.dataVersion ?? DEFAULT_SETTINGS.dataVersion),
     },
   };
+}
+
+function parseTemplatesSetting(value: string | undefined): TodoTemplate[] {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as TodoTemplate[]) : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getProjects(): Promise<Project[]> {
@@ -79,11 +107,15 @@ export async function getSettings(): Promise<Record<string, string>> {
 }
 
 export async function searchTodos(keyword: string): Promise<Todo[]> {
-  return isNativeDatabase() ? nativeDatabaseGateway.searchTodos(keyword) : (await web()).searchTodos(keyword);
+  return isNativeDatabase()
+    ? nativeDatabaseGateway.searchTodos(keyword)
+    : (await web()).searchTodos(keyword);
 }
 
 export async function getIncompleteCounts(): Promise<Record<string, number>> {
-  return isNativeDatabase() ? nativeDatabaseGateway.getIncompleteCounts() : (await web()).getIncompleteCountsByProject();
+  return isNativeDatabase()
+    ? nativeDatabaseGateway.getIncompleteCounts()
+    : (await web()).getIncompleteCountsByProject();
 }
 
 export async function getAllTodos(): Promise<Todo[]> {
@@ -91,11 +123,15 @@ export async function getAllTodos(): Promise<Todo[]> {
 }
 
 export async function getAllDeletedTodos(): Promise<DeletedTodo[]> {
-  return isNativeDatabase() ? nativeDatabaseGateway.getAllDeletedTodos() : (await web()).getAllDeletedTodos();
+  return isNativeDatabase()
+    ? nativeDatabaseGateway.getAllDeletedTodos()
+    : (await web()).getAllDeletedTodos();
 }
 
 export async function getDeletedCount(): Promise<number> {
-  return isNativeDatabase() ? nativeDatabaseGateway.getDeletedCount() : (await web()).getArchivedTodosCount();
+  return isNativeDatabase()
+    ? nativeDatabaseGateway.getDeletedCount()
+    : (await web()).getArchivedTodosCount();
 }
 
 export async function getDeletedPage(
@@ -149,15 +185,28 @@ export async function updateTodos(todos: Todo[]): Promise<void> {
   else (await web()).updateTodos(todos);
 }
 
-export async function moveTodoRank(projectId: string, sourceId: string, targetId: string): Promise<Todo[]> {
+export async function moveTodoRank(
+  projectId: string,
+  sourceId: string,
+  targetId: string,
+): Promise<Todo[]> {
   if (isNativeDatabase()) return nativeDatabaseGateway.moveTodoRank(projectId, sourceId, targetId);
   return (await web()).moveTodoRank(projectId, sourceId, targetId);
+}
+
+export async function moveTodoToProject(id: string, targetProjectId: string): Promise<Todo> {
+  if (isNativeDatabase()) return nativeDatabaseGateway.moveTodoToProject(id, targetProjectId);
+  return (await web()).moveTodoToProject(id, targetProjectId);
 }
 
 export async function archiveTodos(todos: Todo[]): Promise<DeletedTodo[]> {
   if (isNativeDatabase()) {
     const now = new Date().toISOString();
-    const archived = todos.map((todo) => ({ ...todo, deletedAt: now, expiresAt: new Date(Date.now() + 30 * 86400000).toISOString() }));
+    const archived = todos.map((todo) => ({
+      ...todo,
+      deletedAt: now,
+      expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+    }));
     await nativeDatabaseGateway.command('archiveTodos', { todos: archived });
     return archived;
   }
@@ -199,8 +248,29 @@ export async function moveProjectRank(sourceId: string, targetId: string): Promi
   return (await web()).moveProjectRank(sourceId, targetId);
 }
 
+export async function ensureInboxProject(): Promise<Project> {
+  if (isNativeDatabase()) return nativeDatabaseGateway.ensureInboxProject();
+  return (await web()).ensureInboxProject();
+}
+
+export async function insertTodosIntoInbox(todos: Todo[]): Promise<Project> {
+  if (isNativeDatabase()) return nativeDatabaseGateway.insertTodosIntoInbox(todos);
+  return (await web()).insertTodosIntoInbox(todos);
+}
+
+export async function createProjectWithTodos(project: Project, todos: Todo[]): Promise<Project> {
+  if (isNativeDatabase()) {
+    await nativeDatabaseGateway.command('createProjectWithTodos', { project, todos });
+    return (await getProject(project.id)) ?? project;
+  }
+  return (await web()).createProjectWithTodos(project, todos);
+}
+
 export async function replaceAll(data: Parameters<WebDatabase['importAllData']>[0]): Promise<void> {
-  if (isNativeDatabase()) await nativeDatabaseGateway.command('replaceAll', { data: data as unknown as Record<string, unknown> });
+  if (isNativeDatabase())
+    await nativeDatabaseGateway.command('replaceAll', {
+      data: data as unknown as Record<string, unknown>,
+    });
   else await (await web()).importAllData(data);
 }
 
@@ -209,6 +279,8 @@ export async function reset(): Promise<void> {
   else await (await web()).resetDatabase();
 }
 
-export function onDataChanged(callback: Parameters<typeof nativeDatabaseGateway.onChanged>[0]): (() => void) | undefined {
+export function onDataChanged(
+  callback: Parameters<typeof nativeDatabaseGateway.onChanged>[0],
+): (() => void) | undefined {
   return isNativeDatabase() ? nativeDatabaseGateway.onChanged(callback) : undefined;
 }

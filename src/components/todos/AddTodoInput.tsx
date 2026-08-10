@@ -18,21 +18,30 @@ interface Draft {
   priority: Priority;
   description: string;
   isDescriptionOpen: boolean;
+  plannedDate: string;
 }
 
 interface AddTodoInputProps {
-  onAdd: (title: string, priority: Priority, description?: string) => void;
+  onAdd: (title: string, priority: Priority, description?: string, plannedDate?: string) => void;
   /** 当前所属项目 id —— 草稿按项目隔离，切换项目时输入框内容随之切换 */
   projectId: string;
   /** 是否聚焦（由快捷键触发） */
   focusSignal?: number;
+  /** 时间视图可用分类日期预填；项目草稿仍会独立记忆用户修改。 */
+  defaultPlannedDate?: string;
 }
 
-function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputProps) {
+function AddTodoInputComponent({
+  onAdd,
+  projectId,
+  focusSignal,
+  defaultPlannedDate,
+}: AddTodoInputProps) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [description, setDescription] = useState('');
   const [isDescriptionOpen, setIsDescriptionOpen] = useState(false);
+  const [plannedDate, setPlannedDate] = useState(defaultPlannedDate ?? '');
   const [showOptions, setShowOptions] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -62,7 +71,8 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
     setPriority(d?.priority ?? 'medium');
     setDescription(d?.description ?? '');
     setIsDescriptionOpen(d?.isDescriptionOpen ?? false);
-  }, [projectId]);
+    setPlannedDate(d?.plannedDate ?? defaultPlannedDate ?? '');
+  }, [projectId, defaultPlannedDate]);
 
   // 文本框自适应高度：单行时与原 input 一致，多行时自动撑高
   const autosize = useCallback(() => {
@@ -92,10 +102,11 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
           priority: prev?.priority ?? priority,
           description: prev?.description ?? description,
           isDescriptionOpen: prev?.isDescriptionOpen ?? isDescriptionOpen,
+          plannedDate: prev?.plannedDate ?? plannedDate,
         };
       }
     },
-    [projectId, priority, description, isDescriptionOpen],
+    [projectId, priority, description, isDescriptionOpen, plannedDate],
   );
 
   // 写入优先级并同步到当前项目的草稿缓存
@@ -109,10 +120,11 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
           priority: p,
           description: prev?.description ?? description,
           isDescriptionOpen: prev?.isDescriptionOpen ?? isDescriptionOpen,
+          plannedDate: prev?.plannedDate ?? plannedDate,
         };
       }
     },
-    [projectId, title, description, isDescriptionOpen],
+    [projectId, title, description, isDescriptionOpen, plannedDate],
   );
 
   // 写入描述并同步到当前项目草稿
@@ -126,10 +138,11 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
           priority: prev?.priority ?? priority,
           description: v,
           isDescriptionOpen: prev?.isDescriptionOpen ?? isDescriptionOpen,
+          plannedDate: prev?.plannedDate ?? plannedDate,
         };
       }
     },
-    [projectId, title, priority, isDescriptionOpen],
+    [projectId, title, priority, isDescriptionOpen, plannedDate],
   );
 
   // 展开状态也写入项目草稿，切换项目后可恢复到原编辑现场
@@ -143,10 +156,28 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
           priority: prev?.priority ?? priority,
           description: prev?.description ?? description,
           isDescriptionOpen: open,
+          plannedDate: prev?.plannedDate ?? plannedDate,
         };
       }
     },
-    [projectId, title, priority, description],
+    [projectId, title, priority, description, plannedDate],
+  );
+
+  const handlePlannedDateChange = useCallback(
+    (value: string) => {
+      setPlannedDate(value);
+      if (projectId) {
+        const prev = draftsRef.current[projectId];
+        draftsRef.current[projectId] = {
+          title: prev?.title ?? title,
+          priority: prev?.priority ?? priority,
+          description: prev?.description ?? description,
+          isDescriptionOpen: prev?.isDescriptionOpen ?? isDescriptionOpen,
+          plannedDate: value,
+        };
+      }
+    },
+    [description, isDescriptionOpen, priority, projectId, title],
   );
 
   const handleAdd = useCallback(() => {
@@ -154,7 +185,7 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
     if (trimmed.length === 0) return;
     // 批量模式不携带统一描述；详情模式从交互上已禁止标题进入多行。
     const nextDescription = hasBulkSeparator(trimmed) ? undefined : description.trim() || undefined;
-    onAdd(trimmed, priority, nextDescription);
+    onAdd(trimmed, priority, nextDescription, plannedDate || undefined);
 
     // 提交后清空标题与描述、收起详情；优先级保留，方便连续添加。
     setTitle('');
@@ -166,9 +197,10 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
         priority,
         description: '',
         isDescriptionOpen: false,
+        plannedDate,
       };
     }
-  }, [title, priority, description, onAdd, projectId]);
+  }, [title, priority, description, plannedDate, onAdd, projectId]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -334,6 +366,30 @@ function AddTodoInputComponent({ onAdd, projectId, focusSignal }: AddTodoInputPr
                   })}
                 </div>
               </div>
+
+              <label
+                className="flex items-center gap-2 text-xs"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                计划日期
+                <input
+                  type="date"
+                  value={plannedDate}
+                  onChange={(event) => handlePlannedDateChange(event.target.value)}
+                  className="rounded-md border-none px-2 py-1 text-xs"
+                  style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                  aria-label="计划日期"
+                />
+                {plannedDate && (
+                  <button
+                    type="button"
+                    onClick={() => handlePlannedDateChange('')}
+                    className="rounded px-1.5 py-1 hover:bg-[var(--bg-hover)]"
+                  >
+                    清除
+                  </button>
+                )}
+              </label>
 
               <button
                 type="button"

@@ -30,11 +30,19 @@ interface TodoState {
 
   // === 增删改 ===
   /** 添加单个 Todo */
-  addTodo: (params: { title: string; description?: string; priority?: Priority }) => Promise<void>;
+  addTodo: (params: {
+    title: string;
+    description?: string;
+    priority?: Priority;
+    plannedDate?: string;
+  }) => Promise<void>;
   /** 批量添加 Todo（用换行分隔的标题） */
-  addTodosBulk: (rawText: string, priority?: Priority) => Promise<void>;
+  addTodosBulk: (rawText: string, priority?: Priority, plannedDate?: string) => Promise<void>;
   /** 更新 Todo */
-  updateTodo: (id: string, updates: Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>>) => Promise<void>;
+  updateTodo: (
+    id: string,
+    updates: Partial<Omit<Todo, 'id' | 'projectId' | 'createdAt'>>,
+  ) => Promise<void>;
   /** 删除 Todo（归档：移入历史记录，可恢复或永久删除） */
   deleteTodo: (id: string) => Promise<void>;
   /** 切换完成状态 */
@@ -87,7 +95,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   selectedIds: new Set<string>(),
 
   loadProject: async (projectId: string) => {
-    const [todos, deletedTodos] = await Promise.all([data.getTodos(projectId), data.getDeletedTodos(projectId)]);
+    const [todos, deletedTodos] = await Promise.all([
+      data.getTodos(projectId),
+      data.getDeletedTodos(projectId),
+    ]);
     // 项目 ID 与列表必须在同一次发布中切换。否则 React 可能短暂渲染出
     // 「新项目标题 + 旧项目事项」，并被 AnimatePresence 误判为跨列表的逐项变更。
     set({
@@ -99,7 +110,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     });
   },
 
-  addTodo: async ({ title, description, priority = 'medium' }) => {
+  addTodo: async ({ title, description, priority = 'medium', plannedDate }) => {
     const { currentProjectId, todos } = get();
     const now = new Date().toISOString();
     const maxOrder = todos.length > 0 ? Math.max(...todos.map((t) => t.order)) : 0;
@@ -110,6 +121,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
       description: description?.trim() || undefined,
       completed: false,
       priority,
+      plannedDate,
       createdAt: now,
       updatedAt: now,
       order: maxOrder + 1024,
@@ -119,7 +131,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     set({ todos: [...todos, newTodo] });
   },
 
-  addTodosBulk: async (rawText, priority = 'medium') => {
+  addTodosBulk: async (rawText, priority = 'medium', plannedDate) => {
     const { currentProjectId, todos } = get();
     // 按换行分隔（逗号/分号视为普通字符）
     const titles = splitBulkTitles(rawText);
@@ -135,6 +147,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
         title,
         completed: false,
         priority,
+        plannedDate,
         createdAt: now,
         updatedAt: now,
         order: (baseOrder += 1024),
@@ -310,7 +323,10 @@ export const useTodoStore = create<TodoState>((set, get) => ({
 
   restoreTodo: async (id) => {
     await data.restoreTodo(id);
-    const [todos, deletedTodos] = await Promise.all([data.getTodos(get().currentProjectId), data.getDeletedTodos(get().currentProjectId)]);
+    const [todos, deletedTodos] = await Promise.all([
+      data.getTodos(get().currentProjectId),
+      data.getDeletedTodos(get().currentProjectId),
+    ]);
     set({ todos, deletedTodos });
   },
 

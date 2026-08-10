@@ -23,7 +23,9 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
-import type { Project } from '../../types';
+import type { NavigationMode, Project } from '../../types';
+import type { TimeBucket } from '../../utils/planning';
+import { TIME_BUCKET_LABELS } from '../../store/useTimeViewStore';
 import type { DownloadProgress, UpdateInfoLite, UpdateStatus } from '../../hooks/useAutoUpdate';
 import type { SettingsSectionId } from '../settings/SettingsPanel';
 import {
@@ -37,6 +39,8 @@ import {
   GithubIcon,
   ChartIcon,
   XIcon,
+  CalendarIcon,
+  SparkleIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
@@ -81,6 +85,13 @@ interface ProjectSidebarProps {
   incompleteCounts: Record<string, number>;
   /** 外部触发「新建项目」输入框聚焦：值变化时唤出并聚焦输入框 */
   autofocusCreateSignal?: number;
+  navigationMode?: NavigationMode;
+  onNavigationModeChange?: (mode: NavigationMode) => void;
+  timeBucket?: TimeBucket;
+  onTimeBucketChange?: (bucket: TimeBucket) => void;
+  timeCounts?: Record<TimeBucket, number>;
+  onOpenTemplates?: () => void;
+  onSaveAsTemplate?: (project: Project) => void;
 }
 
 interface SidebarUpdateCardProps {
@@ -441,6 +452,13 @@ function ProjectSidebarComponent({
   onImport,
   incompleteCounts,
   autofocusCreateSignal,
+  navigationMode = 'project',
+  onNavigationModeChange = () => undefined,
+  timeBucket = 'today',
+  onTimeBucketChange = () => undefined,
+  timeCounts = { replan: 0, today: 0, tomorrow: 0, week: 0, later: 0, unscheduled: 0 },
+  onOpenTemplates = () => undefined,
+  onSaveAsTemplate = () => undefined,
 }: ProjectSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -539,7 +557,13 @@ function ProjectSidebarComponent({
                 },
               },
               {
+                label: '保存为模板',
+                disabled: ctxMenu.project!.kind === 'inbox',
+                onClick: () => onSaveAsTemplate(ctxMenu.project!),
+              },
+              {
                 label: '重命名',
+                disabled: ctxMenu.project!.kind === 'inbox',
                 onClick: () => {
                   handleStartRename(ctxMenu.project!);
                 },
@@ -555,6 +579,7 @@ function ProjectSidebarComponent({
               {
                 label: '归档项目',
                 danger: true,
+                disabled: ctxMenu.project!.kind === 'inbox',
                 onClick: () => {
                   setDeleteTarget(ctxMenu.project!);
                 },
@@ -598,6 +623,9 @@ function ProjectSidebarComponent({
     [onReorder],
   );
 
+  const inboxProject = projects.find((project) => project.kind === 'inbox');
+  const userProjects = projects.filter((project) => project.kind !== 'inbox');
+
   return (
     <aside
       // 不加 border-r:整个 L 形(顶部行 + 左下项目栏)仅靠 --bg-frame(暖陶土橙)与主区
@@ -621,97 +649,185 @@ function ProjectSidebarComponent({
         </span>
       </div>
 
-      {/* 项目列表 */}
+      <div
+        className="mx-3 mb-2 grid grid-cols-2 gap-0.5 rounded-lg p-0.5"
+        style={{ backgroundColor: 'var(--bg-secondary)' }}
+        aria-label="事项分类方式"
+      >
+        {(['project', 'time'] as NavigationMode[]).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => onNavigationModeChange(mode)}
+            className="flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium transition-colors"
+            style={{
+              color: navigationMode === mode ? 'var(--text-primary)' : 'var(--text-tertiary)',
+              backgroundColor: navigationMode === mode ? 'var(--bg-tertiary)' : 'transparent',
+              boxShadow: navigationMode === mode ? 'var(--shadow-xs)' : 'none',
+            }}
+          >
+            {mode === 'project' ? <InboxIcon size={13} /> : <CalendarIcon size={13} />}
+            {mode === 'project' ? '项目' : '时间'}
+          </button>
+        ))}
+      </div>
+
+      {/* 项目 / 时间导航列表 */}
       <div
         className="flex-1 overflow-y-auto px-3 pb-4 pt-1"
-        onContextMenu={handleContainerContextMenu}
+        onContextMenu={navigationMode === 'project' ? handleContainerContextMenu : undefined}
       >
-        <div className="flex items-center justify-between px-2 mb-2">
-          <span
-            className="text-sm font-medium"
-            style={{ color: '#8f8f8f', fontFamily: 'var(--font-heading)' }}
-          >
-            项目
-          </span>
-          <button onClick={handleStartCreate} className="btn-ghost p-1" aria-label="新建项目">
-            <PlusIcon size={14} />
-          </button>
-        </div>
-
-        {/* 新建项目输入 */}
-        <AnimatePresence>
-          {isCreating && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="px-1 mb-1 overflow-hidden"
-            >
-              <input
-                ref={createInputRef}
-                type="text"
-                value={newProjectName}
-                onChange={(e) => setNewProjectName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreate();
-                  if (e.key === 'Escape') {
-                    setIsCreating(false);
-                    setNewProjectName('');
-                  }
-                }}
-                onBlur={() => {
-                  if (newProjectName.trim()) handleCreate();
-                  else setIsCreating(false);
-                }}
-                placeholder="项目名称..."
-                autoFocus
-                className="w-full px-2.5 py-1.5 text-sm rounded-md border outline-none"
-                style={{
-                  backgroundColor: 'var(--bg-tertiary)',
-                  color: 'var(--text-primary)',
-                  borderColor: 'var(--border-strong)',
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* 项目项（支持拖拽排序） */}
-        {/* restrictToVerticalAxis：拖拽时把位移限制为竖直方向，列表只能上下重排 */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-          modifiers={[restrictToVerticalAxis]}
-        >
-          <SortableContext items={projects.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-px mt-1">
-              {projects.map((project) => {
-                const isActive = project.id === activeProjectId;
-                const isEditing = editingId === project.id;
-                const isCtxTarget = ctxMenu?.project?.id === project.id;
-
-                return (
-                  <SortableProjectItem
-                    key={project.id}
-                    project={project}
-                    isActive={isActive}
-                    isEditing={isEditing}
-                    editName={editName}
-                    incompleteCount={incompleteCounts[project.id] ?? 0}
-                    onSwitch={onSwitch}
-                    onEditNameChange={setEditName}
-                    onConfirmRename={handleConfirmRename}
-                    onCancelRename={() => setEditingId(null)}
-                    onContextMenu={handleItemContextMenu}
-                    onNewTodo={(p) => onNewTodoInProject(p.id)}
-                    isContextMenuOpen={isCtxTarget}
-                  />
-                );
-              })}
+        {navigationMode === 'project' ? (
+          <>
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span
+                className="text-sm font-medium"
+                style={{ color: '#8f8f8f', fontFamily: 'var(--font-heading)' }}
+              >
+                项目
+              </span>
+              <span className="flex items-center gap-0.5">
+                <button
+                  onClick={onOpenTemplates}
+                  className="btn-ghost p-1"
+                  aria-label="从模板新建项目"
+                  title="模板"
+                >
+                  <SparkleIcon size={14} />
+                </button>
+                <button onClick={handleStartCreate} className="btn-ghost p-1" aria-label="新建项目">
+                  <PlusIcon size={14} />
+                </button>
+              </span>
             </div>
-          </SortableContext>
-        </DndContext>
+
+            {/* 新建项目输入 */}
+            <AnimatePresence>
+              {isCreating && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="px-1 mb-1 overflow-hidden"
+                >
+                  <input
+                    ref={createInputRef}
+                    type="text"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleCreate();
+                      if (e.key === 'Escape') {
+                        setIsCreating(false);
+                        setNewProjectName('');
+                      }
+                    }}
+                    onBlur={() => {
+                      if (newProjectName.trim()) handleCreate();
+                      else setIsCreating(false);
+                    }}
+                    placeholder="项目名称..."
+                    autoFocus
+                    className="w-full px-2.5 py-1.5 text-sm rounded-md border outline-none"
+                    style={{
+                      backgroundColor: 'var(--bg-tertiary)',
+                      color: 'var(--text-primary)',
+                      borderColor: 'var(--border-strong)',
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 项目项（支持拖拽排序） */}
+            {/* restrictToVerticalAxis：拖拽时把位移限制为竖直方向，列表只能上下重排 */}
+            {inboxProject && (
+              <button
+                type="button"
+                onClick={() => onSwitch(inboxProject.id)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleItemContextMenu(event, inboxProject);
+                }}
+                className="mb-2 flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                style={{
+                  color:
+                    inboxProject.id === activeProjectId ? 'var(--accent)' : 'var(--text-secondary)',
+                  backgroundColor:
+                    inboxProject.id === activeProjectId ? 'var(--accent-subtle)' : undefined,
+                }}
+                aria-label="收集箱"
+              >
+                <InboxIcon size={14} />
+                <span className="flex-1">收集箱</span>
+                {(incompleteCounts[inboxProject.id] ?? 0) > 0 && (
+                  <CountBadge>{incompleteCounts[inboxProject.id]}</CountBadge>
+                )}
+              </button>
+            )}
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              modifiers={[restrictToVerticalAxis]}
+            >
+              <SortableContext
+                items={userProjects.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-px mt-1">
+                  {userProjects.map((project) => {
+                    const isActive = project.id === activeProjectId;
+                    const isEditing = editingId === project.id;
+                    const isCtxTarget = ctxMenu?.project?.id === project.id;
+
+                    return (
+                      <SortableProjectItem
+                        key={project.id}
+                        project={project}
+                        isActive={isActive}
+                        isEditing={isEditing}
+                        editName={editName}
+                        incompleteCount={incompleteCounts[project.id] ?? 0}
+                        onSwitch={onSwitch}
+                        onEditNameChange={setEditName}
+                        onConfirmRename={handleConfirmRename}
+                        onCancelRename={() => setEditingId(null)}
+                        onContextMenu={handleItemContextMenu}
+                        onNewTodo={(p) => onNewTodoInProject(p.id)}
+                        isContextMenuOpen={isCtxTarget}
+                      />
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+          </>
+        ) : (
+          <div className="space-y-1 pt-1">
+            {(Object.keys(TIME_BUCKET_LABELS) as TimeBucket[]).map((bucket) => {
+              const selected = bucket === timeBucket;
+              return (
+                <button
+                  key={bucket}
+                  type="button"
+                  onClick={() => onTimeBucketChange(bucket)}
+                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                  style={{
+                    color: selected ? 'var(--accent)' : 'var(--text-secondary)',
+                    backgroundColor: selected ? 'var(--accent-subtle)' : undefined,
+                  }}
+                >
+                  <CalendarIcon size={14} />
+                  <span className="flex-1">{TIME_BUCKET_LABELS[bucket]}</span>
+                  {timeCounts[bucket] > 0 && <CountBadge>{timeCounts[bucket]}</CountBadge>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* 底部更新状态与品牌签名 */}

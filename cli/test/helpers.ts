@@ -14,6 +14,7 @@ export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS projects (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'user',
   color TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS todos (
   completed_at TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   pinned INTEGER NOT NULL DEFAULT 0,
+  planned_date TEXT,
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS deleted_todos (
@@ -45,6 +47,7 @@ CREATE TABLE IF NOT EXISTS deleted_todos (
   completed_at TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   pinned INTEGER NOT NULL DEFAULT 0,
+  planned_date TEXT,
   deleted_at TEXT NOT NULL,
   expires_at TEXT NOT NULL
 );
@@ -56,6 +59,10 @@ CREATE INDEX IF NOT EXISTS idx_todos_project_order
   ON todos(project_id, pinned DESC, sort_order ASC, created_at ASC);
 CREATE INDEX IF NOT EXISTS idx_todos_completed_project
   ON todos(completed, project_id);
+CREATE INDEX IF NOT EXISTS idx_todos_planned_completed
+  ON todos(planned_date, completed, project_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_single_inbox
+  ON projects(kind) WHERE kind = 'inbox';
 CREATE INDEX IF NOT EXISTS idx_deleted_project_deleted_at
   ON deleted_todos(project_id, deleted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_deleted_deleted_at_id
@@ -72,21 +79,21 @@ export interface SeedFixture {
 }
 
 /**
- * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=5。
+ * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=8。
  */
 export function createSeedDb(opts: { withProject?: boolean } = {}): SeedFixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'celery-cli-test-'));
   const filePath = path.join(tmpDir, 'celery-todo.db');
   const db = new Database(filePath);
   db.exec(SCHEMA_SQL);
-  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '5')").run();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '8')").run();
   let projectId = 'default-project-id';
   if (opts.withProject !== false) {
     projectId = '11111111-1111-1111-1111-111111111111';
     const now = new Date('2026-01-01T00:00:00Z').toISOString();
     db.prepare(
-      `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order) VALUES (?, ?, ?, ?, ?, ?)`,
-    ).run(projectId, '默认项目', 'blue', now, now, 0);
+      `INSERT INTO projects (id, name, kind, color, created_at, updated_at, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    ).run(projectId, '默认项目', 'user', 'blue', now, now, 0);
   }
   db.close();
   return {

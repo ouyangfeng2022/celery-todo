@@ -66,6 +66,7 @@ describe('Header', () => {
           project: {
             id: 'project-1',
             name: '工作',
+            kind: 'user',
             color: '#ef4444',
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',

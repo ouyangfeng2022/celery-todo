@@ -46,6 +46,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const project: Project = {
       id: generateId(),
       name: name.trim(),
+      kind: 'user',
       color: color || undefined,
       createdAt: now,
       updatedAt: now,
@@ -68,6 +69,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   renameProject: async (id, name) => {
     const project = get().projects.find((p) => p.id === id);
     if (!project) return;
+    if (project.kind === 'inbox') throw new Error('收集箱不能重命名');
     const updated: Project = {
       ...project,
       name: name.trim(),
@@ -78,6 +80,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   deleteProject: async (id) => {
+    if (get().projects.find((project) => project.id === id)?.kind === 'inbox') {
+      throw new Error('收集箱不能删除');
+    }
     await data.deleteProject(id);
     // 清理该项目对应的 per-project settings 键，避免 settings 表长期堆积无主键。
     // `filter.`/`sort.` 由 useFilter 写入；`celebrated.` 由 App.tsx 庆祝逻辑写入。
@@ -97,6 +102,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   reorderProjects: async (sourceId, targetId) => {
     const { projects } = get();
     if (sourceId === targetId) return;
+    if (
+      projects.some(
+        (project) =>
+          project.kind === 'inbox' && (project.id === sourceId || project.id === targetId),
+      )
+    )
+      return;
     const sourceIdx = projects.findIndex((p) => p.id === sourceId);
     const targetIdx = projects.findIndex((p) => p.id === targetId);
     if (sourceIdx === -1 || targetIdx === -1) return;

@@ -3,7 +3,14 @@
  * @description 支持 JSON、CSV 和 Excel 格式的数据导入导出
  */
 
-import type { Todo, ProjectExportData, AppExportData, HistoryExportData } from '../types';
+import {
+  DEFAULT_SETTINGS,
+  type Todo,
+  type Project,
+  type ProjectExportData,
+  type AppExportData,
+  type HistoryExportData,
+} from '../types';
 
 /**
  * 导出文件格式版本（独立于 DB schema 版本）。
@@ -15,7 +22,7 @@ import type { Todo, ProjectExportData, AppExportData, HistoryExportData } from '
  *   本常量只描述磁盘上 JSON 文件的兼容性。
  * - 详见仓库根目录 VERSIONING.md。
  */
-export const EXPORT_FORMAT_VERSION = 3;
+export const EXPORT_FORMAT_VERSION = 4;
 
 /**
  * 将 Todo 转换为 CSV 行
@@ -35,6 +42,7 @@ function todoToCsvRow(todo: Todo): string {
     escapeCsv(todo.description),
     todo.completed ? '是' : '否',
     todo.priority === 'high' ? '高' : todo.priority === 'medium' ? '中' : '低',
+    escapeCsv(todo.plannedDate),
     escapeCsv(todo.createdAt),
     escapeCsv(todo.completedAt),
     todo.pinned ? '是' : '否',
@@ -45,7 +53,7 @@ function todoToCsvRow(todo: Todo): string {
  * 导出 Todo 列表为 CSV 字符串
  */
 export function todosToCsv(todos: Todo[]): string {
-  const header = '标题,描述,已完成,优先级,创建时间,完成时间,置顶';
+  const header = '标题,描述,已完成,优先级,计划日期,创建时间,完成时间,置顶';
   const rows = todos.map(todoToCsvRow);
   // 添加 BOM 以支持 Excel 正确识别 UTF-8
   return '\ufeff' + [header, ...rows].join('\n');
@@ -56,6 +64,7 @@ const EXCEL_COLUMNS = [
   ['description', '描述'],
   ['completed', '已完成'],
   ['priority', '优先级'],
+  ['plannedDate', '计划日期'],
   ['createdAt', '创建时间'],
   ['completedAt', '完成时间'],
   ['pinned', '置顶'],
@@ -67,6 +76,7 @@ function todoToExcelRow(todo: Todo): Record<(typeof EXCEL_COLUMNS)[number][1], s
     描述: todo.description ?? '',
     已完成: todo.completed ? '是' : '否',
     优先级: todo.priority === 'high' ? '高' : todo.priority === 'medium' ? '中' : '低',
+    计划日期: todo.plannedDate ?? '',
     创建时间: todo.createdAt,
     完成时间: todo.completedAt ?? '',
     置顶: todo.pinned ? '是' : '否',
@@ -104,6 +114,7 @@ export async function createTodosExcel(
       { wch: 28 },
       { wch: 42 },
       { wch: 10 },
+      { wch: 14 },
       { wch: 10 },
       { wch: 24 },
       { wch: 24 },
@@ -159,16 +170,49 @@ export function exportHistoryAsJson(data: HistoryExportData): string {
  * 解析导入的 JSON 数据
  */
 export function parseImportData(jsonString: string): ProjectExportData | AppExportData {
-  const data = JSON.parse(jsonString);
-  if (!data.version || !data.exportedAt) {
+  const data: unknown = JSON.parse(jsonString);
+  if (!data || typeof data !== 'object') throw new Error('无效的数据格式：无法识别数据结构');
+  const raw = data as Record<string, unknown>;
+  if (!raw.version || !raw.exportedAt) {
     throw new Error('无效的数据格式：缺少必要字段');
   }
+  const normalizeTodo = <T extends Todo>(todo: T): T => ({
+    ...todo,
+    plannedDate: typeof todo.plannedDate === 'string' ? todo.plannedDate : undefined,
+  });
+  const normalizeProject = (project: Project, kind: Project['kind'] = 'user'): Project => ({
+    ...project,
+    kind,
+  });
   // 判断是单个项目还是完整应用数据
-  if ('project' in data && 'todos' in data) {
-    return data as ProjectExportData;
+  if ('project' in raw && 'todos' in raw) {
+    const imported = raw as unknown as ProjectExportData;
+    return {
+      ...imported,
+      project: normalizeProject(imported.project, imported.project.kind ?? 'user'),
+      todos: imported.todos.map(normalizeTodo),
+      deletedTodos: (imported.deletedTodos ?? []).map(normalizeTodo),
+    };
   }
-  if ('projects' in data) {
-    return data as AppExportData;
+  if ('projects' in raw) {
+    const imported = raw as unknown as AppExportData;
+    let hasInbox = false;
+    const projects = imported.projects.map((project) => {
+      const kind = project.kind === 'inbox' && !hasInbox ? 'inbox' : 'user';
+      if (kind === 'inbox') hasInbox = true;
+      return normalizeProject(project, kind);
+    });
+    return {
+      ...imported,
+      projects,
+      todos: (imported.todos ?? []).map(normalizeTodo),
+      deletedTodos: (imported.deletedTodos ?? []).map(normalizeTodo),
+      settings: {
+        ...DEFAULT_SETTINGS,
+        ...(imported.settings ?? {}),
+        customTemplates: imported.settings?.customTemplates ?? [],
+      },
+    };
   }
   throw new Error('无效的数据格式：无法识别数据结构');
 }

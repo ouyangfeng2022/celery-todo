@@ -18,11 +18,13 @@ import {
   insertTodo,
   openDatabase,
   permanentlyDeleteTodo,
+  reorderProjects,
   resolveDeletedTodo,
   resolveProject,
   resolveTodo,
   restoreFromArchive,
   softDeleteTodo,
+  updateProject,
   updateTodo,
 } from '../src/db-direct';
 import type { Todo } from '../src/types';
@@ -48,6 +50,7 @@ describe('db data layer', () => {
     const projects = getAllProjects();
     expect(projects).toHaveLength(1);
     expect(projects[0].name).toBe('默认项目');
+    expect(projects[0].kind).toBe('user');
   });
 
   it('insertTodo + getTodoById round-trip 保留所有字段', () => {
@@ -64,6 +67,7 @@ describe('db data layer', () => {
       updatedAt: now,
       order: 1,
       pinned: false,
+      plannedDate: '2026-08-12',
     };
     insertTodo(todo);
     const got = getTodoById(todo.id);
@@ -75,6 +79,7 @@ describe('db data layer', () => {
       order: 1,
     });
     expect(got?.description).toBe('描述');
+    expect(got?.plannedDate).toBe('2026-08-12');
   });
 
   it('updateTodo 写回字段后持久化', () => {
@@ -92,12 +97,20 @@ describe('db data layer', () => {
       pinned: false,
     };
     insertTodo(todo);
-    updateTodo({ ...todo, title: '改后', completed: true, completedAt: now, priority: 'high' });
+    updateTodo({
+      ...todo,
+      title: '改后',
+      completed: true,
+      completedAt: now,
+      priority: 'high',
+      plannedDate: '2026-08-13',
+    });
     const got = getTodoById(todo.id);
     expect(got?.title).toBe('改后');
     expect(got?.completed).toBe(true);
     expect(got?.priority).toBe('high');
     expect(got?.completedAt).toBe(now);
+    expect(got?.plannedDate).toBe('2026-08-13');
   });
 
   it('resolveTodo 支持完整 id 与唯一前缀', () => {
@@ -171,6 +184,7 @@ describe('db data layer', () => {
       updatedAt: now,
       order: 1,
       pinned: false,
+      plannedDate: '2026-08-14',
     };
     insertTodo(todo);
     softDeleteTodo(todo, now, now);
@@ -179,6 +193,7 @@ describe('db data layer', () => {
     expect(archived).toHaveLength(1);
     expect(archived[0].id).toBe(todo.id);
     expect(archived[0].deletedAt).toBe(now);
+    expect(archived[0].plannedDate).toBe('2026-08-14');
   });
 
   it('restoreFromArchive 把行搬回 todos 并刷新 updated_at', () => {
@@ -194,6 +209,7 @@ describe('db data layer', () => {
       updatedAt: now,
       order: 1,
       pinned: false,
+      plannedDate: '2026-08-15',
     };
     insertTodo(todo);
     softDeleteTodo(todo, now, now);
@@ -202,6 +218,7 @@ describe('db data layer', () => {
     const restored = getTodoById(todo.id);
     expect(restored).not.toBeNull();
     expect(restored?.updatedAt).toBe(restoreTime);
+    expect(restored?.plannedDate).toBe('2026-08-15');
     expect(getAllDeletedTodos()).toHaveLength(0);
   });
 
@@ -286,6 +303,7 @@ describe('db data layer', () => {
     insertProject({
       id: generateId(),
       name: '新项目',
+      kind: 'user',
       createdAt: now,
       updatedAt: now,
     });
@@ -293,6 +311,29 @@ describe('db data layer', () => {
     expect(projects).toHaveLength(2);
     const newest = projects[1];
     expect(newest.order).toBe(1024);
+    expect(newest.kind).toBe('user');
+  });
+
+  it('收集箱不能更新、删除或参与项目排序', () => {
+    openDatabase(fixture.filePath, false);
+    const now = new Date().toISOString();
+    const inboxId = generateId();
+    insertProject({
+      id: inboxId,
+      name: '收集箱',
+      kind: 'inbox',
+      createdAt: now,
+      updatedAt: now,
+      order: -1024,
+    });
+    const inbox = getProjectById(inboxId);
+    expect(inbox).not.toBeNull();
+
+    expect(() => updateProject({ ...inbox!, name: '改名' })).toThrow(/收集箱不能重命名或修改/);
+    expect(() => reorderProjects([inboxId, fixture.projectId])).toThrow(/收集箱不能参与项目排序/);
+    expect(() => deleteProject(inboxId)).toThrow(/收集箱不能归档或删除/);
+
+    expect(getProjectById(inboxId)).toMatchObject({ name: '收集箱', kind: 'inbox', order: -1024 });
   });
 
   it('deleteProject 归档其下 todos 并删除项目（保留历史记录）', () => {
@@ -328,10 +369,10 @@ describe('db data layer', () => {
 
   it('getDataVersion 读取 settings.dataVersion', () => {
     openDatabase(fixture.filePath, false);
-    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 5
+    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 8
     const rows = readAllRows<{ key: string; value: string }>(fixture.filePath, 'settings');
     const dv = rows.find((r) => r.key === 'dataVersion');
-    expect(dv?.value).toBe('5');
+    expect(dv?.value).toBe('8');
   });
 
   it('只读模式下写入抛错', () => {

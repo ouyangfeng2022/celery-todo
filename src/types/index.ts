@@ -49,6 +49,9 @@ export type FilterType = 'all' | 'active' | 'completed';
  */
 export type SortType = 'created-desc' | 'priority' | 'manual';
 
+/** 主工作区导航模式。 */
+export type NavigationMode = 'project' | 'time';
+
 /** 用户可在下拉框主动选择的排序选项（manual 不在其中） */
 export const SORT_LABELS: Record<Exclude<SortType, 'manual'>, string> = {
   'created-desc': '创建时间',
@@ -116,6 +119,8 @@ export interface Todo {
   completed: boolean;
   /** 优先级 */
   priority: Priority;
+  /** 计划日期（本地日历 YYYY-MM-DD；不包含时间与提醒语义） */
+  plannedDate?: string;
   /** 创建时间（ISO 字符串） */
   createdAt: string;
   /** 更新时间（ISO 字符串） */
@@ -146,6 +151,8 @@ export interface Project {
   id: string;
   /** 项目名称 */
   name: string;
+  /** 普通项目或按需创建的系统收集箱。 */
+  kind: 'user' | 'inbox';
   /** 项目颜色（用于侧边栏标识） */
   color?: string;
   /** 创建时间 */
@@ -154,6 +161,30 @@ export interface Project {
   updatedAt: string;
   /** 手动排序的顺序值（侧边栏拖拽排序） */
   order: number;
+}
+
+// ============================================
+// Todo 模板
+// ============================================
+
+export interface TodoTemplateItem {
+  title: string;
+  description?: string;
+  priority: Priority;
+  pinned: boolean;
+  order: number;
+  /** 相对模板起始日的日历日偏移；缺失表示未安排。 */
+  plannedDayOffset?: number;
+}
+
+export interface TodoTemplate {
+  schemaVersion: 1;
+  id: string;
+  name: string;
+  projectName: string;
+  color?: string;
+  createdAt: string;
+  items: TodoTemplateItem[];
 }
 
 /** 全局搜索返回的事项及其所属项目。 */
@@ -186,6 +217,8 @@ export interface AppSettings {
   autoUpdateEnabled: boolean;
   /** 上次激活的项目 ID（启动时恢复；空串表示无激活项目） */
   lastActiveProjectId: string;
+  /** 用户保存的项目模板；内置模板不写入设置。 */
+  customTemplates: TodoTemplate[];
   /** 时间显示格式：relative=模糊计时（如「5 分钟前」），exact=精确到分钟（如「2026-08-04 14:30」） */
   timeFormat: 'relative' | 'exact';
   // ===== 贴图样式（简洁模式浮窗） =====
@@ -214,6 +247,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdateEnabled: true,
   // 首次启动无历史激活项目，空串 → 显示「请创建项目」
   lastActiveProjectId: '',
+  customTemplates: [],
   // 默认模糊计时；点击事项上的时间标签可在两种格式间切换（全局生效）
   timeFormat: 'relative',
   // 贴图样式默认走「玻璃」预设的当前观感，保证老用户视觉零回归

@@ -11,6 +11,7 @@ vi.mock('@/utils/sortTodos', () => ({
 const project: Project = {
   id: 'project-1',
   name: '预览项目',
+  kind: 'user',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
   order: 0,

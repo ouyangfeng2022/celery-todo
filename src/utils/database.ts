@@ -27,7 +27,7 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 7;
+const DB_VERSION = 8;
 /** 稀疏排序的相邻 rank 间隔；普通拖拽只改动被移动的一行。 */
 const SORT_RANK_STEP = 1024;
 
@@ -133,6 +133,16 @@ const MIGRATIONS: SchemaMigration[] = [
         'SELECT id FROM projects ORDER BY sort_order ASC, created_at ASC',
       );
       projectRows.forEach(({ id }) => normalizeTodoRanks(database, id));
+    },
+  },
+  {
+    version: 8,
+    description: '增加计划日期与按需创建的系统收集箱项目类型',
+    run: (database) => {
+      addColumnIfMissing(database, 'projects', 'kind', "TEXT NOT NULL DEFAULT 'user'");
+      addColumnIfMissing(database, 'todos', 'planned_date', 'TEXT');
+      addColumnIfMissing(database, 'deleted_todos', 'planned_date', 'TEXT');
+      createPerformanceIndexes(database);
     },
   },
 ];
@@ -279,7 +289,8 @@ function createTables(database: Database): void {
       color TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
-      sort_order INTEGER NOT NULL DEFAULT 0
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      kind TEXT NOT NULL DEFAULT 'user'
     );
 
     -- Todo 事项表
@@ -295,6 +306,7 @@ function createTables(database: Database): void {
       completed_at TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       pinned INTEGER NOT NULL DEFAULT 0,
+      planned_date TEXT,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
     );
 
@@ -312,6 +324,7 @@ function createTables(database: Database): void {
       completed_at TEXT,
       sort_order INTEGER NOT NULL DEFAULT 0,
       pinned INTEGER NOT NULL DEFAULT 0,
+      planned_date TEXT,
       deleted_at TEXT NOT NULL,
       expires_at TEXT NOT NULL
     );
@@ -326,7 +339,13 @@ function createTables(database: Database): void {
 
   // 旧库会先走 createTables()、再跑 v3 的 pinned 列迁移；列尚不存在时不能创建
   // 依赖它的索引。v5 迁移会在升级完成后补齐，已是最新版的库则在这里自修复索引。
-  if (hasColumn(database, 'todos', 'pinned') && hasColumn(database, 'deleted_todos', 'pinned')) {
+  if (
+    hasColumn(database, 'todos', 'pinned') &&
+    hasColumn(database, 'deleted_todos', 'pinned') &&
+    hasColumn(database, 'projects', 'kind') &&
+    hasColumn(database, 'todos', 'planned_date') &&
+    hasColumn(database, 'deleted_todos', 'planned_date')
+  ) {
     createPerformanceIndexes(database);
   }
 }
@@ -343,6 +362,14 @@ function createPerformanceIndexes(database: Database): void {
     CREATE INDEX IF NOT EXISTS idx_deleted_deleted_at_id
       ON deleted_todos(deleted_at DESC, id DESC);
   `);
+  if (hasColumn(database, 'todos', 'planned_date')) {
+    database.run(`CREATE INDEX IF NOT EXISTS idx_todos_planned_completed
+      ON todos(planned_date, completed, project_id)`);
+  }
+  if (hasColumn(database, 'projects', 'kind')) {
+    database.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_single_inbox
+      ON projects(kind) WHERE kind = 'inbox'`);
+  }
 }
 
 /**
@@ -826,6 +853,7 @@ interface ProjectRow {
   created_at: string;
   updated_at: string;
   sort_order: number;
+  kind: string;
 }
 
 /** 将数据库行转换为 Project 对象 */
@@ -833,6 +861,7 @@ function rowToProject(row: ProjectRow): import('../types').Project {
   return {
     id: row.id,
     name: row.name,
+    kind: row.kind === 'inbox' ? 'inbox' : 'user',
     color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -842,9 +871,9 @@ function rowToProject(row: ProjectRow): import('../types').Project {
 
 /** 获取所有项目（按 sort_order 排序，created_at 仅作兜底次序） */
 export function getAllProjects(): import('../types').Project[] {
-  return queryAll<ProjectRow>('SELECT * FROM projects ORDER BY sort_order ASC, created_at ASC').map(
-    rowToProject,
-  );
+  return queryAll<ProjectRow>(
+    "SELECT * FROM projects ORDER BY CASE kind WHEN 'inbox' THEN 0 ELSE 1 END, sort_order ASC, created_at ASC",
+  ).map(rowToProject);
 }
 
 /** 根据 ID 获取项目 */
@@ -858,8 +887,8 @@ export function insertProject(project: import('../types').Project): void {
   // 新建项目默认追加到末尾：调用方未指定 order（null）时，由 SQL 子查询取
   // MAX(sort_order) + 1 自动计算，避免迁移期/导入路径产生重复序号。
   execute(
-    `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order)
-     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)))`,
+    `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order, kind)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ${SORT_RANK_STEP} FROM projects)), ?)`,
     [
       project.id,
       project.name,
@@ -867,12 +896,14 @@ export function insertProject(project: import('../types').Project): void {
       project.createdAt,
       project.updatedAt,
       project.order ?? null,
+      project.kind === 'inbox' ? 'inbox' : 'user',
     ],
   );
 }
 
 /** 更新项目 */
 export function updateProject(project: import('../types').Project): void {
+  if (getProjectById(project.id)?.kind === 'inbox') throw new Error('收集箱不能重命名或修改');
   execute(`UPDATE projects SET name = ?, color = ?, updated_at = ?, sort_order = ? WHERE id = ?`, [
     project.name,
     project.color ?? null,
@@ -898,6 +929,13 @@ export function reorderProjects(ids: string[]): void {
 /** 移动项目时只写被移动项目；间隔耗尽才在一次事务内规范化。 */
 export function moveProjectRank(sourceId: string, targetId: string): import('../types').Project[] {
   const projects = getAllProjects();
+  if (
+    projects.some(
+      (project) => project.kind === 'inbox' && (project.id === sourceId || project.id === targetId),
+    )
+  ) {
+    throw new Error('收集箱不能参与项目排序');
+  }
   const sourceIndex = projects.findIndex((project) => project.id === sourceId);
   const targetIndex = projects.findIndex((project) => project.id === targetId);
   if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return projects;
@@ -936,12 +974,52 @@ export function moveProjectRank(sourceId: string, targetId: string): import('../
  * 归档后事项仍可在历史记录页恢复或永久删除。
  */
 export function deleteProject(id: string): void {
+  if (getProjectById(id)?.kind === 'inbox') throw new Error('收集箱不能删除');
   runTransaction(() => {
     // 先把当前 todos 移入归档（同批次共用时间戳），再删项目。
     // archiveTodos 内部会删除 todos 表对应行，不触碰 deleted_todos。
     archiveTodos(getTodosByProject(id));
     execute('DELETE FROM projects WHERE id = ?', [id]);
   });
+}
+
+/** 按需创建唯一系统收集箱；仅直接新增未指定项目事项时调用。 */
+export function ensureInboxProject(): import('../types').Project {
+  const existing = getAllProjects().find((project) => project.kind === 'inbox');
+  if (existing) return existing;
+  const now = new Date().toISOString();
+  const project: import('../types').Project = {
+    id: crypto.randomUUID(),
+    name: '收集箱',
+    kind: 'inbox',
+    createdAt: now,
+    updatedAt: now,
+    order: 0,
+  };
+  insertProject(project);
+  return getProjectById(project.id) ?? project;
+}
+
+/** 在同一事务中确保收集箱存在并写入事项，避免失败时留下空收集箱。 */
+export function insertTodosIntoInbox(todos: import('../types').Todo[]): import('../types').Project {
+  let inbox: import('../types').Project | undefined;
+  runTransaction(() => {
+    inbox = ensureInboxProject();
+    todos.forEach((todo) => insertTodo({ ...todo, projectId: inbox!.id }));
+  });
+  return inbox!;
+}
+
+/** 从模板原子创建普通项目及其事项。 */
+export function createProjectWithTodos(
+  project: import('../types').Project,
+  todos: import('../types').Todo[],
+): import('../types').Project {
+  runTransaction(() => {
+    insertProject({ ...project, kind: 'user' });
+    todos.forEach(insertTodo);
+  });
+  return getProjectById(project.id) ?? project;
 }
 
 // ============================================
@@ -961,6 +1039,7 @@ interface TodoRow {
   completed_at: string | null;
   sort_order: number;
   pinned: number;
+  planned_date: string | null;
 }
 
 /** 将数据库行转换为 Todo 对象 */
@@ -977,6 +1056,7 @@ function rowToTodo(row: TodoRow): import('../types').Todo {
     completedAt: row.completed_at ?? undefined,
     order: row.sort_order,
     pinned: row.pinned === 1,
+    plannedDate: row.planned_date ?? undefined,
   };
 }
 
@@ -1030,8 +1110,8 @@ export function getTodoById(id: string): import('../types').Todo | null {
 /** 插入 Todo */
 export function insertTodo(todo: import('../types').Todo): void {
   execute(
-    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -1044,6 +1124,7 @@ export function insertTodo(todo: import('../types').Todo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
     ],
     { projectIds: [todo.projectId] },
   );
@@ -1060,7 +1141,7 @@ export function insertTodos(todos: import('../types').Todo[]): void {
 /** 更新 Todo */
 export function updateTodo(todo: import('../types').Todo): void {
   execute(
-    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?
+    `UPDATE todos SET title = ?, description = ?, completed = ?, priority = ?, updated_at = ?, completed_at = ?, sort_order = ?, pinned = ?, planned_date = ?
      WHERE id = ?`,
     [
       todo.title,
@@ -1071,6 +1152,7 @@ export function updateTodo(todo: import('../types').Todo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
       todo.id,
     ],
     { projectIds: [todo.projectId] },
@@ -1146,6 +1228,23 @@ export function moveTodoRank(
     });
   });
   return getTodosByProject(projectId);
+}
+
+/** 跨项目移动事项，并追加到目标项目的末尾。 */
+export function moveTodoToProject(id: string, targetProjectId: string): import('../types').Todo {
+  const todo = getTodoById(id);
+  if (!todo) throw new Error(`事项不存在: ${id}`);
+  if (!getProjectById(targetProjectId)) throw new Error('目标项目不存在');
+  const targetTodos = getTodosByProject(targetProjectId);
+  const nextOrder = targetTodos.length
+    ? Math.max(...targetTodos.map((item) => item.order)) + SORT_RANK_STEP
+    : SORT_RANK_STEP;
+  execute(
+    'UPDATE todos SET project_id = ?, sort_order = ?, updated_at = ? WHERE id = ?',
+    [targetProjectId, nextOrder, new Date().toISOString(), id],
+    { projectIds: [...new Set([todo.projectId, targetProjectId])] },
+  );
+  return getTodoById(id)!;
 }
 
 /** 删除 Todo（从 todos 表移除；调用方负责先插入到归档表） */
@@ -1233,8 +1332,8 @@ export function getDeletedTodosPage(
 /** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -1247,6 +1346,7 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
       todo.completedAt ?? null,
       todo.order,
       todo.pinned ? 1 : 0,
+      todo.plannedDate ?? null,
       todo.deletedAt,
       todo.expiresAt,
     ],
@@ -1288,8 +1388,8 @@ export function restoreTodo(id: string): void {
   runTransaction(() => {
     // 重新插入到 todos 表（保留归档时的 pinned 状态）
     execute(
-      `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         row.id,
         row.project_id,
@@ -1302,6 +1402,7 @@ export function restoreTodo(id: string): void {
         row.completed_at,
         row.sort_order,
         row.pinned,
+        row.planned_date,
       ],
       { projectIds: [row.project_id] },
     );
@@ -1384,6 +1485,14 @@ export function exportAllData(): import('../types').AppExportData {
           : settingsMap.autoUpdateEnabled === 'true',
       // 与 useSettingsStore.loadSettings 保持一致：缺失键回退空串
       lastActiveProjectId: settingsMap.lastActiveProjectId ?? '',
+      customTemplates: (() => {
+        try {
+          const parsed: unknown = JSON.parse(settingsMap.customTemplates ?? '[]');
+          return Array.isArray(parsed) ? (parsed as import('../types').TodoTemplate[]) : [];
+        } catch {
+          return [];
+        }
+      })(),
       // 时间格式：缺失键回退默认相对时间，与 loadSettings 对齐
       timeFormat: settingsMap.timeFormat === 'exact' ? 'exact' : DEFAULT_SETTINGS.timeFormat,
       // ===== 贴图样式（缺失时回退玻璃预设默认值，与 loadSettings 对齐） =====
@@ -1411,8 +1520,11 @@ export async function importAllData(data: import('../types').AppExportData): Pro
     execute('DELETE FROM settings');
 
     // 插入项目
+    let hasInbox = false;
     for (const project of data.projects) {
-      insertProject(project);
+      const kind = project.kind === 'inbox' && !hasInbox ? 'inbox' : 'user';
+      if (kind === 'inbox') hasInbox = true;
+      insertProject({ ...project, kind });
     }
 
     // 插入 Todo（旧导出文件可能缺 pinned，兜底为 false 避免写入 NOT NULL 列）
@@ -1443,6 +1555,7 @@ export async function importAllData(data: import('../types').AppExportData): Pro
       'lastActiveProjectId',
       settings.lastActiveProjectId ?? DEFAULT_SETTINGS.lastActiveProjectId,
     );
+    setSetting('customTemplates', JSON.stringify(settings.customTemplates ?? []));
     setSetting('stickerPreset', settings.stickerPreset ?? DEFAULT_SETTINGS.stickerPreset);
     setSetting('stickerRadius', String(settings.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius));
     setSetting('stickerBlur', String(settings.stickerBlur ?? DEFAULT_SETTINGS.stickerBlur));
@@ -1468,6 +1581,7 @@ export async function resetDatabase(): Promise<void> {
     execute('DROP TABLE IF EXISTS projects');
     execute('DROP TABLE IF EXISTS settings');
     createTables(db!);
+    setSetting('dataVersion', String(DB_VERSION));
   });
   await flushSave();
 }

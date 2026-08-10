@@ -33,7 +33,7 @@ test('新建项目并自动切换为当前', async () => {
 });
 
 test('新建项目时空标题不创建（Esc 取消）', async () => {
-  await win.getByRole('button', { name: '新建项目' }).click();
+  await win.getByRole('button', { name: '新建项目', exact: true }).click();
   await win.getByPlaceholder('项目名称...').press('Escape');
   // 输入框消失
   await expect(win.getByPlaceholder('项目名称...')).toHaveCount(0);

@@ -37,6 +37,81 @@ describe('SidebarUpdateCard', () => {
 });
 
 describe('ProjectSidebar 设置菜单', () => {
+  it('时间模式显示互斥分类数量并可切换分类', () => {
+    const onTimeBucketChange = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[]}
+        activeProjectId=""
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenStats={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        incompleteCounts={{}}
+        navigationMode="time"
+        timeBucket="today"
+        timeCounts={{ replan: 2, today: 3, tomorrow: 1, week: 0, later: 0, unscheduled: 4 }}
+        onTimeBucketChange={onTimeBucketChange}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '待重新安排 2' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '今天 3' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: '明天 1' }));
+    expect(onTimeBucketChange).toHaveBeenCalledWith('tomorrow');
+  });
+
+  it('收集箱固定项目只能添加和导出，受保护操作保持禁用', () => {
+    const onOpenExport = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'inbox',
+            name: '收集箱',
+            kind: 'inbox',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            order: 0,
+          },
+        ]}
+        activeProjectId="inbox"
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenExport={onOpenExport}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenStats={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        incompleteCounts={{ inbox: 1 }}
+      />,
+    );
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^收集箱$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^导出…$/ }));
+    expect(onOpenExport).toHaveBeenCalledWith('inbox');
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: /^收集箱$/ }));
+    expect(screen.getByRole('button', { name: '保存为模板' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '重命名' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '归档项目' })).toBeDisabled();
+  });
+
   it('左下角菜单包含「设置」「已归档事项」「帮助与反馈」', () => {
     const onOpenSettings = vi.fn();
     const onOpenHistory = vi.fn();
@@ -89,6 +164,7 @@ describe('ProjectSidebar 设置菜单', () => {
           {
             id: 'project-sticker',
             name: '贴图项目',
+            kind: 'user',
             color: '#22c55e',
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -127,6 +203,7 @@ describe('ProjectSidebar 设置菜单', () => {
           {
             id: 'p1',
             name: '项目一',
+            kind: 'user',
             color: '#22c55e',
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -173,6 +250,7 @@ describe('ProjectSidebar 设置菜单', () => {
           {
             id: 'p1',
             name: '项目一',
+            kind: 'user',
             color: '#22c55e',
             createdAt: '2026-01-01T00:00:00.000Z',
             updatedAt: '2026-01-01T00:00:00.000Z',
@@ -200,7 +278,7 @@ describe('ProjectSidebar 设置菜单', () => {
     // 在项目列表的空白处（列表容器内、非项目行）右键。
     // 列表容器的 onContextMenu 挂在 aside 内 overflow-auto 的 div 上，
     // 事件冒泡而非捕获，故在「项目」分组标题上触发即可命中它。
-    const sectionHeader = screen.getByText('项目');
+    const sectionHeader = screen.getByText('项目', { selector: 'span.text-sm' });
 
     fireEvent.contextMenu(sectionHeader);
 

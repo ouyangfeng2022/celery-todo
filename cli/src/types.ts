@@ -21,6 +21,8 @@ export interface Todo {
   order: number;
   /** 是否置顶（置顶项始终浮在列表最前） */
   pinned: boolean;
+  /** 计划日期（本地日历 YYYY-MM-DD） */
+  plannedDate?: string;
 }
 
 export interface DeletedTodo extends Todo {
@@ -32,6 +34,8 @@ export interface DeletedTodo extends Todo {
 export interface Project {
   id: string;
   name: string;
+  /** 普通项目或系统收集箱 */
+  kind: 'user' | 'inbox';
   color?: string;
   createdAt: string;
   updatedAt: string;
