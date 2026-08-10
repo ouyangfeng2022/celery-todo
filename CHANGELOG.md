@@ -8,6 +8,14 @@
 
 ## [Unreleased]
 
+## [v2.19.3-beta.0] - 2026-08-10
+### Added
+- add date-grouped card view
+- add template dialog and time view components
+
+### Fixed
+- replace template sparkle icon
+
 ## [v2.19.2] - 2026-08-10
 ### Fixed
 - stabilize virtual keyboard drag in large lists
@@ -444,3 +452,5 @@
 [v2.19.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.1
 
 [v2.19.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.2
+
+[v2.19.3-beta.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3-beta.0

@@ -154,5 +154,6 @@ jobs:
           fi
           gh release create '${{ steps.ver.outputs.tag }}' \
             --title '${{ steps.ver.outputs.tag }}' \
+            ${{ contains(steps.ver.outputs.version, '-') && '--prerelease' || '' }} \
             --notes-file release-notes.md \
             release/*.exe release/latest*.yml
