@@ -364,15 +364,17 @@ describe('db data layer', () => {
     // todos 表清空
     expect(getAllTodos()).toHaveLength(0);
     // 归档保留：既有 1 条 + 当前 todos 中 1 条移入归档 = 2 条
-    expect(getAllDeletedTodos()).toHaveLength(2);
+    const deletedTodos = getAllDeletedTodos();
+    expect(deletedTodos).toHaveLength(2);
+    expect(deletedTodos.every((todo) => todo.projectName === '默认项目')).toBe(true);
   });
 
   it('getDataVersion 读取 settings.dataVersion', () => {
     openDatabase(fixture.filePath, false);
-    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 8
+    // 通过 getSetting 间接验证；dataVersion 已在 seed 中置为 9
     const rows = readAllRows<{ key: string; value: string }>(fixture.filePath, 'settings');
     const dv = rows.find((r) => r.key === 'dataVersion');
-    expect(dv?.value).toBe('8');
+    expect(dv?.value).toBe('9');
   });
 
   it('只读模式下写入抛错', () => {

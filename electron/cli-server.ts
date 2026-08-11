@@ -84,7 +84,7 @@ function project(row: Row): Row {
 function dispatchToRepository(method: string, params: unknown): unknown {
   const input = (params ?? {}) as Row;
   const todos = (): Row[] => (queryData('allTodos') as Row[]).map(todo);
-  const deleted = (): Row[] => (queryData('allDeleted') as Row[]).map((row) => ({ ...todo(row), deletedAt: String(row.deleted_at), expiresAt: String(row.expires_at) }));
+  const deleted = (): Row[] => (queryData('allDeleted') as Row[]).map((row) => ({ ...todo(row), projectName: (row.project_name as string | null) ?? undefined, deletedAt: String(row.deleted_at), expiresAt: String(row.expires_at) }));
   switch (method) {
     case 'getAllTodos': return todos();
     case 'getAllProjects': return (queryData('projects') as Row[]).map(project);

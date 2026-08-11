@@ -13,7 +13,7 @@ import { ipcMain } from 'electron';
 import { getCurrentDatabasePath } from './storage';
 import { requireAuthorizedSender, type IpcSenderValidator } from './ipc-auth';
 
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 const RANK_STEP = 1024;
 
 export interface DataChangedEvent {
@@ -59,6 +59,7 @@ function ensureSchema(db: DatabaseConnection): void {
       priority TEXT NOT NULL DEFAULT 'medium', created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL, completed_at TEXT, sort_order REAL NOT NULL DEFAULT 0,
       pinned INTEGER NOT NULL DEFAULT 0, planned_date TEXT,
+      project_name TEXT,
       deleted_at TEXT NOT NULL, expires_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -85,6 +86,15 @@ function ensureSchema(db: DatabaseConnection): void {
       db.exec(`ALTER TABLE ${table} ADD COLUMN planned_date TEXT`);
     }
   }
+  if (!columns('deleted_todos').has('project_name')) {
+    db.exec('ALTER TABLE deleted_todos ADD COLUMN project_name TEXT');
+  }
+  // 升级时为仍存在的项目补齐名称；旧版本已删除的项目没有可恢复的名称来源。
+  db.exec(`UPDATE deleted_todos
+    SET project_name = (
+      SELECT name FROM projects WHERE projects.id = deleted_todos.project_id
+    )
+    WHERE project_name IS NULL`);
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_todos_project_order
       ON todos(project_id, pinned DESC, sort_order ASC, created_at ASC);
@@ -262,12 +272,18 @@ function insertTodoRow(db: DatabaseConnection, todo: Row): void {
 }
 
 function insertDeletedTodoRow(db: DatabaseConnection, todo: Row): void {
+  const projectId = String(todo.projectId ?? todo.project_id);
+  const projectName =
+    todo.projectName ??
+    todo.project_name ??
+    db.prepare('SELECT name FROM projects WHERE id = ?').pluck().get(projectId) ??
+    null;
   db.prepare(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, deleted_at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, project_name, deleted_at, expires_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     todo.id,
-    todo.projectId,
+    projectId,
     todo.title,
     todo.description ?? null,
     todo.completed ? 1 : 0,
@@ -278,6 +294,7 @@ function insertDeletedTodoRow(db: DatabaseConnection, todo: Row): void {
     todo.order,
     todo.pinned ? 1 : 0,
     todo.plannedDate ?? todo.planned_date ?? null,
+    projectName,
     todo.deletedAt,
     todo.expiresAt,
   );
@@ -658,9 +675,10 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
     }
     case 'deleteProject': {
       const id = String(params.id);
-      const project = db.prepare('SELECT kind FROM projects WHERE id = ?').get(id) as
+      const project = db.prepare('SELECT kind, name FROM projects WHERE id = ?').get(id) as
         Row | undefined;
       if (project?.kind === 'inbox') throw new Error('收集箱不能删除');
+      if (!project) return null;
       const todos = db.prepare('SELECT * FROM todos WHERE project_id = ?').all(id) as Row[];
       const now = new Date().toISOString();
       db.transaction(() => {
@@ -675,6 +693,11 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
             deletedAt: now,
             expiresAt: now,
           }),
+        );
+        // 既有归档行也记录项目删除前的最终名称。
+        db.prepare('UPDATE deleted_todos SET project_name = ? WHERE project_id = ?').run(
+          project.name,
+          id,
         );
         db.prepare('DELETE FROM todos WHERE project_id = ?').run(id);
         db.prepare('DELETE FROM projects WHERE id = ?').run(id);

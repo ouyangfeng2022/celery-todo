@@ -309,10 +309,10 @@ React 组件 → 自定义 Hooks → Zustand Store → SQLite (sql.js WASM)
 | --- | --- |
 | `projects` | `id, name, color, sort_order, created_at, updated_at` |
 | `todos` | `id, project_id, title, description, completed, priority, sort_order, pinned, created_at, updated_at, completed_at` |
-| `deleted_todos` | 同 `todos` + `deleted_at, expires_at`（归档；`expires_at` 已废弃，仅为兼容旧数据保留） |
+| `deleted_todos` | 同 `todos` + `project_name, deleted_at, expires_at`（归档；`project_name` 保留项目名快照，`expires_at` 已废弃） |
 | `settings` | `key, value`（K/V 存储，含主题、贴图样式、`dataVersion` 迁移水位线等） |
 
-> Schema 当前为 `DB_VERSION = 4`（v2.0.0 已不可逆地移除 `due_date` 列）。任何 schema 改动必须 bump `DB_VERSION` 并在 `database.ts` 的 `MIGRATIONS` 表追加迁移条目。
+> Schema 当前为 `DB_VERSION = 9`（v2.0.0 已不可逆地移除 `due_date` 列）。任何 schema 改动必须 bump `DB_VERSION` 并在 `database.ts` 的 `MIGRATIONS` 表追加迁移条目。
 
 ---
 
@@ -352,7 +352,7 @@ bunx playwright test e2e/todos.spec.ts --headed # 显式窗口运行
 | 版本号 | 单一源 | 用途 |
 | --- | --- | --- |
 | **App 版本** | `package.json` `version` | 用户可见发行版本，打 git tag |
-| **DB schema 版本** | `src/utils/database.ts` `DB_VERSION` | SQLite 表结构迁移门控（当前为 `4`） |
+| **DB schema 版本** | `src/utils/database.ts` `DB_VERSION` | SQLite 表结构迁移门控（当前为 `9`） |
 | **导出格式版本** | `src/utils/export.ts` `EXPORT_FORMAT_VERSION` | JSON 导入/导出文件兼容性标识 |
 
 发版一条命令（递增版本 → 写 CHANGELOG → commit → 打 tag → 推送 → GitHub Actions 自动构建发版）：

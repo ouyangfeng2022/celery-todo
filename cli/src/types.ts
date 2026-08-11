@@ -26,6 +26,8 @@ export interface Todo {
 }
 
 export interface DeletedTodo extends Todo {
+  /** 归档时所属项目名快照；项目本身归档后仍用于历史记录展示 */
+  projectName?: string;
   deletedAt: string;
   /** 兼容字段：归档不再自动清除，保留以兼容旧数据 */
   expiresAt: string;

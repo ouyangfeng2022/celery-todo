@@ -132,6 +132,8 @@ export interface Todo {
 
 /** 已归档事项（历史记录；删除 todo 后归档保留，仅在历史记录页手动删除） */
 export interface DeletedTodo extends Todo {
+  /** 归档时所属项目名快照；项目本身归档后仍用于历史记录展示 */
+  projectName?: string;
   /** 归档时间（ISO 字符串） */
   deletedAt: string;
   /** @deprecated 原回收站 30 天自动清除的过期时间；归档模式下已废弃，不再用于自动清除。保留以兼容旧数据/导入导出 */

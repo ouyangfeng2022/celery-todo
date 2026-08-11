@@ -99,7 +99,7 @@ describe('export utils', () => {
     it('应生成有效的 JSON', () => {
       const json = exportProjectAsJson(mockProject, [mockTodo], []);
       const data = JSON.parse(json);
-      expect(data.version).toBe(4);
+      expect(data.version).toBe(5);
       expect(data.project.id).toBe('p1');
       expect(data.todos).toHaveLength(1);
       expect(data.todos[0].plannedDate).toBe('2024-01-03');

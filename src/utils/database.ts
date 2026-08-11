@@ -27,7 +27,7 @@ type DbRow = Record<string, unknown>;
 // ============================================
 
 const DB_STORAGE_KEY = 'celery-todo-sqlite-db';
-const DB_VERSION = 8;
+const DB_VERSION = 9;
 /** 稀疏排序的相邻 rank 间隔；普通拖拽只改动被移动的一行。 */
 const SORT_RANK_STEP = 1024;
 
@@ -143,6 +143,19 @@ const MIGRATIONS: SchemaMigration[] = [
       addColumnIfMissing(database, 'todos', 'planned_date', 'TEXT');
       addColumnIfMissing(database, 'deleted_todos', 'planned_date', 'TEXT');
       createPerformanceIndexes(database);
+    },
+  },
+  {
+    version: 9,
+    description: '归档事项增加项目名快照，项目归档后仍可显示原名称',
+    run: (database) => {
+      addColumnIfMissing(database, 'deleted_todos', 'project_name', 'TEXT');
+      // 仍存在的项目可在迁移时补齐；已被旧版本删除的项目已无法恢复名称。
+      database.run(`UPDATE deleted_todos
+        SET project_name = (
+          SELECT name FROM projects WHERE projects.id = deleted_todos.project_id
+        )
+        WHERE project_name IS NULL`);
     },
   },
 ];
@@ -325,6 +338,7 @@ function createTables(database: Database): void {
       sort_order INTEGER NOT NULL DEFAULT 0,
       pinned INTEGER NOT NULL DEFAULT 0,
       planned_date TEXT,
+      project_name TEXT,
       deleted_at TEXT NOT NULL,
       expires_at TEXT NOT NULL
     );
@@ -974,11 +988,17 @@ export function moveProjectRank(sourceId: string, targetId: string): import('../
  * 归档后事项仍可在历史记录页恢复或永久删除。
  */
 export function deleteProject(id: string): void {
-  if (getProjectById(id)?.kind === 'inbox') throw new Error('收集箱不能删除');
+  const project = getProjectById(id);
+  if (project?.kind === 'inbox') throw new Error('收集箱不能删除');
+  if (!project) return;
   runTransaction(() => {
     // 先把当前 todos 移入归档（同批次共用时间戳），再删项目。
     // archiveTodos 内部会删除 todos 表对应行，不触碰 deleted_todos。
     archiveTodos(getTodosByProject(id));
+    // 既有归档行也统一更新为项目删除前的最终名称，避免同组出现过期名称。
+    execute('UPDATE deleted_todos SET project_name = ? WHERE project_id = ?', [project.name, id], {
+      projectIds: [id],
+    });
     execute('DELETE FROM projects WHERE id = ?', [id]);
   });
 }
@@ -1269,6 +1289,7 @@ export function deleteTodos(ids: string[]): void {
 
 /** 归档行 */
 interface DeletedTodoRow extends TodoRow {
+  project_name: string | null;
   deleted_at: string;
   expires_at: string;
 }
@@ -1277,6 +1298,7 @@ interface DeletedTodoRow extends TodoRow {
 function rowToDeletedTodo(row: DeletedTodoRow): import('../types').DeletedTodo {
   return {
     ...rowToTodo(row),
+    projectName: row.project_name ?? undefined,
     deletedAt: row.deleted_at,
     expiresAt: row.expires_at,
   };
@@ -1332,8 +1354,8 @@ export function getDeletedTodosPage(
 /** 插入归档事项 */
 export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
   execute(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, project_name, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -1347,6 +1369,7 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
       todo.order,
       todo.pinned ? 1 : 0,
       todo.plannedDate ?? null,
+      todo.projectName ?? getProjectById(todo.projectId)?.name ?? null,
       todo.deletedAt,
       todo.expiresAt,
     ],
@@ -1361,7 +1384,12 @@ export function insertDeletedTodo(todo: import('../types').DeletedTodo): void {
 export function archiveTodos(todos: import('../types').Todo[]): import('../types').DeletedTodo[] {
   if (todos.length === 0) return [];
   const archivedAt = new Date().toISOString();
-  const archived = todos.map((todo) => ({ ...todo, deletedAt: archivedAt, expiresAt: archivedAt }));
+  const archived = todos.map((todo) => ({
+    ...todo,
+    projectName: getProjectById(todo.projectId)?.name,
+    deletedAt: archivedAt,
+    expiresAt: archivedAt,
+  }));
   runTransaction(() => {
     archived.forEach(insertDeletedTodo);
     deleteTodos(archived.map((todo) => todo.id));

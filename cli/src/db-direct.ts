@@ -51,6 +51,7 @@ interface TodoRow {
 }
 
 interface DeletedTodoRow extends TodoRow {
+  project_name: string | null;
   deleted_at: string;
   expires_at: string;
 }
@@ -91,6 +92,7 @@ function rowToTodo(row: TodoRow): Todo {
 function rowToDeletedTodo(row: DeletedTodoRow): DeletedTodo {
   return {
     ...rowToTodo(row),
+    projectName: row.project_name ?? undefined,
     deletedAt: row.deleted_at,
     expiresAt: row.expires_at,
   };
@@ -294,12 +296,16 @@ export function reorderProjects(ids: string[]): void {
 
 export function deleteProject(id: string): void {
   assertProjectMutable(id, '归档或删除');
+  const project = getProjectById(id);
+  if (!project) return;
   // 与 App 一致：归档项目——其下 todos 移入 deleted_todos（历史记录），再删项目本身。
   // 同批次共用时间戳，便于历史记录按批次聚合展示。
   const now = new Date().toISOString();
   for (const todo of getTodosByProject(id)) {
     softDeleteTodo(todo, now, now);
   }
+  // 既有归档行也记录项目删除前的最终名称。
+  exec('UPDATE deleted_todos SET project_name = ? WHERE project_id = ?', [project.name, id]);
   exec('DELETE FROM projects WHERE id = ?', [id]);
 }
 
@@ -437,8 +443,8 @@ export function resolveDeletedTodo(input: string): DeletedTodo {
 
 export function insertDeletedTodo(todo: DeletedTodo): void {
   exec(
-    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, deleted_at, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO deleted_todos (id, project_id, title, description, completed, priority, created_at, updated_at, completed_at, sort_order, pinned, planned_date, project_name, deleted_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       todo.id,
       todo.projectId,
@@ -452,6 +458,7 @@ export function insertDeletedTodo(todo: DeletedTodo): void {
       todo.order,
       todo.pinned ? 1 : 0,
       todo.plannedDate ?? null,
+      todo.projectName ?? getProjectById(todo.projectId)?.name ?? null,
       todo.deletedAt,
       todo.expiresAt,
     ],

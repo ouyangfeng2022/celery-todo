@@ -7,6 +7,7 @@ import {
   closeApp,
   addTodo,
   createProject,
+  openHistory,
   openProjectContextMenu,
   type LaunchedApp,
 } from './helpers';
@@ -69,8 +70,9 @@ test('右键项目可快速创建对应贴图', async () => {
   await expect(sticker.getByLabel('选择贴图项目')).toHaveText('贴图项目');
 });
 
-test('归档非默认项目：二次确认后项目消失', async () => {
+test('归档非默认项目：项目消失且历史记录保留项目名称', async () => {
   await createProject(win, '待归档');
+  await addTodo(win, '随项目归档的事项');
 
   await openProjectContextMenu(win, '待归档');
   await win.getByRole('button', { name: '归档项目', exact: true }).click();
@@ -80,6 +82,11 @@ test('归档非默认项目：二次确认后项目消失', async () => {
   await win.keyboard.press('Enter');
 
   await expect(win.getByRole('button', { name: '待归档（拖动以排序）' })).toHaveCount(0);
+
+  await openHistory(win);
+  await expect(win.getByText('随项目归档的事项', { exact: true })).toBeVisible();
+  await expect(win.getByText('待归档', { exact: true })).toBeVisible();
+  await expect(win.getByText('已删除的项目', { exact: true })).toHaveCount(0);
 });
 
 test('归档最后一个项目后列表为空，主区显示"请创建项目"', async () => {

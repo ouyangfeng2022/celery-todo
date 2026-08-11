@@ -22,7 +22,7 @@ import {
  *   本常量只描述磁盘上 JSON 文件的兼容性。
  * - 详见仓库根目录 VERSIONING.md。
  */
-export const EXPORT_FORMAT_VERSION = 4;
+export const EXPORT_FORMAT_VERSION = 5;
 
 /**
  * 将 Todo 转换为 CSV 行

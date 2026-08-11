@@ -48,7 +48,12 @@ function todo(row: Row): Todo {
 }
 
 function deletedTodo(row: Row): DeletedTodo {
-  return { ...todo(row), deletedAt: String(row.deleted_at), expiresAt: String(row.expires_at) };
+  return {
+    ...todo(row),
+    projectName: (row.project_name as string | null) ?? undefined,
+    deletedAt: String(row.deleted_at),
+    expiresAt: String(row.expires_at),
+  };
 }
 
 export const nativeDatabaseGateway = {

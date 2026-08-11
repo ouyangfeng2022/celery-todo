@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS deleted_todos (
   sort_order INTEGER NOT NULL DEFAULT 0,
   pinned INTEGER NOT NULL DEFAULT 0,
   planned_date TEXT,
+  project_name TEXT,
   deleted_at TEXT NOT NULL,
   expires_at TEXT NOT NULL
 );
@@ -79,14 +80,14 @@ export interface SeedFixture {
 }
 
 /**
- * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=8。
+ * 创建带 schema 的临时 DB，可选写入一个默认项目 + dataVersion=9。
  */
 export function createSeedDb(opts: { withProject?: boolean } = {}): SeedFixture {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'celery-cli-test-'));
   const filePath = path.join(tmpDir, 'celery-todo.db');
   const db = new Database(filePath);
   db.exec(SCHEMA_SQL);
-  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '8')").run();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('dataVersion', '9')").run();
   let projectId = 'default-project-id';
   if (opts.withProject !== false) {
     projectId = '11111111-1111-1111-1111-111111111111';

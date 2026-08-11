@@ -629,6 +629,12 @@ function App() {
     for (const p of projects) {
       if (usedIds.has(p.id)) projectNames[p.id] = p.name;
     }
+    // 项目本身已归档时，从事项携带的名称快照补齐映射。
+    for (const todo of archivedTodos) {
+      if (!projectNames[todo.projectId] && todo.projectName) {
+        projectNames[todo.projectId] = todo.projectName;
+      }
+    }
     const json = exportHistoryAsJson({
       version: EXPORT_FORMAT_VERSION,
       exportedAt: new Date().toISOString(),

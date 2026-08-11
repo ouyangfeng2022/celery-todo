@@ -256,7 +256,9 @@ function ArchiveHistoryViewComponent({
                     size={16}
                     style={{ color: project?.color ?? 'var(--text-tertiary)' }}
                   />
-                  <span className="truncate">{project?.name ?? '已删除的项目'}</span>
+                  <span className="truncate">
+                    {project?.name ?? todos[0]?.projectName ?? '已删除的项目'}
+                  </span>
                 </div>
                 <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
                   {todos.length} 个事项
