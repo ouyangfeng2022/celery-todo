@@ -106,6 +106,54 @@ describe('ProjectSidebar 设置菜单', () => {
     expect(screen.getByRole('button', { name: '2026 年第 33 周待办（拖动以排序）' })).toBeVisible();
   });
 
+  it('可以隐藏自动周项目，并从项目列表中直接恢复显示', () => {
+    const onToggleWeeklyProjects = vi.fn();
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'user-project',
+            name: '手动项目',
+            kind: 'user',
+            createdAt: '2026-08-10T00:00:00.000Z',
+            updatedAt: '2026-08-10T00:00:00.000Z',
+            order: 1024,
+          },
+          {
+            id: 'weekly-2026-W33-project',
+            name: '2026 年第 33 周待办',
+            kind: 'weekly',
+            createdAt: '2026-08-10T00:00:00.000Z',
+            updatedAt: '2026-08-10T00:00:00.000Z',
+            order: 2048,
+          },
+        ]}
+        activeProjectId="user-project"
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenStats={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        incompleteCounts={{}}
+        showWeeklyProjects={false}
+        onToggleWeeklyProjects={onToggleWeeklyProjects}
+      />,
+    );
+
+    expect(screen.getByText('手动项目')).toBeVisible();
+    expect(screen.queryByText('2026 年第 33 周待办')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '显示自动创建项目' }));
+    expect(onToggleWeeklyProjects).toHaveBeenCalledOnce();
+  });
+
   it('收集箱固定项目只能添加和导出，受保护操作保持禁用', () => {
     const onOpenExport = vi.fn();
     render(

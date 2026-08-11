@@ -61,6 +61,7 @@ export async function exportAll(): Promise<AppExportData> {
       lastActiveProjectId: settings.lastActiveProjectId ?? '',
       customTemplates: parseTemplatesSetting(settings.customTemplates),
       todoViewMode: settings.todoViewMode === 'card' ? 'card' : 'list',
+      showWeeklyProjects: settings.showWeeklyProjects !== 'false',
       timeFormat: settings.timeFormat === 'exact' ? 'exact' : 'relative',
       stickerPreset,
       stickerRadius: Number(settings.stickerRadius ?? DEFAULT_SETTINGS.stickerRadius),

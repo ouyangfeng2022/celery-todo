@@ -9,7 +9,12 @@ import { SunIcon, MoonIcon, MonitorIcon, PaperIcon, SparkleIcon } from '../../co
 interface GeneralSectionProps {
   theme: ThemeName;
   colorMode: ThemeMode;
-  onUpdateSettings: (updates: { theme?: ThemeName; colorMode?: ThemeMode }) => void;
+  showWeeklyProjects: boolean;
+  onUpdateSettings: (updates: {
+    theme?: ThemeName;
+    colorMode?: ThemeMode;
+    showWeeklyProjects?: boolean;
+  }) => void;
 }
 
 const themeOptions: { value: ThemeName; label: string; icon: typeof SunIcon }[] = [
@@ -24,27 +29,56 @@ const colorModeOptions: { value: ThemeMode; label: string; icon: typeof SunIcon 
   { value: 'system', label: '跟随系统', icon: MonitorIcon },
 ];
 
-export function GeneralSection({ theme, colorMode, onUpdateSettings }: GeneralSectionProps) {
+export function GeneralSection({
+  theme,
+  colorMode,
+  showWeeklyProjects,
+  onUpdateSettings,
+}: GeneralSectionProps) {
   return (
-    <section>
-      <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
-        外观
-      </h3>
-      <div className="space-y-5">
-        <ThemeGroup
-          title="主题"
-          options={themeOptions}
-          activeValue={theme}
-          onSelect={(value) => onUpdateSettings({ theme: value })}
-        />
-        <ThemeGroup
-          title="明暗模式"
-          options={colorModeOptions}
-          activeValue={colorMode}
-          onSelect={(value) => onUpdateSettings({ colorMode: value })}
-        />
-      </div>
-    </section>
+    <div className="space-y-7">
+      <section>
+        <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+          外观
+        </h3>
+        <div className="space-y-5">
+          <ThemeGroup
+            title="主题"
+            options={themeOptions}
+            activeValue={theme}
+            onSelect={(value) => onUpdateSettings({ theme: value })}
+          />
+          <ThemeGroup
+            title="明暗模式"
+            options={colorModeOptions}
+            activeValue={colorMode}
+            onSelect={(value) => onUpdateSettings({ colorMode: value })}
+          />
+        </div>
+      </section>
+
+      <section>
+        <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+          项目列表
+        </h3>
+        <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+          <span>
+            <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+              显示自动创建项目
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              在侧栏显示时间视图自动生成的每周项目
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={showWeeklyProjects}
+            onChange={(event) => onUpdateSettings({ showWeeklyProjects: event.target.checked })}
+            className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+          />
+        </label>
+      </section>
+    </div>
   );
 }
 

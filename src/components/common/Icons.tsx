@@ -61,6 +61,23 @@ export const SearchIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
+/** 显示项目：用于控制自动创建项目在侧栏中的可见性。 */
+export const EyeIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </BaseIcon>
+));
+
+/** 隐藏项目：斜线表达当前自动创建项目已从侧栏隐藏。 */
+export const EyeOffIcon = memo((props: IconProps) => (
+  <BaseIcon {...props}>
+    <path d="M3 3l18 18" />
+    <path d="M10.6 6.2A10.9 10.9 0 0 1 12 6c6.5 0 10 6 10 6a16.9 16.9 0 0 1-3 3.7" />
+    <path d="M6.6 6.6C3.6 8.4 2 12 2 12s3.5 6 10 6a10.8 10.8 0 0 0 4.1-.8" />
+  </BaseIcon>
+));
+
 export const SunIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
     <circle cx="12" cy="12" r="5" />

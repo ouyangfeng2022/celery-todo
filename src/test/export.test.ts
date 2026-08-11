@@ -99,7 +99,7 @@ describe('export utils', () => {
     it('应生成有效的 JSON', () => {
       const json = exportProjectAsJson(mockProject, [mockTodo], []);
       const data = JSON.parse(json);
-      expect(data.version).toBe(5);
+      expect(data.version).toBe(6);
       expect(data.project.id).toBe('p1');
       expect(data.todos).toHaveLength(1);
       expect(data.todos[0].plannedDate).toBe('2024-01-03');
@@ -150,6 +150,7 @@ describe('export utils', () => {
         'user',
       ]);
       expect('projects' in imported && imported.settings.customTemplates).toEqual([]);
+      expect('projects' in imported && imported.settings.showWeeklyProjects).toBe(true);
     });
 
     it('完整备份保留自动周项目类型', () => {

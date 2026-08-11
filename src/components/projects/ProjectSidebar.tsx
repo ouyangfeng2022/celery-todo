@@ -41,6 +41,8 @@ import {
   XIcon,
   CalendarIcon,
   TemplateIcon,
+  EyeIcon,
+  EyeOffIcon,
 } from '../common/Icons';
 import { ConfirmDialog } from '../common/ConfirmDialog';
 import { ContextMenu, type ContextMenuItem } from '../common/ContextMenu';
@@ -92,6 +94,9 @@ interface ProjectSidebarProps {
   timeCounts?: Record<TimeBucket, number>;
   onOpenTemplates?: () => void;
   onSaveAsTemplate?: (project: Project) => void;
+  /** 是否在项目列表显示时间视图自动创建的每周项目。 */
+  showWeeklyProjects?: boolean;
+  onToggleWeeklyProjects?: () => void;
 }
 
 interface SidebarUpdateCardProps {
@@ -485,6 +490,8 @@ function ProjectSidebarComponent({
   timeCounts = { replan: 0, today: 0, tomorrow: 0, week: 0, later: 0, unscheduled: 0 },
   onOpenTemplates = () => undefined,
   onSaveAsTemplate = () => undefined,
+  showWeeklyProjects = true,
+  onToggleWeeklyProjects = () => undefined,
 }: ProjectSidebarProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -650,7 +657,10 @@ function ProjectSidebarComponent({
   );
 
   const inboxProject = projects.find((project) => project.kind === 'inbox');
-  const userProjects = projects.filter((project) => project.kind !== 'inbox');
+  const hasWeeklyProjects = projects.some((project) => project.kind === 'weekly');
+  const userProjects = projects.filter(
+    (project) => project.kind !== 'inbox' && (showWeeklyProjects || project.kind !== 'weekly'),
+  );
 
   return (
     <aside
@@ -713,6 +723,17 @@ function ProjectSidebarComponent({
                 项目
               </span>
               <span className="flex items-center gap-0.5">
+                {hasWeeklyProjects && (
+                  <button
+                    type="button"
+                    onClick={onToggleWeeklyProjects}
+                    className="btn-ghost p-1"
+                    aria-label={showWeeklyProjects ? '隐藏自动创建项目' : '显示自动创建项目'}
+                    title={showWeeklyProjects ? '隐藏自动创建项目' : '显示自动创建项目'}
+                  >
+                    {showWeeklyProjects ? <EyeIcon size={14} /> : <EyeOffIcon size={14} />}
+                  </button>
+                )}
                 <button
                   onClick={onOpenTemplates}
                   className="btn-ghost p-1"

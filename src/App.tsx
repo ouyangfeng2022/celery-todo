@@ -957,6 +957,12 @@ function App() {
                 onDelete={deleteProject}
                 onOpenExport={openExportDialog}
                 onReorder={reorderProjects}
+                showWeeklyProjects={settings.showWeeklyProjects}
+                onToggleWeeklyProjects={() =>
+                  void settings.updateSettings({
+                    showWeeklyProjects: !settings.showWeeklyProjects,
+                  })
+                }
                 updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
                 updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}
                 updateProgress={isAutoUpdateAvailable ? updateProgress : undefined}

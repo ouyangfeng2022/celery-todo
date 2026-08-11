@@ -289,6 +289,7 @@ function SettingsPanelComponent({
                   <GeneralSection
                     theme={settings.theme}
                     colorMode={settings.colorMode}
+                    showWeeklyProjects={settings.showWeeklyProjects}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}
