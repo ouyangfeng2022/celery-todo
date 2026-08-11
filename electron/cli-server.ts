@@ -77,7 +77,7 @@ function todo(row: Row): Row {
 }
 
 function project(row: Row): Row {
-  return { id: String(row.id), name: String(row.name), color: (row.color as string | null) ?? undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at), order: Number(row.sort_order) };
+  return { id: String(row.id), name: String(row.name), kind: row.kind === 'inbox' ? 'inbox' : row.kind === 'weekly' ? 'weekly' : 'user', color: (row.color as string | null) ?? undefined, createdAt: String(row.created_at), updatedAt: String(row.updated_at), order: Number(row.sort_order) };
 }
 
 /** GUI 在线时直接访问主进程仓储，避免 renderer 参与读写与同步。 */

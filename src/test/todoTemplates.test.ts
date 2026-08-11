@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Project, Todo } from '../types';
 import {
-  WEEKLY_TEMPLATE,
   createTemplateFromProject,
+  currentWeekStart,
   instantiateTemplate,
+  instantiateWeeklyPlan,
+  isWeeklyProjectForDate,
   weeklyProjectName,
 } from '../utils/todoTemplates';
 
@@ -56,11 +58,14 @@ const todos: Todo[] = [
 ];
 
 describe('todo templates', () => {
-  it('每周计划生成普通项目和 8 条正确排期的事项', () => {
-    const result = instantiateTemplate(WEEKLY_TEMPLATE, '2026 年第 34 周计划', '2026-08-17');
+  it('本周待办生成带自动标识的周项目和 8 条正确排期的事项', () => {
+    const result = instantiateWeeklyPlan('2026-08-17');
 
-    expect(result.project.kind).toBe('user');
+    expect(result.project).toMatchObject({ kind: 'weekly', name: '2026 年第 34 周待办' });
+    expect(result.project.id).toMatch(/^weekly-2026-W34-/);
+    expect(isWeeklyProjectForDate(result.project, '2026-08-17')).toBe(true);
     expect(result.todos).toHaveLength(8);
+    expect(result.todos.every((todo) => todo.projectId === result.project.id)).toBe(true);
     expect(result.todos.slice(0, 7).map((todo) => todo.plannedDate)).toEqual([
       '2026-08-17',
       '2026-08-18',
@@ -103,6 +108,7 @@ describe('todo templates', () => {
     expect(() =>
       createTemplateFromProject({ ...project, kind: 'inbox', name: '收集箱' }, todos, '模板'),
     ).toThrow('收集箱不能保存为模板');
-    expect(weeklyProjectName('2026-08-17')).toBe('2026 年第 34 周计划');
+    expect(weeklyProjectName('2026-08-17')).toBe('2026 年第 34 周待办');
+    expect(currentWeekStart(new Date(2026, 7, 19, 12))).toBe('2026-08-17');
   });
 });

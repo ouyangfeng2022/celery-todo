@@ -23,7 +23,7 @@ function project(row: Row): Project {
     id: String(row.id),
     name: String(row.name),
     color: (row.color as string | null) ?? undefined,
-    kind: row.kind === 'inbox' ? 'inbox' : 'user',
+    kind: row.kind === 'inbox' ? 'inbox' : row.kind === 'weekly' ? 'weekly' : 'user',
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     order: Number(row.sort_order),

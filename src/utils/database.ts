@@ -861,7 +861,7 @@ function rowToProject(row: ProjectRow): import('../types').Project {
   return {
     id: row.id,
     name: row.name,
-    kind: row.kind === 'inbox' ? 'inbox' : 'user',
+    kind: row.kind === 'inbox' ? 'inbox' : row.kind === 'weekly' ? 'weekly' : 'user',
     color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -896,7 +896,7 @@ export function insertProject(project: import('../types').Project): void {
       project.createdAt,
       project.updatedAt,
       project.order ?? null,
-      project.kind === 'inbox' ? 'inbox' : 'user',
+      project.kind === 'inbox' ? 'inbox' : project.kind === 'weekly' ? 'weekly' : 'user',
     ],
   );
 }
@@ -1010,13 +1010,13 @@ export function insertTodosIntoInbox(todos: import('../types').Todo[]): import('
   return inbox!;
 }
 
-/** 从模板原子创建普通项目及其事项。 */
+/** 从模板原子创建手动项目或时间视图的自动周项目及其事项。 */
 export function createProjectWithTodos(
   project: import('../types').Project,
   todos: import('../types').Todo[],
 ): import('../types').Project {
   runTransaction(() => {
-    insertProject({ ...project, kind: 'user' });
+    insertProject({ ...project, kind: project.kind === 'weekly' ? 'weekly' : 'user' });
     todos.forEach(insertTodo);
   });
   return getProjectById(project.id) ?? project;
@@ -1523,7 +1523,12 @@ export async function importAllData(data: import('../types').AppExportData): Pro
     // 插入项目
     let hasInbox = false;
     for (const project of data.projects) {
-      const kind = project.kind === 'inbox' && !hasInbox ? 'inbox' : 'user';
+      const kind =
+        project.kind === 'inbox' && !hasInbox
+          ? 'inbox'
+          : project.kind === 'weekly'
+            ? 'weekly'
+            : 'user';
       if (kind === 'inbox') hasInbox = true;
       insertProject({ ...project, kind });
     }

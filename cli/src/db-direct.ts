@@ -28,7 +28,7 @@ const SORT_RANK_STEP = 1024;
 interface ProjectRow {
   id: string;
   name: string;
-  kind: 'user' | 'inbox';
+  kind: 'user' | 'inbox' | 'weekly';
   color: string | null;
   created_at: string;
   updated_at: string;
@@ -63,7 +63,7 @@ function rowToProject(row: ProjectRow): Project {
   return {
     id: row.id,
     name: row.name,
-    kind: row.kind === 'inbox' ? 'inbox' : 'user',
+    kind: row.kind === 'inbox' ? 'inbox' : row.kind === 'weekly' ? 'weekly' : 'user',
     color: row.color ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -256,7 +256,7 @@ export function insertProject(project: Project): void {
       project.createdAt,
       project.updatedAt,
       project.order ?? null,
-      project.kind === 'inbox' ? 'inbox' : 'user',
+      project.kind === 'inbox' ? 'inbox' : project.kind === 'weekly' ? 'weekly' : 'user',
     ],
   );
 }

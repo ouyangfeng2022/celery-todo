@@ -1,14 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Project, Todo } from '../../types';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import * as data from '../../utils/dataGateway';
-import {
-  WEEKLY_TEMPLATE,
-  createTemplateFromProject,
-  instantiateTemplate,
-  nextMondayDate,
-  weeklyProjectName,
-} from '../../utils/todoTemplates';
+import { createTemplateFromProject, instantiateTemplate } from '../../utils/todoTemplates';
+import { formatLocalDate } from '../../utils/planning';
 import { XIcon } from '../common/Icons';
 
 interface TemplateDialogProps {
@@ -21,11 +16,10 @@ interface TemplateDialogProps {
 export function TemplateDialog({ open, saveTarget, onClose, onCreated }: TemplateDialogProps) {
   const customTemplates = useSettingsStore((state) => state.customTemplates);
   const updateSettings = useSettingsStore((state) => state.updateSettings);
-  const templates = useMemo(() => [WEEKLY_TEMPLATE, ...customTemplates], [customTemplates]);
-  const [selectedId, setSelectedId] = useState(WEEKLY_TEMPLATE.id);
-  const selected = templates.find((template) => template.id === selectedId) ?? WEEKLY_TEMPLATE;
-  const [startDate, setStartDate] = useState(nextMondayDate());
-  const [projectName, setProjectName] = useState(weeklyProjectName(nextMondayDate()));
+  const [selectedId, setSelectedId] = useState('');
+  const selected = customTemplates.find((template) => template.id === selectedId);
+  const [startDate, setStartDate] = useState(() => formatLocalDate(new Date()));
+  const [projectName, setProjectName] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [includeCompleted, setIncludeCompleted] = useState(false);
   const [error, setError] = useState('');
@@ -34,13 +28,16 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
     if (!open) return;
     setError('');
     if (saveTarget) setTemplateName(`${saveTarget.project.name} 模板`);
-  }, [open, saveTarget]);
+    else {
+      const first =
+        customTemplates.find((template) => template.id === selectedId) ?? customTemplates[0];
+      setSelectedId(first?.id ?? '');
+    }
+  }, [customTemplates, open, saveTarget, selectedId]);
 
   useEffect(() => {
-    setProjectName(
-      selected.id === WEEKLY_TEMPLATE.id ? weeklyProjectName(startDate) : selected.projectName,
-    );
-  }, [selected, startDate]);
+    if (selected) setProjectName(selected.projectName);
+  }, [selected]);
 
   if (!open) return null;
 
@@ -68,12 +65,8 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
   };
 
   const createFromTemplate = async () => {
-    if (!projectName.trim()) return;
+    if (!selected || !projectName.trim()) return;
     try {
-      if (selected.id === WEEKLY_TEMPLATE.id) {
-        const weekday = new Date(`${startDate}T12:00:00`).getDay();
-        if (weekday !== 1) throw new Error('每周计划必须从周一开始');
-      }
       const instance = instantiateTemplate(selected, projectName, startDate || undefined);
       const project = await data.createProjectWithTodos(instance.project, instance.todos);
       onCreated(project);
@@ -157,7 +150,15 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
               className="border-r p-3"
               style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}
             >
-              {templates.map((template) => (
+              {customTemplates.length === 0 && (
+                <p
+                  className="px-3 py-4 text-xs leading-5"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  暂无自定义模板。可在项目右键菜单中选择“保存为模板”。
+                </p>
+              )}
+              {customTemplates.map((template) => (
                 <div key={template.id} className="group mb-1 flex items-center gap-1">
                   <button
                     type="button"
@@ -165,9 +166,9 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
                     className="flex-1 rounded-lg px-3 py-2 text-left text-sm transition-colors"
                     style={{
                       backgroundColor:
-                        selected.id === template.id ? 'var(--accent-subtle)' : undefined,
+                        selectedId === template.id ? 'var(--accent-subtle)' : undefined,
                       color:
-                        selected.id === template.id ? 'var(--accent)' : 'var(--text-secondary)',
+                        selectedId === template.id ? 'var(--accent)' : 'var(--text-secondary)',
                     }}
                   >
                     <span className="block truncate font-medium">{template.name}</span>
@@ -175,78 +176,83 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
                       {template.items.length} 条事项
                     </span>
                   </button>
-                  {template.id !== WEEKLY_TEMPLATE.id && (
-                    <button
-                      type="button"
-                      aria-label={`删除模板 ${template.name}`}
-                      className="opacity-0 group-hover:opacity-100"
-                      onClick={() => {
-                        if (!window.confirm(`确定删除模板“${template.name}”吗？`)) return;
-                        void updateSettings({
-                          customTemplates: customTemplates.filter(
-                            (item) => item.id !== template.id,
-                          ),
-                        });
-                      }}
-                    >
-                      ×
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    aria-label={`删除模板 ${template.name}`}
+                    className="opacity-0 group-hover:opacity-100"
+                    onClick={() => {
+                      if (!window.confirm(`确定删除模板“${template.name}”吗？`)) return;
+                      void updateSettings({
+                        customTemplates: customTemplates.filter((item) => item.id !== template.id),
+                      });
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               ))}
             </div>
-            <div className="space-y-4 p-5">
-              <div>
-                <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                  {selected.name}
-                </h3>
-                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  将创建 {selected.items.length} 条事项
-                </p>
-              </div>
-              <label className="block text-sm" style={{ color: 'var(--text-secondary)' }}>
-                项目名称
-                <input
-                  value={projectName}
-                  onChange={(event) => setProjectName(event.target.value)}
-                  className="claude-input mt-1.5"
-                />
-              </label>
-              {selected.items.some((item) => item.plannedDayOffset !== undefined) && (
+            {selected ? (
+              <div className="space-y-4 p-5">
+                <div>
+                  <h3 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                    {selected.name}
+                  </h3>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    将创建 {selected.items.length} 条事项
+                  </p>
+                </div>
                 <label className="block text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  起始日期
+                  项目名称
                   <input
-                    type="date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
+                    value={projectName}
+                    onChange={(event) => setProjectName(event.target.value)}
                     className="claude-input mt-1.5"
                   />
                 </label>
-              )}
-              <div
-                className="max-h-36 overflow-y-auto rounded-lg px-3 py-2"
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
-              >
-                {selected.items.map((item) => (
-                  <div
-                    key={`${item.order}-${item.title}`}
-                    className="py-1 text-xs"
-                    style={{ color: 'var(--text-secondary)' }}
-                  >
-                    {item.title}
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => void createFromTemplate()}
-                  className="btn-primary"
+                {selected.items.some((item) => item.plannedDayOffset !== undefined) && (
+                  <label className="block text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    起始日期
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(event) => setStartDate(event.target.value)}
+                      className="claude-input mt-1.5"
+                    />
+                  </label>
+                )}
+                <div
+                  className="max-h-36 overflow-y-auto rounded-lg px-3 py-2"
+                  style={{ backgroundColor: 'var(--bg-secondary)' }}
                 >
-                  创建项目
-                </button>
+                  {selected.items.map((item) => (
+                    <div
+                      key={`${item.order}-${item.title}`}
+                      className="py-1 text-xs"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      {item.title}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void createFromTemplate()}
+                    className="btn-primary"
+                  >
+                    创建项目
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className="flex items-center justify-center px-8 text-center text-sm"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                保存一个常用项目后，可从这里重复创建。
+              </div>
+            )}
           </div>
         )}
         {error && (

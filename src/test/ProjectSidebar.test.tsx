@@ -68,6 +68,42 @@ describe('ProjectSidebar 设置菜单', () => {
     expect(screen.getByRole('button', { name: '今天 3' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '明天 1' }));
     expect(onTimeBucketChange).toHaveBeenCalledWith('tomorrow');
+    expect(screen.getByRole('button', { name: '本周' })).toBeVisible();
+  });
+
+  it('自动周项目在项目列表中显示独立标识', () => {
+    render(
+      <ProjectSidebar
+        projects={[
+          {
+            id: 'weekly-2026-W33-project',
+            name: '2026 年第 33 周待办',
+            kind: 'weekly',
+            createdAt: '2026-08-10T00:00:00.000Z',
+            updatedAt: '2026-08-10T00:00:00.000Z',
+            order: 1024,
+          },
+        ]}
+        activeProjectId=""
+        onSwitch={vi.fn()}
+        onCreate={vi.fn()}
+        onRename={vi.fn()}
+        onDelete={vi.fn()}
+        onOpenExport={vi.fn()}
+        onReorder={vi.fn()}
+        onOpenSettings={vi.fn()}
+        onOpenHistory={vi.fn()}
+        onOpenStats={vi.fn()}
+        onOpenHelp={vi.fn()}
+        onNewTodoInProject={vi.fn()}
+        onCreateSticker={vi.fn()}
+        onImport={vi.fn()}
+        incompleteCounts={{}}
+      />,
+    );
+
+    expect(screen.getByText('自动')).toBeVisible();
+    expect(screen.getByRole('button', { name: '2026 年第 33 周待办（拖动以排序）' })).toBeVisible();
   });
 
   it('收集箱固定项目只能添加和导出，受保护操作保持禁用', () => {

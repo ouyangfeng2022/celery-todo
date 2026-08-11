@@ -1,5 +1,5 @@
 import type { Project, Todo, TodoTemplate } from '../types';
-import { addLocalDays, daysBetween, formatLocalDate } from './planning';
+import { addLocalDays, daysBetween, formatLocalDate, startOfWeekMonday } from './planning';
 import { generateId } from './helpers';
 
 const WEEKDAYS = [
@@ -15,8 +15,8 @@ const WEEKDAYS = [
 export const WEEKLY_TEMPLATE: TodoTemplate = {
   schemaVersion: 1,
   id: 'builtin-weekly-plan',
-  name: '每周计划',
-  projectName: '每周计划',
+  name: '本周待办',
+  projectName: '本周待办',
   createdAt: 'builtin',
   items: [
     ...WEEKDAYS.map((title, index) => ({
@@ -101,12 +101,53 @@ export function instantiateTemplate(
 }
 
 export function weeklyProjectName(startDate: string): string {
+  const { year, week } = isoWeek(startDate);
+  return `${year} 年第 ${week} 周待办`;
+}
+
+/** 当前日期所属周的周一（本地日历）。 */
+export function currentWeekStart(now = new Date()): string {
+  return startOfWeekMonday(formatLocalDate(now));
+}
+
+/** 自动周项目写入 ID 的稳定周键，用于重命名后仍能识别同一周。 */
+export function weeklyProjectKey(startDate: string): string {
+  const { year, week } = isoWeek(startDate);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+/** 判断项目是否是指定周由时间视图自动创建的项目。 */
+export function isWeeklyProjectForDate(project: Project, startDate: string): boolean {
+  return (
+    project.kind === 'weekly' && project.id.startsWith(`weekly-${weeklyProjectKey(startDate)}-`)
+  );
+}
+
+/** 生成本周专用项目及其八条事项。 */
+export function instantiateWeeklyPlan(startDate: string): { project: Project; todos: Todo[] } {
+  const instance = instantiateTemplate(WEEKLY_TEMPLATE, weeklyProjectName(startDate), startDate);
+  const projectId = `weekly-${weeklyProjectKey(startDate)}-${generateId()}`;
+  return {
+    ...instance,
+    project: {
+      ...instance.project,
+      id: projectId,
+      kind: 'weekly',
+    },
+    todos: instance.todos.map((todo) => ({
+      ...todo,
+      projectId,
+    })),
+  };
+}
+
+function isoWeek(startDate: string): { year: number; week: number } {
   const date = new Date(`${startDate}T12:00:00`);
   const firstThursday = new Date(date);
   firstThursday.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
   const yearStart = new Date(firstThursday.getFullYear(), 0, 4, 12);
   const week = 1 + Math.round((firstThursday.getTime() - yearStart.getTime()) / 604800000);
-  return `${firstThursday.getFullYear()} 年第 ${week} 周计划`;
+  return { year: firstThursday.getFullYear(), week };
 }
 
 export function nextMondayDate(now = new Date()): string {

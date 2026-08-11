@@ -148,8 +148,8 @@ export interface Project {
   id: string;
   /** 项目名称 */
   name: string;
-  /** 普通项目或按需创建的系统收集箱。 */
-  kind: 'user' | 'inbox';
+  /** 手动项目、按需创建的系统收集箱，或由时间视图生成的每周项目。 */
+  kind: 'user' | 'inbox' | 'weekly';
   /** 项目颜色（用于侧边栏标识） */
   color?: string;
   /** 创建时间 */

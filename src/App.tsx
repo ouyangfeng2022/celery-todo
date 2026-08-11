@@ -1018,13 +1018,16 @@ function App() {
                 onInboxCreated={(inbox) => {
                   void loadProjects().then(() => switchProject(inbox.id));
                 }}
+                onProjectsChanged={() => void loadProjects()}
                 onOpenProject={(projectId, todoId) => {
                   setNavigationMode('project');
                   switchProject(projectId);
-                  setTodoFocusTarget((current) => ({
-                    id: todoId,
-                    signal: (current?.signal ?? 0) + 1,
-                  }));
+                  if (todoId) {
+                    setTodoFocusTarget((current) => ({
+                      id: todoId,
+                      signal: (current?.signal ?? 0) + 1,
+                    }));
+                  }
                 }}
               />
             ) : projects.length === 0 ? (

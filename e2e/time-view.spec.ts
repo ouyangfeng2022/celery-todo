@@ -1,5 +1,5 @@
 /**
- * 时间视图：无项目快速添加、唯一收集箱、跨项目移动与每周模板。
+ * 时间视图：无项目快速添加、唯一收集箱、跨项目移动与本周待办。
  */
 import { test, expect } from '@playwright/test';
 import { closeApp, createProject, launchApp, type LaunchedApp } from './helpers';
@@ -62,16 +62,19 @@ test('时间事项可指定普通项目，也可从收集箱移动到目标项�
   await expect(win.getByText('稍后归类', { exact: true })).toBeVisible();
 });
 
-test('每周计划模板原子创建普通项目和八条事项', async () => {
-  await win.getByRole('button', { name: '从模板新建项目' }).click();
-  const dialog = win.getByRole('dialog', { name: '项目模板' });
-  await expect(dialog).toBeVisible();
+test('在时间的本周视图一键创建自动周项目和八条事项', async () => {
+  await switchNavigation('时间');
+  await win.getByRole('button', { name: /^本周(?: \d+)?$/ }).click();
+  await expect(win.getByRole('heading', { name: '本周', level: 1 })).toBeVisible();
+  await expect(win.getByRole('region', { name: '本周待办快捷创建' })).toBeVisible();
 
-  const projectName = await dialog.getByLabel('项目名称').inputValue();
-  const startDate = await dialog.getByLabel('起始日期').inputValue();
-  await dialog.getByRole('button', { name: '创建项目', exact: true }).click();
+  await win.getByRole('button', { name: '一键创建', exact: true }).click();
+  await expect(win.getByRole('button', { name: '打开项目', exact: true })).toBeVisible();
+  await win.getByRole('button', { name: '打开项目', exact: true }).click();
 
-  await expect(win.getByRole('heading', { name: projectName, level: 1 })).toBeVisible();
+  await expect(
+    win.getByRole('heading', { name: /^\d{4} 年第 \d+ 周待办$/, level: 1 }),
+  ).toBeVisible();
   for (const title of [
     '周一待办',
     '周二待办',
@@ -84,5 +87,5 @@ test('每周计划模板原子创建普通项目和八条事项', async () => {
   ]) {
     await expect(win.getByText(title, { exact: true })).toBeVisible();
   }
-  await expect(win.getByText(startDate, { exact: true }).first()).toBeVisible();
+  await expect(win.getByText('自动', { exact: true })).toBeVisible();
 });

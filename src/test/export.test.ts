@@ -151,5 +151,20 @@ describe('export utils', () => {
       ]);
       expect('projects' in imported && imported.settings.customTemplates).toEqual([]);
     });
+
+    it('完整备份保留自动周项目类型', () => {
+      const imported = parseImportData(
+        JSON.stringify({
+          version: 4,
+          exportedAt: '2026-08-11T00:00:00.000Z',
+          projects: [{ ...mockProject, id: 'weekly-2026-W33-id', kind: 'weekly' }],
+          todos: [],
+          deletedTodos: [],
+          settings: {},
+        }),
+      );
+
+      expect('projects' in imported && imported.projects[0].kind).toBe('weekly');
+    });
   });
 });

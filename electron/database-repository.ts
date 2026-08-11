@@ -549,7 +549,7 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
         project.updatedAt,
         project.order ?? null,
         RANK_STEP,
-        project.kind === 'inbox' ? 'inbox' : 'user',
+        project.kind === 'inbox' ? 'inbox' : project.kind === 'weekly' ? 'weekly' : 'user',
       );
       changed({ projectsChanged: true });
       return null;
@@ -580,7 +580,7 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
       db.transaction(() => {
         db.prepare(
           `INSERT INTO projects (id, name, color, created_at, updated_at, sort_order, kind)
-          VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ? FROM projects)), 'user')`,
+          VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT COALESCE(MAX(sort_order), 0) + ? FROM projects)), ?)`,
         ).run(
           project.id,
           project.name,
@@ -589,6 +589,7 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
           project.updatedAt,
           project.order ?? null,
           RANK_STEP,
+          project.kind === 'weekly' ? 'weekly' : 'user',
         );
         todos.forEach((todo) => insertTodoRow(db, todo));
       })();
@@ -697,7 +698,12 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
         );
         let hasInbox = false;
         projects.forEach((project, index) => {
-          const kind = project.kind === 'inbox' && !hasInbox ? 'inbox' : 'user';
+          const kind =
+            project.kind === 'inbox' && !hasInbox
+              ? 'inbox'
+              : project.kind === 'weekly'
+                ? 'weekly'
+                : 'user';
           if (kind === 'inbox') hasInbox = true;
           insertProject.run(
             project.id,

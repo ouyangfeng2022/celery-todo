@@ -387,6 +387,20 @@ function SortableProjectItem({
           }}
           aria-label={`${project.name}（拖动以排序）`}
         >
+          {project.kind === 'weekly' && (
+            <span
+              className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md"
+              style={{
+                color: 'var(--accent)',
+                backgroundColor: isActive
+                  ? 'var(--bg-primary)'
+                  : 'color-mix(in srgb, var(--accent-subtle) 76%, transparent)',
+              }}
+              aria-hidden="true"
+            >
+              <CalendarIcon size={12} />
+            </span>
+          )}
           <span
             className="flex-1 truncate"
             style={{
@@ -396,6 +410,18 @@ function SortableProjectItem({
           >
             {project.name}
           </span>
+          {project.kind === 'weekly' && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wide"
+              style={{
+                color: 'var(--accent)',
+                backgroundColor: 'color-mix(in srgb, var(--accent-subtle) 72%, transparent)',
+              }}
+              aria-hidden="true"
+            >
+              自动
+            </span>
+          )}
           {/* 未完成 todo 计数：悬浮显示操作按钮时淡出，避免位置重叠 */}
           {incompleteCount > 0 && (
             <CountBadge className="text-[var(--text-tertiary)] opacity-100 transition-opacity group-hover:opacity-0">

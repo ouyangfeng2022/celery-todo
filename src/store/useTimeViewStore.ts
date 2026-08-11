@@ -4,12 +4,17 @@ import type { FilterType, Priority, Project, Todo } from '../types';
 import * as data from '../utils/dataGateway';
 import { generateId, splitBulkTitles } from '../utils/helpers';
 import { classifyPlannedDate, type TimeBucket } from '../utils/planning';
+import {
+  currentWeekStart,
+  instantiateWeeklyPlan,
+  isWeeklyProjectForDate,
+} from '../utils/todoTemplates';
 
 export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
   replan: '待重新安排',
   today: '今天',
   tomorrow: '明天',
-  week: '本周其余',
+  week: '本周',
   later: '以后',
   unscheduled: '未安排',
 };
@@ -33,6 +38,8 @@ interface TimeViewState {
   toggle: (id: string) => Promise<void>;
   archive: (id: string) => Promise<void>;
   move: (id: string, projectId: string) => Promise<void>;
+  /** 幂等创建当前周的自动项目与预设事项。 */
+  createCurrentWeekPlan: () => Promise<{ project: Project; created: boolean }>;
 }
 
 export const useTimeViewStore = create<TimeViewState>((set, get) => ({
@@ -109,6 +116,19 @@ export const useTimeViewStore = create<TimeViewState>((set, get) => ({
   move: async (id, projectId) => {
     const moved = await data.moveTodoToProject(id, projectId);
     set({ allTodos: get().allTodos.map((item) => (item.id === id ? moved : item)) });
+  },
+
+  createCurrentWeekPlan: async () => {
+    const startDate = currentWeekStart();
+    const existing = (await data.getProjects()).find((project) =>
+      isWeeklyProjectForDate(project, startDate),
+    );
+    if (existing) return { project: existing, created: false };
+
+    const instance = instantiateWeeklyPlan(startDate);
+    const project = await data.createProjectWithTodos(instance.project, instance.todos);
+    set({ allTodos: await data.getAllTodos() });
+    return { project, created: true };
   },
 }));
 

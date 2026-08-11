@@ -34,8 +34,8 @@ export interface DeletedTodo extends Todo {
 export interface Project {
   id: string;
   name: string;
-  /** 普通项目或系统收集箱 */
-  kind: 'user' | 'inbox';
+  /** 手动项目、系统收集箱或由时间视图生成的每周项目 */
+  kind: 'user' | 'inbox' | 'weekly';
   color?: string;
   createdAt: string;
   updatedAt: string;

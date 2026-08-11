@@ -198,7 +198,12 @@ export function parseImportData(jsonString: string): ProjectExportData | AppExpo
     const imported = raw as unknown as AppExportData;
     let hasInbox = false;
     const projects = imported.projects.map((project) => {
-      const kind = project.kind === 'inbox' && !hasInbox ? 'inbox' : 'user';
+      const kind =
+        project.kind === 'inbox' && !hasInbox
+          ? 'inbox'
+          : project.kind === 'weekly'
+            ? 'weekly'
+            : 'user';
       if (kind === 'inbox') hasInbox = true;
       return normalizeProject(project, kind);
     });
