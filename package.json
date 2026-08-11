@@ -1,7 +1,7 @@
 {
   "name": "celery-todo",
   "private": true,
-  "version": "2.19.3-beta.0",
+  "version": "2.19.3",
   "description": "A full-featured Todo List application with Celery-style UI",
   "author": "",
   "license": "MIT",

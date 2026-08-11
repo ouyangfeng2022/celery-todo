@@ -8,13 +8,21 @@
 
 ## [Unreleased]
 
-## [v2.19.3-beta.0] - 2026-08-10
+## [v2.19.3] - 2026-08-11
 ### Added
 - add date-grouped card view
 - add template dialog and time view components
+- redesign weekly planning
+- add weekly project visibility control
+- add one-click weekly todo projects
 
 ### Fixed
 - replace template sparkle icon
+- preserve project names after project archival
+- show custom order in sort selector
+
+### Documentation
+- refresh preview screenshots
 
 ## [v2.19.2] - 2026-08-10
 ### Fixed
@@ -453,4 +461,4 @@
 
 [v2.19.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.2
 
-[v2.19.3-beta.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3-beta.0
+[v2.19.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3
