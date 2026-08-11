@@ -1030,7 +1030,6 @@ function App() {
                 onInboxCreated={(inbox) => {
                   void loadProjects().then(() => switchProject(inbox.id));
                 }}
-                onProjectsChanged={() => void loadProjects()}
                 onOpenProject={(projectId, todoId) => {
                   setNavigationMode('project');
                   switchProject(projectId);

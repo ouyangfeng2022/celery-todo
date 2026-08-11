@@ -1030,7 +1030,7 @@ export function insertTodosIntoInbox(todos: import('../types').Todo[]): import('
   return inbox!;
 }
 
-/** 从模板原子创建手动项目或时间视图的自动周项目及其事项。 */
+/** 从模板原子创建项目及其事项；同时兼容旧版本的 weekly 项目类型。 */
 export function createProjectWithTodos(
   project: import('../types').Project,
   todos: import('../types').Todo[],

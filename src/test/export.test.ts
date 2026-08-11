@@ -153,7 +153,7 @@ describe('export utils', () => {
       expect('projects' in imported && imported.settings.showWeeklyProjects).toBe(true);
     });
 
-    it('完整备份保留自动周项目类型', () => {
+    it('完整备份保留旧版本周项目类型', () => {
       const imported = parseImportData(
         JSON.stringify({
           version: 4,

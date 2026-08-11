@@ -94,7 +94,7 @@ interface ProjectSidebarProps {
   timeCounts?: Record<TimeBucket, number>;
   onOpenTemplates?: () => void;
   onSaveAsTemplate?: (project: Project) => void;
-  /** 是否在项目列表显示时间视图自动创建的每周项目。 */
+  /** 是否在项目列表显示旧版本生成的每周项目。 */
   showWeeklyProjects?: boolean;
   onToggleWeeklyProjects?: () => void;
 }

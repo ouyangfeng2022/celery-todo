@@ -3,12 +3,7 @@ import { create } from 'zustand';
 import type { FilterType, Priority, Project, Todo } from '../types';
 import * as data from '../utils/dataGateway';
 import { generateId, splitBulkTitles } from '../utils/helpers';
-import { classifyPlannedDate, type TimeBucket } from '../utils/planning';
-import {
-  currentWeekStart,
-  instantiateWeeklyPlan,
-  isWeeklyProjectForDate,
-} from '../utils/todoTemplates';
+import { classifyPlannedDate, isDateInCurrentWeek, type TimeBucket } from '../utils/planning';
 
 export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
   replan: '待重新安排',
@@ -38,8 +33,6 @@ interface TimeViewState {
   toggle: (id: string) => Promise<void>;
   archive: (id: string) => Promise<void>;
   move: (id: string, projectId: string) => Promise<void>;
-  /** 幂等创建当前周的自动项目与预设事项。 */
-  createCurrentWeekPlan: () => Promise<{ project: Project; created: boolean }>;
 }
 
 export const useTimeViewStore = create<TimeViewState>((set, get) => ({
@@ -117,24 +110,15 @@ export const useTimeViewStore = create<TimeViewState>((set, get) => ({
     const moved = await data.moveTodoToProject(id, projectId);
     set({ allTodos: get().allTodos.map((item) => (item.id === id ? moved : item)) });
   },
-
-  createCurrentWeekPlan: async () => {
-    const startDate = currentWeekStart();
-    const existing = (await data.getProjects()).find((project) =>
-      isWeeklyProjectForDate(project, startDate),
-    );
-    if (existing) return { project: existing, created: false };
-
-    const instance = instantiateWeeklyPlan(startDate);
-    const project = await data.createProjectWithTodos(instance.project, instance.todos);
-    set({ allTodos: await data.getAllTodos() });
-    return { project, created: true };
-  },
 }));
 
 export function selectTimeBucketTodos(state: TimeViewState): Todo[] {
   return state.allTodos
-    .filter((todo) => classifyPlannedDate(todo.plannedDate, todo.completed) === state.bucket)
+    .filter((todo) =>
+      state.bucket === 'week'
+        ? isDateInCurrentWeek(todo.plannedDate)
+        : classifyPlannedDate(todo.plannedDate, todo.completed) === state.bucket,
+    )
     .filter((todo) =>
       state.filter === 'active'
         ? !todo.completed
@@ -161,8 +145,9 @@ export function selectTimeBucketCounts(todos: Todo[]): Record<TimeBucket, number
   };
   for (const todo of todos) {
     if (todo.completed) continue;
+    if (isDateInCurrentWeek(todo.plannedDate)) counts.week += 1;
     const bucket = classifyPlannedDate(todo.plannedDate, false);
-    if (bucket) counts[bucket] += 1;
+    if (bucket && bucket !== 'week') counts[bucket] += 1;
   }
   return counts;
 }

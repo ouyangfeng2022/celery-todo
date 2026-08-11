@@ -150,7 +150,7 @@ export interface Project {
   id: string;
   /** 项目名称 */
   name: string;
-  /** 手动项目、按需创建的系统收集箱，或由时间视图生成的每周项目。 */
+  /** 手动项目、按需创建的系统收集箱，或旧版本生成的每周项目。 */
   kind: 'user' | 'inbox' | 'weekly';
   /** 项目颜色（用于侧边栏标识） */
   color?: string;
@@ -220,7 +220,7 @@ export interface AppSettings {
   customTemplates: TodoTemplate[];
   /** 项目事项展示方式；卡片模式按计划日期分组。 */
   todoViewMode: TodoViewMode;
-  /** 是否在项目侧栏显示时间视图自动创建的每周项目。 */
+  /** 是否在项目侧栏显示旧版本生成的每周项目。 */
   showWeeklyProjects: boolean;
   /** 时间显示格式：relative=模糊计时（如「5 分钟前」），exact=精确到分钟（如「2026-08-04 14:30」） */
   timeFormat: 'relative' | 'exact';
@@ -252,7 +252,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   lastActiveProjectId: '',
   customTemplates: [],
   todoViewMode: 'list',
-  // 默认保持旧版本行为：自动周项目仍显示在项目列表中
+  // 默认继续显示旧版本生成的周项目，避免升级后用户找不到已有数据
   showWeeklyProjects: true,
   // 默认模糊计时；点击事项上的时间标签可在两种格式间切换（全局生效）
   timeFormat: 'relative',

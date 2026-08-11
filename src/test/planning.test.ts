@@ -9,7 +9,9 @@ import {
   daysBetween,
   defaultPlannedDateForBucket,
   formatLocalDate,
+  getCurrentWeekDates,
   getPlanningBoundaries,
+  isDateInCurrentWeek,
   nextMonday,
   startOfWeekMonday,
 } from '../utils/planning';
@@ -103,14 +105,30 @@ describe('planning', () => {
       expect(defaultPlannedDateForBucket('replan', now)).toBe('2026-08-12');
       expect(defaultPlannedDateForBucket('today', now)).toBe('2026-08-12');
       expect(defaultPlannedDateForBucket('tomorrow', now)).toBe('2026-08-13');
-      expect(defaultPlannedDateForBucket('week', now)).toBe('2026-08-14');
+      expect(defaultPlannedDateForBucket('week', now)).toBe('2026-08-12');
       expect(defaultPlannedDateForBucket('later', now)).toBe('2026-08-17');
       expect(defaultPlannedDateForBucket('unscheduled', now)).toBeUndefined();
     });
 
-    it('周六和周日没有可用的本周默认日期', () => {
-      expect(defaultPlannedDateForBucket('week', new Date(2026, 7, 15))).toBeUndefined();
-      expect(defaultPlannedDateForBucket('week', new Date(2026, 7, 16))).toBeUndefined();
+    it('本周默认日期始终是当天', () => {
+      expect(defaultPlannedDateForBucket('week', new Date(2026, 7, 15))).toBe('2026-08-15');
+      expect(defaultPlannedDateForBucket('week', new Date(2026, 7, 16))).toBe('2026-08-16');
+    });
+
+    it('返回周一至周日的完整自然周，并正确判断边界', () => {
+      const now = new Date(2026, 7, 12, 12);
+      expect(getCurrentWeekDates(now)).toEqual([
+        '2026-08-10',
+        '2026-08-11',
+        '2026-08-12',
+        '2026-08-13',
+        '2026-08-14',
+        '2026-08-15',
+        '2026-08-16',
+      ]);
+      expect(isDateInCurrentWeek('2026-08-10', now)).toBe(true);
+      expect(isDateInCurrentWeek('2026-08-16', now)).toBe(true);
+      expect(isDateInCurrentWeek('2026-08-17', now)).toBe(false);
     });
   });
 });

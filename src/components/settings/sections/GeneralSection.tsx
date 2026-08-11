@@ -67,7 +67,7 @@ export function GeneralSection({
               显示自动创建项目
             </span>
             <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
-              在侧栏显示时间视图自动生成的每周项目
+              在侧栏显示旧版本的周计划项目
             </span>
           </span>
           <input

@@ -110,6 +110,19 @@ export function getPlanningBoundaries(now: Date = new Date()): PlanningBoundarie
   };
 }
 
+/** 返回当前自然周（周一至周日）的七个本地日历日期。 */
+export function getCurrentWeekDates(now: Date = new Date()): LocalDate[] {
+  const weekStart = startOfWeekMonday(formatLocalDate(now));
+  return Array.from({ length: 7 }, (_, index) => addLocalDays(weekStart, index));
+}
+
+/** 判断计划日期是否位于当前自然周。 */
+export function isDateInCurrentWeek(date: LocalDate | undefined, now: Date = new Date()): boolean {
+  if (!date) return false;
+  const dates = getCurrentWeekDates(now);
+  return daysBetween(dates[0], date) >= 0 && daysBetween(date, dates[6]) >= 0;
+}
+
 /** 按互斥的时间范围对计划日期分类。 */
 export function classifyPlannedDate(
   plannedDate: LocalDate | undefined,
@@ -139,10 +152,8 @@ export function defaultPlannedDateForBucket(
       return boundaries.today;
     case 'tomorrow':
       return boundaries.tomorrow;
-    case 'week': {
-      const dayAfterTomorrow = addLocalDays(boundaries.today, 2);
-      return daysBetween(dayAfterTomorrow, boundaries.weekEnd) >= 0 ? dayAfterTomorrow : undefined;
-    }
+    case 'week':
+      return boundaries.today;
     case 'later':
       return boundaries.nextWeekStart;
     case 'unscheduled':

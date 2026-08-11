@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Project, Todo } from '../types';
-import {
-  createTemplateFromProject,
-  currentWeekStart,
-  instantiateTemplate,
-  instantiateWeeklyPlan,
-  isWeeklyProjectForDate,
-  weeklyProjectName,
-} from '../utils/todoTemplates';
+import { createTemplateFromProject, instantiateTemplate } from '../utils/todoTemplates';
 
 const project: Project = {
   id: 'project-1',
@@ -58,28 +51,6 @@ const todos: Todo[] = [
 ];
 
 describe('todo templates', () => {
-  it('本周待办生成带自动标识的周项目和 8 条正确排期的事项', () => {
-    const result = instantiateWeeklyPlan('2026-08-17');
-
-    expect(result.project).toMatchObject({ kind: 'weekly', name: '2026 年第 34 周待办' });
-    expect(result.project.id).toMatch(/^weekly-2026-W34-/);
-    expect(isWeeklyProjectForDate(result.project, '2026-08-17')).toBe(true);
-    expect(result.todos).toHaveLength(8);
-    expect(result.todos.every((todo) => todo.projectId === result.project.id)).toBe(true);
-    expect(result.todos.slice(0, 7).map((todo) => todo.plannedDate)).toEqual([
-      '2026-08-17',
-      '2026-08-18',
-      '2026-08-19',
-      '2026-08-20',
-      '2026-08-21',
-      '2026-08-22',
-      '2026-08-23',
-    ]);
-    expect(result.todos[7]).toMatchObject({ title: '每周复盘', plannedDate: '2026-08-23' });
-    expect(new Set(result.todos.map((todo) => todo.id)).size).toBe(8);
-    expect(result.todos.every((todo) => !todo.completed)).toBe(true);
-  });
-
   it('自定义模板默认排除已完成事项并按最早日期保存相对偏移', () => {
     const template = createTemplateFromProject(project, todos, '发布模板');
 
@@ -104,11 +75,9 @@ describe('todo templates', () => {
     expect(instance.todos.every((todo) => todo.completed === false)).toBe(true);
   });
 
-  it('拒绝从收集箱保存模板，并正确生成 ISO 周项目名', () => {
+  it('拒绝从收集箱保存模板', () => {
     expect(() =>
       createTemplateFromProject({ ...project, kind: 'inbox', name: '收集箱' }, todos, '模板'),
     ).toThrow('收集箱不能保存为模板');
-    expect(weeklyProjectName('2026-08-17')).toBe('2026 年第 34 周待办');
-    expect(currentWeekStart(new Date(2026, 7, 19, 12))).toBe('2026-08-17');
   });
 });

@@ -71,7 +71,7 @@ describe('ProjectSidebar 设置菜单', () => {
     expect(screen.getByRole('button', { name: '本周' })).toBeVisible();
   });
 
-  it('自动周项目在项目列表中显示独立标识', () => {
+  it('旧版本周项目在项目列表中显示独立标识', () => {
     render(
       <ProjectSidebar
         projects={[
@@ -106,7 +106,7 @@ describe('ProjectSidebar 设置菜单', () => {
     expect(screen.getByRole('button', { name: '2026 年第 33 周待办（拖动以排序）' })).toBeVisible();
   });
 
-  it('可以隐藏自动周项目，并从项目列表中直接恢复显示', () => {
+  it('可以隐藏旧版本周项目，并从项目列表中直接恢复显示', () => {
     const onToggleWeeklyProjects = vi.fn();
     render(
       <ProjectSidebar

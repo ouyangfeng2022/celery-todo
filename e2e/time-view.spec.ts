@@ -1,5 +1,5 @@
 /**
- * 时间视图：无项目快速添加、唯一收集箱、跨项目移动与本周待办。
+ * 时间视图：无项目快速添加、唯一收集箱、跨项目移动与本周安排。
  */
 import { test, expect } from '@playwright/test';
 import { closeApp, createProject, launchApp, type LaunchedApp } from './helpers';
@@ -62,30 +62,24 @@ test('时间事项可指定普通项目，也可从收集箱移动到目标项�
   await expect(win.getByText('稍后归类', { exact: true })).toBeVisible();
 });
 
-test('在时间的本周视图一键创建自动周项目和八条事项', async () => {
+test('本周按七天分组，并可把真实事项直接安排到指定日期', async () => {
   await switchNavigation('时间');
   await win.getByRole('button', { name: /^本周(?: \d+)?$/ }).click();
   await expect(win.getByRole('heading', { name: '本周', level: 1 })).toBeVisible();
-  await expect(win.getByRole('region', { name: '本周待办快捷创建' })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '本周安排', level: 2 })).toBeVisible();
+  await expect(win.getByLabel('选择本周计划日期')).toBeVisible();
+  await expect(win.getByRole('heading', { name: '周一', level: 3 })).toBeVisible();
+  await expect(win.getByRole('heading', { name: '周日', level: 3 })).toBeVisible();
 
-  await win.getByRole('button', { name: '一键创建', exact: true }).click();
-  await expect(win.getByRole('button', { name: '打开项目', exact: true })).toBeVisible();
-  await win.getByRole('button', { name: '打开项目', exact: true }).click();
+  await win.getByRole('button', { name: '在周日添加事项' }).click();
+  const sundayDate = await win
+    .getByRole('button', { name: /计划到周日/ })
+    .getAttribute('aria-label');
+  await win.getByLabel('新事项标题').fill('准备下周资料');
+  await win.getByLabel('新事项标题').press('Enter');
 
-  await expect(
-    win.getByRole('heading', { name: /^\d{4} 年第 \d+ 周待办$/, level: 1 }),
-  ).toBeVisible();
-  for (const title of [
-    '周一待办',
-    '周二待办',
-    '周三待办',
-    '周四待办',
-    '周五待办',
-    '周六待办',
-    '周日待办',
-    '每周复盘',
-  ]) {
-    await expect(win.getByText(title, { exact: true })).toBeVisible();
-  }
-  await expect(win.getByText('自动', { exact: true })).toBeVisible();
+  const sundayGroup = win.getByRole('region', { name: '周日' });
+  await expect(sundayGroup.getByText('准备下周资料', { exact: true })).toBeVisible();
+  expect(sundayDate).toMatch(/计划到周日 \d+月\d+日/);
+  await expect(win.getByText('周一待办', { exact: true })).toHaveCount(0);
 });
