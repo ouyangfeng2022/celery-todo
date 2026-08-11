@@ -151,7 +151,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   await win.waitForTimeout(200);
   await win.keyboard.press('Space');
   await win.waitForTimeout(500);
-  await expect(win.getByLabel('排序方式')).toHaveValue('');
+  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   expect(await highTitles()).toEqual(['H1', 'H2']);
 
   // 3) 切回 priority —— 顺序必须回到 createdAt 降序（H2 在前），
@@ -161,7 +161,7 @@ test('优先级模式下，同优先级排序不被历史拖拽残留污染', as
   expect(await highTitles()).toEqual(['H2', 'H1']);
 });
 
-test('拖拽后保留自定义顺序但不显示「手动排序」，仍可切回规则排序', async () => {
+test('拖拽后显示「自定义顺序」，仍可切回规则排序', async () => {
   // 默认 created-desc 下列表顺序（最新在前）：
   //   已完成2, 已完成1, 进行中3, 进行中2, 进行中1
   // 把最后一条「进行中1」拖到第一位 —— TodoList onDragEnd 会自动 snapshot+切到 manual
@@ -182,13 +182,13 @@ test('拖拽后保留自定义顺序但不显示「手动排序」，仍可切�
   await win.keyboard.press('Space');
   await win.waitForTimeout(500);
 
-  // 拖拽完成后内部进入 manual，但下拉框只显示中性占位。
+  // 拖拽完成后进入 manual，下拉框准确显示当前的自定义顺序。
   const select = win.getByLabel('排序方式');
-  await expect(select).toHaveValue('');
-  await expect(select.locator('option')).toHaveText(['排序方式', '创建时间', '优先级']);
-  await expect(select.locator('option', { hasText: '手动排序' })).toHaveCount(0);
+  await expect(select).toHaveValue('manual');
+  await expect(select.locator('option')).toHaveText(['自定义顺序', '创建时间', '优先级']);
+  await expect(select.locator('option', { hasText: '自定义顺序' })).toBeDisabled();
 
-  // 切回规则排序后中性占位也随内部 manual 状态一起消失。
+  // 切回规则排序后，仅用于呈现当前状态的自定义顺序项随之消失。
   await select.selectOption('created-desc');
   await expect(select).toHaveValue('created-desc');
   await expect(select.locator('option')).toHaveText(['创建时间', '优先级']);

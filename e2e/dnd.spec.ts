@@ -68,10 +68,10 @@ test('todo 拖拽：把最后一条移到第一位', async () => {
 
   const after = await todoTitles(win);
   expect(after[0]).toBe('T1');
-  // 拖拽后不向用户暴露内部 manual 值或“手动排序”文案。
+  // 拖拽后准确展示当前自定义顺序，但不允许用户从下拉框主动选择它。
   const sortSelect = win.getByLabel('排序方式');
-  await expect(sortSelect).toHaveValue('');
-  await expect(sortSelect.locator('option', { hasText: '手动排序' })).toHaveCount(0);
+  await expect(sortSelect).toHaveValue('manual');
+  await expect(sortSelect.locator('option', { hasText: '自定义顺序' })).toBeDisabled();
 });
 
 test('项目拖拽：把最后一个项目移到第一个', async () => {

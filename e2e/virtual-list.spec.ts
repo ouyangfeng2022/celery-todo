@@ -105,10 +105,10 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
   await expect.poll(overIndex).toBeLessThanOrEqual(80);
   await win.keyboard.press('Space');
 
-  await expect(win.getByLabel('排序方式')).toHaveValue('');
+  await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   await expect(
-    win.getByLabel('排序方式').locator('option', { hasText: '手动排序' }),
-  ).toHaveCount(0);
+    win.getByLabel('排序方式').locator('option', { hasText: '自定义顺序' }),
+  ).toBeDisabled();
   // 落定后从 DB 读取持久化顺序：源行（101）已稳定落在目标行（081）之前。
   const projectId = (
     (await win.evaluate(() => window.electronAPI!.dataQuery('projects'))) as {

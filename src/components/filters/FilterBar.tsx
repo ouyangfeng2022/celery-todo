@@ -106,7 +106,7 @@ function FilterBarComponent({
       {/* 右侧：排序与显示方式成组，避免切换卡片后找不到返回列表的入口。 */}
       <div className="flex items-center gap-2">
         <select
-          value={sort === 'manual' ? '' : sort}
+          value={sort}
           onChange={(e) => onSortChange(e.target.value as SortType)}
           className="cursor-pointer rounded-md border-none px-2.5 py-1.5 text-[13px] transition-colors"
           style={{
@@ -115,11 +115,11 @@ function FilterBarComponent({
           }}
           aria-label="排序方式"
         >
-          {/* 拖拽后的自定义顺序属于内部状态，不向用户展示“手动排序”选项。
-              中性占位保证原生 select 始终拥有与受控 value 对应的 option。 */}
+          {/* 拖拽后的自定义顺序只能由拖拽产生，不作为可主动选择的排序规则；
+              但仍准确展示当前状态，避免把“排序方式”占位误认为默认选项。 */}
           {sort === 'manual' && (
-            <option value="" disabled>
-              排序方式
+            <option value="manual" disabled>
+              自定义顺序
             </option>
           )}
           {Object.entries(SORT_LABELS).map(([value, label]) => (
