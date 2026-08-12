@@ -85,7 +85,9 @@ test('归档非默认项目：项目消失且历史记录保留项目名称', as
 
   await openHistory(win);
   await expect(win.getByText('随项目归档的事项', { exact: true })).toBeVisible();
-  await expect(win.getByText('待归档', { exact: true })).toBeVisible();
+  // 项目名徽标是列表里的 <span class="truncate">；筛选下拉框的 <option> 也含同名
+  // 文本，会让 getByText 触发 strict-mode 冲突，故限定到徽标 span。
+  await expect(win.locator('span.truncate', { hasText: '待归档' })).toBeVisible();
   await expect(win.getByText('已删除的项目', { exact: true })).toHaveCount(0);
 });
 
