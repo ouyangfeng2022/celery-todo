@@ -58,7 +58,8 @@ test('导出单个项目为 JSON，文件名与结构正确', async () => {
   const dl = await getLastDownload(win);
   expect(dl.filename).toBe('Celery-Todo-导出测试.json');
   const data = JSON.parse(decodeUtf8(dl.content));
-  expect(data.version).toBe(5);
+  // 需与 src/utils/export.ts 的 EXPORT_FORMAT_VERSION 保持一致（当前 6）。
+  expect(data.version).toBe(6);
   expect(data.project.name).toBe('导出测试');
   expect(data.todos.some((t: { title: string }) => t.title === '被导出任务')).toBe(true);
 });
