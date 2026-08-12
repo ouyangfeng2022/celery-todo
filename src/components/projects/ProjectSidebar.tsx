@@ -55,9 +55,10 @@ interface ProjectSidebarProps {
   onSwitch: (id: string) => void;
   onCreate: (name: string) => void;
   onRename: (id: string, name: string) => void;
-  onDelete: (id: string) => void;
+  // store action 返回 Promise<void>，事务失败会 reject；类型如实声明以便上层 catch。
+  onDelete: (id: string) => Promise<void> | void;
   /** 永久删除项目（硬删除，不进入归档） */
-  onPermanentDelete: (id: string) => void;
+  onPermanentDelete: (id: string) => Promise<void> | void;
   /** 打开统一导出选项卡片；项目右键会预选该项目 */
   onOpenExport: (projectId?: string) => void;
   onReorder: (sourceId: string, targetId: string) => void;
@@ -513,6 +514,15 @@ function ProjectSidebarComponent({
   // 设置菜单弹出层与其触发按钮的引用，用于判断点击是否落在设置区域外部
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 与 TimeView.safeRun 一致（见 4c093e3 对同类静默吞错的修复）：store action
+  // 不能 fire-and-forget，否则主进程事务失败（磁盘满、锁竞争、inbox 守卫等）
+  // 时确认框照常关闭，用户无从知道项目（及其归档历史）并未真正删除。
+  const safeRun = (action: string, task: () => Promise<unknown> | unknown) => {
+    Promise.resolve(task()).catch((err) => {
+      alert(`${action}失败: ${err instanceof Error ? err.message : '未知错误'}`);
+    });
+  };
 
   // 点击设置菜单外部或按下 Escape 时收起菜单。
   useDismissibleLayer(settingsMenuOpen, [settingsMenuRef, settingsButtonRef], () =>
@@ -994,7 +1004,7 @@ function ProjectSidebarComponent({
         confirmText="归档"
         danger
         onConfirm={() => {
-          if (deleteTarget) onDelete(deleteTarget.id);
+          if (deleteTarget) safeRun('归档项目', () => onDelete(deleteTarget.id));
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
@@ -1008,7 +1018,8 @@ function ProjectSidebarComponent({
         confirmText="删除"
         danger
         onConfirm={() => {
-          if (permanentDeleteTarget) onPermanentDelete(permanentDeleteTarget.id);
+          if (permanentDeleteTarget)
+            safeRun('永久删除项目', () => onPermanentDelete(permanentDeleteTarget.id));
           setPermanentDeleteTarget(null);
         }}
         onCancel={() => setPermanentDeleteTarget(null)}
