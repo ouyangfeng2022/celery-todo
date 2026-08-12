@@ -53,15 +53,16 @@ interface ProjectSidebarProps {
   projects: Project[];
   activeProjectId: string;
   onSwitch: (id: string) => void;
-  onCreate: (name: string) => void;
-  onRename: (id: string, name: string) => void;
+  // store action 返回 Promise，事务失败会 reject；类型如实声明以便上层 safeRun catch。
+  onCreate: (name: string) => Promise<unknown> | unknown;
+  onRename: (id: string, name: string) => Promise<unknown> | unknown;
   // store action 返回 Promise<void>，事务失败会 reject；类型如实声明以便上层 catch。
   onDelete: (id: string) => Promise<void> | void;
   /** 永久删除项目（硬删除，不进入归档） */
   onPermanentDelete: (id: string) => Promise<void> | void;
   /** 打开统一导出选项卡片；项目右键会预选该项目 */
   onOpenExport: (projectId?: string) => void;
-  onReorder: (sourceId: string, targetId: string) => void;
+  onReorder: (sourceId: string, targetId: string) => Promise<unknown> | unknown;
   updateStatus?: UpdateStatus;
   updateInfo?: UpdateInfoLite | null;
   updateProgress?: DownloadProgress | null;
@@ -541,7 +542,7 @@ function ProjectSidebarComponent({
   const handleCreate = useCallback(() => {
     const name = newProjectName.trim();
     if (name) {
-      onCreate(name);
+      safeRun('创建项目', () => onCreate(name));
       setNewProjectName('');
       setIsCreating(false);
     }
@@ -554,7 +555,7 @@ function ProjectSidebarComponent({
 
   const handleConfirmRename = useCallback(() => {
     if (editingId && editName.trim()) {
-      onRename(editingId, editName.trim());
+      safeRun('重命名项目', () => onRename(editingId, editName.trim()));
     }
     setEditingId(null);
   }, [editingId, editName, onRename]);
@@ -673,7 +674,7 @@ function ProjectSidebarComponent({
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (over && active.id !== over.id) {
-        onReorder(active.id as string, over.id as string);
+        safeRun('调整顺序', () => onReorder(active.id as string, over.id as string));
       }
     },
     [onReorder],

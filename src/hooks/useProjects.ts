@@ -17,9 +17,7 @@ export function useProjects() {
   );
 
   const renameProject = useCallback(
-    (id: string, name: string) => {
-      store.renameProject(id, name);
-    },
+    (id: string, name: string) => store.renameProject(id, name),
     [store],
   );
 
@@ -45,9 +43,7 @@ export function useProjects() {
   );
 
   const reorderProjects = useCallback(
-    (sourceId: string, targetId: string) => {
-      store.reorderProjects(sourceId, targetId);
-    },
+    (sourceId: string, targetId: string) => store.reorderProjects(sourceId, targetId),
     [store],
   );
 
