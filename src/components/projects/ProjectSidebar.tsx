@@ -56,6 +56,8 @@ interface ProjectSidebarProps {
   onCreate: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  /** 永久删除项目（硬删除，不进入归档） */
+  onPermanentDelete: (id: string) => void;
   /** 打开统一导出选项卡片；项目右键会预选该项目 */
   onOpenExport: (projectId?: string) => void;
   onReorder: (sourceId: string, targetId: string) => void;
@@ -464,6 +466,7 @@ function ProjectSidebarComponent({
   onCreate,
   onRename,
   onDelete,
+  onPermanentDelete,
   onOpenExport,
   onReorder,
   updateStatus,
@@ -498,6 +501,8 @@ function ProjectSidebarComponent({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  // 永久删除（硬删除）的确认目标；与归档确认分开，文案与回调不同。
+  const [permanentDeleteTarget, setPermanentDeleteTarget] = useState<Project | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   // 右键菜单的弹出位置与目标项目。project 为 null 表示在列表空白处右键，
   // 此时只提供「新建项目」一项（与 Finder/Explorer 在空白处右键的行为一致）。
@@ -615,6 +620,14 @@ function ProjectSidebarComponent({
                 disabled: ctxMenu.project!.kind === 'inbox',
                 onClick: () => {
                   setDeleteTarget(ctxMenu.project!);
+                },
+              },
+              {
+                label: '删除项目',
+                danger: true,
+                disabled: ctxMenu.project!.kind === 'inbox',
+                onClick: () => {
+                  setPermanentDeleteTarget(ctxMenu.project!);
                 },
               },
             ] as ContextMenuItem[])
@@ -985,6 +998,20 @@ function ProjectSidebarComponent({
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      {/* 永久删除确认对话框：不可恢复，且会一并清除该项目的历史归档 */}
+      <ConfirmDialog
+        open={permanentDeleteTarget !== null}
+        title="删除项目"
+        message={`永久删除项目「${permanentDeleteTarget?.name}」？该项目及其下所有事项将被立即删除，且之前已归档的相关事项也会一并清除。此操作不可恢复。`}
+        confirmText="删除"
+        danger
+        onConfirm={() => {
+          if (permanentDeleteTarget) onPermanentDelete(permanentDeleteTarget.id);
+          setPermanentDeleteTarget(null);
+        }}
+        onCancel={() => setPermanentDeleteTarget(null)}
       />
 
       {/* 项目项右键菜单：替代原 hover 三按钮 */}

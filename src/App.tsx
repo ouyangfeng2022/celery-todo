@@ -169,6 +169,7 @@ function App() {
     createProject,
     renameProject,
     deleteProject,
+    permanentlyDeleteProject,
     switchProject,
     reorderProjects,
     loadProjects,
@@ -967,6 +968,7 @@ function App() {
                 onCreate={createProject}
                 onRename={renameProject}
                 onDelete={deleteProject}
+                onPermanentDelete={permanentlyDeleteProject}
                 onOpenExport={openExportDialog}
                 onReorder={reorderProjects}
                 showWeeklyProjects={settings.showWeeklyProjects}

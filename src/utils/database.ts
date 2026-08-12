@@ -1003,6 +1003,23 @@ export function deleteProject(id: string): void {
   });
 }
 
+/**
+ * 永久删除项目：硬删除当前 todos + 项目行 + 该项目之前已归档的全部事项。
+ * 与 deleteProject（归档）不同：不写入 deleted_todos，归档视图无法恢复。
+ */
+export function permanentlyDeleteProject(id: string): void {
+  const project = getProjectById(id);
+  if (project?.kind === 'inbox') throw new Error('收集箱不能删除');
+  if (!project) return;
+  runTransaction(() => {
+    // 顺序与 native 实现（database-repository.ts）保持一致：
+    // 先清归档历史 → 再清当前 todos → 最后删项目行。
+    execute('DELETE FROM deleted_todos WHERE project_id = ?', [id], { projectIds: [id] });
+    execute('DELETE FROM todos WHERE project_id = ?', [id]);
+    execute('DELETE FROM projects WHERE id = ?', [id]);
+  });
+}
+
 /** 按需创建唯一系统收集箱；仅直接新增未指定项目事项时调用。 */
 export function ensureInboxProject(): import('../types').Project {
   const existing = getAllProjects().find((project) => project.kind === 'inbox');

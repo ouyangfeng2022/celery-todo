@@ -19,8 +19,10 @@ interface ProjectState {
   createProject: (name: string, color?: string) => Promise<string>;
   /** 重命名项目 */
   renameProject: (id: string, name: string) => Promise<void>;
-  /** 删除项目 */
+  /** 删除项目（归档：todos 进入历史记录，可恢复） */
   deleteProject: (id: string) => Promise<void>;
+  /** 永久删除项目（硬删除：todos 与该项目的历史归档一并清除，不可恢复） */
+  permanentlyDeleteProject: (id: string) => Promise<void>;
   /** 切换当前项目 */
   setActiveProject: (id: string) => void;
   /** 拖拽排序：把 source 移到 target 的位置 */
@@ -94,6 +96,24 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const projects = get().projects.filter((p) => p.id !== id);
     set({ projects });
     // 如果删除的是当前项目，回退到剩余项目的第一个（可能为空串，表示无激活项目）
+    if (get().activeProjectId === id) {
+      set({ activeProjectId: projects[0]?.id ?? '' });
+    }
+  },
+
+  permanentlyDeleteProject: async (id) => {
+    if (get().projects.find((project) => project.id === id)?.kind === 'inbox') {
+      throw new Error('收集箱不能删除');
+    }
+    await data.permanentlyDeleteProject(id);
+    // 同 deleteProject：清无主 settings 键。
+    await Promise.all([
+      data.deleteSetting(`filter.${id}`),
+      data.deleteSetting(`sort.${id}`),
+      data.deleteSetting(`celebrated.${id}`),
+    ]);
+    const projects = get().projects.filter((p) => p.id !== id);
+    set({ projects });
     if (get().activeProjectId === id) {
       set({ activeProjectId: projects[0]?.id ?? '' });
     }

@@ -717,6 +717,23 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
       changed({ projectIds: [id], projectsChanged: true, archiveChanged: true });
       return null;
     }
+    case 'permanentlyDeleteProject': {
+      const id = String(params.id);
+      const project = db.prepare('SELECT kind FROM projects WHERE id = ?').get(id) as
+        | Row
+        | undefined;
+      if (project?.kind === 'inbox') throw new Error('收集箱不能删除');
+      if (!project) return null;
+      // 硬删除：当前 todos + 项目行 + 该项目之前已归档的全部事项。
+      // 不写入 deleted_todos，因此归档视图无法恢复——区别于「归档项目」。
+      db.transaction(() => {
+        db.prepare('DELETE FROM deleted_todos WHERE project_id = ?').run(id);
+        db.prepare('DELETE FROM todos WHERE project_id = ?').run(id);
+        db.prepare('DELETE FROM projects WHERE id = ?').run(id);
+      })();
+      changed({ projectIds: [id], projectsChanged: true, archiveChanged: true });
+      return null;
+    }
     case 'replaceAll': {
       const data = params.data as Row;
       const projects = (data.projects ?? []) as Row[];

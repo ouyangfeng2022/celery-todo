@@ -245,6 +245,11 @@ export async function deleteProject(id: string): Promise<void> {
   else (await web()).deleteProject(id);
 }
 
+export async function permanentlyDeleteProject(id: string): Promise<void> {
+  if (isNativeDatabase()) await nativeDatabaseGateway.command('permanentlyDeleteProject', { id });
+  else (await web()).permanentlyDeleteProject(id);
+}
+
 export async function moveProjectRank(sourceId: string, targetId: string): Promise<Project[]> {
   if (isNativeDatabase()) return nativeDatabaseGateway.moveProjectRank(sourceId, targetId);
   return (await web()).moveProjectRank(sourceId, targetId);
