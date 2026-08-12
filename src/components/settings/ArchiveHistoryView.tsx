@@ -61,6 +61,26 @@ function ArchiveHistoryViewComponent({
     () => new Map(projects.map((project) => [project.id, project])),
     [projects],
   );
+  // 项目筛选下拉框的选项集合：
+  //   1) 当前 live 项目（保持侧边栏 sort_order，且若已重命名则用最新名）
+  //   2) 已归档、仅存在于 deleted_todos 中的项目（用归档时的 project_name 快照兜底）
+  // 直接归档项目后项目已从 projects 删除，必须从 items 补回，否则筛选器找不到该项目。
+  // 只覆盖当前已加载分页：极少数情况下分页之外的归档项目要等滚动加载后才出现。
+  const filterProjects = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    projects.forEach((project) => {
+      map.set(project.id, { id: project.id, name: project.name });
+    });
+    items.forEach((todo) => {
+      if (!map.has(todo.projectId)) {
+        map.set(todo.projectId, {
+          id: todo.projectId,
+          name: todo.projectName ?? '已删除的项目',
+        });
+      }
+    });
+    return [...map.values()];
+  }, [items, projects]);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleItems = useMemo(
     () =>
@@ -213,7 +233,7 @@ function ArchiveHistoryViewComponent({
               style={{ borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
             >
               <option value="all">所有项目</option>
-              {projects.map((project) => (
+              {filterProjects.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
                 </option>
