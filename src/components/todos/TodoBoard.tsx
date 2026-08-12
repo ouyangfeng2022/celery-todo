@@ -108,7 +108,7 @@ function TodoBoardComponent({
   return (
     <div
       key={filter ?? 'all'}
-      className="todo-filter-content grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] items-start gap-4"
+      className="todo-filter-content grid grid-cols-[repeat(auto-fit,minmax(480px,1fr))] items-start gap-4"
       aria-label="按计划日期排列的事项卡片"
     >
       {groups.map((group) => {
@@ -156,7 +156,9 @@ function TodoBoardComponent({
               </div>
             </header>
 
-            <div className="space-y-2.5">
+            {/* 卡片墙：auto-fill 不折叠空轨道，卡片始终保持 ~220px 紧凑宽度，
+                不会被容器宽度拉成"撑大的列表行"；grid 默认 stretch 让同行卡片等高。 */}
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               {group.todos.map((todo) => (
                 <div key={todo.id} id={`todo-${todo.id}`}>
                   <TodoItem
