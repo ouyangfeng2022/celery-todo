@@ -404,7 +404,15 @@ function App() {
   // 此处与本窗口内存对账。
   useEffect(() => {
     if (data.isNativeDatabase()) {
-      return data.onDataChanged((event) => {
+      // 时间视图的 load 是全量 SELECT * FROM todos。native 路径每次主进程
+      // data change 都会触发，连续按键编辑时会形成高频 IPC 往返。合流为
+      // 「运行期间的新请求只保留一轮后续执行」，把一个 debounce 周期内的
+      // 多次通知合并成一次全量回读。load() 本身接口未变，初始化等需要
+      // await 的路径仍直接调用 store.load()。
+      const timeViewReload = createCoalescedAsyncTask(async () => {
+        await useTimeViewStore.getState().load();
+      });
+      const off = data.onDataChanged((event) => {
         const currentProjectId = useProjectStore.getState().activeProjectId;
         if (event.fullRefresh || event.projectsChanged)
           void useProjectStore.getState().loadProjects();
@@ -413,8 +421,12 @@ function App() {
         if (event.fullRefresh || event.projectIds.includes(currentProjectId)) {
           void useTodoStore.getState().loadProject(currentProjectId);
         }
-        void useTimeViewStore.getState().load();
+        timeViewReload.schedule();
       });
+      return () => {
+        timeViewReload.dispose();
+        off?.();
+      };
     }
     let disposed = false;
     let lastSeenVersion = 0;
