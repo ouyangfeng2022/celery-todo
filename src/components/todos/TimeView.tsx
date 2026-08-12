@@ -48,6 +48,13 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
   const renderTodo = (todo: (typeof todos)[number]) => {
     const project = projects.find((item) => item.id === todo.projectId);
     const boundaries = getPlanningBoundaries();
+    // 与 App.tsx 导入失败 / DataSection 切换存储失败 一致：异常以 alert 暴露，
+    // 不让 Promise 拒绝被静默吞掉，导致用户操作无反馈。
+    const safeRun = (action: string, task: () => Promise<unknown>) => {
+      void task().catch((err) => {
+        alert(`${action}失败: ${err instanceof Error ? err.message : '未知错误'}`);
+      });
+    };
     return (
       <div key={todo.id} className="rounded-xl px-2 py-1 hover:bg-[var(--bg-hover)]">
         <div
@@ -63,7 +70,9 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
           </button>
           <select
             value={todo.projectId}
-            onChange={(event) => void state.move(todo.id, event.target.value)}
+            onChange={(event) =>
+              safeRun('移动事项', () => state.move(todo.id, event.target.value))
+            }
             className="max-w-32 rounded border-none bg-transparent px-1 py-0.5"
             aria-label={`移动“${todo.title}”到项目`}
           >
@@ -86,7 +95,9 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
                 type="button"
                 className="rounded-md px-2 py-1 hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--accent)' }}
-                onClick={() => void state.update(todo.id, { plannedDate })}
+                onClick={() =>
+                  safeRun('安排日期', () => state.update(todo.id, { plannedDate }))
+                }
               >
                 {label}
               </button>
@@ -102,7 +113,9 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
                 min={addLocalDays(boundaries.today, 0)}
                 onChange={(event) => {
                   if (event.target.value) {
-                    void state.update(todo.id, { plannedDate: event.target.value });
+                    safeRun('安排日期', () =>
+                      state.update(todo.id, { plannedDate: event.target.value }),
+                    );
                   }
                 }}
               />
@@ -113,9 +126,9 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
           todo={todo}
           isSelected={false}
           selectable={false}
-          onToggle={(id) => void state.toggle(id)}
-          onEdit={(id, updates) => void state.update(id, updates)}
-          onDelete={(id) => void state.archive(id)}
+          onToggle={(id) => safeRun('切换完成', () => state.toggle(id))}
+          onEdit={(id, updates) => safeRun('更新事项', () => state.update(id, updates))}
+          onDelete={(id) => safeRun('归档事项', () => state.archive(id))}
           onToggleSelect={() => undefined}
         />
       </div>
@@ -224,15 +237,23 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
             projectId={`time:${state.bucket}:${composeDate ?? 'none'}:${targetProjectId || 'inbox'}`}
             defaultPlannedDate={composeDate}
             focusSignal={composerFocusSignal}
-            onAdd={async (title, priority, description, plannedDate) => {
-              const project = await state.add({
-                rawTitle: title,
-                priority,
-                description,
-                plannedDate,
-                projectId: targetProjectId || undefined,
-              });
-              if (project.kind === 'inbox') onInboxCreated(project);
+            onAdd={(title, priority, description, plannedDate) => {
+              // handleAdd 同步清空标题；若事务失败，至少通过 alert 告知用户，
+              // 避免出现「标题消失但事项没写入」的静默状态。
+              state
+                .add({
+                  rawTitle: title,
+                  priority,
+                  description,
+                  plannedDate,
+                  projectId: targetProjectId || undefined,
+                })
+                .then((project) => {
+                  if (project.kind === 'inbox') onInboxCreated(project);
+                })
+                .catch((err) => {
+                  alert(`添加失败: ${err instanceof Error ? err.message : '未知错误'}`);
+                });
             }}
           />
         </section>
