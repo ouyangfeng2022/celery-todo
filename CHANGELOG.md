@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+## [v2.19.4] - 2026-08-12
+### Added
+- add permanent delete option to project context menu
+- coalesce data-change reloads to cut IPC frequency
+
+### Fixed
+- surface create/rename/reorder failures via safeRun
+- surface project delete failures and complete wiring
+- include archived projects in history filter dropdown
+- surface store action errors via alert
+- assign inbox sort_order on server to avoid duplicates
+
 ## [v2.19.3] - 2026-08-11
 ### Added
 - add date-grouped card view
@@ -462,3 +474,5 @@
 [v2.19.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.2
 
 [v2.19.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3
+
+[v2.19.4]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.4
