@@ -54,6 +54,8 @@ interface TodoListProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
+  /** 点击标题/编辑按钮 → 打开详情浮窗 */
+  onOpenDetail: (id: string) => void;
   onReorder: (sourceId: string, targetId: string) => Promise<void>;
   /** 切换排序方式（拖拽时用于自动切到「手动排序」） */
   onSortChange: (sort: SortType) => void;
@@ -72,6 +74,7 @@ interface SortableTodoItemProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
+  onOpenDetail: (id: string) => void;
   /** 虚拟列表中该行相对于占位容器的偏移。 */
   virtualStart?: number;
   /** 动态测量可变高度的 Markdown / 编辑态行。 */
@@ -92,6 +95,7 @@ const SortableTodoItem = memo(
       onEdit,
       onDelete,
       onToggleSelect,
+      onOpenDetail,
       virtualStart,
       measureElement,
       virtualIndex,
@@ -147,6 +151,7 @@ const SortableTodoItem = memo(
           onEdit={onEdit}
           onDelete={onDelete}
           onToggleSelect={onToggleSelect}
+          onOpenDetail={onOpenDetail}
           dragHandleProps={
             { ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>
           }
@@ -167,6 +172,7 @@ function TodoListComponent({
   onEdit,
   onDelete,
   onToggleSelect,
+  onOpenDetail,
   onReorder,
   onSortChange,
   onSnapshotOrder,
@@ -336,6 +342,7 @@ function TodoListComponent({
       onEdit={onEdit}
       onDelete={onDelete}
       onToggleSelect={onToggleSelect}
+      onOpenDetail={onOpenDetail}
     />
   ));
 
@@ -358,6 +365,7 @@ function TodoListComponent({
             onEdit={onEdit}
             onDelete={onDelete}
             onToggleSelect={onToggleSelect}
+            onOpenDetail={onOpenDetail}
             virtualStart={virtualItem.start - scrollMargin}
             virtualIndex={virtualItem.index}
             measureElement={virtualizer.measureElement}

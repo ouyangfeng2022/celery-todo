@@ -5,6 +5,7 @@ import {
   selectTimeBucketTodos,
   TIME_BUCKET_LABELS,
 } from '../../store/useTimeViewStore';
+import { useTodoStore } from '../../store/useTodoStore';
 import {
   addLocalDays,
   defaultPlannedDateForBucket,
@@ -30,6 +31,8 @@ const FILTERS: Array<{ value: FilterType; label: string }> = [
 
 export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewProps) {
   const state = useTimeViewStore();
+  // 时间视图也允许打开详情浮窗：直接订阅 store action，无需提升到 App
+  const openDetail = useTodoStore((s) => s.openDetail);
   const todos = useMemo(() => selectTimeBucketTodos(state), [state]);
   const [targetProjectId, setTargetProjectId] = useState('');
   const weekDates = useMemo(() => getCurrentWeekDates(), []);
@@ -130,6 +133,7 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
           onEdit={(id, updates) => safeRun('更新事项', () => state.update(id, updates))}
           onDelete={(id) => safeRun('归档事项', () => state.archive(id))}
           onToggleSelect={() => undefined}
+          onOpenDetail={openDetail}
         />
       </div>
     );

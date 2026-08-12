@@ -65,7 +65,7 @@ test('Enter 提交后输入框清空', async () => {
   await expect(input).toHaveValue('');
 });
 
-test('按需展开描述并在创建时渲染 Markdown', async () => {
+test('创建时带描述，列表保持简洁；在详情浮窗预览 Markdown', async () => {
   const titleInput = win.getByLabel('新事项标题');
 
   // 默认保持单行简洁，不渲染描述输入区
@@ -78,10 +78,17 @@ test('按需展开描述并在创建时渲染 Markdown', async () => {
   await descriptionInput.fill('**重要** 内容');
   await win.keyboard.press('Control+Enter');
 
+  // 描述已落库，但列表/卡片默认不显示任何描述文本
   const row = todoRow(win, '创建时带描述');
-  await expect(row.getByRole('button', { name: '**重要** 内容' })).toBeVisible();
-  await row.getByRole('button', { name: '**重要** 内容' }).click();
+  await expect(row.getByText('**重要** 内容')).toHaveCount(0);
+
+  // 点击标题打开详情浮窗，切到预览 tab 渲染 Markdown
+  await win.getByText('创建时带描述', { exact: true }).click();
+  await win.getByRole('button', { name: '预览' }).click();
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
+
+  // Esc 关闭浮窗，新建输入框已清空回到初始态
+  await win.keyboard.press('Escape');
   await expect(titleInput).toHaveValue('');
   await expect(win.getByLabel('新事项描述')).toHaveCount(0);
 });
@@ -155,57 +162,58 @@ test('全部完成后显示「全部搞定」，点击对号归档回到空状�
   await expect(win.getByRole('heading', { name: '全部搞定' })).toHaveCount(0);
 });
 
-test('双击标题进入编辑，修改后保存生效', async () => {
+test('点击标题打开详情浮窗，编辑标题后关闭自动保存', async () => {
   await addTodo(win, '原标题');
-  // 双击标题进入编辑
-  await win.getByText('原标题', { exact: true }).dblclick();
+  // 单击标题打开详情浮窗
+  await win.getByText('原标题', { exact: true }).click();
 
-  // 编辑态有"事项标题" placeholder 的 textarea
+  // 浮窗内同样 placeholder 的标题 textarea
   const titleEditor = win.getByPlaceholder('事项标题');
   await expect(titleEditor).toBeVisible();
   await titleEditor.fill('新标题');
-  // Ctrl+Enter 保存
-  await win.keyboard.press('Control+Enter');
+
+  // Esc 关闭浮窗 → flush 草稿到 store
+  await win.keyboard.press('Escape');
 
   await expect(win.getByText('新标题', { exact: true })).toBeVisible();
   await expect(win.getByText('原标题', { exact: true })).toHaveCount(0);
 });
 
-test('编辑时 Esc 取消，保留原值', async () => {
-  await addTodo(win, '保留原文');
-  await win.getByText('保留原文', { exact: true }).dblclick();
+test('浮窗内 Esc 关闭时不丢失已输入的标题', async () => {
+  // 新交互下 Esc 是「关闭 + 强制 flush」，不再是「取消」：覆盖关闭路径不丢输入。
+  await addTodo(win, '原标题');
+  await win.getByText('原标题', { exact: true }).click();
   const titleEditor = win.getByPlaceholder('事项标题');
-  // dblclick 只在事件派发时返回，不等 React 提交 isEditing=true 的渲染；慢机器上
-  // fill 立即针对未挂载的 textarea 会空轮询 30s 超时。先等编辑态挂载（同 :130）。
   await expect(titleEditor).toBeVisible();
-  await titleEditor.fill('被取消的修改');
+  await titleEditor.fill('新标题');
   await win.keyboard.press('Escape');
 
-  await expect(win.getByText('保留原文', { exact: true })).toBeVisible();
-  await expect(win.getByText('被取消的修改')).toHaveCount(0);
+  await expect(win.getByText('新标题', { exact: true })).toBeVisible();
 });
 
-test('编辑态点"保存"按钮也能保存', async () => {
-  await addTodo(win, '点按钮保存');
-  await win.getByText('点按钮保存', { exact: true }).dblclick();
+test('点浮窗右上 X 按钮关闭同样保存编辑', async () => {
+  await addTodo(win, '原标题');
+  await win.getByText('原标题', { exact: true }).click();
   const titleEditor = win.getByPlaceholder('事项标题');
   await expect(titleEditor).toBeVisible();
   await titleEditor.fill('已保存');
-  // 点编辑区右下角"保存"按钮
-  await win.getByRole('button', { name: '保存', exact: true }).click();
+  // 点浮窗右上角 X 关闭按钮
+  await win.getByRole('button', { name: '关闭' }).click();
   await expect(win.getByText('已保存', { exact: true })).toBeVisible();
 });
 
-test('编辑态可填写描述，渲染 Markdown', async () => {
+test('浮窗内编辑描述，切到预览 tab 渲染 Markdown', async () => {
   await addTodo(win, '带描述的任务');
-  await win.getByText('带描述的任务', { exact: true }).dblclick();
-  await win.getByLabel('事项描述').fill('**重要** 内容');
-  await win.keyboard.press('Control+Enter');
+  await win.getByText('带描述的任务', { exact: true }).click();
 
-  // 默认只显示纯文本摘要；点击后再按需加载 Markdown。
-  const row = todoRow(win, '带描述的任务');
-  await row.getByRole('button', { name: '**重要** 内容' }).click();
+  // 浮窗描述 textarea 默认在「编辑」tab
+  await win.getByLabel('事项描述').fill('**重要** 内容');
+  // 切到「预览」tab 才懒加载 Markdown 渲染器
+  await win.getByRole('button', { name: '预览' }).click();
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
+
+  // 关闭浮窗
+  await win.keyboard.press('Escape');
 });
 
 test('归档按钮把 todo 归档到历史记录（从列表消失）', async () => {

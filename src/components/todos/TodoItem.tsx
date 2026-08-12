@@ -1,23 +1,18 @@
 /**
  * @file TodoItem - 单个事项组件
- * @description 支持完成切换、编辑、归档、优先级、Markdown 渲染
+ * @description 支持完成切换、归档、优先级、点击标题打开详情浮窗。
+ *              描述与编辑能力已迁移到 TodoDetailDialog；本组件仅负责列表/卡片
+ *              内的紧凑展示（标题 + 元信息标签 + 动作栏）。
  */
 
-import { memo, useState, useCallback, useRef, useEffect, forwardRef, lazy, Suspense } from 'react';
+import { memo, useState, useCallback, useEffect, useRef, forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon, CalendarIcon } from '../common/Icons';
-
-// Markdown/GFM/KaTeX 仅在确有描述的事项上加载。加载期间保留纯文本，
-// 避免首次滚动大量描述时阻塞交互。
-const MarkdownContent = lazy(() =>
-  import('../common/MarkdownContent').then((module) => ({ default: module.MarkdownContent })),
-);
 
 export interface TodoItemProps {
   todo: Todo;
@@ -28,6 +23,8 @@ export interface TodoItemProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
+  /** 点击标题/编辑按钮 → 打开详情浮窗（在 App 顶层渲染） */
+  onOpenDetail: (id: string) => void;
   /** 拖拽手柄属性（由 dnd-kit 注入） */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   selectable?: boolean;
@@ -156,6 +153,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     onEdit,
     onDelete,
     onToggleSelect,
+    onOpenDetail,
     dragHandleProps,
     selectable = true,
     view = 'list',
@@ -163,35 +161,10 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   ref,
 ) {
   const isCard = view === 'card';
-  // 平台相关快捷键提示：Mac 显示 ⌘，Win/Linux 显示 Ctrl
-  const isMac = window.electronAPI?.platform === 'darwin';
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(todo.title);
-  const [editDescription, setEditDescription] = useState(todo.description ?? '');
-  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [isSearchHighlighted, setIsSearchHighlighted] = useState(false);
   // 时间格式为全局设置：任一事项上点击都会切换全应用的相对/精确计时
   const timeFormat = useSettingsStore((s) => s.timeFormat);
   const setTimeFormat = useSettingsStore((s) => s.setTimeFormat);
-  const editInputRef = useRef<HTMLTextAreaElement>(null);
-  const editDescriptionRef = useRef<HTMLTextAreaElement>(null);
-
-  // 进入编辑模式时聚焦标题
-  useEffect(() => {
-    if (isEditing && editInputRef.current) {
-      editInputRef.current.focus();
-      editInputRef.current.select();
-    }
-  }, [isEditing]);
-
-  // 编辑态：标题/描述按内容自适应高度。进入编辑时把已保存内容一次性撑到真实高度，
-  // 之后随输入更新。超过最大高度后由 textarea 自身滚动承接（见下面 textarea 的 maxHeight）。
-  useEffect(() => {
-    if (isEditing) {
-      autosizeTextarea(editInputRef.current);
-      autosizeTextarea(editDescriptionRef.current);
-    }
-  }, [isEditing, editTitle, editDescription]);
 
   useEffect(() => {
     if (!focusSignal) return;
@@ -200,44 +173,17 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     return () => window.clearTimeout(timer);
   }, [focusSignal]);
 
-  const handleStartEdit = useCallback(() => {
-    setEditTitle(todo.title);
-    setEditDescription(todo.description ?? '');
-    setIsEditing(true);
-  }, [todo.title, todo.description]);
+  // 标题区单击/键盘触发：打开详情浮窗
+  const handleOpenDetail = useCallback(() => onOpenDetail(todo.id), [onOpenDetail, todo.id]);
 
-  const handleSaveEdit = useCallback(() => {
-    const trimmed = editTitle.trim();
-    if (trimmed.length === 0) {
-      setIsEditing(false);
-      return;
-    }
-    onEdit(todo.id, {
-      title: trimmed,
-      description: editDescription.trim() || undefined,
-    });
-    setIsEditing(false);
-  }, [editTitle, editDescription, todo.id, onEdit]);
-
-  const handleCancelEdit = useCallback(() => {
-    setIsEditing(false);
-    setEditTitle(todo.title);
-    setEditDescription(todo.description ?? '');
-  }, [todo.title, todo.description]);
-
-  // 不阻止原生右键菜单，让浏览器处理复制等操作
-
-  const handleKeyDown = useCallback(
+  const handleTitleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        handleSaveEdit();
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        handleCancelEdit();
+        handleOpenDetail();
       }
     },
-    [handleSaveEdit, handleCancelEdit],
+    [handleOpenDetail],
   );
 
   return (
@@ -277,7 +223,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         className={cn(
           'flex-shrink-0 w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center transition-all',
           isCard && 'absolute right-4 top-4',
-          isCard && isEditing && 'hidden',
           todo.completed
             ? 'bg-[var(--accent)] border-[var(--accent)]'
             : 'border-[var(--border-strong)] hover:border-[var(--accent)]',
@@ -288,263 +233,181 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
       </button>
 
       {/* 内容区域 */}
-      <div className={cn('min-w-0 flex-1', isCard && !isEditing && 'pr-7')}>
-        {isEditing ? (
-          <div className="space-y-2" onKeyDown={handleKeyDown}>
-            <textarea
-              ref={editInputRef}
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="claude-input resize-none overflow-y-auto leading-6"
-              style={{ minHeight: '1.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
-              rows={1}
-              placeholder="事项标题"
-            />
-            <textarea
-              ref={editDescriptionRef}
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-              aria-label="事项描述"
-              className="claude-input resize-none overflow-y-auto text-sm leading-6"
-              style={{ minHeight: '4.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
-              rows={3}
-              placeholder="描述"
-            />
-            <div
-              className="flex items-center gap-2 text-xs"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              <kbd
-                className="px-1.5 py-0.5 rounded border"
-                style={{ borderColor: 'var(--border-strong)' }}
-              >
-                {isMac ? '⌘+Enter' : 'Ctrl+Enter'}
-              </kbd>
-              <span>保存</span>
-              <kbd
-                className="px-1.5 py-0.5 rounded border"
-                style={{ borderColor: 'var(--border-strong)' }}
-              >
-                Esc
-              </kbd>
-              <span>取消</span>
-              <button className="btn-ghost ml-auto" onClick={handleCancelEdit}>
-                取消
-              </button>
-              <button className="btn-primary" onClick={handleSaveEdit}>
-                保存
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* 标题 */}
-            <div
-              onDoubleClick={handleStartEdit}
-              className={cn(
-                'text-[15px] leading-snug cursor-text break-words text-pretty transition-colors',
-                todo.completed && 'line-through',
-              )}
-              style={{
-                color: todo.completed ? 'var(--text-tertiary)' : 'var(--text-primary)',
-                fontFamily: 'var(--font-heading)',
-                fontWeight: 500,
-              }}
-            >
-              {todo.title}
-            </div>
+      <div className={cn('min-w-0 flex-1', isCard && 'pr-7')}>
+        {/* 标题：点击/Enter 打开详情浮窗 */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={handleOpenDetail}
+          onKeyDown={handleTitleKeyDown}
+          className={cn(
+            'text-[15px] leading-snug cursor-pointer break-words text-pretty transition-colors',
+            'hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] rounded',
+            todo.completed && 'line-through',
+          )}
+          style={{
+            color: todo.completed ? 'var(--text-tertiary)' : 'var(--text-primary)',
+            fontFamily: 'var(--font-heading)',
+            fontWeight: 500,
+          }}
+          title="点击查看详情"
+        >
+          {todo.title}
+        </div>
 
-            {/* 描述默认只显示纯文本摘要；用户展开后才加载 Markdown 渲染器。 */}
-            {todo.description && (
-              <div
-                className="markdown-body mt-1 text-[13px]"
-                style={{ color: 'var(--text-secondary)' }}
-                onDoubleClick={handleStartEdit}
-              >
-                {descriptionExpanded ? (
-                  <>
-                    <Suspense fallback={<span>{todo.description}</span>}>
-                      <MarkdownContent content={todo.description} />
-                    </Suspense>
-                    <button
-                      type="button"
-                      className="mt-1 text-xs hover:underline"
-                      style={{ color: 'var(--text-tertiary)' }}
-                      onClick={() => setDescriptionExpanded(false)}
-                    >
-                      收起描述
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="block max-w-full truncate text-left hover:underline"
-                    title={todo.description}
-                    onClick={() => setDescriptionExpanded(true)}
-                  >
-                    {todo.description.replace(/\s+/g, ' ').trim()}
-                  </button>
+        {/* 元信息标签 */}
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+          {/* 优先级 - 点击“高/中/低”标签展开菜单切换；左侧 2px 色条 + 加粗字 */}
+          <PriorityMenu
+            value={todo.priority}
+            onChange={(p) => onEdit(todo.id, { priority: p })}
+            trigger={
+              <span
+                className={cn(
+                  'claude-tag font-semibold cursor-pointer transition-opacity',
+                  PRIORITY_COLORS[todo.priority],
+                  'hover:opacity-80',
                 )}
-              </div>
-            )}
+                style={{ borderLeft: `2px solid ${PRIORITY_SOLID[todo.priority]}` }}
+              >
+                {PRIORITY_LABELS[todo.priority]}
+              </span>
+            }
+          />
 
-            {/* 元信息标签 */}
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              {/* 优先级 - 点击“高/中/低”标签展开菜单切换；左侧 2px 色条 + 加粗字 */}
-              <PriorityMenu
-                value={todo.priority}
-                onChange={(p) => onEdit(todo.id, { priority: p })}
-                trigger={
-                  <span
-                    className={cn(
-                      'claude-tag font-semibold cursor-pointer transition-opacity',
-                      PRIORITY_COLORS[todo.priority],
-                      'hover:opacity-80',
-                    )}
-                    style={{ borderLeft: `2px solid ${PRIORITY_SOLID[todo.priority]}` }}
-                  >
-                    {PRIORITY_LABELS[todo.priority]}
-                  </span>
+          {/* 置顶标识 */}
+          {todo.pinned && (
+            <span
+              className="claude-tag inline-flex items-center gap-0.5"
+              style={{ color: 'var(--accent)' }}
+            >
+              <PinIcon size={11} />
+              置顶
+            </span>
+          )}
+
+          {!isCard && todo.plannedDate && (
+            <span
+              className="claude-tag inline-flex items-center gap-1"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              <CalendarIcon size={11} />
+              {todo.plannedDate}
+            </span>
+          )}
+
+          {/* 创建时间：点击在 模糊计时 ↔ 精确计时（精确到分钟）间切换（全局生效） */}
+          {!isCard && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
                 }
-              />
+              }}
+              className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--text-tertiary)' }}
+              title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
+            >
+              {timeFormat === 'exact'
+                ? `${formatDateTime(todo.createdAt)} 创建`
+                : `${formatRelativeTime(todo.createdAt)}创建`}
+            </span>
+          )}
 
-              {/* 置顶标识 */}
-              {todo.pinned && (
-                <span
-                  className="claude-tag inline-flex items-center gap-0.5"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  <PinIcon size={11} />
-                  置顶
-                </span>
-              )}
-
-              {!isCard && todo.plannedDate && (
-                <span
-                  className="claude-tag inline-flex items-center gap-1"
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  <CalendarIcon size={11} />
-                  {todo.plannedDate}
-                </span>
-              )}
-
-              {/* 创建时间：点击在 模糊计时 ↔ 精确计时（精确到分钟）间切换（全局生效） */}
-              {!isCard && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
-                    }
-                  }}
-                  className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
-                  style={{ color: 'var(--text-tertiary)' }}
-                  title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
-                >
-                  {timeFormat === 'exact'
-                    ? `${formatDateTime(todo.createdAt)} 创建`
-                    : `${formatRelativeTime(todo.createdAt)}创建`}
-                </span>
-              )}
-
-              {/* 完成时间：与创建时间共用全局 timeFormat 设置 */}
-              {!isCard && todo.completedAt && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
-                    }
-                  }}
-                  className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
-                  style={{ color: 'var(--success)' }}
-                  title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
-                >
-                  {timeFormat === 'exact'
-                    ? `${formatDateTime(todo.completedAt)} 完成`
-                    : `${formatRelativeTime(todo.completedAt)}完成`}
-                </span>
-              )}
-            </div>
-          </>
-        )}
+          {/* 完成时间：与创建时间共用全局 timeFormat 设置 */}
+          {!isCard && todo.completedAt && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact');
+                }
+              }}
+              className="text-[11px] cursor-pointer select-none hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--success)' }}
+              title={timeFormat === 'exact' ? '点击切换为相对时间' : '点击切换为精确时间'}
+            >
+              {timeFormat === 'exact'
+                ? `${formatDateTime(todo.completedAt)} 完成`
+                : `${formatRelativeTime(todo.completedAt)}完成`}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 统一动作栏：所有图标统一 28×28 命中区，垂直居中，固定宽度避免悬浮抖动 */}
-      {!isEditing && (
-        <div
-          className={cn(
-            'flex-shrink-0 flex items-center gap-0.5 rounded-md transition-opacity',
-            isCard
-              ? 'mt-auto w-full justify-end border-t pt-2 opacity-70 group-hover:opacity-100 focus-within:opacity-100'
-              : isSelected
-                ? 'opacity-100'
-                : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
-          )}
-          style={isCard ? { borderColor: 'var(--border-color)' } : undefined}
+      <div
+        className={cn(
+          'flex-shrink-0 flex items-center gap-0.5 rounded-md transition-opacity',
+          isCard
+            ? 'mt-auto w-full justify-end border-t pt-2 opacity-70 group-hover:opacity-100 focus-within:opacity-100'
+            : isSelected
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
+        )}
+        style={isCard ? { borderColor: 'var(--border-color)' } : undefined}
+      >
+        <DockButton
+          label={todo.pinned ? '取消置顶' : '置顶'}
+          active={todo.pinned}
+          onClick={() => onEdit(todo.id, { pinned: !todo.pinned })}
         >
-          <DockButton
-            label={todo.pinned ? '取消置顶' : '置顶'}
-            active={todo.pinned}
-            onClick={() => onEdit(todo.id, { pinned: !todo.pinned })}
-          >
-            <PinIcon size={15} />
-          </DockButton>
-          <label
-            className="relative flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)]"
-            title="安排日期"
-          >
-            <CalendarIcon size={15} />
-            <input
-              type="date"
-              value={todo.plannedDate ?? ''}
-              onChange={(event) =>
-                onEdit(todo.id, { plannedDate: event.target.value || undefined })
-              }
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              aria-label="安排日期"
+          <PinIcon size={15} />
+        </DockButton>
+        <label
+          className="relative flex h-7 w-7 flex-shrink-0 cursor-pointer items-center justify-center rounded-md text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-hover)]"
+          title="安排日期"
+        >
+          <CalendarIcon size={15} />
+          <input
+            type="date"
+            value={todo.plannedDate ?? ''}
+            onChange={(event) =>
+              onEdit(todo.id, { plannedDate: event.target.value || undefined })
+            }
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            aria-label="安排日期"
+          />
+        </label>
+        <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
+        <DockButton label="编辑" onClick={handleOpenDetail}>
+          <EditIcon size={15} />
+        </DockButton>
+        <DockButton label="归档" danger onClick={() => onDelete(todo.id)}>
+          <ArchiveIcon size={15} />
+        </DockButton>
+        {/* 批量选择：与其它图标同高，但用复选框语义 */}
+        {selectable && (
+          <>
+            <span
+              className="mx-0.5 h-4 w-px"
+              style={{ backgroundColor: 'var(--border-color)' }}
             />
-          </label>
-          <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
-          <DockButton label="编辑" onClick={handleStartEdit}>
-            <EditIcon size={15} />
-          </DockButton>
-          <DockButton label="归档" danger onClick={() => onDelete(todo.id)}>
-            <ArchiveIcon size={15} />
-          </DockButton>
-          {/* 批量选择：与其它图标同高，但用复选框语义 */}
-          {selectable && (
-            <>
-              <span
-                className="mx-0.5 h-4 w-px"
-                style={{ backgroundColor: 'var(--border-color)' }}
+            <label
+              className={cn(
+                'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
+                'hover:bg-[var(--bg-hover)]',
+              )}
+              title="选择事项"
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={() => onToggleSelect(todo.id)}
+                className="w-[14px] h-[14px] cursor-pointer accent-[var(--accent)]"
+                aria-label="选择事项"
               />
-              <label
-                className={cn(
-                  'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',
-                  'hover:bg-[var(--bg-hover)]',
-                )}
-                title="选择事项"
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => onToggleSelect(todo.id)}
-                  className="w-[14px] h-[14px] cursor-pointer accent-[var(--accent)]"
-                  aria-label="选择事项"
-                />
-              </label>
-            </>
-          )}
-        </div>
-      )}
+            </label>
+          </>
+        )}
+      </div>
     </div>
   );
 });

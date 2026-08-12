@@ -23,6 +23,8 @@ interface TodoState {
   loading: boolean;
   /** 选中的 Todo ID 集合（批量操作） */
   selectedIds: Set<string>;
+  /** 当前打开详情浮窗的 todo id；为 null 时浮窗关闭 */
+  detailTodoId: string | null;
 
   // === 加载 ===
   /** 加载指定项目的数据 */
@@ -47,6 +49,14 @@ interface TodoState {
   deleteTodo: (id: string) => Promise<void>;
   /** 切换完成状态 */
   toggleTodo: (id: string) => Promise<void>;
+  /** 把 todo 移动到指定项目（updateTodo 因 Omit<projectId> 无法胜任） */
+  moveTodo: (id: string, projectId: string) => Promise<void>;
+
+  // === 详情浮窗 ===
+  /** 打开指定 todo 的详情浮窗 */
+  openDetail: (id: string) => void;
+  /** 关闭详情浮窗 */
+  closeDetail: () => void;
 
   // === 批量操作 ===
   /** 切换选中状态 */
@@ -93,6 +103,7 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   currentProjectId: '',
   loading: false,
   selectedIds: new Set<string>(),
+  detailTodoId: null,
 
   loadProject: async (projectId: string) => {
     const [todos, deletedTodos] = await Promise.all([
@@ -207,6 +218,23 @@ export const useTodoStore = create<TodoState>((set, get) => ({
     await data.updateTodo(updatedTodo);
     set({ todos: todos.map((t) => (t.id === id ? updatedTodo : t)) });
   },
+
+  moveTodo: async (id, projectId) => {
+    const { todos, currentProjectId } = get();
+    const todo = todos.find((t) => t.id === id);
+    if (!todo || todo.projectId === projectId) return;
+
+    await data.moveTodoToProject(id, projectId);
+    // 移到非当前项目：从当前列表移除（在新项目 loadProject 时才会出现），
+    // 并关闭详情浮窗 —— 继续编辑已不属于当前视图的 todo 会让用户困惑。
+    set({
+      todos: todos.filter((t) => t.id !== id),
+      detailTodoId: currentProjectId === projectId ? get().detailTodoId : null,
+    });
+  },
+
+  openDetail: (id) => set({ detailTodoId: id }),
+  closeDetail: () => set({ detailTodoId: null }),
 
   toggleSelected: (id) => {
     const next = new Set(get().selectedIds);

@@ -32,6 +32,7 @@ import { StatsPanel } from './components/stats/StatsPanel';
 import { TodoList } from './components/todos/TodoList';
 import { TodoBoard } from './components/todos/TodoBoard';
 import { BatchToolbar } from './components/todos/BatchToolbar';
+import { TodoDetailDialog } from './components/todos/TodoDetailDialog';
 import type { SettingsSectionId } from './components/settings/SettingsPanel';
 import type { ExportRequest, ExportScope } from './components/export/ExportDialog';
 import { NoProjectsState } from './components/common/NoProjectsState';
@@ -192,6 +193,9 @@ function App() {
     permanentlyDelete,
     emptyArchive,
   } = useTodos();
+  // 详情浮窗的开关直接订阅 store：useTodos 不暴露 openDetail，且浮窗本身会自取
+  // detailTodoId，App 这里只需要把 openDetail 透传给列表/卡片视图。
+  const openDetail = useTodoStore((state) => state.openDetail);
   const timeBucket = useTimeViewStore((state) => state.bucket);
   const timeTodos = useTimeViewStore((state) => state.allTodos);
   const setTimeBucket = useTimeViewStore((state) => state.setBucket);
@@ -1181,6 +1185,7 @@ function App() {
                         showArchiveNotice([id]);
                       }}
                       onToggleSelect={toggleSelected}
+                      onOpenDetail={openDetail}
                     />
                   ) : (
                     <TodoList
@@ -1201,6 +1206,7 @@ function App() {
                         showArchiveNotice([id]);
                       }}
                       onToggleSelect={toggleSelected}
+                      onOpenDetail={openDetail}
                       onReorder={reorderTodos}
                       onSortChange={changeSort}
                       onSnapshotOrder={snapshotOrder}
@@ -1226,6 +1232,9 @@ function App() {
         }}
         onBatchSetPriority={(p: Priority) => batchAction('setPriority', p)}
       />
+
+      {/* 事项详情浮窗：点击 todo 标题/编辑按钮触发，承担完整编辑能力 */}
+      <TodoDetailDialog />
 
       <ArchiveNotice
         variant="archived"

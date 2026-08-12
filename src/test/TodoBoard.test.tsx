@@ -32,6 +32,7 @@ describe('TodoBoard', () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleSelect={vi.fn()}
+        onOpenDetail={vi.fn()}
       />,
     );
 
@@ -53,6 +54,7 @@ describe('TodoBoard', () => {
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleSelect={onToggleSelect}
+        onOpenDetail={vi.fn()}
       />,
     );
 
