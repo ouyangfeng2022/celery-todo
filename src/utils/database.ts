@@ -1025,7 +1025,15 @@ export function insertTodosIntoInbox(todos: import('../types').Todo[]): import('
   let inbox: import('../types').Project | undefined;
   runTransaction(() => {
     inbox = ensureInboxProject();
-    todos.forEach((todo) => insertTodo({ ...todo, projectId: inbox!.id }));
+    // 收集箱的 sort_order 由数据库权威计算，忽略调用方传入的 order。
+    // 时间视图在「未选项目」分支拿不到收集箱已有事项，连续添加会都从
+    // SORT_RANK_STEP 起，导致 sort_order 冲突。
+    const existing = getTodosByProject(inbox.id);
+    let order = existing.length ? Math.max(...existing.map((item) => item.order)) : 0;
+    todos.forEach((todo) => {
+      order += SORT_RANK_STEP;
+      insertTodo({ ...todo, projectId: inbox!.id, order });
+    });
   });
   return inbox!;
 }

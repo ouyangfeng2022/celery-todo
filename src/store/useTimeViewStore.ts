@@ -61,7 +61,7 @@ export const useTimeViewStore = create<TimeViewState>((set, get) => ({
       ? get().allTodos.filter((todo) => todo.projectId === selectedProject.id)
       : [];
     let order = existing.length ? Math.max(...existing.map((todo) => todo.order)) : 0;
-    let todos: Todo[] = titles.map((title, index) => ({
+    const todos: Todo[] = titles.map((title, index) => ({
       id: generateId(),
       projectId: selectedProject?.id ?? '',
       title,
@@ -74,11 +74,17 @@ export const useTimeViewStore = create<TimeViewState>((set, get) => ({
       order: (order += 1024),
       pinned: false,
     }));
-    const project = selectedProject ?? (await data.insertTodosIntoInbox(todos));
-    if (selectedProject) await data.insertTodos(todos);
-    else todos = todos.map((todo) => ({ ...todo, projectId: project.id }));
-    set({ allTodos: [...get().allTodos, ...todos] });
-    return project;
+    if (selectedProject) {
+      // 普通项目：本地 order 基于该项目快照的 max 计算，与 useTodoStore.addTodo 一致。
+      await data.insertTodos(todos);
+      set({ allTodos: [...get().allTodos, ...todos] });
+      return selectedProject;
+    }
+    // 收集箱：sort_order 由数据库权威计算（见 insertTodosIntoInbox），
+    // 本地推测的 order 不可信，丢弃并用数据库快照重建 allTodos。
+    const inbox = await data.insertTodosIntoInbox(todos);
+    await get().load();
+    return inbox;
   },
 
   update: async (id, updates) => {

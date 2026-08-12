@@ -583,7 +583,19 @@ export function commandData(name: string, params: Record<string, unknown> = {}):
       let inbox: Row | undefined;
       db.transaction(() => {
         inbox = ensureInboxProjectRow(db);
-        todos.forEach((todo) => insertTodoRow(db, { ...todo, projectId: inbox!.id }));
+        // 收集箱的 sort_order 由主进程权威计算，忽略 renderer 传入的值。
+        // 时间视图在「未选项目」分支无法获知收集箱已存在事项的 max order，
+        // 若沿用 todo.order 会与已有行冲突（连续添加都从 1024 起）。
+        let order = Number(
+          db
+            .prepare('SELECT COALESCE(MAX(sort_order), 0) FROM todos WHERE project_id = ?')
+            .pluck()
+            .get(inbox.id),
+        );
+        todos.forEach((todo) => {
+          order += RANK_STEP;
+          insertTodoRow(db, { ...todo, projectId: inbox!.id, order });
+        });
       })();
       changed({
         projectIds: inbox ? [String(inbox.id)] : [],
