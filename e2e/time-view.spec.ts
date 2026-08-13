@@ -67,19 +67,16 @@ test('本周按七天分组，并可把真实事项直接安排到指定日期',
   await win.getByRole('button', { name: /^本周(?: \d+)?$/ }).click();
   await expect(win.getByRole('heading', { name: '本周', level: 1 })).toBeVisible();
   await expect(win.getByRole('heading', { name: '本周安排', level: 2 })).toBeVisible();
-  await expect(win.getByLabel('选择本周计划日期')).toBeVisible();
   await expect(win.getByRole('heading', { name: '周一', level: 3 })).toBeVisible();
   await expect(win.getByRole('heading', { name: '周日', level: 3 })).toBeVisible();
 
+  // 点击当天的"添加"按钮就地展开输入框，输入后落到对应日期分组
   await win.getByRole('button', { name: '在周日添加事项' }).click();
-  const sundayDate = await win
-    .getByRole('button', { name: /计划到周日/ })
-    .getAttribute('aria-label');
-  await win.getByLabel('新事项标题').fill('准备下周资料');
-  await win.getByLabel('新事项标题').press('Enter');
-
   const sundayGroup = win.getByRole('region', { name: '周日' });
+  await expect(sundayGroup.getByLabel('新事项标题')).toBeVisible();
+  await sundayGroup.getByLabel('新事项标题').fill('准备下周资料');
+  await sundayGroup.getByLabel('新事项标题').press('Enter');
+
   await expect(sundayGroup.getByText('准备下周资料', { exact: true })).toBeVisible();
-  expect(sundayDate).toMatch(/计划到周日 \d+月\d+日/);
   await expect(win.getByText('周一待办', { exact: true })).toHaveCount(0);
 });
