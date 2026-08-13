@@ -13,7 +13,6 @@
 import { memo, useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTodoStore } from '../../store/useTodoStore';
-import { useProjectStore } from '../../store/useProjectStore';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
 import { cn } from '../../utils/helpers';
@@ -32,14 +31,12 @@ const SAVE_DEBOUNCE_MS = 600;
 function TodoDetailDialogComponent() {
   // 直接从 todos 数组派生当前 todo；detailTodoId 为 null 或 id 失效时返回 null
   const todo = useTodoStore((s) =>
-    s.detailTodoId ? s.todos.find((t) => t.id === s.detailTodoId) ?? null : null,
+    s.detailTodoId ? (s.todos.find((t) => t.id === s.detailTodoId) ?? null) : null,
   );
   const updateTodo = useTodoStore((s) => s.updateTodo);
   const toggleTodo = useTodoStore((s) => s.toggleTodo);
   const deleteTodo = useTodoStore((s) => s.deleteTodo);
-  const moveTodo = useTodoStore((s) => s.moveTodo);
   const closeDetail = useTodoStore((s) => s.closeDetail);
-  const projects = useProjectStore((s) => s.projects);
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
@@ -62,7 +59,7 @@ function TodoDetailDialogComponent() {
   // 当前打开的 todo.id；用于在 todo 引用变化（其他字段更新）时跳过草稿重置
   const openedIdRef = useRef<string | null>(null);
 
-  const [descMode, setDescMode] = useState<'edit' | 'preview'>('edit');
+  const [descMode, setDescMode] = useState<'edit' | 'preview'>('preview');
   const [isSaving, setIsSaving] = useState(false);
 
   // 浮窗打开/切换 todo 时：同步草稿、重置 lastSaved、autosize textarea。
@@ -81,7 +78,7 @@ function TodoDetailDialogComponent() {
     titleDraftRef.current = todo.title;
     descDraftRef.current = initialDesc;
     lastSavedRef.current = { title: todo.title, desc: initialDesc };
-    setDescMode('edit');
+    setDescMode('preview');
     setIsSaving(false);
     const raf = requestAnimationFrame(() => {
       autosizeTextarea(titleRef.current);
@@ -190,7 +187,7 @@ function TodoDetailDialogComponent() {
             role="dialog"
             aria-modal="true"
             aria-label="事项详情"
-            className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-claude"
+            className="relative flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl"
             style={{
               backgroundColor: 'var(--bg-tertiary)',
               border: '1px solid var(--border-color)',
@@ -203,13 +200,13 @@ function TodoDetailDialogComponent() {
           >
             {/* 顶部栏：完成切换 / 保存状态 / 关闭 */}
             <div
-              className="flex flex-shrink-0 items-center justify-between gap-2 border-b px-4 py-2.5"
+              className="flex flex-shrink-0 items-center justify-between gap-3 border-b px-5 py-3"
               style={{ borderColor: 'var(--border-color)' }}
             >
               <button
                 type="button"
                 onClick={() => toggleTodo(todo.id)}
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+                className="flex min-h-8 items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-secondary)' }}
               >
                 <span
@@ -226,10 +223,19 @@ function TodoDetailDialogComponent() {
               </button>
 
               <span
-                className="text-[11px] tabular-nums"
-                style={{ color: 'var(--text-tertiary)' }}
+                className="ml-auto flex items-center gap-1.5 text-xs font-medium"
+                style={{ color: 'var(--text-secondary)' }}
                 aria-live="polite"
               >
+                <span
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full transition-colors',
+                    isSaving && 'animate-pulse',
+                  )}
+                  style={{
+                    backgroundColor: isSaving ? 'var(--accent)' : 'var(--text-tertiary)',
+                  }}
+                />
                 {isSaving ? '保存中…' : '已保存'}
               </span>
 
@@ -237,7 +243,7 @@ function TodoDetailDialogComponent() {
                 type="button"
                 onClick={handleClose}
                 aria-label="关闭"
-                className="flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-hover)]"
+                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: 'var(--text-tertiary)' }}
               >
                 <XIcon size={16} />
@@ -245,198 +251,183 @@ function TodoDetailDialogComponent() {
             </div>
 
             {/* 可滚动内容区 */}
-            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-              {/* 标题 */}
-              <textarea
-                ref={titleRef}
-                value={titleDraft}
-                onChange={(e) => handleTitleChange(e.target.value)}
-                placeholder="事项标题"
-                aria-label="事项标题"
-                rows={1}
-                className="w-full resize-none overflow-hidden bg-transparent text-lg font-semibold leading-snug outline-none"
-                style={{
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-heading)',
-                  maxHeight: TEXTAREA_MAX_HEIGHT,
-                }}
-              />
-
-              {/* 描述：编辑 / 预览 tab */}
-              <div>
-                <div className="mb-1.5 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setDescMode('edit')}
-                    className={cn(
-                      'rounded px-2 py-0.5 text-xs transition-colors',
-                      descMode === 'edit'
-                        ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-                        : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
-                    )}
-                  >
-                    编辑
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDescMode('preview')}
-                    className={cn(
-                      'rounded px-2 py-0.5 text-xs transition-colors',
-                      descMode === 'preview'
-                        ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-                        : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
-                    )}
-                  >
-                    预览
-                  </button>
-                  <span className="ml-1 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                    支持 Markdown
-                  </span>
-                </div>
-                {descMode === 'edit' ? (
+            <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+              <div className="mx-auto grid max-w-[50rem] gap-6">
+                {/* 标题 + 元数据工具栏：优先级 / 计划日期 / 置顶 / 归档
+                 * 集中在标题正下方，方便快速操作；不再单独设底部动作栏或属性卡片。 */}
+                <div className="border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
                   <textarea
-                    ref={descRef}
-                    value={descDraft}
-                    onChange={(e) => handleDescChange(e.target.value)}
-                    placeholder="添加描述…"
-                    aria-label="事项描述"
-                    rows={3}
-                    className="claude-input w-full resize-none overflow-y-auto text-sm leading-6"
-                    style={{ minHeight: '4.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
-                  />
-                ) : (
-                  <div
-                    className="markdown-body min-h-[4.5rem] rounded-md px-3 py-2 text-sm"
+                    ref={titleRef}
+                    value={titleDraft}
+                    onChange={(e) => handleTitleChange(e.target.value)}
+                    placeholder="事项标题"
+                    aria-label="事项标题"
+                    rows={1}
+                    className="w-full resize-none overflow-hidden bg-transparent text-2xl font-semibold leading-snug outline-none sm:text-3xl"
                     style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-secondary)',
+                      color: 'var(--text-primary)',
+                      fontFamily: 'var(--font-heading)',
+                      maxHeight: TEXTAREA_MAX_HEIGHT,
                     }}
-                  >
-                    {descDraft.trim() ? (
-                      <Suspense fallback={<span>{descDraft}</span>}>
-                        <MarkdownContent content={descDraft} />
-                      </Suspense>
-                    ) : (
-                      <span style={{ color: 'var(--text-tertiary)' }}>暂无描述</span>
-                    )}
-                  </div>
-                )}
-              </div>
+                  />
 
-              {/* 元信息：优先级 / 计划日期 / 所属项目 */}
-              <div
-                className="flex flex-wrap items-center gap-4 rounded-md border p-3 text-xs"
-                style={{ borderColor: 'var(--border-color)' }}
-              >
-                {/* 优先级 segmented control（与 AddTodoInput 一致的样式） */}
-                <div className="flex items-center gap-2">
-                  <span style={{ color: 'var(--text-tertiary)' }}>优先级</span>
-                  <div
-                    className="flex gap-0.5 rounded-md p-0.5"
-                    style={{ backgroundColor: 'var(--bg-secondary)' }}
-                  >
-                    {(['high', 'medium', 'low'] as Priority[]).map((p) => {
-                      const selected = todo.priority === p;
-                      return (
+                  {/* 元数据工具栏：窄窗自动换行 */}
+                  <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
+                    {/* 优先级分段控件 */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="claude-eyebrow">优先级</span>
+                      <div
+                        className="flex gap-0.5 rounded-md p-0.5"
+                        style={{ backgroundColor: 'var(--bg-secondary)' }}
+                      >
+                        {(['high', 'medium', 'low'] as Priority[]).map((p) => {
+                          const selected = todo.priority === p;
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => updateTodo(todo.id, { priority: p })}
+                              className="rounded px-2 py-0.5 text-xs font-semibold transition-all"
+                              style={{
+                                backgroundColor: selected ? `${PRIORITY_SOLID[p]}1f` : 'transparent',
+                                color: selected ? PRIORITY_SOLID[p] : 'var(--text-tertiary)',
+                                boxShadow: selected
+                                  ? `inset 0 0 0 1px ${PRIORITY_SOLID[p]}40`
+                                  : 'none',
+                              }}
+                            >
+                              {PRIORITY_LABELS[p]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 计划日期 */}
+                    <label
+                      className="flex items-center gap-1.5 text-xs"
+                      style={{ color: 'var(--text-tertiary)' }}
+                    >
+                      <CalendarIcon size={13} />
+                      <input
+                        type="date"
+                        value={todo.plannedDate ?? ''}
+                        onChange={(e) =>
+                          updateTodo(todo.id, { plannedDate: e.target.value || undefined })
+                        }
+                        className="min-w-0 rounded-md border-none px-1.5 py-0.5 text-xs"
+                        style={{
+                          backgroundColor: 'var(--bg-secondary)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      />
+                      {todo.plannedDate && (
                         <button
-                          key={p}
                           type="button"
-                          onClick={() => updateTodo(todo.id, { priority: p })}
-                          className="rounded px-2 py-0.5 text-xs font-semibold transition-all"
-                          style={{
-                            backgroundColor: selected ? `${PRIORITY_SOLID[p]}1f` : 'transparent',
-                            color: selected ? PRIORITY_SOLID[p] : 'var(--text-tertiary)',
-                            boxShadow: selected ? `inset 0 0 0 1px ${PRIORITY_SOLID[p]}40` : 'none',
-                          }}
+                          onClick={() => updateTodo(todo.id, { plannedDate: undefined })}
+                          className="rounded px-1 py-0.5 text-xs transition-colors hover:bg-[var(--bg-hover)]"
+                          aria-label="清除计划日期"
                         >
-                          {PRIORITY_LABELS[p]}
+                          ×
                         </button>
-                      );
-                    })}
+                      )}
+                    </label>
+
+                    {/* 右侧动作：置顶 / 归档 */}
+                    <div className="ml-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => updateTodo(todo.id, { pinned: !todo.pinned })}
+                        className={cn(
+                          'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]',
+                          todo.pinned ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
+                        )}
+                      >
+                        <PinIcon size={13} />
+                        {todo.pinned ? '已置顶' : '置顶'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleArchive}
+                        className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <ArchiveIcon size={13} />
+                        归档
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* 计划日期 */}
-                <label
-                  className="flex items-center gap-2"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
-                  <CalendarIcon size={13} />
-                  <span>计划日期</span>
-                  <input
-                    type="date"
-                    value={todo.plannedDate ?? ''}
-                    onChange={(e) =>
-                      updateTodo(todo.id, { plannedDate: e.target.value || undefined })
-                    }
-                    className="rounded-md border-none px-2 py-1 text-xs"
-                    style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  />
-                  {todo.plannedDate && (
+                {/* 描述：编辑是工作区主体，预览保留相同的纸面层级。 */}
+                <section aria-labelledby="todo-detail-description-heading" className="grid gap-2.5">
+                  <div className="flex items-center gap-1">
+                    <span
+                      id="todo-detail-description-heading"
+                      className="mr-auto font-serif text-sm font-medium"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      描述
+                    </span>
                     <button
                       type="button"
-                      onClick={() => updateTodo(todo.id, { plannedDate: undefined })}
-                      className="rounded px-1.5 py-1 transition-colors hover:bg-[var(--bg-hover)]"
+                      onClick={() => setDescMode('edit')}
+                      className={cn(
+                        'rounded px-2 py-0.5 text-xs transition-colors',
+                        descMode === 'edit'
+                          ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                          : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
+                      )}
                     >
-                      清除
+                      编辑
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setDescMode('preview')}
+                      className={cn(
+                        'rounded px-2 py-0.5 text-xs transition-colors',
+                        descMode === 'preview'
+                          ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
+                          : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
+                      )}
+                    >
+                      预览
+                    </button>
+                    <span className="ml-1 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                      支持 Markdown
+                    </span>
+                  </div>
+                  {descMode === 'edit' ? (
+                    <textarea
+                      ref={descRef}
+                      value={descDraft}
+                      onChange={(e) => handleDescChange(e.target.value)}
+                      placeholder="添加描述…"
+                      aria-label="事项描述"
+                      rows={4}
+                      className="claude-input w-full resize-none overflow-y-auto text-[0.9375rem] leading-relaxed"
+                      style={{ minHeight: '7.5rem', maxHeight: TEXTAREA_MAX_HEIGHT }}
+                    />
+                  ) : (
+                    <div
+                      className="markdown-body min-h-[7.5rem] rounded-lg border px-4 py-3 text-[0.9375rem]"
+                      style={{
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderColor: 'var(--border-color)',
+                        color: 'var(--text-secondary)',
+                      }}
+                    >
+                      {descDraft.trim() ? (
+                        <Suspense fallback={<span>{descDraft}</span>}>
+                          <MarkdownContent content={descDraft} />
+                        </Suspense>
+                      ) : (
+                        <span style={{ color: 'var(--text-tertiary)' }}>暂无描述</span>
+                      )}
+                    </div>
                   )}
-                </label>
-
-                {/* 所属项目（跨项目移动；updateTodo 因 Omit<projectId> 无法走，必须 moveTodo） */}
-                <label
-                  className="flex items-center gap-2"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
-                  <span>项目</span>
-                  <select
-                    value={todo.projectId}
-                    onChange={(e) => moveTodo(todo.id, e.target.value)}
-                    className="max-w-44 rounded-md border-none px-2 py-1 text-xs"
-                    style={{
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-secondary)',
-                    }}
-                  >
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                </section>
               </div>
-            </div>
-
-            {/* 底部动作栏：置顶 / 归档 */}
-            <div
-              className="flex flex-shrink-0 items-center justify-between gap-2 border-t px-4 py-2.5"
-              style={{ borderColor: 'var(--border-color)' }}
-            >
-              <button
-                type="button"
-                onClick={() => updateTodo(todo.id, { pinned: !todo.pinned })}
-                className={cn(
-                  'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)]',
-                  todo.pinned ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]',
-                )}
-              >
-                <PinIcon size={13} />
-                {todo.pinned ? '已置顶' : '置顶'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleArchive}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--danger)]"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                <ArchiveIcon size={13} />
-                归档
-              </button>
             </div>
           </motion.div>
         </motion.div>
