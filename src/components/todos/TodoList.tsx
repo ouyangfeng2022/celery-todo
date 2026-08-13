@@ -83,9 +83,19 @@ interface SortableTodoItemProps {
   virtualIndex?: number;
 }
 
-/** 超过此数量时按需挂载行，避免 DnD、Markdown 和动画同时占用大量 DOM。 */
-// 30–100 条采用渐进挂载；超过百条才用窗口化列表控制长期 DOM 数量。
-const VIRTUALIZE_THRESHOLD = 100;
+/**
+ * 超过此数量才启用窗口化虚拟列表；在此之下走渐进挂载。
+ *
+ * 关键权衡：虚拟列表 DOM 行数更少，但滚动越过行边界时必须 mount/unmount
+ * 行（dnd-kit 注册 + 动画 + 测量都跑一遍），快速滚动时一帧内多次触发会吃满
+ * 帧预算。而渐进挂载一旦加载完成就是静态的，滚动完全由浏览器合成层处理，
+ * 不进 React——所以对中等规模列表，全部进 DOM 反而比虚拟化更流畅。
+ *
+ * 阈值要大到让常见项目（几十到两三百条）都留在渐进路径上，只在 DOM 行数
+ * 真正会压垮交互时才窗口化。渐进挂载本身是懒加载（IntersectionObserver 按
+ * 批追加），不会一次性造全部 DOM。
+ */
+const VIRTUALIZE_THRESHOLD = 200;
 const PROGRESSIVE_THRESHOLD = 20;
 // 首批只挂载一屏左右，避免筛选点击与 20 个复杂 DnD 行在同一帧争用主线程。
 const PROGRESSIVE_BATCH_SIZE = 15;
