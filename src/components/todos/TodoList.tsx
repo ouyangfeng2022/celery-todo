@@ -390,6 +390,15 @@ function TodoListComponent({
     });
   }, [focusTarget, isProgressive, isVirtualized, todos, virtualizer, visibleCount]);
 
+  // 必须在早返回之前调用：Hooks 不能条件性调用。
+  const setVirtualListContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      listContainerRef.current = node;
+      virtualizer.containerRef(node);
+    },
+    [virtualizer],
+  );
+
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
@@ -408,14 +417,6 @@ function TodoListComponent({
       onOpenDetail={onOpenDetail}
     />
   ));
-
-  const setVirtualListContainerRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      listContainerRef.current = node;
-      virtualizer.containerRef(node);
-    },
-    [virtualizer],
-  );
 
   const virtualListContent = (
     <div ref={setVirtualListContainerRef} className="relative">
