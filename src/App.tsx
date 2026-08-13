@@ -196,6 +196,10 @@ function App() {
   // 详情浮窗的开关直接订阅 store：useTodos 不暴露 openDetail，且浮窗本身会自取
   // detailTodoId，App 这里只需要把 openDetail 透传给列表/卡片视图。
   const openDetail = useTodoStore((state) => state.openDetail);
+  // todos 与 currentProjectId 在 loadProject 里同一次 set 更新；用它在渲染期判断
+  // 项目切换是否已对齐 —— activeProjectId（project store）总是先于 loadProject 更新，
+  // 切换中途 todos 还属于上一项目。
+  const currentProjectId = useTodoStore((state) => state.currentProjectId);
   const timeBucket = useTimeViewStore((state) => state.bucket);
   const timeTodos = useTimeViewStore((state) => state.allTodos);
   const setTimeBucket = useTimeViewStore((state) => state.setBucket);
@@ -274,6 +278,16 @@ function App() {
     activeProjectId,
     searchFocusOverride,
   );
+  // 切换项目时 activeProjectId 先于 loadProject 更新，中间一帧 activeProjectTodos
+  // 被 projectId 约束为空、stats.total 跌到 0，会让 StatsPanel 卸载并在重挂载时把
+  // 进度条从 0 重新涨上来（motion initial width:0）。在 todos 已对齐当前项目时缓存
+  // stats，切换中沿用上一次有效值，让 StatsPanel 常驻、进度条不再重播。
+  const stableStatsRef = useRef(stats);
+  if (!activeProjectId || currentProjectId === activeProjectId) {
+    stableStatsRef.current = stats;
+  }
+  const visibleStats =
+    !activeProjectId || currentProjectId === activeProjectId ? stats : stableStatsRef.current;
   // 项目切换会让 useFilter 绑定新的 projectId；等两者对齐后再写入筛选，
   // 确保恢复已完成事项时进入「已完成」，未完成事项时进入「进行中」。
   useEffect(() => {
@@ -1115,10 +1129,10 @@ function App() {
                   {/* 统计 - 专注模式下隐藏 */}
                   {!focusMode && (
                     <StatsPanel
-                      total={stats.total}
-                      completed={stats.completed}
-                      active={stats.active}
-                      percentage={stats.percentage}
+                      total={visibleStats.total}
+                      completed={visibleStats.completed}
+                      active={visibleStats.active}
+                      percentage={visibleStats.percentage}
                     />
                   )}
 
