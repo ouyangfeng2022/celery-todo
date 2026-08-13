@@ -173,24 +173,40 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
     return () => window.clearTimeout(timer);
   }, [focusSignal]);
 
-  // 标题区单击/键盘触发：打开详情浮窗
-  const handleOpenDetail = useCallback(() => onOpenDetail(todo.id), [onOpenDetail, todo.id]);
+  // 标题/键盘入口触发：打开详情浮窗
+  const openDetail = useCallback(() => onOpenDetail(todo.id), [onOpenDetail, todo.id]);
+
+  // 容器点击：若点击落在交互元素（复选框/动作栏/优先级菜单等）上，让该元素自己
+  // 处理；否则视为「点击标题或空白」→ 打开详情浮窗。
+  // 时间标签等需要独占点击语义的 role="button" 元素，单独用 data-no-open-detail 标记。
+  // 用 closest 判定，无需给每个子按钮加 stopPropagation。
+  const handleContainerClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button, a, input, textarea, select, label, [data-no-open-detail]')) {
+        return;
+      }
+      openDetail();
+    },
+    [openDetail],
+  );
 
   const handleTitleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        handleOpenDetail();
+        openDetail();
       }
     },
-    [handleOpenDetail],
+    [openDetail],
   );
 
   return (
     <div
       ref={ref}
+      onClick={handleContainerClick}
       className={cn(
-        'group relative flex transition-colors',
+        'group relative flex cursor-pointer transition-colors',
         isCard
           ? 'min-h-[164px] flex-col items-stretch gap-3 rounded-xl border bg-[var(--bg-secondary)] p-4 hover:bg-[var(--bg-tertiary)]'
           : 'items-center gap-3 rounded-claude py-2.5 pl-3.5 pr-2 hover:bg-[var(--bg-hover)]',
@@ -234,15 +250,14 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
 
       {/* 内容区域 */}
       <div className={cn('min-w-0 flex-1', isCard && 'pr-7')}>
-        {/* 标题：点击/Enter 打开详情浮窗 */}
+        {/* 标题：点击由容器统一处理；键盘 Enter/Space 也能打开浮窗 */}
         <div
           role="button"
           tabIndex={0}
-          onClick={handleOpenDetail}
           onKeyDown={handleTitleKeyDown}
           className={cn(
-            'text-[15px] leading-snug cursor-pointer break-words text-pretty transition-colors',
-            'hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] rounded',
+            'text-[15px] leading-snug break-words text-pretty transition-colors',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] rounded',
             todo.completed && 'line-through',
           )}
           style={{
@@ -301,6 +316,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             <span
               role="button"
               tabIndex={0}
+              data-no-open-detail
               onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -323,6 +339,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             <span
               role="button"
               tabIndex={0}
+              data-no-open-detail
               onClick={() => setTimeFormat(timeFormat === 'exact' ? 'relative' : 'exact')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -377,7 +394,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           />
         </label>
         <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
-        <DockButton label="编辑" onClick={handleOpenDetail}>
+        <DockButton label="编辑" onClick={openDetail}>
           <EditIcon size={15} />
         </DockButton>
         <DockButton label="归档" danger onClick={() => onDelete(todo.id)}>
