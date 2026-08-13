@@ -648,6 +648,18 @@ ipcMain.handle('sticker:close', (event, id: string) => {
   const window = stickerWindows.get(id);
   if (window && event.sender.id === window.webContents.id) window.close();
 });
+// 「返回主窗口」：唤起主窗口 + 关闭当前贴图（仅这张，其它贴图不动）。
+// 先 show 主窗口再 close 贴图，避免中间一帧所有窗口都不可见。
+ipcMain.handle('sticker:return-main', (event, id: string) => {
+  const window = stickerWindows.get(id);
+  if (!window || event.sender.id !== window.webContents.id) return;
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  }
+  window.close();
+});
 // 贴图样式被改动时（主窗口的设置页 → store.updateSettings），向所有已打开的贴图窗口
 // 广播一个事件。贴图是独立 renderer，不共享 React 状态，必须经主进程中转同步。
 ipcMain.handle('sticker:style-changed', (event) => {

@@ -401,6 +401,17 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         </div>
         <div className="sticker-header-actions sticker-no-drag">
           <button
+            type="button"
+            className="sticker-back"
+            aria-label="返回主窗口"
+            title="返回主窗口"
+            onClick={() => void window.electronAPI?.returnToMain(stickerId)}
+          >
+            <svg viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M8 2L4 6l4 4" />
+            </svg>
+          </button>
+          <button
             ref={addButtonRef}
             type="button"
             className="sticker-add-trigger"

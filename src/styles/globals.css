@@ -471,7 +471,8 @@
     outline: none;
     box-shadow: none;
   }
-  .sticker-close {
+  .sticker-close,
+  .sticker-back {
     width: 26px;
     height: 26px;
     display: grid;
@@ -486,11 +487,13 @@
       background-color 0.15s ease,
       color 0.15s ease;
   }
-  .sticker-close:hover {
+  .sticker-close:hover,
+  .sticker-back:hover {
     background: color-mix(in srgb, var(--bg-hover) 52%, transparent);
     color: color-mix(in srgb, var(--text-secondary) 82%, transparent);
   }
-  .sticker-close svg {
+  .sticker-close svg,
+  .sticker-back svg {
     width: 12px;
     height: 12px;
     fill: none;

@@ -35,6 +35,8 @@ interface ElectronAPI {
   duplicateSticker: (id: string, projectId: string) => Promise<void>;
   setStickerProject: (id: string, projectId: string) => Promise<void>;
   closeSticker: (id: string) => Promise<void>;
+  /** 从贴图「返回主窗口」：唤起主窗口并关闭当前贴图 */
+  returnToMain: (id: string) => Promise<void>;
   /** 通知所有已打开的贴图窗口：样式设置已变更（主窗口侧调用） */
   notifyStickerStyleChanged: () => Promise<void>;
   /** 监听"贴图样式已变更"广播（贴图 renderer 侧调用），返回取消订阅函数 */

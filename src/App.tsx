@@ -39,7 +39,7 @@ import { NoProjectsState } from './components/common/NoProjectsState';
 import { AllDoneCelebration } from './components/common/AllDoneCelebration';
 import { ArchiveNotice } from './components/common/ArchiveNotice';
 import { ExportNotice } from './components/common/ExportNotice';
-import { FocusIcon } from './components/common/Icons';
+import { FocusIcon, StickerIcon } from './components/common/Icons';
 import { Logo } from './components/common/Logo';
 
 import { useAutoUpdate } from './hooks/useAutoUpdate';
@@ -953,7 +953,20 @@ function App() {
             </div>
             {/* 更新提醒已移至左下角侧边栏卡片（SidebarUpdateCard），右上象限不再显示徽标。
                 标题与右侧原生窗口控制按钮之间的空白作为拖拽区使用。 */}
-            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5" />
+            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5">
+              {/* 简洁模式入口：与「窗口」菜单里的「进入简洁模式」同效（createSticker 会隐藏主窗口）。
+                  pr-[152px] 已给原生 overlay 让位，ml-auto 把按钮顶到内容区右缘 = 真正的右上角。 */}
+              <button
+                type="button"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                style={{ color: 'var(--text-secondary)' }}
+                aria-label="进入简洁模式"
+                title="进入简洁模式 (Ctrl+Shift+K)"
+                onClick={() => void window.electronAPI?.createSticker(activeProjectId)}
+              >
+                <StickerIcon size={16} />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -87,6 +87,8 @@ const electronAPI = {
   setStickerProject: (id: string, projectId: string): Promise<void> =>
     ipcRenderer.invoke('sticker:set-project', id, projectId),
   closeSticker: (id: string): Promise<void> => ipcRenderer.invoke('sticker:close', id),
+  /** 从贴图「返回主窗口」：唤起主窗口并关闭当前贴图 */
+  returnToMain: (id: string): Promise<void> => ipcRenderer.invoke('sticker:return-main', id),
   /** 通知所有已打开的贴图窗口：样式设置已变更，需重新读取并应用 */
   notifyStickerStyleChanged: (): Promise<void> => ipcRenderer.invoke('sticker:style-changed'),
   /** 监听主进程广播的"贴图样式已变更"事件（仅在贴图 renderer 内使用），返回取消订阅函数 */
