@@ -40,16 +40,24 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
   // Electron 中不能在 render 阶段同步读 SQLite，故切换项目时先显示默认值。
   useEffect(() => {
     if (!projectId) return;
-    void Promise.all([data.getSetting(filterKey(projectId)), data.getSetting(sortKey(projectId))]).then(
-      ([storedFilter, storedSort]) => {
-        if (storedFilter && (FILTER_VALUES as readonly string[]).includes(storedFilter)) {
-          setFilterOverrides((prev) => prev[projectId] ? prev : { ...prev, [projectId]: storedFilter as FilterType });
-        }
-        if (storedSort && (['created-desc', 'priority', 'manual'] as const).includes(storedSort as SortType)) {
-          setSortOverrides((prev) => prev[projectId] ? prev : { ...prev, [projectId]: storedSort as SortType });
-        }
-      },
-    );
+    void Promise.all([
+      data.getSetting(filterKey(projectId)),
+      data.getSetting(sortKey(projectId)),
+    ]).then(([storedFilter, storedSort]) => {
+      if (storedFilter && (FILTER_VALUES as readonly string[]).includes(storedFilter)) {
+        setFilterOverrides((prev) =>
+          prev[projectId] ? prev : { ...prev, [projectId]: storedFilter as FilterType },
+        );
+      }
+      if (
+        storedSort &&
+        (['created-desc', 'priority', 'manual'] as const).includes(storedSort as SortType)
+      ) {
+        setSortOverrides((prev) =>
+          prev[projectId] ? prev : { ...prev, [projectId]: storedSort as SortType },
+        );
+      }
+    });
   }, [projectId]);
 
   const filter = useMemo((): FilterType => {

@@ -21,10 +21,7 @@ export function useProjects() {
     [store],
   );
 
-  const deleteProject = useCallback(
-    (id: string) => store.deleteProject(id),
-    [store],
-  );
+  const deleteProject = useCallback((id: string) => store.deleteProject(id), [store]);
 
   // 永久删除（硬删除）。与 deleteProject 一样返回 Promise，让调用方（侧栏
   // ConfirmDialog 的 safeRun）能 catch 主进程事务失败（磁盘满 / 锁竞争 /

@@ -17,7 +17,6 @@ export const SORT_VALUES: readonly SortType[] = ['created-desc', 'priority', 'ma
 /** per-project settings 命名键 */
 export const sortKey = (pid: string) => `sort.${pid}`;
 
-
 /** 优先级排序权重（high > medium > low，与 PRIORITY 顺序一致） */
 const PRIORITY_WEIGHT: Record<string, number> = {
   high: 3,

@@ -289,7 +289,9 @@ function TodoDetailDialogComponent() {
                               onClick={() => updateTodo(todo.id, { priority: p })}
                               className="rounded px-2 py-0.5 text-xs font-semibold transition-all"
                               style={{
-                                backgroundColor: selected ? `${PRIORITY_SOLID[p]}1f` : 'transparent',
+                                backgroundColor: selected
+                                  ? `${PRIORITY_SOLID[p]}1f`
+                                  : 'transparent',
                                 color: selected ? PRIORITY_SOLID[p] : 'var(--text-tertiary)',
                                 boxShadow: selected
                                   ? `inset 0 0 0 1px ${PRIORITY_SOLID[p]}40`

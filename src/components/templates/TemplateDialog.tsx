@@ -167,8 +167,7 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
                     style={{
                       backgroundColor:
                         selectedId === template.id ? 'var(--accent-subtle)' : undefined,
-                      color:
-                        selectedId === template.id ? 'var(--accent)' : 'var(--text-secondary)',
+                      color: selectedId === template.id ? 'var(--accent)' : 'var(--text-secondary)',
                     }}
                   >
                     <span className="block truncate font-medium">{template.name}</span>

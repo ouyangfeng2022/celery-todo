@@ -101,14 +101,18 @@ export function StatsSection({ projects }: StatsSectionProps) {
   // revision 覆盖正常事项、归档、导入/恢复与其它窗口同步；统计页打开后才读取全量数据。
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([data.getAllTodos(), includeArchived ? data.getAllDeletedTodos() : Promise.resolve([])])
-      .then(([normal, archived]) => {
-        if (!cancelled) {
-          setActiveTodos(normal);
-          setArchivedTodos(archived);
-        }
-      });
-    return () => { cancelled = true; };
+    void Promise.all([
+      data.getAllTodos(),
+      includeArchived ? data.getAllDeletedTodos() : Promise.resolve([]),
+    ]).then(([normal, archived]) => {
+      if (!cancelled) {
+        setActiveTodos(normal);
+        setArchivedTodos(archived);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [dataRevision, includeArchived]);
   const allTodos = useMemo(
     () => (archivedTodos.length > 0 ? [...activeTodos, ...archivedTodos] : activeTodos),

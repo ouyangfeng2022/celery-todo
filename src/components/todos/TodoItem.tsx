@@ -387,9 +387,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           <input
             type="date"
             value={todo.plannedDate ?? ''}
-            onChange={(event) =>
-              onEdit(todo.id, { plannedDate: event.target.value || undefined })
-            }
+            onChange={(event) => onEdit(todo.id, { plannedDate: event.target.value || undefined })}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             aria-label="安排日期"
           />
@@ -404,10 +402,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
         {/* 批量选择：与其它图标同高，但用复选框语义 */}
         {selectable && (
           <>
-            <span
-              className="mx-0.5 h-4 w-px"
-              style={{ backgroundColor: 'var(--border-color)' }}
-            />
+            <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
             <label
               className={cn(
                 'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md cursor-pointer transition-colors',

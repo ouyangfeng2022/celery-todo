@@ -49,9 +49,10 @@ function sameProjects(a: Project[], b: Project[]): boolean {
 async function loadStickerTodos(pid: string): Promise<Todo[]> {
   if (!pid) return [];
   const [all, storedSort] = await Promise.all([data.getTodos(pid), data.getSetting(sortKey(pid))]);
-  const sort = storedSort && (SORT_VALUES as readonly string[]).includes(storedSort)
-    ? storedSort as SortType
-    : DEFAULT_SORT;
+  const sort =
+    storedSort && (SORT_VALUES as readonly string[]).includes(storedSort)
+      ? (storedSort as SortType)
+      : DEFAULT_SORT;
   const active = sortTodos(
     all.filter((t) => !t.completed),
     sort,
@@ -179,10 +180,16 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     if (data.isNativeDatabase()) {
       return data.onDataChanged((event) => {
         const currentProject = projectIdRef.current;
-        if (event.fullRefresh || event.projectsChanged || event.settingsChanged || event.projectIds.includes(currentProject)) {
+        if (
+          event.fullRefresh ||
+          event.projectsChanged ||
+          event.settingsChanged ||
+          event.projectIds.includes(currentProject)
+        ) {
           void refresh();
         }
-        if (event.fullRefresh || event.settingsChanged) void useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
+        if (event.fullRefresh || event.settingsChanged)
+          void useSettingsStore.getState().loadSettings({ syncStartupTheme: false });
       });
     }
     let disposed = false;
