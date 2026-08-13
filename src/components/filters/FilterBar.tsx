@@ -80,7 +80,7 @@ function FilterBarComponent({
                   {option.label}
                   <CountBadge
                     variant={isActive ? 'accent' : 'muted'}
-                    className="min-w-[22px] px-2 text-[13px] font-bold"
+                    className="min-w-[calc(2ch+1rem)] px-2 text-[13px] font-bold"
                   >
                     {count}
                   </CountBadge>
