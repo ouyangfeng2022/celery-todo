@@ -34,6 +34,10 @@ const UNSCHEDULED_GROUP = '__unscheduled__';
 const LOCAL_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WEEKDAY_LABELS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
+// 卡片模式保留完整语义结构与键盘可达性，但让 Chromium 跳过视口外卡片的布局和绘制。
+// TodoItem 内含弹层、动画和多个操作按钮；大量卡片在项目切换时尤其受益。
+const CARD_CONTENT_VISIBILITY_THRESHOLD = 30;
+
 function boardDateLabel(date: string, today: string): { title: string; detail: string } {
   const match = LOCAL_DATE_PATTERN.exec(date);
   if (!match) return { title: date, detail: '计划日期' };
@@ -93,6 +97,7 @@ function TodoBoardComponent({
 }: TodoBoardProps) {
   const groups = useMemo(() => groupTodos(todos), [todos]);
   const today = formatLocalDate(new Date());
+  const deferOffscreenCards = todos.length > CARD_CONTENT_VISIBILITY_THRESHOLD;
 
   useEffect(() => {
     if (!focusTarget || !todos.some((todo) => todo.id === focusTarget.id)) return;
@@ -163,7 +168,15 @@ function TodoBoardComponent({
                 不会被容器宽度拉成"撑大的列表行"；grid 默认 stretch 让同行卡片等高。 */}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
               {group.todos.map((todo) => (
-                <div key={todo.id} id={`todo-${todo.id}`}>
+                <div
+                  key={todo.id}
+                  id={`todo-${todo.id}`}
+                  style={
+                    deferOffscreenCards
+                      ? { contentVisibility: 'auto', containIntrinsicSize: '180px' }
+                      : undefined
+                  }
+                >
                   <TodoItem
                     todo={todo}
                     view="card"

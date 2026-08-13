@@ -64,4 +64,25 @@ describe('TodoBoard', () => {
     expect(onToggleSelect).toHaveBeenCalledWith('1');
     expect(screen.queryByRole('button', { name: '拖拽排序' })).not.toBeInTheDocument();
   });
+
+  it('大量卡片延迟视口外内容的布局与绘制', () => {
+    render(
+      <TodoBoard
+        todos={Array.from({ length: 31 }, (_, index) =>
+          todo(String(index + 1), `事项 ${index + 1}`),
+        )}
+        selectedIds={new Set()}
+        onToggle={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onToggleSelect={vi.fn()}
+        onOpenDetail={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('事项 1').closest('[id="todo-1"]')).toHaveStyle({
+      contentVisibility: 'auto',
+      containIntrinsicSize: '180px',
+    });
+  });
 });

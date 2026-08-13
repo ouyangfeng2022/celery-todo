@@ -83,7 +83,9 @@ interface SortableTodoItemProps {
 }
 
 /** 超过此数量时按需挂载行，避免 DnD、Markdown 和动画同时占用大量 DOM。 */
-const VIRTUALIZE_THRESHOLD = 100;
+// 30 行开始就启用：每项还会注册 DnD、动画和交互层，常用项目在几十条时
+// 已能感到一次性挂载的停顿，不必等到上百条才保护主线程。
+const VIRTUALIZE_THRESHOLD = 30;
 
 const SortableTodoItem = memo(
   forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
@@ -347,11 +349,7 @@ function TodoListComponent({
   ));
 
   const virtualListContent = (
-    <div
-      ref={listContainerRef}
-      className="relative"
-      style={{ height: virtualizer.getTotalSize() }}
-    >
+    <div ref={listContainerRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
       {virtualItems.map((virtualItem) => {
         const todo = todos[virtualItem.index];
         if (!todo) return null;
