@@ -244,6 +244,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             : 'border-[var(--border-strong)] hover:border-[var(--accent)]',
         )}
         aria-label={todo.completed ? '标记为未完成' : '标记为已完成'}
+        title={todo.completed ? '标记为未完成' : '标记为已完成'}
       >
         {todo.completed && <CheckIcon size={11} className="text-white" />}
       </button>
