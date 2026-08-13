@@ -274,7 +274,6 @@ function App() {
     activeProjectId,
     searchFocusOverride,
   );
-
   // 项目切换会让 useFilter 绑定新的 projectId；等两者对齐后再写入筛选，
   // 确保恢复已完成事项时进入「已完成」，未完成事项时进入「进行中」。
   useEffect(() => {
@@ -1083,13 +1082,8 @@ function App() {
               >
                 {/*
                 添加事项吸顶（sticky top-0）：列表过长向下滚动时输入框不再被推出视野。
-                分两层处理遮挡：
-                - 内层不透明（var(--bg-primary)）包住输入框本身，保证可读性；
-                - 外层追加一段 linear-gradient → transparent 的渐变遮罩，遮挡范围
-                  向下延伸超出输入框，但不完全覆盖，滚过来的列表项能柔和透出。
-                拆两层而非单容器 padding 渐变的原因：AddTodoInput 高度动态（focus
-                展开、textarea 多行），单容器渐变的「不透明/透明」分界点无法稳定
-                对齐卡片底边；分两层后渐变永远紧贴卡片底部，与卡片高度无关。
+                使用不透明 var(--bg-primary) 包住输入框，保证列表滚过下方时的可读性；
+                不再叠加透明渐变层，避免滚动时持续重绘其下方的长列表内容。
                 z-index 取 z-20 而非 z-10：FilterBar 的 segmented control 文字
                 <span> 用了 relative z-10，而其父 button 未创建堆叠上下文，z-10
                 「逃逸」到滚动区参与竞争。若吸顶也用 z-10，DOM 顺序 FilterBar 在后
@@ -1113,18 +1107,6 @@ function App() {
                         focusSignal={newTodoFocusSignal}
                       />
                     </div>
-                    {/*
-                    渐变遮罩：遮挡范围向下延伸超出输入框，但不完全覆盖，滚过来的
-                    列表项能柔和透出。起始点 80% 不透明（color-mix 混入 20% 透明），
-                    让透明感更明显 —— 浅/深色主题都通过 var(--bg-primary) 自动适配。
-                  */}
-                    <div
-                      className="h-10 lg:h-12"
-                      style={{
-                        backgroundImage:
-                          'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary) 80%, transparent), transparent)',
-                      }}
-                    />
                   </div>
                 )}
 
@@ -1189,8 +1171,8 @@ function App() {
                     />
                   ) : (
                     <TodoList
-                      // 项目切换不是同一列表内的删除和新增：重置 Presence 边界，
-                      // 不让旧项目的 exit 节点与新项目的 enter 节点同时存在。
+                      // 项目切换时重置列表状态；筛选切换由 TodoList 自身拆分为
+                      // 「即时按钮反馈 → 下一帧挂载新行」，因此不能随 filter 重挂载外壳。
                       key={activeProjectId}
                       todos={filteredTodos}
                       scrollElement={mainScrollElement}

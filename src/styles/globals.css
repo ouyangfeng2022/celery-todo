@@ -1119,7 +1119,18 @@
 
   .todo-filter-content {
     animation: todo-filter-enter 120ms ease-out both;
-    will-change: opacity, transform;
+  }
+
+  /* 虚拟列表自身已经通过绝对定位逐行更新。对它再做整层 transform/opacity 动画，
+   * 会把很高的占位容器提升为大合成层，筛选切换和持续滚动都会增加栅格化成本。
+   * 长列表直接呈现；每个可见行独立限制布局与绘制影响范围。 */
+  .todo-filter-content-virtual,
+  .todo-filter-content-large {
+    animation: none;
+  }
+
+  .todo-virtual-row {
+    contain: layout style;
   }
 
   @media (prefers-reduced-motion: reduce) {

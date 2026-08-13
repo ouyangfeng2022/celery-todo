@@ -35,6 +35,7 @@ import {
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import type { Todo } from '../../types';
+import { cn } from '../../utils/helpers';
 import { markPerformance } from '../../utils/performance';
 import { TodoItem } from './TodoItem';
 import { EmptyState } from '../common/EmptyState';
@@ -83,9 +84,11 @@ interface SortableTodoItemProps {
 }
 
 /** 超过此数量时按需挂载行，避免 DnD、Markdown 和动画同时占用大量 DOM。 */
-// 30 行开始就启用：每项还会注册 DnD、动画和交互层，常用项目在几十条时
-// 已能感到一次性挂载的停顿，不必等到上百条才保护主线程。
-const VIRTUALIZE_THRESHOLD = 30;
+// 30–100 条采用渐进挂载；超过百条才用窗口化列表控制长期 DOM 数量。
+const VIRTUALIZE_THRESHOLD = 100;
+const PROGRESSIVE_THRESHOLD = 20;
+// 首批只挂载一屏左右，避免筛选点击与 20 个复杂 DnD 行在同一帧争用主线程。
+const PROGRESSIVE_BATCH_SIZE = 15;
 
 const SortableTodoItem = memo(
   forwardRef<HTMLDivElement, SortableTodoItemProps>(function SortableTodoItem(
@@ -136,11 +139,23 @@ const SortableTodoItem = memo(
       },
       [measureElement, ref, setNodeRef],
     );
+    // virtualizer 会在滚动时更新可见行的 virtualStart。合并后的拖拽属性若每次都
+    // 创建新对象，会穿透 TodoItem 的 memo，让整行标题、时间与菜单跟着每帧重渲染。
+    // attributes / listeners 本身稳定时复用对象，把滚动更新限制在定位包装层。
+    const dragHandleProps = useMemo(
+      () =>
+        ({
+          ...attributes,
+          ...listeners,
+        }) as React.HTMLAttributes<HTMLButtonElement>,
+      [attributes, listeners],
+    );
 
     return (
       <div
         ref={setRefs}
         id={`todo-${todo.id}`}
+        className={virtualStart === undefined ? undefined : 'todo-virtual-row'}
         data-index={virtualIndex}
         data-drag-over={isOver || undefined}
         style={style}
@@ -154,9 +169,7 @@ const SortableTodoItem = memo(
           onDelete={onDelete}
           onToggleSelect={onToggleSelect}
           onOpenDetail={onOpenDetail}
-          dragHandleProps={
-            { ...attributes, ...listeners } as React.HTMLAttributes<HTMLButtonElement>
-          }
+          dragHandleProps={dragHandleProps}
         />
       </div>
     );
@@ -185,20 +198,43 @@ function TodoListComponent({
   // 但键盘拖拽需要能跨越视口：dnd-kit 的 droppable 只识别已挂载的行，若拖拽中
   // 不临时挂载完整列表，ArrowUp 撞到视口顶就到头，无法落到屏外目标。
   const isVirtualized = todos.length > VIRTUALIZE_THRESHOLD;
+  const isProgressive = todos.length > PROGRESSIVE_THRESHOLD && !isVirtualized;
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PROGRESSIVE_BATCH_SIZE);
   const dragInProgress = activeDragId !== null;
   const listContainerRef = useRef<HTMLDivElement>(null);
+  const progressiveSentinelRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
     count: todos.length,
+    enabled: isVirtualized,
     getScrollElement: () => scrollElement,
     estimateSize: () => 76,
-    // 拖拽中扩到全表 overscan，让屏外行也挂载为 droppable。布局仍是虚拟化的
-    // （每行仍由 virtualizer 测量定位），仅临时多挂载节点；拖拽结束立即收回。
-    overscan: isVirtualized && dragInProgress ? todos.length : 8,
+    // 普通浏览只多挂载少量上下文行。此前 overscan=8 会让约两屏的 TodoItem、
+    // 优先级菜单与 dnd-kit 节点同时参与滚动更新，在几十条的常见已完成列表里
+    // 反而容易出现合成抖动。键盘拖拽时仍按原逻辑挂载全表。
+    overscan: isVirtualized && dragInProgress ? todos.length : 4,
     scrollMargin,
   });
   const virtualItems = virtualizer.getVirtualItems();
+
+  // 中等规模列表不预造完整 DOM。哨兵进入视口附近时再追加一批，切换到 60 条
+  // 已完成事项时首帧只创建 20 行；滚动条会随批次自然延长，直到全部挂载。
+  useEffect(() => {
+    if (!isProgressive) return;
+    const sentinel = progressiveSentinelRef.current;
+    if (!sentinel || !scrollElement || visibleCount >= todos.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setVisibleCount((current) => Math.min(todos.length, current + PROGRESSIVE_BATCH_SIZE));
+      },
+      { root: scrollElement, rootMargin: '360px 0px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isProgressive, scrollElement, todos.length, visibleCount]);
 
   // 大列表中真实挂载的行数应远小于总数；开发期将该数字写入 Performance Timeline，
   // 便于 1,000+ 条手工 profiling 时观察 overscan、Markdown 行高与拖拽测量的影响。
@@ -234,7 +270,11 @@ function TodoListComponent({
 
   // 仅选中状态变化时 todos 引用保持稳定。复用 ID 数组可避免 SortableContext
   // 误以为整个列表换了一批 droppable，触发不必要的 dnd-kit 注册与测量。
-  const todoIds = useMemo(() => todos.map((todo) => todo.id), [todos]);
+  const renderedTodos = useMemo(
+    () => (isProgressive ? todos.slice(0, visibleCount) : todos),
+    [isProgressive, todos, visibleCount],
+  );
+  const todoIds = useMemo(() => renderedTodos.map((todo) => todo.id), [renderedTodos]);
   const keyboardOverIdRef = useRef<string | null>(null);
 
   // 默认 sortableKeyboardCoordinates 依赖当前碰撞矩形寻找几何位置最近的行。
@@ -321,20 +361,23 @@ function TodoListComponent({
     const targetIndex = todos.findIndex((todo) => todo.id === focusTarget.id);
     if (targetIndex === -1) return;
     if (isVirtualized) virtualizer.scrollToIndex(targetIndex, { align: 'center' });
+    if (isProgressive && targetIndex >= visibleCount) {
+      setVisibleCount(targetIndex + 1);
+    }
     requestAnimationFrame(() => {
       document.getElementById(`todo-${focusTarget.id}`)?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
     });
-  }, [focusTarget, isVirtualized, todos, virtualizer]);
+  }, [focusTarget, isProgressive, isVirtualized, todos, virtualizer, visibleCount]);
 
   if (todos.length === 0) {
     return <EmptyState filter={filter} hasTodos={hasTodos} />;
   }
 
   // 筛选时直接更新行，避免每项进退场动画与 dnd-kit 同时参与布局计算。
-  const listContent = todos.map((todo) => (
+  const listContent = renderedTodos.map((todo) => (
     <SortableTodoItem
       key={todo.id}
       todo={todo}
@@ -396,14 +439,63 @@ function TodoListComponent({
           key={filter ?? 'all'}
           aria-label="待办事项列表"
           className={
-            isVirtualized ? 'todo-filter-content' : 'todo-filter-content relative space-y-1'
+            isVirtualized
+              ? 'todo-filter-content todo-filter-content-virtual'
+              : cn(
+                  'todo-filter-content relative space-y-1',
+                  isProgressive && 'todo-filter-content-large',
+                )
           }
         >
           {isVirtualized ? virtualListContent : listContent}
+          {isProgressive && visibleCount < todos.length && (
+            <div
+              ref={progressiveSentinelRef}
+              className="h-px"
+              aria-hidden="true"
+              data-remaining-todos={todos.length - visibleCount}
+            />
+          )}
         </div>
       </SortableContext>
     </DndContext>
   );
 }
 
-export const TodoList = memo(TodoListComponent);
+function TodoListShell(props: TodoListProps) {
+  const [renderedFilter, setRenderedFilter] = useState(props.filter);
+
+  useEffect(() => {
+    if (renderedFilter === props.filter) return;
+    // 先提交筛选按钮与轻量占位，让浏览器完成一次绘制；下一帧再挂载列表行。
+    // 这样不会保留上一筛选的内容，也不会让复杂行阻塞按钮的即时反馈。
+    const frame = requestAnimationFrame(() => setRenderedFilter(props.filter));
+    return () => cancelAnimationFrame(frame);
+  }, [props.filter, renderedFilter]);
+
+  if (renderedFilter !== props.filter) {
+    return (
+      <div
+        aria-label="待办事项列表"
+        aria-busy="true"
+        className="space-y-1"
+        style={{ contain: 'layout paint' }}
+      >
+        {Array.from({ length: 5 }, (_, index) => (
+          <div
+            key={index}
+            className="h-[72px] rounded-xl"
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              opacity: 1 - index * 0.12,
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return <TodoListComponent {...props} />;
+}
+
+export const TodoList = memo(TodoListShell);
