@@ -76,8 +76,8 @@ interface SortableTodoItemProps {
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onOpenDetail: (id: string) => void;
-  /** 虚拟列表中该行相对于占位容器的偏移。 */
-  virtualStart?: number;
+  /** 是否由虚拟列表绝对定位。具体纵向坐标由 virtualizer 直接写入 DOM。 */
+  isVirtualRow?: boolean;
   /** 动态测量可变高度的 Markdown / 编辑态行。 */
   measureElement?: (element: HTMLElement | null) => void;
   virtualIndex?: number;
@@ -101,7 +101,7 @@ const SortableTodoItem = memo(
       onDelete,
       onToggleSelect,
       onOpenDetail,
-      virtualStart,
+      isVirtualRow,
       measureElement,
       virtualIndex,
     },
@@ -113,18 +113,13 @@ const SortableTodoItem = memo(
       });
 
     const style: React.CSSProperties = {
-      transform: [
-        virtualStart === undefined ? undefined : `translateY(${virtualStart}px)`,
-        CSS.Transform.toString(transform),
-      ]
-        .filter(Boolean)
-        .join(' '),
+      transform: CSS.Transform.toString(transform),
       transition,
       opacity: isDragging ? 0.5 : 1,
       zIndex: isDragging ? 50 : undefined,
-      position: virtualStart === undefined ? undefined : 'absolute',
-      left: virtualStart === undefined ? undefined : 0,
-      width: virtualStart === undefined ? undefined : '100%',
+      position: isVirtualRow ? 'absolute' : undefined,
+      left: isVirtualRow ? 0 : undefined,
+      width: isVirtualRow ? '100%' : undefined,
     };
 
     const setRefs = useCallback(
@@ -155,7 +150,7 @@ const SortableTodoItem = memo(
       <div
         ref={setRefs}
         id={`todo-${todo.id}`}
-        className={virtualStart === undefined ? undefined : 'todo-virtual-row'}
+        className={isVirtualRow ? 'todo-virtual-row' : undefined}
         data-index={virtualIndex}
         data-drag-over={isOver || undefined}
         style={style}
@@ -202,19 +197,32 @@ function TodoListComponent({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(PROGRESSIVE_BATCH_SIZE);
   const dragInProgress = activeDragId !== null;
-  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listContainerRef = useRef<HTMLDivElement | null>(null);
   const progressiveSentinelRef = useRef<HTMLDivElement>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const virtualizer = useVirtualizer({
     count: todos.length,
     enabled: isVirtualized,
     getScrollElement: () => scrollElement,
+    // 数据更新或排序时按稳定 ID 复用已测量的行，避免索引变化后重新观察一批
+    // 已知高度的节点。
+    getItemKey: (index) => todos[index]?.id ?? index,
     estimateSize: () => 76,
     // 普通浏览只多挂载少量上下文行。此前 overscan=8 会让约两屏的 TodoItem、
     // 优先级菜单与 dnd-kit 节点同时参与滚动更新，在几十条的常见已完成列表里
     // 反而容易出现合成抖动。键盘拖拽时仍按原逻辑挂载全表。
     overscan: isVirtualized && dragInProgress ? todos.length : 4,
     scrollMargin,
+    // 每行挂载时会由 ResizeObserver 回报真实高度。直接在该回调里同步更新
+    // virtualizer 会与滚动事件争用一帧；交给下一帧合并，避免滚动时的布局抖动。
+    useAnimationFrameWithResizeObserver: true,
+    // 默认实现会在每个 scroll 事件触发 React 更新，进而令可见 TodoItem 的
+    // dnd-kit Hook 一起参与 render。坐标和占位高度由 virtualizer 直接写入 DOM，
+    // 仅在可见索引范围变动时 React 才需要提交新的行。
+    // TodoList 初始可能为空，随后批量添加跨过阈值。该选项必须从首帧固定开启；
+    // tanstack 明确不支持在运行中切换 directDomUpdates。
+    directDomUpdates: true,
+    directDomUpdatesMode: 'position',
   });
   const virtualItems = virtualizer.getVirtualItems();
 
@@ -391,8 +399,16 @@ function TodoListComponent({
     />
   ));
 
+  const setVirtualListContainerRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      listContainerRef.current = node;
+      virtualizer.containerRef(node);
+    },
+    [virtualizer],
+  );
+
   const virtualListContent = (
-    <div ref={listContainerRef} className="relative" style={{ height: virtualizer.getTotalSize() }}>
+    <div ref={setVirtualListContainerRef} className="relative">
       {virtualItems.map((virtualItem) => {
         const todo = todos[virtualItem.index];
         if (!todo) return null;
@@ -407,7 +423,7 @@ function TodoListComponent({
             onDelete={onDelete}
             onToggleSelect={onToggleSelect}
             onOpenDetail={onOpenDetail}
-            virtualStart={virtualItem.start - scrollMargin}
+            isVirtualRow
             virtualIndex={virtualItem.index}
             measureElement={virtualizer.measureElement}
           />
@@ -495,7 +511,14 @@ function TodoListShell(props: TodoListProps) {
     );
   }
 
-  return <TodoListComponent {...props} />;
+  // directDomUpdates 是 virtualizer 的挂载期配置，不能在普通列表与虚拟列表
+  // 之间动态切换。跨过阈值时重建内部实例，确保虚拟路径从首帧即启用直写 DOM。
+  return (
+    <TodoListComponent
+      key={props.todos.length > VIRTUALIZE_THRESHOLD ? 'virtual' : 'normal'}
+      {...props}
+    />
+  );
 }
 
 export const TodoList = memo(TodoListShell);

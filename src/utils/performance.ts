@@ -48,6 +48,7 @@ export async function measureAsync<T>(name: string, work: () => Promise<T>): Pro
 /** 记录离散事件（例如虚拟列表实际挂载的 DOM 行数）。 */
 export function markPerformance(name: string, detail: Record<string, number>): void {
   if (!enabled()) return;
-  performance.mark(`celery:${name}`);
-  console.debug(`[perf] ${name}`, detail);
+  // 虚拟列表在滚动时会频繁改变可见区。把每次范围变化都输出到控制台，会让
+  // DevTools 的日志序列化和渲染反过来占满滚动帧；保留 Timeline 标记即可。
+  performance.mark(`celery:${name}`, { detail });
 }
