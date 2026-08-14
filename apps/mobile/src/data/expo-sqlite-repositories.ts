@@ -159,7 +159,7 @@ const toProject = (r: ProjectRow): ProjectDto => ({
   archivedAt: r.archived_at,
 });
 
-const fail = (message: string, kind: 'invalid' | 'not-found' = 'invalid'): never => {
+function fail(message: string, kind: 'invalid' | 'not-found' = 'invalid'): never {
   throw new RepositoryError(kind, message);
 };
 
@@ -190,9 +190,12 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
     if (!hit || hit.n === 0) fail(`事项 ${id} 不存在`, 'not-found');
   };
 
-  const applyPatchSql = (patch: TodoPatch, now: string): { sets: string[]; vals: unknown[] } => {
+  const applyPatchSql = (
+  patch: TodoPatch,
+  now: string,
+): { sets: string[]; vals: SQLite.SQLiteBindValue[] } => {
     const sets: string[] = ['updated_at = ?'];
-    const vals: unknown[] = [now];
+    const vals: SQLite.SQLiteBindValue[] = [now];
     if (patch.title !== undefined && patch.title !== null) {
       if (!patch.title.trim()) fail('标题不能为空');
       sets.push('title = ?');
@@ -287,7 +290,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async page(query) {
         const sort = query.sort ?? 'created-desc';
         const where: string[] = [];
-        const vals: unknown[] = [];
+        const vals: SQLite.SQLiteBindValue[] = [];
         if (query.projectId !== undefined && query.projectId !== null) {
           where.push('t.project_id = ?');
           vals.push(query.projectId);
@@ -458,7 +461,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       },
       async archivedPage(query) {
         const where: string[] = [];
-        const vals: unknown[] = [];
+        const vals: SQLite.SQLiteBindValue[] = [];
         if (query.projectId !== undefined && query.projectId !== null) {
           where.push('a.project_id = ?');
           vals.push(query.projectId);
@@ -539,7 +542,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         const term = query.term.trim();
         if (!term) fail('搜索词不能为空');
         const where = ['(t.title LIKE ? OR t.description LIKE ?)'];
-        const vals: unknown[] = [`%${term}%`, `%${term}%`];
+        const vals: SQLite.SQLiteBindValue[] = [`%${term}%`, `%${term}%`];
         if (query.projectId !== undefined && query.projectId !== null) {
           where.push('t.project_id = ?');
           vals.push(query.projectId);
