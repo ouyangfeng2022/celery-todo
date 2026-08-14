@@ -36,8 +36,8 @@ export const capabilities = {
   tray: isTauri,
   /** 开机自启 */
   autoStart: isTauri,
-  /** 应用内自动更新 */
-  updater: false,
+  /** 应用内自动更新（tauri-plugin-updater，端点在 tauri.conf） */
+  updater: isTauri,
   /** 自定义数据目录（storage-config 迁移） */
   storageRelocation: false,
 } as const;

@@ -38,6 +38,10 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        // 应用内更新：端点/公钥在 tauri.conf plugins.updater；
+        // 构建期由 TAURI_SIGNING_PRIVATE_KEY 签名（见 desktop-release.yml）。
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .on_window_event(|window, event| match event {
             // 关闭主窗口 = 最小化到托盘（设置可关）；托盘菜单「退出」走 exit。
             tauri::WindowEvent::CloseRequested { api, .. } => {

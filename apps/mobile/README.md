@@ -38,4 +38,11 @@ bunx expo start      # Expo Go 开发
 
 ## 后续里程碑
 
-- EAS Build/Submit、Maestro E2E（随发布流水线）
+- Maestro E2E（随发布流水线）
+
+## 发布（EAS）
+
+- 配置仓库 Secret `EXPO_TOKEN`（eas login 后创建）→ 手动触发
+  `.github/workflows/mobile-release.yml`，或本机 `cd apps/mobile && eas build`。
+- `eas.json`：preview（APK 内测）/ production（AAB，android internal track）；
+  iOS submit 的 Apple 账号在 eas.json 的 submit.production.ios 填写。
