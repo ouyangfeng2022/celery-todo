@@ -4,6 +4,6 @@
  */
 
 import { describeRepositoryContracts } from '@celery/test-contracts';
-import { createMemoryRepositories } from '../memory/memory-repositories';
+import { createMemoryRepositories } from '@celery/data';
 
 describeRepositoryContracts('内存适配器', () => createMemoryRepositories());

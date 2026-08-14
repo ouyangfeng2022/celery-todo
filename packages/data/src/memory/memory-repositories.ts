@@ -34,6 +34,7 @@ import {
   type RepositoryChangeEvent,
   type RepositoryChangeFeed,
 } from '../repository';
+import { base64Decode, base64Encode } from './base64';
 
 const RANK_GAP = 65_536;
 
@@ -48,19 +49,12 @@ const clampLimit = (limit: number | undefined): number =>
 
 /** 不透明游标：base64(JSON{sort, keys})，与 Rust 侧同构（仅本实现内部使用）。 */
 function encodeCursor(sort: string, keys: (string | number)[]): string {
-  const json = JSON.stringify({ sort, keys });
-  if (typeof btoa === 'function') return btoa(json);
-  return Buffer.from(json, 'utf8').toString('base64');
+  return base64Encode(JSON.stringify({ sort, keys }));
 }
 
 function decodeCursor(sort: string, cursor: string): (string | number)[] {
-  let json: string;
   try {
-    json =
-      typeof atob === 'function'
-        ? atob(cursor)
-        : Buffer.from(cursor, 'base64').toString('utf8');
-    const parsed = JSON.parse(json) as { sort: string; keys?: unknown };
+    const parsed = JSON.parse(base64Decode(cursor)) as { sort: string; keys?: unknown };
     if (parsed.sort !== sort || !Array.isArray(parsed.keys)) throw new Error();
     return parsed.keys as (string | number)[];
   } catch {

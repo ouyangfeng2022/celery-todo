@@ -15,9 +15,7 @@
     "test": "vitest run",
     "test:run": "vitest run"
   },
-  "dependencies": {
-    "@celery/test-contracts": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20.14.10",
     "typescript": "^5.5.3",

@@ -1,0 +1,150 @@
+/* 3.0 骨架界面样式 —— 仅保证可用的最小样式；正式设计 token 在 packages/ui-tokens 落地后替换。 */
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+  background: #f7f7f5;
+  color: #1f2937;
+}
+.boot {
+  padding: 24px;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: 100vh;
+}
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  padding: 16px;
+  overflow: auto;
+}
+.sidebar h1 {
+  font-size: 18px;
+  margin: 0 0 12px;
+}
+.ver {
+  font-size: 11px;
+  color: #f97316;
+  font-weight: 600;
+}
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+.sidebar li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sidebar li.active {
+  background: #fff1e6;
+  color: #c2410c;
+  font-weight: 600;
+}
+.main {
+  padding: 20px 24px;
+  overflow: auto;
+}
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.toolbar .search {
+  flex: 0 0 320px;
+}
+.counts {
+  color: #6b7280;
+  font-size: 13px;
+}
+.row input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.row.add {
+  margin-bottom: 14px;
+}
+.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.todos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.todos li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.todos li.done .title {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+.todos .empty {
+  justify-content: center;
+  color: #9ca3af;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+.check {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid #d1d5db;
+  background: transparent;
+  color: #16a34a;
+  font-size: 13px;
+  line-height: 1;
+}
+.title {
+  flex: 1;
+}
+.pin {
+  font-style: normal;
+  font-size: 11px;
+  background: #fff1e6;
+  color: #c2410c;
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-right: 8px;
+}
+.ghost {
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 12px;
+}
+.ghost.danger {
+  color: #dc2626;
+}
+.more {
+  margin-top: 4px;
+  border: 1px dashed #d1d5db;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #6b7280;
+}

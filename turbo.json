@@ -40,6 +40,12 @@
     },
     "rebuild:node": {
       "cache": false
+    },
+    "tauri:dev": {
+      "cache": false
+    },
+    "tauri:build": {
+      "cache": false
     }
   }
 }

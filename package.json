@@ -31,6 +31,8 @@
     "e2e": "bun run --filter @celery/desktop-electron e2e",
     "e2e:install": "bun run --filter @celery/desktop-electron e2e:install",
     "rebuild:electron": "bun run --filter @celery/desktop-electron rebuild:electron",
+    "desktop:dev": "bun run --filter @celery/desktop tauri:dev",
+    "desktop:build": "bun run --filter @celery/desktop tauri:build",
     "electron:dev": "bun run --filter @celery/desktop-electron electron:dev",
     "electron:build": "bun run --filter @celery/desktop-electron electron:build",
     "cli": "bun run --filter @celery/desktop-electron cli",
