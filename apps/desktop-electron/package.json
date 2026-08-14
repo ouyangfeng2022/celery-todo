@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "rebuild:electron": "electron-builder install-app-deps",
+    "rebuild:electron": "electron-rebuild -f -o better-sqlite3",
     "rebuild:node": "npm rebuild better-sqlite3 --foreground-scripts",
     "build:electron": "tsc -b && vite build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs",
     "electron:dev": "bun run rebuild:electron && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && concurrently \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
@@ -92,7 +92,8 @@
     "vite": "^5.3.4",
     "vitest": "^2.0.2",
     "wait-on": "^7.2.0",
-    "zustand": "^4.5.4"
+    "zustand": "^4.5.4",
+    "@electron/rebuild": "^3.2.14"
   },
   "build": {
     "npmRebuild": false,
