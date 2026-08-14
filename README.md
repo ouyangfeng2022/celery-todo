@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/celery-todo.svg" width="220" alt="Celery Todo" />
+<img src="apps/desktop-electron/assets/celery-todo.svg" width="220" alt="Celery Todo" />
 
 # Celery Todo
 
@@ -57,38 +57,38 @@ Celery Todo 是一个基于 Electron + React 的桌面 Todo 应用，所有数�
 ## 截图预览
 
 <p align="center">
-  <img src="assets/screenshots/main-light.png" width="100%" alt="主界面 · 芹绿主题" />
+  <img src="apps/desktop-electron/assets/screenshots/main-light.png" width="100%" alt="主界面 · 芹绿主题" />
   <sub><b>主界面 · 芹绿主题</b>　——　多项目侧边栏、置顶、优先级、Markdown 描述、统计进度</sub>
 </p>
 
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src="assets/screenshots/main-dark.png" width="100%" alt="深色主题" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/main-dark.png" width="100%" alt="深色主题" /><br/>
       <sub><b>深色主题</b></sub>
     </td>
     <td width="50%" align="center">
-      <img src="assets/screenshots/main-paper.png" width="100%" alt="经典（纸白）主题" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/main-paper.png" width="100%" alt="经典（纸白）主题" /><br/>
       <sub><b>经典 · 纸白主题</b></sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="assets/screenshots/settings-general.png" width="100%" alt="设置 · 通用 / 主题切换" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/settings-general.png" width="100%" alt="设置 · 通用 / 主题切换" /><br/>
       <sub><b>设置 · 主题切换</b></sub>
     </td>
     <td width="50%" align="center">
-      <img src="assets/screenshots/settings-sticker.png" width="100%" alt="设置 · 桌面贴图样式" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/settings-sticker.png" width="100%" alt="设置 · 桌面贴图样式" /><br/>
       <sub><b>设置 · 桌面贴图样式</b></sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src="assets/screenshots/archive.png" width="100%" alt="已归档事项" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/archive.png" width="100%" alt="已归档事项" /><br/>
       <sub><b>已归档事项 · 搜索与恢复</b></sub>
     </td>
     <td width="50%" align="center">
-      <img src="assets/screenshots/settings-shortcuts.png" width="100%" alt="键盘快捷键" /><br/>
+      <img src="apps/desktop-electron/assets/screenshots/settings-shortcuts.png" width="100%" alt="键盘快捷键" /><br/>
       <sub><b>键盘快捷键一览</b></sub>
     </td>
   </tr>

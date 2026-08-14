@@ -137,8 +137,8 @@ jobs:
         with:
           name: celery-todo-${{ steps.ver.outputs.tag }}-installer
           path: |
-            release/*.exe
-            release/latest*.yml
+            apps/desktop-electron/release/*.exe
+            apps/desktop-electron/release/latest*.yml
           if-no-files-found: error
           retention-days: 30
 
@@ -156,4 +156,4 @@ jobs:
             --title '${{ steps.ver.outputs.tag }}' \
             ${{ contains(steps.ver.outputs.version, '-') && '--prerelease' || '' }} \
             --notes-file release-notes.md \
-            release/*.exe release/latest*.yml
+            apps/desktop-electron/release/*.exe apps/desktop-electron/release/latest*.yml

@@ -54,7 +54,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
-          path: playwright-report/
+          path: apps/desktop-electron/playwright-report/
           retention-days: 7
 
       - name: Upload test artifacts (screenshots/traces/videos)
@@ -62,5 +62,5 @@ jobs:
         if: ${{ failure() }}
         with:
           name: playwright-test-results
-          path: test-results/
+          path: apps/desktop-electron/test-results/
           retention-days: 7
