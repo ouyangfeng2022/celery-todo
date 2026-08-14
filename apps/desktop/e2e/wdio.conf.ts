@@ -16,7 +16,11 @@ export const E2E_DB_PATH = join(E2E_DB_DIR, 'e2e.db');
 
 export const config = {
   runner: 'local',
-  specs: ['./e2e/**/*.spec.ts'],
+  // tauri-driver 监听在本机 4444（wdio 连接而非自启浏览器驱动）
+  hostname: '127.0.0.1',
+  port: 4444,
+  // wdio 默认 rootDir = 配置文件所在目录（e2e/），pattern 相对该目录
+  specs: ['**/*.spec.ts'],
   maxInstances: 1,
   capabilities: [
     {
