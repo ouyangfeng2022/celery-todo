@@ -953,20 +953,19 @@ function App() {
             </div>
             {/* 更新提醒已移至左下角侧边栏卡片（SidebarUpdateCard），右上象限不再显示徽标。
                 标题与右侧原生窗口控制按钮之间的空白作为拖拽区使用。 */}
-            <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5">
-              {/* 简洁模式入口：与「窗口」菜单里的「进入简洁模式」同效（createSticker 会隐藏主窗口）。
-                  pr-[152px] 已给原生 overlay 让位，ml-auto 把按钮顶到内容区右缘 = 真正的右上角。 */}
-              <button
-                type="button"
-                className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-                style={{ color: 'var(--text-secondary)' }}
-                aria-label="进入简洁模式"
-                title="进入简洁模式 (Ctrl+Shift+K)"
-                onClick={() => void window.electronAPI?.createSticker(activeProjectId)}
-              >
-                <StickerIcon size={16} />
-              </button>
-            </div>
+            {/* 简洁模式入口：当作第 4 个原生 caption 按钮 —— 紧贴最小化按钮左侧，
+                与 overlay 同高(h-9=36px)、顶端对齐(top-0)。绝对定位 right-[140px] 让它
+                贴近原生按钮（caption 区约 138px 宽，留 ~2px 缝隙），比停在 pr-[152px] 内容缘更紧。 */}
+            <button
+              type="button"
+              className="titlebar-no-drag absolute right-[140px] top-0 z-20 flex h-9 w-[46px] items-center justify-center transition-colors hover:bg-[var(--bg-hover)] focus-visible:outline-none"
+              style={{ color: 'var(--text-secondary)' }}
+              aria-label="进入简洁模式"
+              title="进入简洁模式 (Ctrl+Shift+K)"
+              onClick={() => void window.electronAPI?.createSticker(activeProjectId)}
+            >
+              <StickerIcon size={16} />
+            </button>
           </div>
         </div>
       )}

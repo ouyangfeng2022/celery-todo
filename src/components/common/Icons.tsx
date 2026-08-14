@@ -335,11 +335,13 @@ export const SparkleIcon = memo((props: IconProps) => (
   </BaseIcon>
 ));
 
-// 贴图 / 便利贴：带折角的方形标签，对应简洁模式浮窗
+// 贴图浮窗：大小两个重叠的圆角面板，前景面板带内容线，对应简洁模式的浮动小窗
 export const StickerIcon = memo((props: IconProps) => (
   <BaseIcon {...props}>
-    <path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z" />
-    <path d="M15 3v6h6" />
+    <rect x="3" y="3" width="12" height="12" rx="2" />
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <line x1="12" y1="13" x2="18" y2="13" />
+    <line x1="12" y1="16" x2="16" y2="16" />
   </BaseIcon>
 ));
 

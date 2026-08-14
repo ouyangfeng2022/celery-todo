@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as data from '../../utils/dataGateway';
 import { createCoalescedAsyncTask } from '../../utils/coalescedAsyncTask';
@@ -113,6 +114,11 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [ready, setReady] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  // 项目下拉菜单 portal 后脱离 .sticker-shell 的 opacity 合成层（避免被透明度稀释看不清）。
+  // menuAnchor 记录触发按钮的屏幕坐标，渲染时用 fixed 定位贴在按钮下方。
+  const [menuAnchor, setMenuAnchor] = useState<{ left: number; top: number; width: number } | null>(
+    null,
+  );
   const [addPopoverOpen, setAddPopoverOpen] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(
     null,
@@ -120,6 +126,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   // 右键命中的事项 id：菜单据此决定是否展示"归档事项"。null 表示右键在空白处。
   const [contextMenuTodoId, setContextMenuTodoId] = useState<string | null>(null);
   const projectPickerRef = useRef<HTMLDivElement>(null);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const addPopoverRef = useRef<HTMLDivElement>(null);
   // 用 ref 持有最新 projectId，让 refresh 引用保持稳定（不依赖 projectId），
@@ -225,7 +232,15 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   useEffect(() => {
     if (!projectMenuOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!projectPickerRef.current?.contains(event.target as Node)) setProjectMenuOpen(false);
+      // 菜单 portal 到 document.body 后不在 picker 内，需把 menuRef 也算作「内部」，
+      // 否则点击菜单项会先被这里判为外部而卸载，导致选项 onClick 不触发。
+      const target = event.target as Node;
+      if (
+        !projectPickerRef.current?.contains(target) &&
+        !projectMenuRef.current?.contains(target)
+      ) {
+        setProjectMenuOpen(false);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setProjectMenuOpen(false);
@@ -371,46 +386,64 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       onContextMenuCapture={handleContextMenu}
     >
       <header className="sticker-drag sticker-header">
-        <div ref={projectPickerRef} className="sticker-no-drag sticker-project-picker">
-          <button
-            type="button"
-            className="sticker-project"
-            aria-label="选择贴图项目"
-            aria-haspopup="listbox"
-            aria-expanded={projectMenuOpen}
-            onClick={() => setProjectMenuOpen((open) => !open)}
-          >
-            {project?.name ?? '选择一个项目'}
-          </button>
-          {projectMenuOpen && (
-            <div className="sticker-project-menu" role="listbox" aria-label="贴图项目列表">
-              {projects.map((item) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={item.id === projectId}
-                  className="sticker-project-option"
-                  key={item.id}
-                  onClick={() => handleProjectChange(item.id)}
+        {/* 返回主窗口：最左侧，专用返回箭头图标（带杆 ←，比单纯 chevron 更明确） */}
+        <button
+          type="button"
+          className="sticker-back sticker-no-drag"
+          aria-label="返回主窗口"
+          title="返回主窗口"
+          onClick={() => void window.electronAPI?.returnToMain(stickerId)}
+        >
+          <svg viewBox="0 0 12 12" aria-hidden="true">
+            <path d="M9.5 6H3M6 3L3 6l3 3" />
+          </svg>
+        </button>
+        {/* 项目标题：首行绝对居中（不被左右按钮挤压偏移） */}
+        <div className="sticker-header-center sticker-no-drag">
+          <div ref={projectPickerRef} className="sticker-project-picker">
+            <button
+              type="button"
+              className="sticker-project"
+              aria-label="选择贴图项目"
+              aria-haspopup="listbox"
+              aria-expanded={projectMenuOpen}
+              onClick={(e) => {
+                // 每次打开都重新测量触发按钮的屏幕坐标：贴图窗口位置/项目名长度都可能变化。
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenuAnchor({ left: r.left, top: r.bottom + 6, width: r.width });
+                setProjectMenuOpen((open) => !open);
+              }}
+            >
+              {project?.name ?? '选择一个项目'}
+            </button>
+            {projectMenuOpen &&
+              menuAnchor &&
+              createPortal(
+                <div
+                  ref={projectMenuRef}
+                  className="sticker-project-menu"
+                  role="listbox"
+                  aria-label="贴图项目列表"
+                  style={{ left: menuAnchor.left, top: menuAnchor.top, minWidth: menuAnchor.width }}
                 >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          )}
+                  {projects.map((item) => (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={item.id === projectId}
+                      className="sticker-project-option"
+                      key={item.id}
+                      onClick={() => handleProjectChange(item.id)}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+                </div>,
+                document.body,
+              )}
+          </div>
         </div>
         <div className="sticker-header-actions sticker-no-drag">
-          <button
-            type="button"
-            className="sticker-back"
-            aria-label="返回主窗口"
-            title="返回主窗口"
-            onClick={() => void window.electronAPI?.returnToMain(stickerId)}
-          >
-            <svg viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M8 2L4 6l4 4" />
-            </svg>
-          </button>
           <button
             ref={addButtonRef}
             type="button"
