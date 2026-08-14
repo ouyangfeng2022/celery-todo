@@ -33,7 +33,7 @@ jobs:
         with:
           bun-version: 1.3.10
 
-      - name: Install mobile deps（file: 引用本地共享包，独立于根 workspace）
+      - name: Install mobile deps（file 协议引用本地共享包，独立于根 workspace）
         working-directory: apps/mobile
         run: bun install
 
