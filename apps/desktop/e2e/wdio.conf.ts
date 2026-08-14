@@ -31,7 +31,15 @@ export const config = {
       'wdio:tauriOptions': {
         // tauri build --debug --no-bundle 产物（资产经 CLI 嵌入；workspace 根 target/）。
         // 用绝对路径 —— tauri-driver 按自身 cwd 解析相对路径。
-        application: resolve(confDir, '..', '..', '..', 'target', 'debug', 'celery-desktop.exe'),
+        application: resolve(
+          confDir,
+          '..',
+          '..',
+          '..',
+          'target',
+          'debug',
+          process.platform === 'win32' ? 'celery-desktop.exe' : 'celery-desktop',
+        ),
         env: {
           CELERY_DB_PATH: E2E_DB_PATH,
         },

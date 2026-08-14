@@ -21,8 +21,8 @@ concurrency:
 
 jobs:
   e2e:
-    name: Tauri smoke (windows)
-    runs-on: windows-latest
+    name: Tauri smoke (linux + xvfb)
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
@@ -55,37 +55,29 @@ jobs:
       - name: Install tauri-driver
         run: cargo install tauri-driver --locked
 
-      # msedgedriver 必须与本机 WebView2 运行时版本严格匹配（Edge 浏览器版本
-      # ≠ WebView2 版本，不匹配时 session 可建立但页面空白/挂起——官方
-      # manual-setup 文档指定用 msedgedriver-tool 对版下载到 ~/.cargo/bin）
-      - name: Install version-matched msedgedriver（WebView2 runtime）
-        shell: pwsh
-        run: |
-          cargo install --git https://github.com/chippers/msedgedriver-tool --locked
-          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
 
       - name: Start tauri-driver
-        shell: pwsh
         run: |
-          $proc = Start-Process tauri-driver -PassThru -WindowStyle Hidden
-          $proc.Id | Out-File -FilePath tauri-driver.pid
-          # 等待 4444 端口就绪
-          $deadline = (Get-Date).AddSeconds(30)
-          while ((Get-Date) -lt $deadline) {
-            try {
-              $null = New-Object Net.Sockets.TcpClient('127.0.0.1', 4444)
-              break
-            } catch { Start-Sleep -Milliseconds 500 }
-          }
+          nohup tauri-driver > tauri-driver.log 2>&1 &
+          echo $! > tauri-driver.pid
+          for i in $(seq 1 60); do
+            (exec 3<>/dev/tcp/127.0.0.1/4444) 2>/dev/null && exec 3>&- && break
+            sleep 0.5
+          done
 
-      - name: Run WebdriverIO
+      # webkit2gtk 在 xvfb 下的已知渲染问题需禁用合成模式
+      - name: Run WebdriverIO（xvfb）
         working-directory: apps/desktop
-        run: bunx wdio run ./e2e/wdio.conf.ts
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
+        run: xvfb-run -a bunx wdio run ./e2e/wdio.conf.ts
 
       - name: Stop tauri-driver
         if: always()
-        shell: pwsh
         run: |
-          if (Test-Path tauri-driver.pid) {
-            Stop-Process -Id (Get-Content tauri-driver.pid) -Force -ErrorAction SilentlyContinue
-          }
+          [ -f tauri-driver.pid ] && kill "$(cat tauri-driver.pid)" 2>/dev/null || true
+          pkill tauri-driver 2>/dev/null || true
+
+      - name: tauri-driver 日志
+        if: failure()
+        run: cat tauri-driver.log 2>/dev/null || true
