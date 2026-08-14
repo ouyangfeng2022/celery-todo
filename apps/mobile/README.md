@@ -26,8 +26,16 @@ bunx expo start      # Expo Go 开发
 - 数据层契约：`expo-sqlite` 是原生模块，契约套件需真机/模拟器；
   由移动端里程碑在 Expo CI 挂载 `@celery/test-contracts`。
 
-## 里程碑待办（3.0 计划第 5 步）
+## 正式 UI（已实施）
 
-- Expo Router 四入口（事项 / 计划 / 搜索 / 设置）
-- 滑动完成/归档、长按批量、手动排序模式的原生拖拽
-- 主题切换接 `@celery/ui-tokens` 的 dark/celery 主题
+- Expo Router 四入口：事项（项目切换/添加/滑动/长按/手动排序拖拽）、
+  计划（@celery/core planning 时间桶分组）、搜索（防抖 LIKE）、设置（三主题）
+- 滑动：右滑完成、左滑归档（react-native-gesture-handler Swipeable，到位即执行）
+- 长按：操作面板（置顶/优先级/移动项目/归档，Modal 实现，零额外依赖）
+- 手动排序：react-native-draggable-flatlist 原生拖拽 + 服务端 reorder 整组重编
+- 主题：@celery/ui-tokens 的 themeLight/themeDark/themeCelery，持久化到本地
+  settings 表（theme 键，字段命名与桌面端一致）
+
+## 后续里程碑
+
+- EAS Build/Submit、Maestro E2E（随发布流水线）

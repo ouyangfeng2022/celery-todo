@@ -1,0 +1,247 @@
+/**
+ * @file 事项页：项目切换 / 添加 / 列表（滑动 + 长按）/ 手动排序拖拽。
+ */
+
+import { useMemo, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DraggableFlatList, {
+  ScaleDecorator,
+  type DragEndParams,
+} from 'react-native-draggable-flatlist';
+import type { TodoDto, TodoPriority } from '@celery/data';
+import { useAppData } from '../../state/AppData';
+import { palette, PRIORITY_LABELS } from '../../theme';
+import { TodoRow } from '../../components/TodoRow';
+import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+
+export default function TodosScreen() {
+  const {
+    theme,
+    ready,
+    projects,
+    currentProject,
+    currentProjectId,
+    switchProject,
+    todos,
+    reorder,
+    addTodo,
+    toggleTodo,
+    archiveTodo,
+    pinTodo,
+    setPriority,
+    moveTodo,
+  } = useAppData();
+  const colors = palette(theme);
+
+  const [draft, setDraft] = useState('');
+  const [priority, setPriorityState] = useState<TodoPriority>('medium');
+  const [manualSort, setManualSort] = useState(false);
+  const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
+
+  const visible = useMemo(() => {
+    // 非手动排序时置顶恒浮顶（与服务端排序语义一致）
+    const pinned = todos.filter((t) => t.pinned);
+    const rest = todos.filter((t) => !t.pinned);
+    return manualSort ? todos : [...pinned, ...rest];
+  }, [todos, manualSort]);
+
+  const submit = () => {
+    const title = draft.trim();
+    if (!title || !currentProjectId) return;
+    setDraft('');
+    void addTodo(title, priority);
+  };
+
+  const onDragEnd = ({ data }: DragEndParams<TodoDto>) => {
+    void reorder(data.map((t) => t.id));
+  };
+
+  const row = (todo: TodoDto, drag?: () => void) => (
+    <TodoRow
+      todo={todo}
+      colors={colors}
+      onToggle={() => void toggleTodo(todo.id)}
+      onArchive={() => void archiveTodo(todo.id)}
+      onLongPress={() => {
+        if (!manualSort) setSheetTodo(todo);
+      }}
+      dragHandle={
+        manualSort ? (
+          <Pressable onPressIn={drag} hitSlop={12} style={styles.dragHandle}>
+            <Text style={{ color: colors.textTertiary, fontSize: 16 }}>☰</Text>
+          </Pressable>
+        ) : undefined
+      }
+    />
+  );
+
+  if (!ready) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 64 }}>
+          正在初始化…
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
+      {/* 项目切换横条 */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.projectBar}
+        contentContainerStyle={{ paddingHorizontal: 12, gap: 8 }}
+      >
+        {projects.map((p) => {
+          const active = p.id === currentProjectId;
+          return (
+            <Pressable
+              key={p.id}
+              onPress={() => switchProject(p.id)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: active ? colors.accent : colors.bgTertiary,
+                  borderColor: active ? colors.accent : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{ color: active ? '#ffffff' : colors.textPrimary, fontSize: 13 }}
+                numberOfLines={1}
+              >
+                {p.name}
+                {p.activeCount > 0 ? ` ${p.activeCount}` : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* 添加输入行 */}
+      <View
+        style={[styles.composer, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}
+      >
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={submit}
+          returnKeyType="done"
+          placeholder={currentProject ? `添加到「${currentProject.name}」` : '请先创建项目'}
+          placeholderTextColor={colors.textTertiary}
+          style={[styles.input, { color: colors.textPrimary }]}
+        />
+        <View style={styles.prioritySwitch}>
+          {(['high', 'medium', 'low'] as const).map((p) => (
+            <Pressable key={p} onPress={() => setPriorityState(p)} hitSlop={6}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: priority === p ? '700' : '400',
+                  color: priority === p ? colors.accent : colors.textTertiary,
+                }}
+              >
+                {PRIORITY_LABELS[p]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      {/* 手动排序开关 */}
+      <Pressable
+        onPress={() => setManualSort((v) => !v)}
+        style={styles.sortToggle}
+        hitSlop={8}
+      >
+        <Text style={{ color: manualSort ? colors.accent : colors.textTertiary, fontSize: 12 }}>
+          {manualSort ? '拖拽排序中 · 点按结束' : '手动排序'}
+        </Text>
+      </Pressable>
+
+      {/* 列表：手动排序用 DraggableFlatList（原生拖拽），否则普通 FlatList */}
+      {manualSort ? (
+        <View style={{ flex: 1 }}>
+          <DraggableFlatList
+            data={visible}
+            keyExtractor={(t) => t.id}
+            onDragEnd={onDragEnd}
+            renderItem={({ item, drag, isActive }) => (
+              <ScaleDecorator>
+                <View style={{ opacity: isActive ? 0.85 : 1 }}>{row(item, drag)}</View>
+              </ScaleDecorator>
+            )}
+          />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
+          {visible.map((todo) => (
+            <View key={todo.id}>{row(todo)}</View>
+          ))}
+          {visible.length === 0 && (
+            <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 48 }}>
+              {projects.length === 0 ? '首次使用：请在桌面端导入或创建项目' : '从一件小事开始'}
+            </Text>
+          )}
+        </ScrollView>
+      )}
+
+      <TodoActionsSheet
+        todo={sheetTodo}
+        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+        colors={colors}
+        onClose={() => setSheetTodo(null)}
+        onPin={(pinned) => {
+          if (sheetTodo) void pinTodo(sheetTodo.id, pinned);
+          setSheetTodo(null);
+        }}
+        onSetPriority={(p) => {
+          if (sheetTodo) void setPriority(sheetTodo.id, p);
+          setSheetTodo(null);
+        }}
+        onMove={(projectId) => {
+          if (sheetTodo) void moveTodo(sheetTodo.id, projectId);
+          setSheetTodo(null);
+        }}
+        onArchive={() => {
+          if (sheetTodo) void archiveTodo(sheetTodo.id);
+          setSheetTodo(null);
+        }}
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  projectBar: { flexGrow: 0, paddingVertical: 8 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 12,
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
+  input: { flex: 1, paddingVertical: 10, fontSize: 15 },
+  prioritySwitch: { flexDirection: 'row', gap: 10, paddingLeft: 10 },
+  sortToggle: { alignSelf: 'flex-end', paddingRight: 18, paddingBottom: 6 },
+  dragHandle: { paddingRight: 8 },
+});
