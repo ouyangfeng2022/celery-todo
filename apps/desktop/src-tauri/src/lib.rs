@@ -51,6 +51,9 @@ pub fn run() {
             commands::all_settings,
             commands::settings_by_prefix,
             commands::delete_setting,
+            commands::legacy_v2_detect,
+            commands::legacy_v2_inspect,
+            commands::legacy_v2_import,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

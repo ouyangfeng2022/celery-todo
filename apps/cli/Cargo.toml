@@ -1,0 +1,19 @@
+[package]
+name = "celery-cli"
+description = "Celery Todo 3.0 命令行（复用 celery-db，与桌面端读写同一 v3 数据库）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "celery"
+path = "src/main.rs"
+
+[dependencies]
+celery-db = { path = "../../crates/celery-db" }
+clap = { version = "4", features = ["derive"] }
+dirs = "6"
+uuid = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

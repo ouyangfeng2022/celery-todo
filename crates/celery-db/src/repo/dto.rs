@@ -356,3 +356,60 @@ pub struct SettingsKv {
     pub key: String,
     pub value: String,
 }
+
+// ============================================
+// 2.x 旧库导入（LegacyV2ImportService）
+// ============================================
+
+/// 2.x 源库内容概况（inspect 结果）。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct LegacyV2Counts {
+    #[ts(type = "number")]
+    pub projects: u64,
+    #[ts(type = "number")]
+    pub todos: u64,
+    #[ts(type = "number")]
+    pub archived_todos: u64,
+    #[ts(type = "number")]
+    pub settings: u64,
+}
+
+/// inspect(path) 的完整报告：向导据 supported/blocker/warnings 决定展示与放行。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct LegacyV2Report {
+    pub path: String,
+    /// 版本、完整性、表结构全部通过，且无孤儿活跃事项
+    pub supported: bool,
+    /// settings.dataVersion；读不到为 0
+    #[ts(type = "number")]
+    pub data_version: i64,
+    /// PRAGMA integrity_check 是否通过
+    pub integrity_ok: bool,
+    /// 各表行数（表结构可读时提供）
+    pub counts: Option<LegacyV2Counts>,
+    /// 不阻断导入的提示（缺列用默认值、孤儿归档等）
+    pub warnings: Vec<String>,
+    /// supported=false 的原因（供 UI 直接展示）
+    pub blocker: Option<String>,
+}
+
+/// 导入结果摘要。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct LegacyV2ImportResult {
+    #[ts(type = "number")]
+    pub projects: u64,
+    #[ts(type = "number")]
+    pub todos: u64,
+    #[ts(type = "number")]
+    pub archived_todos: u64,
+    #[ts(type = "number")]
+    pub settings: u64,
+    /// 按白名单跳过的 2.x 设置键（OS 级状态等，不进入 v3）
+    pub skipped_settings: Vec<String>,
+}

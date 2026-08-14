@@ -444,7 +444,7 @@ impl CeleryDb {
         let now = now_iso();
         let mut sets: Vec<String> = vec!["updated_at = ?".into()];
         let mut vals: Vec<SqlValue> = vec![SqlValue::Text(now)];
-        let mut bind = |col: &str, v: SqlValue, sets: &mut Vec<String>, vals: &mut Vec<SqlValue>| {
+        let bind = |col: &str, v: SqlValue, sets: &mut Vec<String>, vals: &mut Vec<SqlValue>| {
             sets.push(format!("{col} = ?"));
             vals.push(v);
         };

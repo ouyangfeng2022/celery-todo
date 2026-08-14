@@ -191,3 +191,36 @@ pub fn settings_by_prefix(db: State<CeleryDb>, prefix: String) -> CmdResult<Vec<
 pub fn delete_setting(db: State<CeleryDb>, key: String) -> CmdResult<()> {
     db.delete_setting(&key).map_err(ErrorPayload::from)
 }
+
+// ---------- 2.x 旧库导入（首次启动向导） ----------
+
+#[tauri::command]
+pub fn legacy_v2_detect() -> Option<String> {
+    celery_db::detect_v2_source().map(|p| p.display().to_string())
+}
+
+#[tauri::command]
+pub fn legacy_v2_inspect(path: Option<String>) -> celery_db::dto::LegacyV2Report {
+    // path 为空时自动探测；inspect 永不报错，所有问题都体现在报告里
+    let path = path
+        .map(std::path::PathBuf::from)
+        .or_else(celery_db::detect_v2_source);
+    match path {
+        Some(p) => celery_db::inspect_v2(&p),
+        None => celery_db::dto::LegacyV2Report {
+            path: String::new(),
+            supported: false,
+            data_version: 0,
+            integrity_ok: false,
+            counts: None,
+            warnings: Vec::new(),
+            blocker: Some("未找到 2.x 数据库文件".into()),
+        },
+    }
+}
+
+#[tauri::command]
+pub fn legacy_v2_import(db: State<CeleryDb>, path: String) -> CmdResult<LegacyV2ImportResult> {
+    db.import_from_v2(std::path::Path::new(&path))
+        .map_err(ErrorPayload::from)
+}

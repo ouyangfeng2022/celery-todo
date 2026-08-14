@@ -7,11 +7,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ProjectDto, TodoDto, TodoPage } from '@celery/data';
-import { createTauriRepositories } from './lib/tauri-repositories';
+import type { LegacyV2Report, ProjectDto, TodoDto, TodoPage } from '@celery/data';
+import { createLegacyV2ImportService, createTauriRepositories } from './lib/tauri-repositories';
 
 const repos = createTauriRepositories();
+const legacy = createLegacyV2ImportService();
 const PAGE_SIZE = 20;
+
+/** 首启导入向导状态：仅在空库且探测到 2.x 数据时进入 offer。 */
+type MigrationOffer = { report: LegacyV2Report } | 'none' | 'pending';
 
 export default function App() {
   const [projects, setProjects] = useState<ProjectDto[]>([]);
@@ -22,6 +26,8 @@ export default function App() {
   const [newProject, setNewProject] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [offer, setOffer] = useState<MigrationOffer>('pending');
+  const [importing, setImporting] = useState(false);
 
   const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T | null> => {
     try {
@@ -62,14 +68,54 @@ export default function App() {
     [run],
   );
 
+  /** 完成首次启动：确认导入或跳过后，创建默认内容并进入主界面。 */
+  const finishBoot = useCallback(async () => {
+    await repos.projects.ensureInbox();
+    const list = await refreshProjects();
+    if (list && list.length > 0) setActiveId(list[0].id);
+    setReady(true);
+  }, [refreshProjects]);
+
   useEffect(() => {
     (async () => {
-      await repos.projects.ensureInbox();
-      const list = await refreshProjects();
-      if (list && list.length > 0) setActiveId(list[0].id);
-      setReady(true);
+      // 仅当 v3 库为空（首次启动、默认内容创建之前）且能探测到 2.x 数据时，提供导入
+      try {
+        const existing = await repos.projects.list(true);
+        const detected = existing.length === 0 ? await legacy.detectSource() : null;
+        if (detected) {
+          const report = await legacy.inspect(null);
+          setOffer({ report });
+          return; // 保持 ready=false，等用户决定
+        }
+      } catch {
+        /* 探测失败不阻断启动 */
+      }
+      setOffer('none');
+      await finishBoot();
     })();
-  }, [refreshProjects]);
+  }, [finishBoot]);
+
+  const runImport = async () => {
+    if (offer === 'pending' || offer === 'none') return;
+    setImporting(true);
+    try {
+      const result = await legacy.importFrom(offer.report.path);
+      setError(
+        `已从 2.x 导入：项目 ${result.projects}、事项 ${result.todos}、归档 ${result.archivedTodos}`,
+      );
+      setOffer('none');
+      await finishBoot();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const skipImport = async () => {
+    setOffer('none');
+    await finishBoot();
+  };
 
   useEffect(() => {
     refreshTodos(activeId);
@@ -165,7 +211,51 @@ export default function App() {
     if (result) setPage(result);
   };
 
-  if (!ready) return <div className="boot">正在初始化 v3 数据库…</div>;
+  if (!ready) {
+    if (offer !== 'pending' && offer !== 'none') {
+      // 首启导入横幅：摘要 + 警告 + 导入/跳过（3.0 计划第 6 步）
+      const c = offer.report.counts;
+      return (
+        <div className="migrate">
+          <h1>
+            发现 Celery Todo 2.x 数据 <span className="ver">3.0 · 首次启动</span>
+          </h1>
+          {offer.report.supported ? (
+            <>
+              <p className="summary">
+                将导入 {c?.projects ?? 0} 个项目、{c?.todos ?? 0} 条事项、
+                {c?.archivedTodos ?? 0} 条归档记录（源库只读，不会修改）。
+              </p>
+              {offer.report.warnings.length > 0 && (
+                <ul className="warnings">
+                  {offer.report.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="actions">
+                <button className="primary" disabled={importing} onClick={runImport}>
+                  {importing ? '导入中…' : '导入 2.x 数据'}
+                </button>
+                <button onClick={skipImport}>跳过，创建全新数据库</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="summary">{offer.report.blocker}</p>
+              <div className="actions">
+                <button className="primary" onClick={skipImport}>
+                  跳过，创建全新数据库
+                </button>
+              </div>
+            </>
+          )}
+          {error && <div className="error">{error}</div>}
+        </div>
+      );
+    }
+    return <div className="boot">正在初始化 v3 数据库…</div>;
+  }
 
   return (
     <div className="shell">

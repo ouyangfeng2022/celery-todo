@@ -7,6 +7,11 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type {
+  LegacyV2ImportResult,
+  LegacyV2Report,
+} from '@celery/data';
+import type { LegacyV2ImportService } from '@celery/data';
+import type {
   ArchivedQuery,
   ArchivedTodoPage,
   BatchTodoPatch,
@@ -87,5 +92,20 @@ export function createTauriRepositories(): Repositories {
       byPrefix: (prefix: string) => call<SettingsKv[]>('settings_by_prefix', { prefix }),
       delete: (key: string) => call<void>('delete_setting', { key }),
     },
+  };
+}
+
+/**
+ * 2.x 旧库导入服务（仅桌面端）：命令与 src-tauri 的 legacy_v2_* 一一对应。
+ */
+export function createLegacyV2ImportService(): LegacyV2ImportService {
+  return {
+    inspect: async (path?: string | null) => {
+      if (path) return call<LegacyV2Report>('legacy_v2_inspect', { path });
+      return call<LegacyV2Report>('legacy_v2_inspect', { path: null });
+    },
+    importFrom: (sourcePath: string) =>
+      call<LegacyV2ImportResult>('legacy_v2_import', { path: sourcePath }),
+    detectSource: () => call<string | null>('legacy_v2_detect'),
   };
 }

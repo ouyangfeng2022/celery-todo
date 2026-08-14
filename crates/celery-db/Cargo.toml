@@ -10,8 +10,9 @@ rusqlite = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-ts-rs = { version = "10", features = ["serde-json-impl"] }
+ts-rs = { version = "10", features = ["serde-json-impl", "no-serde-warnings"] }
 uuid = { version = "1", features = ["v4"] }
+dirs = "6"
 
 [dev-dependencies]
 tempfile = "3"

@@ -15,6 +15,7 @@ use rusqlite::Connection;
 const MIGRATIONS: &[(i64, &str, &str)] = &[(1, "v3-initial", include_str!("schema/v3_initial.sql"))];
 
 /// 当前 schema 版本（最后一个迁移的版本号）。
+#[allow(dead_code)] // 测试与 CLI 自检使用；非测试构建暂无调用方
 pub const LATEST_VERSION: i64 = if MIGRATIONS.is_empty() {
     0
 } else {

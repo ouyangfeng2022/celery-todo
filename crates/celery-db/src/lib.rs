@@ -16,10 +16,12 @@
 mod clock;
 mod cursor;
 mod error;
+mod legacy_v2;
 mod migrations;
 mod repo;
 
 pub use error::{CeleryDbError, Result};
+pub use legacy_v2::{detect_v2_source, inspect_v2};
 pub use repo::{CeleryDb, Page};
 
 // DTO 既有 serde（Rust 侧 IPC 序列化）又有 TS（生成 TS 绑定），

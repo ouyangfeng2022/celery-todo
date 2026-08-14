@@ -21,3 +21,6 @@ export type * from './TodoPatch';
 export type * from './TodoPriority';
 export type * from './TodoQuery';
 export type * from './TodoSort';
+export type * from './LegacyV2Counts';
+export type * from './LegacyV2ImportResult';
+export type * from './LegacyV2Report';

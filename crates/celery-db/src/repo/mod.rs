@@ -70,7 +70,7 @@ impl CeleryDb {
         })
     }
 
-    pub(super) fn lock_conn(&self) -> Result<std::sync::MutexGuard<'_, rusqlite::Connection>> {
+    pub(crate) fn lock_conn(&self) -> Result<std::sync::MutexGuard<'_, rusqlite::Connection>> {
         self.conn
             .lock()
             .map_err(|_| CeleryDbError::Invalid("数据库连接锁中毒".into()))

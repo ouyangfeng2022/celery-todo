@@ -5,5 +5,6 @@
  */
 
 export * from './repository';
+export * from './legacy-import';
 export * from './export-format';
 export * from './memory/memory-repositories';
