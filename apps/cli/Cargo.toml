@@ -14,6 +14,8 @@ celery-db = { path = "../../crates/celery-db" }
 clap = { version = "4", features = ["derive"] }
 dirs = "6"
 uuid = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"

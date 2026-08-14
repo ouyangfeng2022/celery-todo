@@ -77,10 +77,15 @@ impl Default for DataChangedEvent {
 }
 
 fn notify(window: &WebviewWindow, mut event: DataChangedEvent) {
-    event.revision = DATA_REVISION.fetch_add(1, Ordering::Relaxed) + 1;
+    event.revision = next_revision();
     event.source = window.label().to_string();
     // 广播失败不影响写命令本身（窗口可能正在关闭）
     let _ = window.app_handle().emit("data-changed", event);
+}
+
+/// 取下一个全局变更版本号（CLI 通知桥等非窗口来源也走同一序列）。
+pub(crate) fn next_revision() -> u64 {
+    DATA_REVISION.fetch_add(1, Ordering::Relaxed) + 1
 }
 
 // ---------- 事项 ----------

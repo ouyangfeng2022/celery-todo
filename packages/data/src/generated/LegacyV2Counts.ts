@@ -3,9 +3,4 @@
 /**
  * 2.x 源库内容概况（inspect 结果）。
  */
-export type LegacyV2Counts = {
-  projects: number;
-  todos: number;
-  archivedTodos: number;
-  settings: number;
-};
+export type LegacyV2Counts = { projects: number, todos: number, archivedTodos: number, settings: number, };

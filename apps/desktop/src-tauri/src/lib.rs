@@ -8,6 +8,7 @@
 //!   持久化（window_state.rs）、开机自启（tauri-plugin-autostart）、单实例、
 //!   原生导出保存（tauri-plugin-dialog + 直接写文件）。
 
+mod cli_notify;
 mod commands;
 mod stickers;
 mod tray;
@@ -115,6 +116,8 @@ pub fn run() {
             tray::create_tray(app.handle())?;
             // 重建上次会话的贴图窗口（主窗口已显示后再叠加，避免启动白屏误判）
             stickers::restore_stickers(app.handle());
+            // CLI 写入通知服务（发现文件随 db 同目录；失败不阻断启动）
+            cli_notify::start(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -164,6 +167,15 @@ pub fn run() {
             stickers::sticker_return_main,
             stickers::sticker_style_changed,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // 退出前清理：CLI 通知发现文件 + 窗口状态落盘（debounce 可能还有尾部）
+            if let tauri::RunEvent::Exit = event {
+                cli_notify::stop(app_handle);
+                if let Some(store) = app_handle.try_state::<WindowStateStore>() {
+                    store.flush();
+                }
+            }
+        });
 }

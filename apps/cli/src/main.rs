@@ -3,13 +3,15 @@
 //! 数据文件：`<系统配置目录>/com.celery.todo/celery-v3.db`，与桌面端
 //! `app_data_dir` 一致（Windows `%APPDATA%\com.celery.todo`）。
 //!
-//! 已知边界（3.0 计划）：CLI 写入后桌面的实时刷新依赖同用户本地 IPC
-//! （RepositoryChangeFeed 的桌面实现），该桥接在桌面 UI 里程碑接入；
-//! 当前桌面重启后可见全部 CLI 写入。
+//! 写后刷新：每次写命令成功后经本地 TCP 通知桌面端（notify.rs，
+//! 发现文件 cli-notify.json 与 db 同目录）；桌面未运行时静默跳过。
+
+mod notify;
 
 use celery_db::dto::{NewTodo, TodoFilter, TodoPatch, TodoQuery, TodoSort};
 use celery_db::CeleryDb;
 use clap::{Parser, Subcommand};
+use notify::ChangeNotice;
 use std::path::PathBuf;
 
 /// v3 数据库文件位置（与 Tauri identifier 对应的 appData 目录）。
@@ -111,6 +113,12 @@ fn match_todo_prefix(db: &CeleryDb, prefix: &str) -> Result<String, String> {
 }
 
 fn run(cli: Cli) -> Result<(), String> {
+    let db_path = cli.db.clone().unwrap_or_else(default_db_path);
+    let db_dir = db_path
+        .parent()
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
+    let notify = |notice: ChangeNotice| notify::notify_desktop(&db_dir, &notice);
     let db = open(cli.db.as_ref())?;
     match cli.command {
         Command::Status => {
@@ -175,6 +183,7 @@ fn run(cli: Cli) -> Result<(), String> {
         }
         Command::Add { title, project, priority } => {
             let priority = resolve_priority(&priority)?;
+            let mut project_created = false;
             let project_id = match &project {
                 None => db.ensure_inbox().map_err(|e| e.to_string())?.id,
                 Some(name) => {
@@ -182,6 +191,7 @@ fn run(cli: Cli) -> Result<(), String> {
                     match projects.iter().find(|p| p.name == *name) {
                         Some(p) => p.id.clone(),
                         None => {
+                            project_created = true;
                             let created = db
                                 .create_project(celery_db::dto::NewProject {
                                     id: uuid::Uuid::new_v4().to_string(),
@@ -196,19 +206,30 @@ fn run(cli: Cli) -> Result<(), String> {
                     }
                 }
             };
-            let max_rank = 0.0f64; // 追加语义：rank 递增交给中点/重排；这里用时间戳保证新事项在前
+            // 追加语义：时间戳毫秒作 rank —— 相对任何 i×65536 级的既有 rank
+            // 恒排在尾部（时间戳远大于累积 rank），免去一次 max 查询。
+            let rank = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as f64)
+                .unwrap_or(0.0);
             let todo = db
                 .create_todo(NewTodo {
                     id: uuid::Uuid::new_v4().to_string(),
-                    project_id,
+                    project_id: project_id.clone(),
                     title,
                     description: None,
                     priority,
                     planned_date: None,
                     pinned: false,
-                    rank: max_rank,
+                    rank,
                 })
                 .map_err(|e| e.to_string())?;
+            notify(ChangeNotice {
+                todos_changed: true,
+                project_ids: vec![project_id],
+                projects_changed: project_created,
+                ..Default::default()
+            });
             println!("已添加 {} {}", &todo.id[..8], todo.title);
         }
         Command::Done { id } => {
@@ -216,11 +237,21 @@ fn run(cli: Cli) -> Result<(), String> {
             let mut patch = TodoPatch::default();
             patch.completed = Some(true);
             let t = db.update_todo(&full, &patch).map_err(|e| e.to_string())?;
+            notify(ChangeNotice {
+                todos_changed: true,
+                project_ids: vec![t.project_id.clone()],
+                ..Default::default()
+            });
             println!("已完成 {} {}", &t.id[..8], t.title);
         }
         Command::Archive { id } => {
             let full = match_todo_prefix(&db, &id)?;
             db.archive_todos(&[full]).map_err(|e| e.to_string())?;
+            notify(ChangeNotice {
+                todos_changed: true,
+                archive_changed: true,
+                ..Default::default()
+            });
             println!("已归档 {id}");
         }
     }
