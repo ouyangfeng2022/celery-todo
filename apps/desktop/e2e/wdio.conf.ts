@@ -10,7 +10,10 @@
 
 import { mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const confDir = dirname(fileURLToPath(import.meta.url));
 export const E2E_DB_DIR = join(tmpdir(), 'celery-todo-e2e');
 export const E2E_DB_PATH = join(E2E_DB_DIR, 'e2e.db');
 
@@ -26,8 +29,9 @@ export const config = {
     {
       maxInstances: 1,
       'wdio:tauriOptions': {
-        // 调试构建（cargo build 产物）；dist 由根 turbo build 预先产出
-        application: './src-tauri/target/debug/celery-desktop.exe',
+        // 调试构建产物：cargo workspace 根 target/（CI 从根构建；dist 由 turbo build 产出）。
+        // 用绝对路径 —— tauri-driver 按自身 cwd 解析相对路径。
+        application: resolve(confDir, '..', '..', '..', 'target', 'debug', 'celery-desktop.exe'),
         env: {
           CELERY_DB_PATH: E2E_DB_PATH,
         },
