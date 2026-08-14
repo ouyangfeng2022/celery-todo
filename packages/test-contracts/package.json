@@ -1,0 +1,21 @@
+{
+  "name": "@celery/test-contracts",
+  "private": true,
+  "version": "2.20.0",
+  "description": "Repository 共享契约测试套件：内存适配器、Rust SQLite（经 Tauri 桥）与 Expo 适配器跑同一套规范",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@celery/data": "workspace:*",
+    "vitest": "^2.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

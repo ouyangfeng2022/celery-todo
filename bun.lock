@@ -92,6 +92,29 @@
         "xlsx": "^0.18.5",
       },
     },
+    "packages/data": {
+      "name": "@celery/data",
+      "version": "2.20.0",
+      "dependencies": {
+        "@celery/test-contracts": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^20.14.10",
+        "typescript": "^5.5.3",
+        "vitest": "^2.0.2",
+      },
+    },
+    "packages/test-contracts": {
+      "name": "@celery/test-contracts",
+      "version": "2.20.0",
+      "dependencies": {
+        "@celery/data": "workspace:*",
+        "vitest": "^2.0.2",
+      },
+      "devDependencies": {
+        "typescript": "^5.5.3",
+      },
+    },
   },
   "packages": {
     "7zip-bin": ["7zip-bin@5.2.0", "", {}, "sha512-ukTPVhqG4jNzMro2qA9HSCSSVJN3aN7tlb+hfqYCt3ER0yWroeA2VR38MNrOHLQ/cVj+DaIMad0kFCtWWowh/A=="],
@@ -148,7 +171,11 @@
 
     "@celery/core": ["@celery/core@workspace:packages/core"],
 
+    "@celery/data": ["@celery/data@workspace:packages/data"],
+
     "@celery/desktop-electron": ["@celery/desktop-electron@workspace:apps/desktop-electron"],
+
+    "@celery/test-contracts": ["@celery/test-contracts@workspace:packages/test-contracts"],
 
     "@csstools/color-helpers": ["@csstools/color-helpers@5.1.0", "", {}, "sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA=="],
 
