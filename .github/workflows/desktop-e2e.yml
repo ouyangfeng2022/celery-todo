@@ -49,8 +49,8 @@ jobs:
       - name: Build renderer（turbo：apps/desktop dist）
         run: bun run build
 
-      - name: Build desktop binary（debug）
-        run: cargo build -p celery-desktop
+      - name: Build desktop binary（release-e2e：资产嵌入，关 lto 提速）
+        run: cargo build --profile release-e2e -p celery-desktop
 
       - name: Install tauri-driver
         run: cargo install tauri-driver --locked

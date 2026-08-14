@@ -18,3 +18,10 @@ uuid = { version = "1", features = ["v4"] }
 lto = true
 codegen-units = 1
 strip = true
+
+# E2E 专用：release 资产嵌入（debug 构建前端空白）但关 lto 提速
+[profile.release-e2e]
+inherits = "release"
+lto = false
+codegen-units = 16
+strip = false
