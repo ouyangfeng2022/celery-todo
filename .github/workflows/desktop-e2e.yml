@@ -46,11 +46,11 @@ jobs:
       - name: Install JS deps
         run: bun install
 
-      - name: Build renderer（turbo：apps/desktop dist）
-        run: bun run build
-
-      - name: Build desktop binary（release-e2e：资产嵌入，关 lto 提速）
-        run: cargo build --profile release-e2e -p celery-desktop
+      # 经 Tauri CLI 构建：编译期注入 TAURI_ENV_* 并把 dist 资产嵌入二进制
+      #（裸 cargo build 的 debug/release 产物前端空白，见 tauri 官方 webdriver 示例）
+      - name: Build desktop binary（tauri build --debug --no-bundle）
+        working-directory: apps/desktop
+        run: bunx tauri build --debug --no-bundle
 
       - name: Install tauri-driver
         run: cargo install tauri-driver --locked

@@ -29,9 +29,9 @@ export const config = {
     {
       maxInstances: 1,
       'wdio:tauriOptions': {
-        // release-e2e 构建产物（资产随二进制嵌入；cargo workspace 根 target/）。
+        // tauri build --debug --no-bundle 产物（资产经 CLI 嵌入；workspace 根 target/）。
         // 用绝对路径 —— tauri-driver 按自身 cwd 解析相对路径。
-        application: resolve(confDir, '..', '..', '..', 'target', 'release-e2e', 'celery-desktop.exe'),
+        application: resolve(confDir, '..', '..', '..', 'target', 'debug', 'celery-desktop.exe'),
         env: {
           CELERY_DB_PATH: E2E_DB_PATH,
         },
