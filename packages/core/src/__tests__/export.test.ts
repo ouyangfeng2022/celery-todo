@@ -4,12 +4,7 @@
 
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
-import {
-  createTodosExcel,
-  todosToCsv,
-  exportProjectAsJson,
-  parseImportData,
-} from '../export';
+import { createTodosExcel, todosToCsv, exportProjectAsJson, parseImportData } from '../export';
 import type { Todo, Project, DeletedTodo } from '../entities';
 
 const mockTodo: Todo = {

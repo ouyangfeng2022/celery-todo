@@ -580,3 +580,144 @@ fn settings_kv_roundtrip_and_prefix() {
     assert!(db.get_setting("sort.p1").unwrap().is_none());
     assert_eq!(db.all_settings().unwrap().len(), 2);
 }
+
+// ============================================
+// 全量替换 / 计数聚合
+// ============================================
+
+fn replace_payload() -> ReplaceAllPayload {
+    ReplaceAllPayload {
+        projects: vec![ReplaceProject {
+            id: "p1".into(),
+            name: "导入项目".into(),
+            kind: ProjectKind::User,
+            color: None,
+            rank: 0.0,
+            created_at: "2026-01-01T00:00:00.000Z".into(),
+            updated_at: "2026-01-01T00:00:00.000Z".into(),
+        }],
+        todos: vec![ReplaceTodo {
+            id: "t1".into(),
+            project_id: "p1".into(),
+            title: "导入的已完成事项".into(),
+            description: None,
+            completed: true,
+            priority: TodoPriority::High,
+            planned_date: Some("2026-01-02".into()),
+            pinned: true,
+            rank: 1024.0,
+            created_at: "2026-01-01T00:00:00.000Z".into(),
+            updated_at: "2026-01-01T00:00:00.000Z".into(),
+            completed_at: Some("2026-01-03T00:00:00.000Z".into()),
+        }],
+        archived_todos: vec![ReplaceArchivedTodo {
+            id: "a1".into(),
+            project_id: "p1".into(),
+            title: "导入的归档事项".into(),
+            description: None,
+            completed: false,
+            priority: TodoPriority::Low,
+            planned_date: None,
+            pinned: false,
+            rank: 0.0,
+            created_at: "2025-12-01T00:00:00.000Z".into(),
+            updated_at: "2025-12-02T00:00:00.000Z".into(),
+            completed_at: None,
+            archived_at: "2025-12-02T00:00:00.000Z".into(),
+            project_name: Some("旧项目名".into()),
+        }],
+        settings: vec![SettingsKv {
+            key: "theme".into(),
+            value: "celery".into(),
+        }],
+    }
+}
+
+#[test]
+fn replace_all_swaps_everything_atomically() {
+    let db = mem();
+    project(&db, "old");
+    db.create_todo(new_todo("old-todo", "old", "旧事项", 0.0)).unwrap();
+    db.set_setting("theme", "default").unwrap();
+
+    db.replace_all(&replace_payload()).unwrap();
+
+    // 旧数据整体消失，新数据按载荷落地（id/时间戳/完成态原样保留）
+    assert!(db.get_project("old").is_err());
+    let p1 = db.get_project("p1").unwrap();
+    assert_eq!(p1.name, "导入项目");
+    let t1 = db.get_todo("t1").unwrap();
+    assert!(t1.completed);
+    assert!(t1.pinned);
+    assert_eq!(t1.completed_at.as_deref(), Some("2026-01-03T00:00:00.000Z"));
+    assert_eq!(t1.rank, 1024.0);
+    let archived = db.archived_page(&ArchivedQuery {
+        project_id: None,
+        term: None,
+        limit: 50,
+        cursor: None,
+    })
+    .unwrap();
+    assert_eq!(archived.items.len(), 1);
+    assert_eq!(archived.items[0].project_name.as_deref(), Some("旧项目名"));
+    assert_eq!(db.get_setting("theme").unwrap().as_deref(), Some("celery"));
+
+    // 非法载荷整体拒绝：库保持替换前状态
+    let mut bad = replace_payload();
+    bad.todos[0].title = "   ".into();
+    assert!(db.replace_all(&bad).is_err());
+    assert!(db.get_todo("t1").is_ok());
+}
+
+#[test]
+fn reset_clears_all_tables() {
+    let db = mem();
+    project(&db, "p1");
+    db.create_todo(new_todo("t1", "p1", "事项", 0.0)).unwrap();
+    db.archive_todos(&["t1".into()]).unwrap();
+    db.set_setting("theme", "celery").unwrap();
+
+    db.reset().unwrap();
+
+    assert!(db.list_projects(true).unwrap().is_empty());
+    assert_eq!(db.archived_count(None).unwrap(), 0);
+    assert!(db.all_settings().unwrap().is_empty());
+}
+
+#[test]
+fn archived_count_supports_project_filter() {
+    let db = mem();
+    project(&db, "p1");
+    project(&db, "p2");
+    db.create_todo(new_todo("t1", "p1", "a", 0.0)).unwrap();
+    db.create_todo(new_todo("t2", "p2", "b", 0.0)).unwrap();
+    db.archive_todos(&["t1".into(), "t2".into()]).unwrap();
+
+    assert_eq!(db.archived_count(None).unwrap(), 2);
+    assert_eq!(db.archived_count(Some("p1")).unwrap(), 1);
+    assert_eq!(db.archived_count(Some("missing")).unwrap(), 0);
+}
+
+#[test]
+fn incomplete_counts_groups_by_project() {
+    let db = mem();
+    project(&db, "p1");
+    project(&db, "p2");
+    db.create_todo(new_todo("t1", "p1", "a", 0.0)).unwrap();
+    db.create_todo(new_todo("t2", "p1", "b", 0.0)).unwrap();
+    db.create_todo(new_todo("t3", "p2", "c", 0.0)).unwrap();
+    // t3 完成；t1 归档 —— 均不计入未完成
+    db.update_todo(
+        "t3",
+        &TodoPatch {
+            completed: Some(true),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    db.archive_todos(&["t1".into()]).unwrap();
+
+    let counts = db.incomplete_counts().unwrap();
+    assert_eq!(counts.get("p1"), Some(&1));
+    assert!(counts.get("p2").is_none());
+}

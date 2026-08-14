@@ -3,6 +3,7 @@
 pub mod dto;
 
 mod projects;
+mod replace;
 mod settings;
 mod todos;
 

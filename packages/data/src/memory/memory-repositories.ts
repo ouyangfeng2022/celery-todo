@@ -41,11 +41,9 @@ const RANK_GAP = 65_536;
 const nowIso = (): string => new Date().toISOString();
 
 /** 优先级权重（与 core sortTodos / Rust PRIORITY_WEIGHT 一致） */
-const priorityWeight = (p: TodoPriority): number =>
-  p === 'high' ? 3 : p === 'medium' ? 2 : 1;
+const priorityWeight = (p: TodoPriority): number => (p === 'high' ? 3 : p === 'medium' ? 2 : 1);
 
-const clampLimit = (limit: number | undefined): number =>
-  Math.min(Math.max(limit ?? 50, 1), 200);
+const clampLimit = (limit: number | undefined): number => Math.min(Math.max(limit ?? 50, 1), 200);
 
 /** 不透明游标：base64(JSON{sort, keys})，与 Rust 侧同构（仅本实现内部使用）。 */
 function encodeCursor(sort: string, keys: (string | number)[]): string {
@@ -172,7 +170,11 @@ export function createMemoryRepositories(
   };
 
   /** 游标之后的元素（键元组与排序方向一致地比较）。 */
-  const afterCursor = (sort: TodoSort | 'search', t: TodoDto, keys: (string | number)[]): boolean => {
+  const afterCursor = (
+    sort: TodoSort | 'search',
+    t: TodoDto,
+    keys: (string | number)[],
+  ): boolean => {
     const cur = cursorKeysOf(sort, t);
     for (let i = 0; i < keys.length; i++) {
       const a = cur[i] as string | number;
@@ -383,9 +385,7 @@ export function createMemoryRepositories(
           const keys = decodeCursor('archived', query.cursor);
           const at = String(keys[0]);
           const id = String(keys[1]);
-          start = rows.findIndex(
-            (a) => a.archivedAt === at && a.id === id,
-          );
+          start = rows.findIndex((a) => a.archivedAt === at && a.id === id);
           if (start === -1) start = rows.length;
           else start += 1;
         }
@@ -401,10 +401,7 @@ export function createMemoryRepositories(
             : null,
         };
       },
-      async restoreArchived(
-        ids: string[],
-        fallbackProjectId?: string | null,
-      ): Promise<number> {
+      async restoreArchived(ids: string[], fallbackProjectId?: string | null): Promise<number> {
         let n = 0;
         for (const id of ids) {
           const idx = archived.findIndex((a) => a.id === id);

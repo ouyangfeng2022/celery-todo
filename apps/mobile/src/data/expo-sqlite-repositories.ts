@@ -38,11 +38,9 @@ const RANK_GAP = 65_536;
 
 const nowIso = (): string => new Date().toISOString();
 
-const priorityWeightSql =
-  "CASE t.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END";
+const priorityWeightSql = "CASE t.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END";
 
-const clampLimit = (limit: number | undefined): number =>
-  Math.min(Math.max(limit ?? 50, 1), 200);
+const clampLimit = (limit: number | undefined): number => Math.min(Math.max(limit ?? 50, 1), 200);
 
 interface CursorPayload {
   sort: string;
@@ -179,12 +177,16 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
   };
 
   const requireProject = (id: string): void => {
-    const hit = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM projects WHERE id = ?', [id]);
+    const hit = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM projects WHERE id = ?', [
+      id,
+    ]);
     if (!hit || hit.n === 0) fail(`项目 ${id} 不存在`, 'not-found');
   };
 
   const requireTodo = (id: string): void => {
-    const hit = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM todos WHERE id = ?', [id]);
+    const hit = db.getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM todos WHERE id = ?', [
+      id,
+    ]);
     if (!hit || hit.n === 0) fail(`事项 ${id} 不存在`, 'not-found');
   };
 
@@ -314,14 +316,15 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         return pageInMemory(rows.map(toTodo), sort, clampLimit(query.limit), query.cursor);
       },
       async counts(projectId) {
-        const [row] = projectId === undefined || projectId === null
-          ? db.getAllSync<{ total: number; done: number }>(
-              'SELECT COUNT(*) AS total, COALESCE(SUM(completed),0) AS done FROM todos',
-            )
-          : db.getAllSync<{ total: number; done: number }>(
-              'SELECT COUNT(*) AS total, COALESCE(SUM(completed),0) AS done FROM todos WHERE project_id = ?',
-              [projectId],
-            );
+        const [row] =
+          projectId === undefined || projectId === null
+            ? db.getAllSync<{ total: number; done: number }>(
+                'SELECT COUNT(*) AS total, COALESCE(SUM(completed),0) AS done FROM todos',
+              )
+            : db.getAllSync<{ total: number; done: number }>(
+                'SELECT COUNT(*) AS total, COALESCE(SUM(completed),0) AS done FROM todos WHERE project_id = ?',
+                [projectId],
+              );
         return {
           total: row?.total ?? 0,
           completed: row?.done ?? 0,
@@ -390,10 +393,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async update(id, patch) {
         requireTodo(id);
         const { sets, vals } = applyPatchSql(patch, nowIso());
-        db.runSync(
-          `UPDATE todos SET ${sets.join(', ')} WHERE id = ?`,
-          [...vals, id],
-        );
+        db.runSync(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [...vals, id]);
         return (await this.get(id))!;
       },
       async batchUpdate(payload) {
@@ -401,10 +401,10 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         db.withTransactionSync(() => {
           const { sets, vals } = applyPatchSql(payload.patch, nowIso());
           for (const id of payload.ids) {
-            const res = db.runSync(
-              `UPDATE todos SET ${sets.join(', ')} WHERE id = ?`,
-              [...vals, id],
-            );
+            const res = db.runSync(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [
+              ...vals,
+              id,
+            ]);
             n += res.changes;
           }
         });
@@ -415,10 +415,11 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           for (const id of payload.ids) {
-            n += db.runSync(
-              'UPDATE todos SET project_id = ?, updated_at = ? WHERE id = ?',
-              [payload.targetProjectId, nowIso(), id],
-            ).changes;
+            n += db.runSync('UPDATE todos SET project_id = ?, updated_at = ? WHERE id = ?', [
+              payload.targetProjectId,
+              nowIso(),
+              id,
+            ]).changes;
           }
         });
         return n;
@@ -484,7 +485,10 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         return {
           items,
           nextCursor: hasMore
-            ? encodeCursor('archived', [items[items.length - 1].archivedAt, items[items.length - 1].id])
+            ? encodeCursor('archived', [
+                items[items.length - 1].archivedAt,
+                items[items.length - 1].id,
+              ])
             : null,
         };
       },
@@ -492,10 +496,9 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           for (const id of ids) {
-            const row = db.getFirstSync<ArchivedRow>(
-              'SELECT * FROM archived_todos WHERE id = ?',
-              [id],
-            );
+            const row = db.getFirstSync<ArchivedRow>('SELECT * FROM archived_todos WHERE id = ?', [
+              id,
+            ]);
             if (!row) continue;
             const exists = db.getFirstSync<{ n: number }>(
               'SELECT COUNT(*) AS n FROM projects WHERE id = ?',
@@ -535,7 +538,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async search(query) {
         const term = query.term.trim();
         if (!term) fail('搜索词不能为空');
-        const where = ["(t.title LIKE ? OR t.description LIKE ?)"];
+        const where = ['(t.title LIKE ? OR t.description LIKE ?)'];
         const vals: unknown[] = [`%${term}%`, `%${term}%`];
         if (query.projectId !== undefined && query.projectId !== null) {
           where.push('t.project_id = ?');
@@ -577,7 +580,15 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         db.runSync(
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?,?,?,?,?,?,?)`,
-          [newProject.id, name, newProject.kind, newProject.color ?? null, newProject.rank ?? nextProjectRank(), now, now],
+          [
+            newProject.id,
+            name,
+            newProject.kind,
+            newProject.color ?? null,
+            newProject.rank ?? nextProjectRank(),
+            now,
+            now,
+          ],
         );
         return (await this.get(newProject.id))!;
       },
@@ -590,13 +601,18 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
           db.runSync('UPDATE projects SET name = ?, updated_at = ? WHERE id = ?', [name, now, id]);
         }
         if (patch.color !== undefined) {
-          db.runSync('UPDATE projects SET color = ?, updated_at = ? WHERE id = ?', [patch.color, now, id]);
+          db.runSync('UPDATE projects SET color = ?, updated_at = ? WHERE id = ?', [
+            patch.color,
+            now,
+            id,
+          ]);
         }
         if (patch.archived !== undefined && patch.archived !== null) {
-          db.runSync(
-            'UPDATE projects SET archived_at = ?, updated_at = ? WHERE id = ?',
-            [patch.archived ? nowIso() : null, now, id],
-          );
+          db.runSync('UPDATE projects SET archived_at = ?, updated_at = ? WHERE id = ?', [
+            patch.archived ? nowIso() : null,
+            now,
+            id,
+          ]);
         }
         return (await this.get(id))!;
       },
@@ -648,7 +664,9 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
 
     settings: {
       async get(key) {
-        const row = db.getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key]);
+        const row = db.getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', [
+          key,
+        ]);
         return row?.value ?? null;
       },
       async set(key, value) {

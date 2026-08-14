@@ -1,0 +1,129 @@
+/**
+ * @file ConfirmDialog - 确认对话框组件
+ * @description 用于删除等危险操作的二次确认
+ */
+
+import { memo, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AlertIcon } from './Icons';
+
+export interface ConfirmDialogProps {
+  /** 是否显示 */
+  open: boolean;
+  /** 标题 */
+  title: string;
+  /** 描述 */
+  message: string;
+  /** 确认按钮文字 */
+  confirmText?: string;
+  /** 取消按钮文字 */
+  cancelText?: string;
+  /** 是否危险操作（红色按钮） */
+  danger?: boolean;
+  /** 确认回调 */
+  onConfirm: () => void;
+  /** 取消回调 */
+  onCancel: () => void;
+}
+
+function ConfirmDialogComponent({
+  open,
+  title,
+  message,
+  confirmText = '确认',
+  cancelText = '取消',
+  danger = false,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+      if (e.key === 'Enter') onConfirm();
+    },
+    [onCancel, onConfirm],
+  );
+
+  useEffect(() => {
+    if (open) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [open, handleKeyDown]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {/* 遮罩 */}
+          <div
+            className="absolute inset-0 backdrop-blur-sm"
+            style={{ backgroundColor: 'rgba(47, 45, 39, 0.4)' }}
+            onClick={onCancel}
+          />
+
+          {/* 对话框 */}
+          <motion.div
+            className="relative w-full max-w-md rounded-claude p-6"
+            style={{
+              backgroundColor: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+            initial={{ scale: 0.96, opacity: 0, y: 12 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.96, opacity: 0, y: 12 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              {danger && (
+                <div
+                  className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+                  style={{
+                    backgroundColor: 'var(--danger-subtle)',
+                    color: 'var(--danger)',
+                  }}
+                >
+                  <AlertIcon size={14} />
+                </div>
+              )}
+              <h3
+                className="text-lg font-serif font-semibold leading-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {title}
+              </h3>
+            </div>
+            <p
+              className="text-sm leading-relaxed text-pretty"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              {message}
+            </p>
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button className="btn-secondary" onClick={onCancel}>
+                {cancelText}
+              </button>
+              <button
+                className="btn-primary"
+                onClick={onConfirm}
+                style={danger ? { backgroundColor: 'var(--danger)' } : undefined}
+              >
+                {confirmText}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export const ConfirmDialog = memo(ConfirmDialogComponent);

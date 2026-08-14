@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "桌面端默认能力：仅核心（窗口/事件/IPC），新增插件能力时按需最小化授予。",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging"
+  ]
 }

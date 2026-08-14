@@ -13,13 +13,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import type {
-  NewProject,
-  NewTodo,
-  Repositories,
-  TodoQuery,
-  TodoSort,
-} from '@celery/data';
+import type { NewProject, NewTodo, Repositories, TodoQuery, TodoSort } from '@celery/data';
 import { RepositoryError } from '@celery/data';
 
 export function describeRepositoryContracts(
@@ -143,7 +137,10 @@ export function describeRepositoryContracts(
       await makeProject('p1');
       await repos.todos.createBulk([makeTodo('t1', 'p1', '一', 0), makeTodo('t2', 'p1', '二', 1)]);
       await expect(
-        repos.todos.createBulk([makeTodo('t3', 'p1', '三', 2), makeTodo('t1', 'p1', '重复主键', 3)]),
+        repos.todos.createBulk([
+          makeTodo('t3', 'p1', '三', 2),
+          makeTodo('t1', 'p1', '重复主键', 3),
+        ]),
       ).rejects.toBeInstanceOf(RepositoryError);
       expect(await repos.todos.get('t3')).toBeNull();
       const counts = await repos.todos.counts('p1');
@@ -190,9 +187,9 @@ export function describeRepositoryContracts(
 
       const page1 = await repos.todos.page(pageQuery('manual', 5));
       expect(page1.nextCursor).not.toBeNull();
-      await expect(repos.todos.page(pageQuery('created-desc', 5, page1.nextCursor))).rejects.toBeInstanceOf(
-        RepositoryError,
-      );
+      await expect(
+        repos.todos.page(pageQuery('created-desc', 5, page1.nextCursor)),
+      ).rejects.toBeInstanceOf(RepositoryError);
     });
 
     it('置顶恒居首页首行', async () => {
@@ -214,8 +211,12 @@ export function describeRepositoryContracts(
       ]);
       await repos.todos.update('t1', { completed: true });
 
-      expect((await repos.todos.page({ ...pageQuery('created-desc', 50), filter: 'active' })).items).toHaveLength(2);
-      expect((await repos.todos.page({ ...pageQuery('created-desc', 50), filter: 'completed' })).items).toHaveLength(1);
+      expect(
+        (await repos.todos.page({ ...pageQuery('created-desc', 50), filter: 'active' })).items,
+      ).toHaveLength(2);
+      expect(
+        (await repos.todos.page({ ...pageQuery('created-desc', 50), filter: 'completed' })).items,
+      ).toHaveLength(1);
 
       const ranged = await repos.todos.page({
         ...pageQuery('created-desc', 50),
@@ -263,10 +264,30 @@ export function describeRepositoryContracts(
       await makeProject('p1');
       await repos.todos.create({ ...makeTodo('t1', 'p1', '改名前', 0), description: 'old text' });
       await repos.todos.update('t1', { title: '改名后目标词' });
-      expect((await repos.todos.search({ term: '目标词', projectId: null, completed: null, limit: 10, cursor: null })).items).toHaveLength(1);
+      expect(
+        (
+          await repos.todos.search({
+            term: '目标词',
+            projectId: null,
+            completed: null,
+            limit: 10,
+            cursor: null,
+          })
+        ).items,
+      ).toHaveLength(1);
 
       await repos.todos.archive(['t1']);
-      expect((await repos.todos.search({ term: '目标词', projectId: null, completed: null, limit: 10, cursor: null })).items).toHaveLength(0);
+      expect(
+        (
+          await repos.todos.search({
+            term: '目标词',
+            projectId: null,
+            completed: null,
+            limit: 10,
+            cursor: null,
+          })
+        ).items,
+      ).toHaveLength(0);
     });
 
     // ============================================
@@ -279,7 +300,12 @@ export function describeRepositoryContracts(
 
       await repos.todos.archive(['t1']);
       expect(await repos.todos.get('t1')).toBeNull();
-      const page = await repos.todos.archivedPage({ projectId: null, term: null, limit: 10, cursor: null });
+      const page = await repos.todos.archivedPage({
+        projectId: null,
+        term: null,
+        limit: 10,
+        cursor: null,
+      });
       expect(page.items).toHaveLength(1);
       expect(page.items[0].archivedAt).toBeTruthy();
 
@@ -289,7 +315,8 @@ export function describeRepositoryContracts(
       await repos.todos.archive(['t1']);
       expect(await repos.todos.purgeArchived(['t1'])).toBe(1);
       expect(
-        (await repos.todos.archivedPage({ projectId: null, term: null, limit: 10, cursor: null })).items,
+        (await repos.todos.archivedPage({ projectId: null, term: null, limit: 10, cursor: null }))
+          .items,
       ).toHaveLength(0);
     });
 

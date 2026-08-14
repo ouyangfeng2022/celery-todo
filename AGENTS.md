@@ -66,11 +66,23 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    `@celery/ui-tokens`。**独立于根 workspace**（Windows 本机 bun 链接 RN
    长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
    `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
+9. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
+   整体迁入 `apps/desktop`（Tailwind 3 + globals.css + 字体栈原样保留），
+   `src/utils/dataGateway.ts` 重写为 v3 Repository 契约实现（`order`↔`rank`、
+   `deletedAt`↔`archivedAt` 映射；分页抽取上限 1.2 万行防御）；App.tsx 拆分为
+   `src/app/`（启动/跨窗口同步/全局搜索/导入导出四个 hook + 自绘标题栏 +
+   首启导入横幅）。平台耦合收敛到 `src/platform`（能力开关 `capabilities`，
+   托盘/贴图/自启/更新/存储迁移未点亮前以 no-op 桩 + UI 门槛隐藏）。
+   配套 Rust：`replace_all`/`reset_db`（v2 JSON 全量导入单事务）、
+   `archived_count`/`incomplete_counts` 聚合、写命令后 `data-changed` 广播
+   （renderer 按窗口 label 过滤自发事件）。单测 51 项（含网关映射层 8 项，
+   经 `configureDataGateway` 注入内存适配器）。**阶段 B 待做**：托盘、多贴图
+   窗口、自启、窗口状态记忆、tauri-plugin-updater、原生保存对话框导出。
 
-尚未实施的计划阶段：正式桌面 UI 迁移（沿用 2.x 信息架构、拆分 App.tsx、
-托盘/贴图/自启/更新等平台能力）、移动端正式 UI（Expo Router 四入口、滑动/
-长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO Tauri E2E、性能夹具基线、
-三平台发布流水线（Tauri 签名更新 manifest、EAS Build/Submit）。
+尚未实施的计划阶段：桌面平台能力（阶段 B，见上）、移动端正式 UI（Expo
+Router 四入口、滑动/长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO
+Tauri E2E、性能夹具基线、三平台发布流水线（Tauri 签名更新 manifest、
+EAS Build/Submit）。
 SQLite 默认不加密；无云同步，各设备数据独立。
 
 ## Project purpose

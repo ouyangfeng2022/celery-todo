@@ -13,6 +13,7 @@
     "windows": [
       {
         "title": "Celery Todo",
+        "decorations": false,
         "width": 1100,
         "height": 750,
         "minWidth": 480,

@@ -6,10 +6,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type {
-  LegacyV2ImportResult,
-  LegacyV2Report,
-} from '@celery/data';
+import type { LegacyV2ImportResult, LegacyV2Report, ReplaceAllPayload } from '@celery/data';
 import type { LegacyV2ImportService } from '@celery/data';
 import type {
   ArchivedQuery,
@@ -107,5 +104,24 @@ export function createLegacyV2ImportService(): LegacyV2ImportService {
     importFrom: (sourcePath: string) =>
       call<LegacyV2ImportResult>('legacy_v2_import', { path: sourcePath }),
     detectSource: () => call<string | null>('legacy_v2_detect'),
+  };
+}
+
+/**
+ * 系统级数据操作（Repository 契约之外）：计数聚合与全量替换/恢复出厂。
+ * 与 utils/dataGateway.ts 的 DesktopDataSystem 接口对应，命令在 commands.rs。
+ */
+export function createTauriDataSystem(): {
+  incompleteCounts(): Promise<Record<string, number>>;
+  archivedCount(projectId?: string): Promise<number>;
+  replaceAll(payload: ReplaceAllPayload): Promise<void>;
+  reset(): Promise<void>;
+} {
+  return {
+    incompleteCounts: () => call<Record<string, number>>('incomplete_counts'),
+    archivedCount: (projectId?: string) =>
+      call<number>('archived_count', { projectId: projectId ?? null }),
+    replaceAll: (payload: ReplaceAllPayload) => call<void>('replace_all', { payload }),
+    reset: () => call<void>('reset_db'),
   };
 }

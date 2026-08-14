@@ -164,7 +164,7 @@ export const font = {
   body: "'Lora', 'Noto Serif SC', Georgia, serif",
   /** 品牌 logotype */
   brand: "'Tinos', 'Source Serif Pro', Georgia, Cambria, 'Times New Roman', serif",
-  mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
 } as const;
 
 /** RN 无衬线回退（系统字体）；移动端正文用系统无衬线，标题保留 Poppins */

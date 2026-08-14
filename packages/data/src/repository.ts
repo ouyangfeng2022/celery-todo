@@ -52,6 +52,10 @@ export type {
   TodoQuery,
   TodoSort,
   ProjectKind,
+  ReplaceAllPayload,
+  ReplaceArchivedTodo,
+  ReplaceProject,
+  ReplaceTodo,
 } from './generated';
 
 /** 仓储层错误：跨端统一用异常表达；kind 供 UI 分类提示。 */

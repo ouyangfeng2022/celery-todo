@@ -6,12 +6,7 @@
  *              - 旧版（无 format 字段或值不符）直接判为不支持，不做猜测式迁移。
  */
 
-import type {
-  ArchivedTodoDto,
-  ProjectDto,
-  SettingsKv,
-  TodoDto,
-} from './generated';
+import type { ArchivedTodoDto, ProjectDto, SettingsKv, TodoDto } from './generated';
 
 export const V3_FORMAT_ID = 'celery-todo/v3' as const;
 

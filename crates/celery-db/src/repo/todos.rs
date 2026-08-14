@@ -728,6 +728,39 @@ impl CeleryDb {
         let conn = self.lock_conn()?;
         Ok(conn.execute("DELETE FROM archived_todos", [])? as u64)
     }
+
+    /// 归档总数（历史页标题计数）。可按项目过滤。
+    pub fn archived_count(&self, project_id: Option<&str>) -> Result<u64> {
+        let conn = self.lock_conn()?;
+        let (sql, val): (&str, Option<String>) = match project_id {
+            Some(pid) => (
+                "SELECT COUNT(*) FROM archived_todos WHERE project_id = ?1",
+                Some(pid.to_string()),
+            ),
+            None => ("SELECT COUNT(*) FROM archived_todos", None),
+        };
+        let n: i64 = conn.query_row(
+            sql,
+            params_from_iter([val].into_iter().flatten()),
+            |r| r.get(0),
+        )?;
+        Ok(n as u64)
+    }
+
+    /// 各项目未完成事项计数（侧边栏徽标聚合，一条 GROUP BY 完成）。
+    /// 只包含仍有未完成事项的项目。
+    pub fn incomplete_counts(&self) -> Result<std::collections::BTreeMap<String, u64>> {
+        let conn = self.lock_conn()?;
+        let mut stmt =
+            conn.prepare("SELECT project_id, COUNT(*) FROM todos WHERE completed = 0 GROUP BY project_id")?;
+        let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
+        let mut map = std::collections::BTreeMap::new();
+        for row in rows {
+            let (pid, n) = row?;
+            map.insert(pid, n as u64);
+        }
+        Ok(map)
+    }
 }
 
 // ============================================

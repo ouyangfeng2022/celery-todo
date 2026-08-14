@@ -1,0 +1,300 @@
+import { useMemo, useState } from 'react';
+import type { FilterType, Project } from '../../types';
+import {
+  useTimeViewStore,
+  selectTimeBucketTodos,
+  TIME_BUCKET_LABELS,
+} from '../../store/useTimeViewStore';
+import { useTodoStore } from '../../store/useTodoStore';
+import {
+  addLocalDays,
+  defaultPlannedDateForBucket,
+  formatLocalDate,
+  getCurrentWeekDates,
+  getPlanningBoundaries,
+} from '../../utils/planning';
+import { PlusIcon } from '../common/Icons';
+import { AddTodoInput } from './AddTodoInput';
+import { TodoItem } from './TodoItem';
+
+interface TimeViewProps {
+  projects: Project[];
+  onInboxCreated: (project: Project) => void;
+  onOpenProject: (projectId: string, todoId?: string) => void;
+}
+
+const FILTERS: Array<{ value: FilterType; label: string }> = [
+  { value: 'all', label: '全部' },
+  { value: 'active', label: '进行中' },
+  { value: 'completed', label: '已完成' },
+];
+
+export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewProps) {
+  const state = useTimeViewStore();
+  // 时间视图也允许打开详情浮窗：直接订阅 store action，无需提升到 App
+  const openDetail = useTodoStore((s) => s.openDetail);
+  const todos = useMemo(() => selectTimeBucketTodos(state), [state]);
+  const [targetProjectId, setTargetProjectId] = useState('');
+  const weekDates = useMemo(() => getCurrentWeekDates(), []);
+  const today = formatLocalDate(new Date());
+  // 本周安排采用「点击当天的"添加"按钮就地展开输入框」的交互：addingDate 记录
+  // 当前展开的日期，任意时刻仅展开一天；切换到其他天会换日重挂并保留各自草稿。
+  const [addingDate, setAddingDate] = useState<string | null>(null);
+  const [composerFocusSignal, setComposerFocusSignal] = useState(0);
+  const defaultDate = defaultPlannedDateForBucket(state.bucket);
+  const canCompose = state.bucket !== 'replan';
+
+  // 顶部（非 week）与本周就地展开共用同一份「归入项目 + 输入框」主体，仅计划日期
+  // 不同（非 week 用 defaultDate，week 用点击的那一天）。抽出来避免两处复制粘贴漂移。
+  const renderComposeBody = (plannedDate: string | undefined) => (
+    <>
+      <div
+        className="flex items-center justify-end gap-2 px-1 text-xs"
+        style={{ color: 'var(--text-tertiary)' }}
+      >
+        <span>归入</span>
+        <select
+          value={targetProjectId}
+          onChange={(event) => setTargetProjectId(event.target.value)}
+          className="rounded-md border-none px-2 py-1"
+          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+          aria-label="新事项所属项目"
+        >
+          <option value="">收集箱</option>
+          {projects
+            .filter((project) => project.kind !== 'inbox')
+            .map((project) => (
+              <option key={project.id} value={project.id}>
+                {project.name}
+              </option>
+            ))}
+        </select>
+      </div>
+      <AddTodoInput
+        projectId={`time:${state.bucket}:${plannedDate ?? 'none'}:${targetProjectId || 'inbox'}`}
+        defaultPlannedDate={plannedDate}
+        focusSignal={composerFocusSignal}
+        onAdd={(title, priority, description, plannedDate) => {
+          // handleAdd 同步清空标题；若事务失败，至少通过 alert 告知用户，
+          // 避免出现「标题消失但事项没写入」的静默状态。
+          state
+            .add({
+              rawTitle: title,
+              priority,
+              description,
+              plannedDate,
+              projectId: targetProjectId || undefined,
+            })
+            .then((project) => {
+              if (project.kind === 'inbox') onInboxCreated(project);
+            })
+            .catch((err) => {
+              alert(`添加失败: ${err instanceof Error ? err.message : '未知错误'}`);
+            });
+        }}
+      />
+    </>
+  );
+
+  const renderTodo = (todo: (typeof todos)[number]) => {
+    const project = projects.find((item) => item.id === todo.projectId);
+    const boundaries = getPlanningBoundaries();
+    // 与 App.tsx 导入失败 / DataSection 切换存储失败 一致：异常以 alert 暴露，
+    // 不让 Promise 拒绝被静默吞掉，导致用户操作无反馈。
+    const safeRun = (action: string, task: () => Promise<unknown>) => {
+      void task().catch((err) => {
+        alert(`${action}失败: ${err instanceof Error ? err.message : '未知错误'}`);
+      });
+    };
+    return (
+      <div key={todo.id} className="rounded-xl px-2 py-1 hover:bg-[var(--bg-hover)]">
+        <div
+          className="flex items-center justify-between gap-2 px-3 pt-1 text-[11px]"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
+          <button
+            type="button"
+            className="truncate hover:underline"
+            onClick={() => onOpenProject(todo.projectId, todo.id)}
+          >
+            {project?.name ?? '收集箱'}
+          </button>
+          <select
+            value={todo.projectId}
+            onChange={(event) => safeRun('移动事项', () => state.move(todo.id, event.target.value))}
+            className="max-w-32 rounded border-none bg-transparent px-1 py-0.5"
+            aria-label={`移动“${todo.title}”到项目`}
+          >
+            {projects.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {state.bucket === 'replan' && (
+          <div className="flex flex-wrap items-center gap-1.5 px-3 py-1 text-[11px]">
+            {[
+              ['今天', boundaries.today],
+              ['明天', boundaries.tomorrow],
+              ['下周一', boundaries.nextWeekStart],
+            ].map(([label, plannedDate]) => (
+              <button
+                key={label}
+                type="button"
+                className="rounded-md px-2 py-1 hover:bg-[var(--bg-hover)]"
+                style={{ color: 'var(--accent)' }}
+                onClick={() => safeRun('安排日期', () => state.update(todo.id, { plannedDate }))}
+              >
+                {label}
+              </button>
+            ))}
+            <label
+              className="cursor-pointer rounded-md px-2 py-1 hover:bg-[var(--bg-hover)]"
+              style={{ color: 'var(--text-tertiary)' }}
+            >
+              自选日期
+              <input
+                type="date"
+                className="sr-only"
+                min={addLocalDays(boundaries.today, 0)}
+                onChange={(event) => {
+                  if (event.target.value) {
+                    safeRun('安排日期', () =>
+                      state.update(todo.id, { plannedDate: event.target.value }),
+                    );
+                  }
+                }}
+              />
+            </label>
+          </div>
+        )}
+        <TodoItem
+          todo={todo}
+          isSelected={false}
+          selectable={false}
+          onToggle={(id) => safeRun('切换完成', () => state.toggle(id))}
+          onEdit={(id, updates) => safeRun('更新事项', () => state.update(id, updates))}
+          onDelete={(id) => safeRun('归档事项', () => state.archive(id))}
+          onToggleSelect={() => undefined}
+          onOpenDetail={openDetail}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <div className="mx-auto max-w-4xl px-5 pb-10 pt-7 lg:px-10 lg:pt-12">
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {state.bucket === 'week' ? '本周安排' : TIME_BUCKET_LABELS[state.bucket]}
+          </h2>
+          <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+            {state.bucket === 'week'
+              ? `${formatMonthDay(weekDates[0])} — ${formatMonthDay(weekDates[6])} · 按日期查看跨项目事项`
+              : '跨项目查看计划事项'}
+          </p>
+        </div>
+        {state.bucket !== 'replan' && (
+          <div className="flex rounded-lg p-0.5" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            {FILTERS.map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => state.setFilter(item.value)}
+                className="rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  color:
+                    state.filter === item.value ? 'var(--text-primary)' : 'var(--text-tertiary)',
+                  backgroundColor:
+                    state.filter === item.value ? 'var(--bg-tertiary)' : 'transparent',
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {canCompose && state.bucket !== 'week' && (
+        <section className="mb-9 space-y-3" aria-label="添加计划事项">
+          {renderComposeBody(defaultDate)}
+        </section>
+      )}
+
+      {state.bucket === 'week' ? (
+        <div className="divide-y" style={{ borderColor: 'var(--border-color)' }}>
+          {weekDates.map((date, index) => {
+            const dayTodos = todos.filter((todo) => todo.plannedDate === date);
+            const isToday = date === today;
+            const isAdding = addingDate === date;
+            return (
+              <section key={date} className="py-4 first:pt-0" aria-labelledby={`week-day-${date}`}>
+                <div className="mb-2 flex min-h-9 items-center gap-3 px-2">
+                  <div className="w-20 flex-shrink-0">
+                    <h3
+                      id={`week-day-${date}`}
+                      className="text-sm font-semibold"
+                      style={{ color: isToday ? 'var(--accent)' : 'var(--text-primary)' }}
+                    >
+                      {WEEKDAY_LABELS[index]}
+                    </h3>
+                    <p className="mt-0.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                      {formatMonthDay(date)}
+                    </p>
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {dayTodos.length > 0 ? `${dayTodos.length} 项` : '暂无事项'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // 就地展开/收起：再次点击当天按钮收起；切到其他天则换日展开。
+                      setAddingDate(isAdding ? null : date);
+                      if (!isAdding) setComposerFocusSignal((signal) => signal + 1);
+                    }}
+                    className="ml-auto inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                    style={{ color: 'var(--accent)' }}
+                    aria-label={
+                      isAdding
+                        ? `收起${WEEKDAY_LABELS[index]}添加框`
+                        : `在${WEEKDAY_LABELS[index]}添加事项`
+                    }
+                    aria-expanded={isAdding}
+                  >
+                    <PlusIcon size={13} />
+                    {isAdding ? '收起' : '添加'}
+                  </button>
+                </div>
+                {isAdding && (
+                  <div className="mb-3 ml-2 mr-2 space-y-2">{renderComposeBody(date)}</div>
+                )}
+                {dayTodos.length > 0 && <div className="space-y-1">{dayTodos.map(renderTodo)}</div>}
+              </section>
+            );
+          })}
+        </div>
+      ) : todos.length === 0 ? (
+        <div
+          className="rounded-xl px-5 py-12 text-center"
+          style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-tertiary)' }}
+        >
+          {state.bucket === 'replan'
+            ? '没有需要重新安排的事项'
+            : `“${TIME_BUCKET_LABELS[state.bucket]}”还没有事项`}
+        </div>
+      ) : (
+        <div className="space-y-1">{todos.map(renderTodo)}</div>
+      )}
+    </div>
+  );
+}
+
+const WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+
+function formatMonthDay(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${Number(month)}月${Number(day)}日`;
+}

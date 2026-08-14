@@ -358,6 +358,81 @@ pub struct SettingsKv {
 }
 
 // ============================================
+// 全量替换（replace_all：v2 JSON 全量导入 / 恢复备份）
+// ============================================
+
+/// replace_all 的项目行：与 NewProject 的差异是显式携带 id / 时间戳 / 精确 rank。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct ReplaceProject {
+    pub id: String,
+    pub name: String,
+    pub kind: ProjectKind,
+    pub color: Option<String>,
+    pub rank: f64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// replace_all 的活跃事项行：显式携带 id / 时间戳 / 完成态。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct ReplaceTodo {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub completed: bool,
+    pub priority: TodoPriority,
+    pub planned_date: Option<String>,
+    pub pinned: bool,
+    pub rank: f64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub completed_at: Option<String>,
+}
+
+/// replace_all 的归档事项行。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct ReplaceArchivedTodo {
+    pub id: String,
+    pub project_id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub completed: bool,
+    pub priority: TodoPriority,
+    pub planned_date: Option<String>,
+    pub pinned: bool,
+    pub rank: f64,
+    pub created_at: String,
+    pub updated_at: String,
+    pub completed_at: Option<String>,
+    /// 归档时间（ISO）
+    pub archived_at: String,
+    /// 归档时项目名快照
+    pub project_name: Option<String>,
+}
+
+/// 全量替换载荷：单事务清空四张表后整体写入（失败整体回滚）。
+#[derive(Debug, Clone, Serialize, Deserialize, ts_rs::TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+#[ts(export, export_to = "../../../packages/data/src/generated/")]
+pub struct ReplaceAllPayload {
+    pub projects: Vec<ReplaceProject>,
+    pub todos: Vec<ReplaceTodo>,
+    pub archived_todos: Vec<ReplaceArchivedTodo>,
+    pub settings: Vec<SettingsKv>,
+}
+
+// ============================================
 // 2.x 旧库导入（LegacyV2ImportService）
 // ============================================
 

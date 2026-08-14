@@ -3,8 +3,13 @@
 /**
  * 导入结果摘要。
  */
-export type LegacyV2ImportResult = { projects: number, todos: number, archivedTodos: number, settings: number, 
-/**
- * 按白名单跳过的 2.x 设置键（OS 级状态等，不进入 v3）
- */
-skippedSettings: Array<string>, };
+export type LegacyV2ImportResult = {
+  projects: number;
+  todos: number;
+  archivedTodos: number;
+  settings: number;
+  /**
+   * 按白名单跳过的 2.x 设置键（OS 级状态等，不进入 v3）
+   */
+  skippedSettings: Array<string>;
+};

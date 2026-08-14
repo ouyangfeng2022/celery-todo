@@ -6,15 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  FlatList,
-  Pressable,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import type { TodoDto } from '@celery/data';
 import { coral, sand, space, radius, fontNative, themeLight } from '@celery/ui-tokens';
