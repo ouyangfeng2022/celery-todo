@@ -8,6 +8,26 @@
 
 ## [Unreleased]
 
+## [v2.20.0] - 2026-08-14
+### Added
+- 贴图加返回主窗口按钮，主页面右上角加简洁模式入口
+- 本周安排改为点击添加就地展开输入框
+- 虚拟化阈值提到 200，中等列表留在渐进挂载
+- 虚拟列表直写 DOM，滚动时跳过 React 更新
+- 中等列表渐进挂载，筛选切换先画骨架
+- virtualize lists from 30 items
+- 新增事项详情浮窗，迁移编辑与描述展示
+
+### Fixed
+- 顶栏标题行高改 leading-normal，避免 truncate 裁切拉丁降部
+- 项目菜单脱离透明度合成层并支持滚动，附 header 视觉打磨
+- 虚拟列表 ref 回调移到早返回之前，修复 rules-of-hooks
+- 完成复选框补 title，悬浮显示状态切换提示
+- 切换项目时保持统计面板常驻，避免进度条重播
+- 整张卡片点击空白也能打开详情浮窗
+- make card view a true card wall instead of stretched list
+- align import-export version assertion with EXPORT_FORMAT_VERSION=6
+
 ## [v2.19.4] - 2026-08-12
 ### Added
 - add permanent delete option to project context menu
@@ -476,3 +496,5 @@
 [v2.19.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3
 
 [v2.19.4]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.4
+
+[v2.20.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.20.0
