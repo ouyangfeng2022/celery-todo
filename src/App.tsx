@@ -943,7 +943,10 @@ function App() {
             />
             <div className="titlebar-no-drag relative z-10 min-w-0">
               <h1
-                className="truncate text-lg font-serif font-semibold leading-tight"
+                /* leading-normal 而非 leading-tight:Noto Sans SC 字体盒(18px 字号下 26px)
+                   高于 1.25 紧行高的行盒(22.5px),truncate 的 overflow:hidden 会裁掉
+                   拉丁降部(y/g/p 等)约 0.75px;27px 行盒在 44px 顶栏内无感。 */
+                className="truncate text-lg font-serif font-semibold leading-normal"
                 style={{ color: 'var(--text-primary)' }}
               >
                 {navigationMode === 'time'

@@ -199,7 +199,8 @@ function SettingsPanelComponent({
               />
               <div className="titlebar-no-drag relative z-10 min-w-0">
                 <h1
-                  className="truncate text-lg font-serif font-semibold leading-tight"
+                  // leading-normal:防 truncate 裁拉丁降部,见 App.tsx 主页标题处注释
+                  className="truncate text-lg font-serif font-semibold leading-normal"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   {activeNavItem.label}
