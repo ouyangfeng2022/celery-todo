@@ -1,0 +1,117 @@
+/**
+ * @file 通用工具函数（平台无关子集）
+ * @description 只保留不依赖 DOM / Tailwind 的纯函数；cn、下载、文件读取等
+ *              浏览器工具留在各端应用内（桌面 Electron/Tauri renderer）。
+ */
+
+/**
+ * 生成唯一 ID
+ */
+export function generateId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+/**
+ * Debounce 函数
+ */
+export function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  delay: number,
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  return (...args: Parameters<T>) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+/**
+ * 格式化为相对时间（用于过去时间：创建/删除等）
+ *
+ * 规则：分钟为最小单位；超过 1 小时才改用小时为单位；超过 24 小时退回绝对日期。
+ */
+export function formatRelativeTime(isoString?: string): string {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = Date.now();
+  const diffSec = Math.floor((now - date.getTime()) / 1000);
+
+  // 未来时间或不足 1 分钟，统一显示“刚刚”
+  if (diffSec < 60) return '刚刚';
+
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} 分钟前`;
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour} 小时前`;
+
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+/**
+ * 格式化为详细时间（YYYY-MM-DD HH:mm），用于点击模糊时间后切换显示
+ *
+ * 与 formatRelativeTime 互补：后者是"刚刚 / N 分钟前"，本函数是"2026-08-04 14:30"。
+ * 不依赖 locale，避免不同环境/时区下日期分隔符差异。
+ */
+export function formatDateTime(isoString?: string): string {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
+    d.getHours(),
+  )}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * 获取今天的日期字符串（YYYY-MM-DD）
+ */
+export function getTodayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * 安全的 JSON 解析
+ */
+export function safeJsonParse<T>(str: string, fallback: T): T {
+  try {
+    return JSON.parse(str) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+// ============================================
+// 批量添加：分隔符处理
+// ============================================
+
+/**
+ * 批量分隔符正则：仅按换行（兼容 \r\n / \r / \n）。
+ * 逗号、分号视为普通字符，允许在标题中使用。
+ */
+const BULK_SEPARATOR_REGEX = /\r\n|\r|\n/;
+
+/**
+ * 判断输入文本是否包含批量分隔符（换行）。
+ * 用于在 UI 上切换"批量添加"标签，以及决定走单条/批量路径。
+ */
+export function hasBulkSeparator(text: string): boolean {
+  return BULK_SEPARATOR_REGEX.test(text);
+}
+
+/**
+ * 把多行文本拆分为去空白、去空行的标题数组。
+ */
+export function splitBulkTitles(rawText: string): string[] {
+  return rawText
+    .split(BULK_SEPARATOR_REGEX)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+}

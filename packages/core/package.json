@@ -1,0 +1,23 @@
+{
+  "name": "@celery/core",
+  "private": true,
+  "version": "2.20.0",
+  "description": "Celery Todo 共享业务内核：实体、校验、筛选、排序、计划、模板、统计与导入导出规则（平台无关）",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:run": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3",
+    "vitest": "^2.0.2",
+    "xlsx": "^0.18.5"
+  }
+}

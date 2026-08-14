@@ -14,7 +14,7 @@ import {
   isDateInCurrentWeek,
   nextMonday,
   startOfWeekMonday,
-} from '../utils/planning';
+} from '../planning';
 
 describe('planning', () => {
   describe('本地日历运算', () => {

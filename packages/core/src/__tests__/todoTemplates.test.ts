@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { Project, Todo } from '../types';
-import { createTemplateFromProject, instantiateTemplate } from '../utils/todoTemplates';
+import type { Project, Todo } from '../entities';
+import { createTemplateFromProject, instantiateTemplate } from '../todoTemplates';
 
 const project: Project = {
   id: 'project-1',

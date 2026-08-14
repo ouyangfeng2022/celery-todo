@@ -10,7 +10,7 @@ import {
   safeJsonParse,
   hasBulkSeparator,
   splitBulkTitles,
-} from '../utils/helpers';
+} from '../helpers';
 
 describe('helpers', () => {
   describe('formatRelativeTime', () => {

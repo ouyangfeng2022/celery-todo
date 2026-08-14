@@ -34,6 +34,7 @@
     "test:cli": "bun run rebuild:node && vitest run --config cli/vitest.config.ts"
   },
   "dependencies": {
+    "@celery/core": "workspace:*",
     "better-sqlite3": "^11.8.1",
     "electron-updater": "^6.8.9",
     "html-to-image": "^1.11.13",

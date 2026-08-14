@@ -9,8 +9,8 @@ import {
   todosToCsv,
   exportProjectAsJson,
   parseImportData,
-} from '../utils/export';
-import type { Todo, Project, DeletedTodo } from '../types';
+} from '../export';
+import type { Todo, Project, DeletedTodo } from '../entities';
 
 const mockTodo: Todo = {
   id: '1',

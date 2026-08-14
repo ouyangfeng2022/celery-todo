@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Todo, Project } from '../types';
+import type { Todo, Project } from '../entities';
 import {
   buildHeatmap,
   computeStreaks,
@@ -13,7 +13,7 @@ import {
   groupByPriority,
   groupByProject,
   toLocalDateKey,
-} from '../utils/stats';
+} from '../stats';
 
 // 锁定到 2026-08-06（周三），让「今天/本周」相关断言稳定。
 const FIXED_NOW = new Date(2026, 7, 6, 14, 30, 0); // 月份 0-based：7 = 8 月
