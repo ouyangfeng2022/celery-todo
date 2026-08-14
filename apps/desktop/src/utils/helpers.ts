@@ -5,6 +5,7 @@
  */
 
 import { type ClassValue, clsx } from 'clsx';
+import { exportFile, isTauri } from '../platform';
 
 export {
   generateId,
@@ -25,26 +26,26 @@ export function cn(...inputs: ClassValue[]): string {
 }
 
 /**
- * 下载文件
+ * 下载文本文件。Tauri 宿主走原生「另存为」（真实路径经 onExportCompleted 回执），
+ * 浏览器 / jsdom 回退 <a download>。
  */
 export function downloadFile(
   content: string,
   filename: string,
   mimeType = 'application/json',
 ): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBlob(new Blob([content], { type: mimeType }), filename);
 }
 
-/** 下载二进制文件（例如 Excel 工作簿）。 */
+/** 下载二进制文件（例如 Excel 工作簿 / 导出图片）。 */
 export function downloadBlob(blob: Blob, filename: string): void {
+  if (isTauri) {
+    void blob
+      .arrayBuffer()
+      .then((buffer) => exportFile(filename, new Uint8Array(buffer)))
+      .catch(() => {});
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

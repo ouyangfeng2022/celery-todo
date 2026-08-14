@@ -503,6 +503,68 @@ pub fn reset_db(db: State<CeleryDb>, window: WebviewWindow) -> CmdResult<()> {
     Ok(())
 }
 
+// ---------- 平台能力（阶段 B） ----------
+
+/// 开机自启开关（tauri-plugin-autostart）。
+#[tauri::command]
+pub fn set_auto_start(app: tauri::AppHandle, enabled: bool) -> CmdResult<()> {
+    use tauri_plugin_autostart::ManagerExt;
+    let autolaunch = app.autolaunch();
+    if enabled {
+        autolaunch.enable().map_err(|e| ErrorPayload {
+            kind: "invalid",
+            message: format!("开启自启失败: {e}"),
+        })?;
+    } else {
+        autolaunch.disable().map_err(|e| ErrorPayload {
+            kind: "invalid",
+            message: format!("关闭自启失败: {e}"),
+        })?;
+    }
+    Ok(())
+}
+
+/// 原生「另存为」对话框 + 写文件。取消返回 None；成功返回真实落盘路径，
+/// renderer 据此显示 ExportNotice（文件名 + 「在文件夹中显示」）。
+#[tauri::command]
+pub async fn export_save_file(
+    app: tauri::AppHandle,
+    default_name: String,
+    data: Vec<u8>,
+) -> CmdResult<Option<String>> {
+    use tauri_plugin_dialog::DialogExt;
+    let path = app
+        .dialog()
+        .file()
+        .set_file_name(default_name)
+        .blocking_save_file();
+    match path {
+        Some(file_path) => {
+            let path = file_path.into_path().map_err(|e| ErrorPayload {
+                kind: "invalid",
+                message: format!("保存路径无效: {e}"),
+            })?;
+            std::fs::write(&path, &data).map_err(|e| ErrorPayload {
+                kind: "db",
+                message: format!("写入文件失败: {e}"),
+            })?;
+            Ok(Some(path.display().to_string()))
+        }
+        None => Ok(None),
+    }
+}
+
+/// 在系统文件管理器中定位文件（ExportNotice「在文件夹中显示」）。
+#[tauri::command]
+pub fn open_in_folder(path: String) -> CmdResult<()> {
+    tauri_plugin_opener::reveal_item_in_dir(std::path::Path::new(&path)).map_err(|e| {
+        ErrorPayload {
+            kind: "invalid",
+            message: format!("打开所在文件夹失败: {e}"),
+        }
+    })
+}
+
 // ---------- 2.x 旧库导入（首次启动向导） ----------
 
 #[tauri::command]

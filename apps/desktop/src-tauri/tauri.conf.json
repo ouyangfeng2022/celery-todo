@@ -14,6 +14,7 @@
       {
         "title": "Celery Todo",
         "decorations": false,
+        "visible": false,
         "width": 1100,
         "height": 750,
         "minWidth": 480,

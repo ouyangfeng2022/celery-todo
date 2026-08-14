@@ -79,7 +79,7 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    经 `configureDataGateway` 注入内存适配器）。**阶段 B 待做**：托盘、多贴图
    窗口、自启、窗口状态记忆、tauri-plugin-updater、原生保存对话框导出。
 
-尚未实施的计划阶段：桌面平台能力（阶段 B，见上）、移动端正式 UI（Expo
+尚未实施的计划阶段：移动端正式 UI（Expo
 Router 四入口、滑动/长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO
 Tauri E2E、性能夹具基线、三平台发布流水线（Tauri 签名更新 manifest、
 EAS Build/Submit）。

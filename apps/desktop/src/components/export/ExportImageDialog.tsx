@@ -31,17 +31,9 @@ const FILTER_OPTIONS: FilterOption[] = [
   { value: 'completed', label: '已完成' },
 ];
 
-/** 把 Blob 触发为下载（downloadFile 只接受 string，图片走 Blob 专用路径） */
-function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+// 下载统一走 helpers.downloadBlob：Tauri 宿主内转为原生「另存为」+ 真实路径回执，
+// 浏览器 / 测试环境保持 <a download> 行为。
+import { downloadBlob } from '../../utils/helpers';
 
 /** 复制 Blob 到剪贴板，返回是否成功。Chromium 支持 ClipboardItem 的 image/png。 */
 async function copyBlobToClipboard(blob: Blob): Promise<boolean> {
@@ -97,7 +89,7 @@ export function ExportImageDialog({
     try {
       const blob = await exportNodeAsPngBlob(cardRef.current);
       downloadBlob(blob, filename);
-      setFeedback({ kind: 'ok', text: '已保存到下载目录' });
+      setFeedback({ kind: 'ok', text: '已保存' });
     } catch (err) {
       console.error('导出图片失败', err);
       setFeedback({ kind: 'err', text: '导出失败，请重试' });

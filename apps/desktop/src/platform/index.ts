@@ -1,14 +1,18 @@
 /**
  * @file 桌面平台能力出口（Tauri）
  * @description renderer 组件一律 import 本模块，不直接触碰 Tauri API ——
- *              2.x 的 window.electronAPI 耦合点在这里收敛，便于 jsdom 单测与
- *              后续能力（托盘/贴图/自启/更新）逐项点亮。
+ *              2.x 的 window.electronAPI 耦合点在这里收敛，便于 jsdom 单测
+ *              （非 Tauri 环境全部能力退化为 no-op / 浏览器回退）。
  *
- *              未点亮的能力以 no-op / undefined 回调实现，组件按 capabilities
- *              开关隐藏入口，避免「点了没反应」。
+ *              能力开关（阶段 B 已点亮：贴图/托盘/自启/原生导出保存；
+ *              updater 等待阶段 G 发布流水线配置签名端点后打开）。
  */
 
+import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+
+/** 是否运行在 Tauri 宿主中（jsdom 单测 / 浏览器为 false）。 */
+export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
 /** 与 2.x ElectronAPI.platform 同形的平台标识。 */
 export type DesktopPlatform = 'win32' | 'darwin' | 'linux';
@@ -21,17 +25,17 @@ export function getPlatform(): DesktopPlatform {
 }
 
 /**
- * 平台能力开关。3.0 UI 迁移分阶段点亮：
- * - stickers/tray/autoStart/updater/storageRelocation：阶段 B（平台能力里程碑）
- * 组件据此隐藏对应入口；开关全部打开后即与 2.x 功能对齐。
+ * 平台能力开关。关闭的能力以 no-op 实现，组件按开关隐藏入口。
+ * - updater：阶段 G（发布流水线）配置 tauri-plugin-updater 端点后点亮
+ * - storageRelocation：自定义数据目录迁移，后续里程碑
  */
 export const capabilities = {
   /** 多贴图浮窗（简洁模式） */
-  stickers: false,
+  stickers: isTauri,
   /** 系统托盘 + 快速添加 */
-  tray: false,
+  tray: isTauri,
   /** 开机自启 */
-  autoStart: false,
+  autoStart: isTauri,
   /** 应用内自动更新 */
   updater: false,
   /** 自定义数据目录（storage-config 迁移） */
@@ -78,7 +82,7 @@ const dataChangedHandlers = new Set<DataChangedHandler>();
 
 /**
  * 订阅数据变更；自发事件（source === 本窗口 label）已被过滤。
- * 返回取消订阅函数（未在 Tauri 环境时返回 no-op）。
+ * 返回取消订阅函数（未在 Tauri 环境时为 no-op）。
  */
 export function onDataChanged(handler: DataChangedHandler): () => void {
   dataChangedHandlers.add(handler);
@@ -89,7 +93,7 @@ export function onDataChanged(handler: DataChangedHandler): () => void {
 }
 
 async function ensureDataChangedSubscription(): Promise<void> {
-  if (unsubscribeDataChanged) return;
+  if (unsubscribeDataChanged || !isTauri) return;
   try {
     const { listen } = await import('@tauri-apps/api/event');
     const ownLabel = getCurrentWindow().label;
@@ -103,58 +107,123 @@ async function ensureDataChangedSubscription(): Promise<void> {
 }
 
 // ============================================
-// 托盘 / 贴图 / 自启 / 更新（阶段 B 点亮，先以 no-op 占位）
+// 托盘
 // ============================================
 
-export function onQuickAdd(_handler: () => void): (() => void) | undefined {
-  // 阶段 B：托盘「快速添加事项」菜单项事件
-  return undefined;
+/** 托盘「快速添加事项」：唤起主窗口 + 聚焦输入框。 */
+export function onQuickAdd(handler: () => void): (() => void) | undefined {
+  if (!isTauri) return undefined;
+  let off: (() => void) | undefined;
+  void import('@tauri-apps/api/event').then(({ listen }) => {
+    void listen('quick-add', () => handler()).then((unlisten) => {
+      off = unlisten;
+    });
+  });
+  return () => off?.();
 }
 
-export function onExportCompleted(
-  _handler: (payload: { fileName: string; filePath: string }) => void,
-): (() => void) | undefined {
-  // 阶段 B：原生保存对话框写盘完成后的真实路径回传
-  return undefined;
+// ============================================
+// 导出落盘（原生「另存为」+ 真实路径回执）
+// ============================================
+
+export interface ExportSavedPayload {
+  fileName: string;
+  filePath: string;
 }
 
-export function openInFolder(_path: string): void {
-  // 阶段 B：plugin-opener reveal
+type ExportCompletedHandler = (payload: ExportSavedPayload) => void;
+const exportCompletedHandlers = new Set<ExportCompletedHandler>();
+
+/**
+ * 原生保存：弹出「另存为」对话框并写文件。
+ * 用户取消返回 null（调用方按需回退浏览器下载）；
+ * 成功后向 onExportCompleted 订阅者回执真实路径（ExportNotice 展示）。
+ */
+export async function exportFile(
+  fileName: string,
+  data: string | Uint8Array,
+): Promise<ExportSavedPayload | null> {
+  if (!isTauri) return null;
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  const path = await invoke<string | null>('export_save_file', {
+    defaultName: fileName,
+    // Tauri IPC 的 Vec<u8> 走 JSON 数组通道；几 MB 的导出（Excel/图片）可接受
+    data: Array.from(bytes),
+  });
+  if (!path) return null;
+  const payload = { fileName, filePath: path };
+  for (const handler of exportCompletedHandlers) handler(payload);
+  return payload;
 }
 
-export function setAutoStart(_enabled: boolean): void {
-  // 阶段 B：tauri-plugin-autostart
+/** 订阅原生保存完成事件（App 的 ExportNotice 数据源）。 */
+export function onExportCompleted(handler: ExportCompletedHandler): (() => void) | undefined {
+  exportCompletedHandlers.add(handler);
+  return () => {
+    exportCompletedHandlers.delete(handler);
+  };
 }
 
-export function setStartupTheme(_theme: string): void {
-  // 2.x 首帧窗口底色 hack；Tauri 窗口底色由 HTML/CSS 同步，无需主进程配合。
+/** 在系统文件管理器中定位已导出的文件。 */
+export function openInFolder(path: string): void {
+  if (!isTauri) return;
+  void invoke('open_in_folder', { path }).catch(() => {});
 }
 
-export function createSticker(_projectId: string | undefined): void {
-  // 阶段 B：多贴图窗口（WebviewWindow + 持久化 bounds）
+// ============================================
+// 开机自启（tauri-plugin-autostart）
+// ============================================
+
+export function setAutoStart(enabled: boolean): void {
+  if (!isTauri) return;
+  void invoke('set_auto_start', { enabled }).catch(() => {});
+}
+
+/** 2.x 首帧窗口底色 hack；Tauri 窗口底色由 HTML/CSS 同步，无需宿主配合。 */
+export function setStartupTheme(_theme: string): void {}
+
+// ============================================
+// 多贴图窗口（简洁模式）
+// ============================================
+
+export function createSticker(projectId: string | undefined): void {
+  if (!isTauri) return;
+  void invoke('sticker_create', { projectId: projectId ?? null }).catch(() => {});
 }
 
 export function notifyStickerStyleChanged(): void {
-  // 阶段 B：贴图样式设置变更后广播
+  if (!isTauri) return;
+  void invoke('sticker_style_changed').catch(() => {});
 }
 
-export function setStickerProject(_stickerId: string, _projectId: string): void {
-  // 阶段 B：持久化贴图窗口绑定的项目
+export function setStickerProject(stickerId: string, projectId: string): void {
+  if (!isTauri) return;
+  void invoke('sticker_set_project', { id: stickerId, projectId }).catch(() => {});
 }
 
-export function duplicateSticker(_stickerId: string, _projectId: string): void {
-  // 阶段 B
+export function duplicateSticker(stickerId: string, projectId: string): void {
+  if (!isTauri) return;
+  void invoke('sticker_duplicate', { sourceId: stickerId, projectId }).catch(() => {});
 }
 
-export function closeSticker(_stickerId: string): void {
-  // 阶段 B
+export function closeSticker(stickerId: string): void {
+  if (!isTauri) return;
+  void invoke('sticker_close', { id: stickerId }).catch(() => {});
 }
 
-export function returnToMain(_stickerId: string): void {
-  // 阶段 B：显示主窗口并关闭贴图
+export function returnToMain(stickerId: string): void {
+  if (!isTauri) return;
+  void invoke('sticker_return_main', { id: stickerId }).catch(() => {});
 }
 
-export function onStickerStyleChanged(_handler: () => void): (() => void) | undefined {
-  // 阶段 B：主窗口样式变更广播
-  return undefined;
+/** 主窗口改贴图样式后，Rust 向所有贴图窗口广播本事件。 */
+export function onStickerStyleChanged(handler: () => void): (() => void) | undefined {
+  if (!isTauri) return undefined;
+  let off: (() => void) | undefined;
+  void import('@tauri-apps/api/event').then(({ listen }) => {
+    void listen('sticker-style-changed', () => handler()).then((unlisten) => {
+      off = unlisten;
+    });
+  });
+  return () => off?.();
 }

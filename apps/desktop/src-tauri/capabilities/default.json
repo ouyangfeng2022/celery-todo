@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "桌面端默认能力：仅核心（窗口/事件/IPC），新增插件能力时按需最小化授予。",
-  "windows": ["main"],
+  "windows": ["main", "sticker-*"],
   "permissions": [
     "core:default",
     "core:window:allow-minimize",

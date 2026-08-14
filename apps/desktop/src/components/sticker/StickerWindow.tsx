@@ -365,7 +365,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
       // 使用捕获阶段，确保任务按钮、项目选择器等原生/交互控件不会拦截右键菜单。
       onContextMenuCapture={handleContextMenu}
     >
-      <header className="sticker-drag sticker-header">
+      <header className="sticker-drag sticker-header" data-tauri-drag-region>
         {/* 返回主窗口：最左侧，专用返回箭头图标（带杆 ←，比单纯 chevron 更明确） */}
         <button
           type="button"
