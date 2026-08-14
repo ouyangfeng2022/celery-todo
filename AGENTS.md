@@ -46,9 +46,31 @@ bun run test:run                 # turbo：所有 TS 包的单测
 bun run build                    # turbo：renderer/electron 壳/桌面端构建
 ```
 
-尚未实施的计划阶段：移动端（Expo）、Windows 首启 2.x `.db` 导入向导
-（`LegacyV2ImportService`：只认 `dataVersion` 4–9，事务性导入到独立 v3 库）、
-Rust CLI、`packages/ui-tokens`、WebdriverIO Tauri E2E、桌面三平台发布流水线。
+5. **2.x 旧库导入（计划第 6 步后端）** —— `celery-db` 的 `legacy_v2` 模块：
+   `inspect_v2(path)` 永不抛错、所有问题进报告；`CeleryDb::import_from_v2` 以
+   只读 ATTACH 挂载源库后在目标 v3 库单事务转换（失败整体回滚、可重试）；
+   `detect_v2_source()` 自动探测 2.x 默认目录与 `storage-config.json` 自定义目录。
+   只认 `dataVersion` 4–9；活跃事项孤儿引用终止导入；归档保留项目名快照；
+   设置按白名单导入（主题/模板/视图/`sort.*`），OS 级状态跳过。9 项专项测试。
+   桌面端已接：`legacy_v2_*` Tauri 命令 + `@celery/data` 的
+   `LegacyV2ImportService` + 骨架 UI 的首启导入横幅（仅空库时出现）。
+6. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
+   `status/projects/list/add/done/archive`，复用 celery-db、与桌面端同一
+   `%APPDATA%/com.celery.todo/celery-v3.db`；id 支持前缀匹配。CLI 写入后的
+   桌面实时刷新（本地 IPC）待桌面 UI 里程碑接入。
+7. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
+   token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
+   字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
+8. **Expo 移动端骨架（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
+   Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页），骨架 UI 消费
+   `@celery/ui-tokens`。**独立于根 workspace**（Windows 本机 bun 链接 RN
+   长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
+   `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
+
+尚未实施的计划阶段：正式桌面 UI 迁移（沿用 2.x 信息架构、拆分 App.tsx、
+托盘/贴图/自启/更新等平台能力）、移动端正式 UI（Expo Router 四入口、滑动/
+长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO Tauri E2E、性能夹具基线、
+三平台发布流水线（Tauri 签名更新 manifest、EAS Build/Submit）。
 SQLite 默认不加密；无云同步，各设备数据独立。
 
 ## Project purpose
