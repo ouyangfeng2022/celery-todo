@@ -98,7 +98,15 @@ pub fn run() {
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let db = CeleryDb::open(&dir.join(DB_FILE))?;
+            // E2E / 测试注入：覆盖数据库路径，避免污染真实用户数据
+            //（tauri-driver 经 wdio:tauriOptions.env 传入）。
+            let db_path = std::env::var("CELERY_DB_PATH")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|_| dir.join(DB_FILE));
+            if let Some(parent) = db_path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let db = CeleryDb::open(&db_path)?;
             app.manage(db);
 
             let store = WindowStateStore::new(app.handle());
