@@ -10,21 +10,6 @@
 
 ### Fixed
 
-- 桌面端（3.0）：修复 Windows 下进入简洁模式后应用"假死"的问题：
-  `sticker_create` / `sticker_duplicate` 是同步命令且内部直接创建
-  `WebviewWindow`，在 IPC 回调里死锁主线程（wry#583，Tauri 文档明确标注的
-  反模式）。死锁后所有 IPC 永久挂起，表现为切换项目不加载其他项目、归档页
-  空白、无法切换卡片模式、导出无反应。两命令改为 async（运行时线程建窗），
-  托盘「新建简洁模式浮窗」同样改为独立线程创建
-- 桌面端（3.0）：修复托盘「退出」可能无效的问题 —— `app.exit(0)` 依赖事件
-  循环消费退出请求，主线程卡死时永远无法退出；`quit_app` 落盘窗口状态并
-  清理 CLI 通知文件后增加看门狗线程，宽限期后强杀进程兜底
-- 桌面端（3.0）：修复设置页版本号显示为 2.20.0 —— Vite 注入的
-  `__APP_VERSION__` 读的是 workspace 包版本（跟随 2.x Electron 发版线），
-  改为读 `src-tauri/tauri.conf.json` 的 version（3.0 桌面线的唯一版本源）
-- 桌面端（3.0）：修复优先级（高/中/低）标签颜色丢失 —— `PRIORITY_COLORS`
-  的 Tailwind 类名常量位于 `@celery/core` 源码，content 未覆盖该目录导致
-  类被 purge；Tailwind content 纳入 `packages/core/src`（2.x 迁移壳同步修复）
 - 修复 2.20.2 安装包启动后停留在加载页无限转圈的问题：hoisted 布局下
   `electron-rebuild` 静默漏建 better-sqlite3，安装包内是 Node/Bun ABI 的预编译
   产物，首个数据查询即 dlopen 失败。`rebuild:electron` 显式把构建根指向仓库
@@ -34,6 +19,26 @@
   改名后 userData 漂移到 `%APPDATA%\@celery\desktop-electron`，升级用户的数据
   与升级器缓存不可见；补回 `productName: "celery-todo"` 后与旧版完全一致
 - 应用初始化失败时在加载页展示错误信息并写入控制台，不再只显示转圈
+
+## [v3.0.1] - 2026-08-16
+
+### Fixed
+
+- 修复 Windows 下进入简洁模式后应用"假死"的问题：
+  `sticker_create` / `sticker_duplicate` 是同步命令且内部直接创建
+  `WebviewWindow`，在 IPC 回调里死锁主线程（wry#583，Tauri 文档明确标注的
+  反模式）。死锁后所有 IPC 永久挂起，表现为切换项目不加载其他项目、归档页
+  空白、无法切换卡片模式、导出无反应。两命令改为 async（运行时线程建窗），
+  托盘「新建简洁模式浮窗」同样改为独立线程创建
+- 修复托盘「退出」可能无效的问题 —— `app.exit(0)` 依赖事件循环消费退出
+  请求，主线程卡死时永远无法退出；`quit_app` 落盘窗口状态并清理 CLI 通知
+  文件后增加看门狗线程，宽限期后强杀进程兜底
+- 修复设置页版本号显示为 2.20.0 —— Vite 注入的 `__APP_VERSION__` 读的是
+  workspace 包版本（跟随 2.x Electron 发版线），改为读
+  `src-tauri/tauri.conf.json` 的 version（3.0 桌面线的唯一版本源）
+- 修复优先级（高/中/低）标签颜色丢失 —— `PRIORITY_COLORS` 的 Tailwind
+  类名常量位于 `@celery/core` 源码，content 未覆盖该目录导致类被 purge；
+  Tailwind content 纳入 `packages/core/src`（2.x 迁移壳同步修复）
 
 ## [v3.0.0] - 2026-08-15
 
