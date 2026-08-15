@@ -2,7 +2,7 @@
   "expo": {
     "name": "Celery Todo",
     "slug": "celery-todo",
-    "version": "3.0.0-alpha.1",
+    "version": "3.0.0-alpha.2",
     "orientation": "portrait",
     "scheme": "celery-todo",
     "userInterfaceStyle": "automatic",
