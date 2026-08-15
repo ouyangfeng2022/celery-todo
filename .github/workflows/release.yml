@@ -20,7 +20,9 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # 仅 2.x Electron 发版线；3.x 桌面端走 desktop-release.yml（v3*）。
+      # 此前 v* 会让 2.x 流水线在 v3* tag 上白跑并失败于版本一致性检查。
+      - 'v2*'
   workflow_dispatch:
     inputs:
       ref:
