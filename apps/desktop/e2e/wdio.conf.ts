@@ -28,7 +28,9 @@ export const config = {
   capabilities: [
     {
       maxInstances: 1,
-      'wdio:tauriOptions': {
+      // tauri-driver 直连使用 tauri:options；wdio:tauriOptions 属于
+      // @wdio/tauri-service，直连时会被原生 driver 忽略并退回空 MiniBrowser。
+      'tauri:options': {
         // tauri build --debug --no-bundle 产物（资产经 CLI 嵌入；workspace 根 target/）。
         // 用绝对路径 —— tauri-driver 按自身 cwd 解析相对路径。
         application: resolve(
@@ -44,7 +46,6 @@ export const config = {
           CELERY_DB_PATH: E2E_DB_PATH,
         },
       },
-      'ms:webdriverOptions': {},
     },
   ],
   logLevel: 'error',
