@@ -4,10 +4,15 @@ import path from 'path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// 读取 package.json 中的 version 字段，作为应用版本号的唯一源。
+// 读取 tauri.conf.json 中的 version 字段，作为应用版本号的唯一源。
+// workspace 根 package.json 的 version 跟随 2.x Electron 发版线，与 3.0 桌面端
+// 的 tauri.conf.json 各自独立（desktop-release 流水线 bump 的是后者），不能混用。
 // 通过 define 在构建期把 __APP_VERSION__ 注入为字符串常量。
-const pkg = JSON.parse(
-  readFileSync(fileURLToPath(new URL('./package.json', import.meta.url)), 'utf-8'),
+const tauriConf = JSON.parse(
+  readFileSync(
+    fileURLToPath(new URL('./src-tauri/tauri.conf.json', import.meta.url)),
+    'utf-8',
+  ),
 ) as { version: string };
 
 // Tauri 桌面端 renderer 的 Vite 配置。
@@ -21,7 +26,7 @@ export default defineConfig({
     },
   },
   define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_VERSION__: JSON.stringify(tauriConf.version),
   },
   base: './',
   server: {

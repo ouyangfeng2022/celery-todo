@@ -22,6 +22,10 @@ fn sticker_label(id: &str) -> String {
 }
 
 /// 新建（或唤起已有）贴图窗口。
+///
+/// 线程约束：Windows 下不得在主线程的 IPC 回调 / 菜单事件里同步调用本函数
+/// （WebviewWindowBuilder::build() 会死锁，见 wry#583）。合法调用位置：
+/// async 命令体（运行时线程）、setup 阶段（restore_stickers）、独立线程。
 pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tauri::Result<()> {
     let label = sticker_label(id);
     if let Some(existing) = app.get_webview_window(&label) {
@@ -160,8 +164,17 @@ pub fn restore_stickers(app: &AppHandle) {
 // ============================================
 
 /// 新建贴图；与 2.x 一致，从主窗口发起时隐藏主窗口（贴图即轻量替代）。
+///
+/// 必须是 async 命令：Windows 上 WebView2 的 IPC 回调在主线程内联执行，
+/// 同步命令里 `WebviewWindowBuilder::build()` 会等控制器创建完成而死锁
+/// 主线程（wry#583，tauri 文档明确标注）。async 命令在运行时线程上执行，
+/// build() 经事件代理回到空闲的主线程完成，不会重入死锁。
 #[tauri::command]
-pub fn sticker_create(app: AppHandle, window: tauri::WebviewWindow, project_id: Option<String>) -> Result<(), String> {
+pub async fn sticker_create(
+    app: AppHandle,
+    window: tauri::WebviewWindow,
+    project_id: Option<String>,
+) -> Result<(), String> {
     let sender_is_main = window.label() == "main";
     let id = uuid::Uuid::new_v4().to_string();
     create_sticker_window(&app, &id, project_id.as_deref().unwrap_or(""))
@@ -175,8 +188,9 @@ pub fn sticker_create(app: AppHandle, window: tauri::WebviewWindow, project_id: 
 }
 
 /// 复制贴图：以源窗口尺寸为准向右下错开 28px（仅源贴图自身可发起）。
+/// 同 sticker_create，建窗必须离开主线程（async 命令体）。
 #[tauri::command]
-pub fn sticker_duplicate(
+pub async fn sticker_duplicate(
     app: AppHandle,
     window: tauri::WebviewWindow,
     source_id: String,

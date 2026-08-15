@@ -1,6 +1,12 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  // ../../packages/core：PRIORITY_COLORS 等类名字符串常量在共享内核源里，
+  // 不扫会把动态拼接的 Tailwind 类 purge 掉（3.0.0 优先级颜色丢失事故）。
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/core/src/**/*.{js,ts,jsx,tsx}',
+  ],
   darkMode: 'class',
   theme: {
     extend: {

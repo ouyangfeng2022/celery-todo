@@ -7,12 +7,22 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager};
 
 /// 真正退出（绕过「关闭即最小化到托盘」的拦截）。
+///
+/// `app.exit(0)` 只是向事件循环投递退出请求；主循环若被卡死（Windows 下
+/// 曾因同步建窗死锁）将永远无人消费，表现为托盘「退出」无效。看门狗线程
+/// 兜底：正常路径进程在宽限期内优雅退出（RunEvent::Exit 清理照常执行），
+/// 异常路径到期强杀 —— 托盘退出必须在任何状态下都有效。
 pub fn quit_app(app: &AppHandle) {
-    // 先落盘窗口状态再退出
+    // 先落盘窗口状态再退出（卡死路径下 RunEvent::Exit 不会触发，这里补齐）
     if let Some(store) = app.try_state::<crate::window_state::WindowStateStore>() {
         store.flush();
     }
+    crate::cli_notify::stop(app);
     app.exit(0);
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::process::exit(0);
+    });
 }
 
 pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -50,10 +60,15 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 }
             }
             "new-sticker" => {
-                let id = uuid::Uuid::new_v4().to_string();
-                if let Err(e) = stickers::create_sticker_window(app, &id, "") {
-                    eprintln!("新建贴图失败: {e}");
-                }
+                // 菜单事件在主线程派发，直接建窗会死锁（见 stickers.rs 线程约束），
+                // 换独立线程创建。
+                let app = app.clone();
+                std::thread::spawn(move || {
+                    let id = uuid::Uuid::new_v4().to_string();
+                    if let Err(e) = stickers::create_sticker_window(&app, &id, "") {
+                        eprintln!("新建贴图失败: {e}");
+                    }
+                });
             }
             "show-stickers" => show_all_stickers(app),
             "show-main" => {
