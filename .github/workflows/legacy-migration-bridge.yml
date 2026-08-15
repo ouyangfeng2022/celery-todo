@@ -37,8 +37,7 @@ jobs:
       - name: Verify Electron bridge version
         shell: bash
         run: |
-          test "$(node -p \"require('./package.json').version\")" = '2.20.1'
-          test "$(node -p \"require('./apps/desktop-electron/package.json').version\")" = '2.20.1'
+          node -e 'if (require("./package.json").version !== "2.20.1" || require("./apps/desktop-electron/package.json").version !== "2.20.1") process.exit(1)'
 
       - name: Test migration notice
         run: bun run --filter @celery/desktop-electron test:run -- src/test/ProjectSidebar.test.tsx
