@@ -1,0 +1,1352 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   全局样式
+   设计意图：默认浅色（中性纸白）为主画布，
+   Anthropic 暖白纸张 + 暖陶土橙 T 型框作为「经典」备选外观（.theme-paper）。
+   深色油墨、Poppins 标题与 Lora 正文搭配，层级靠排印、留白与三色强调建立。
+   ============================================ */
+
+@layer base {
+  :root {
+    /* 背景层：中性纸白默认 —— 主画布 / 框架同色，避免漏出暖灰；
+     * 卡片 / 浮层用纯白拉开层级；hover/active 用透明黑叠底保持中性反馈。 */
+    --bg-primary: rgb(249, 249, 247); /* 主画布：中性灰白 */
+    --bg-secondary: rgb(249, 249, 247); /* 外层框架同色，避免漏出暖灰 */
+    --bg-tertiary: rgb(255, 255, 255); /* 卡片 / 浮层 / 输入框：纯白拉开层级 */
+    --bg-hover: rgba(0, 0, 0, 0.04);
+    --bg-active: rgba(0, 0, 0, 0.08);
+    --bg-frame: rgb(249, 249, 247); /* 侧栏 + 顶栏 T 型框同色，与主区无缝 */
+
+    /* 文字层：提高正文与辅助信息的对比度，降低浅色界面的「发灰」感。 */
+    --text-primary: #141413; /* Anthropic Dark · 标题与正文 */
+    --text-secondary: #272724; /* 次级说明 */
+    --text-tertiary: #34332f; /* 元信息 / 占位 */
+    --text-quaternary: #4a4944; /* 极弱分隔 */
+
+    /* 描边：弱→强 */
+    --border-color: #dedcd3;
+    --border-strong: #b0aea5;
+
+    /* 强调：Claude 标志性珊瑚色 */
+    --accent: #d97757;
+    --accent-hover: #c75d3d;
+    --accent-subtle: #f7e8e1; /* 极浅珊瑚底 */
+    --accent-pressed: #a64a2f;
+    --accent-blue: #6a9bcc;
+    --accent-blue-subtle: #e8f0f7;
+    --accent-green: #788c5d;
+    --accent-green-subtle: #edf0e8;
+    --pinned-bg: #f7e3d099; /* 置顶行底色：浅珊瑚 60% 透明，配左侧色条强化置顶信号 */
+
+    /* 语义色 */
+    --danger: #c0392b;
+    --danger-subtle: #fdf2f0;
+    --success: #788c5d;
+    --warning: #b8860b;
+
+    /* 排印 */
+    --font-heading: 'Poppins', 'Noto Sans SC', Arial, sans-serif;
+    --font-body: 'Lora', 'Noto Serif SC', Georgia, serif;
+    --font-brand: 'Tinos', 'Source Serif Pro', Georgia, Cambria, 'Times New Roman', Times, serif;
+    /* 保留旧变量名，避免组件类名与贴图样式发生破坏性变更。 */
+    --font-serif: var(--font-heading);
+    --font-sans: var(--font-body);
+    --font-mono: ui-monospace, 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+
+    /* 阴影：分层、纸质、不喧哗 */
+    --shadow-xs: 0 1px 2px rgba(20, 20, 19, 0.04);
+    --shadow-sm: 0 1px 3px rgba(20, 20, 19, 0.06), 0 1px 2px -1px rgba(20, 20, 19, 0.04);
+    --shadow-md: 0 8px 24px -12px rgba(20, 20, 19, 0.2);
+    --shadow-lg: 0 24px 48px -24px rgba(20, 20, 19, 0.3);
+
+    /* 圆角节奏 */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+  }
+
+  .dark {
+    --bg-primary: #1a1916;
+    --bg-secondary: #21201d;
+    --bg-tertiary: #282723;
+    --bg-hover: #323130;
+    --bg-active: #3a3935;
+    --bg-frame: #33251f;
+
+    --text-primary: #f3f1ec;
+    --text-secondary: #edeae2;
+    --text-tertiary: #d7d3c8;
+    --text-quaternary: #b8b3a4;
+
+    --border-color: #34332f;
+    --border-strong: #46443e;
+
+    --accent: #df8a6a;
+    --accent-hover: #e89a7d;
+    --accent-subtle: #2a1f18;
+    --accent-pressed: #f0a98c;
+    --accent-blue: #83add5;
+    --accent-blue-subtle: #202a34;
+    --accent-green: #91a476;
+    --accent-green-subtle: #282d22;
+    --pinned-bg: #3f241bcc; /* 置顶行底色：暗珊瑚 80% 透明，配左侧色条强化置顶信号 */
+
+    --danger: #e57373;
+    --danger-subtle: #3a1f1c;
+    --success: #66bb6a;
+    --warning: #d4a943;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.35), 0 2px 6px -2px rgba(0, 0, 0, 0.25);
+    --shadow-lg: 0 12px 32px -8px rgba(0, 0, 0, 0.5), 0 4px 12px -4px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 经典主题：Anthropic 暖白纸张 + 暖陶土橙 T 型品牌框架。 */
+  .theme-paper {
+    --bg-primary: #faf9f5; /* Anthropic Light · 主画布 */
+    --bg-secondary: #e8e6dc; /* Anthropic Light Gray · 框架 / 凹陷控件 */
+    --bg-tertiary: #fffefa; /* 卡片 / 浮层，保留纸张暖度 */
+    --bg-hover: #dedbd0; /* 悬停反馈 */
+    --bg-active: #d4d1c5; /* 按下 / 选中填充 */
+    --bg-frame: #e3dacc; /* 顶栏 + 侧栏的 T 型品牌框架 · 暖陶土橙 */
+  }
+
+  .dark.theme-paper {
+    --bg-primary: #211b18;
+    --bg-secondary: #29211d;
+    --bg-tertiary: #312823;
+    --bg-hover: #3b302a;
+    --bg-active: #483a32;
+    --bg-frame: #3d3028;
+    --text-primary: #f6eee8;
+    --text-secondary: #f0e5de;
+    --text-tertiary: #d8c9bf;
+    --text-quaternary: #bda99d;
+    --border-color: #493c35;
+    --border-strong: #624f45;
+    --accent: #e39a7d;
+    --accent-hover: #efaa8e;
+    --accent-subtle: #39251e;
+    --accent-pressed: #f4b89f;
+    --pinned-bg: #4a2b20cc;
+  }
+
+  /* 芹绿主题：以带灰度的鼠尾草绿铺陈，避免高明度黄绿色在大面积界面中显得刺眼。 */
+  .theme-celery {
+    --bg-primary: #f9fbf7;
+    --bg-secondary: #f4f7f1;
+    --bg-tertiary: #fdfefb;
+    --bg-hover: #edf2e9;
+    --bg-active: #e1e9dc;
+    --bg-frame: #eef3ea;
+
+    --text-primary: #263126;
+    --text-secondary: #354033;
+    --text-tertiary: #475244;
+    --text-quaternary: #5d685a;
+
+    --border-color: #dce5d7;
+    --border-strong: #bdcbb6;
+
+    /* 主强调色刻意压低黄度与明度，白字按钮仍保持可读对比。 */
+    --accent: #637b56;
+    --accent-hover: #526b47;
+    --accent-subtle: #eaf1e6;
+    --accent-pressed: #40593a;
+    --accent-blue: #7f9a72;
+    --accent-blue-subtle: #edf3e9;
+    --accent-green: #719063;
+    --accent-green-subtle: #edf4e9;
+    --success: #668255;
+    --pinned-bg: #eaf1e6b3;
+  }
+
+  .dark.theme-celery {
+    --bg-primary: #182018;
+    --bg-secondary: #1d271d;
+    --bg-tertiary: #243024;
+    --bg-hover: #2d3a2d;
+    --bg-active: #364536;
+    --bg-frame: #263226;
+    --text-primary: #edf4e9;
+    --text-secondary: #e2ebdd;
+    --text-tertiary: #c7d3c1;
+    --text-quaternary: #a6b7a0;
+    --border-color: #384937;
+    --border-strong: #536451;
+    --accent: #9fbd87;
+    --accent-hover: #b1cc9a;
+    --accent-subtle: #283624;
+    --accent-pressed: #c2dbaa;
+    --accent-blue: #a6bf91;
+    --accent-blue-subtle: #263324;
+    --accent-green: #9fbd87;
+    --accent-green-subtle: #293625;
+    --success: #a3c58b;
+    --pinned-bg: #31442dcc;
+  }
+
+  /* 除「芹绿」外均沿用浅色主题的暖珊瑚 Logo；芹绿保留原始绿色版本。 */
+  .app-logo-celery {
+    display: none;
+  }
+
+  .theme-celery .app-logo-light {
+    display: none;
+  }
+
+  .theme-celery .app-logo-celery {
+    display: block;
+  }
+
+  * {
+    border-color: var(--border-color);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    line-height: 1.65;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  html.sticker-page,
+  html.sticker-page body,
+  html.sticker-page #root {
+    background: transparent !important;
+    overflow: hidden;
+  }
+  /* ===== 贴图外壳（简洁模式浮窗） =====
+   * 视觉参数全部走 CSS 变量（带 fallback），由 StickerWindow / 设置页预览
+   * 通过 inline style 注入，对应 stickerPreset / stickerRadius / stickerBlur /
+   * stickerOpacity / stickerShadow 五个设置项。
+   *
+   * 默认值（玻璃 glass）= 重构前硬编码的观感，保证零回归。
+   */
+  .sticker-shell {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    isolation: isolate;
+    /* 圆角 / 模糊 / 不透明度 / 阴影：均带 fallback，未注入变量时仍是原始玻璃观感 */
+    border-radius: var(--sticker-radius, 22px);
+    clip-path: inset(0 round var(--sticker-radius, 22px));
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: linear-gradient(
+      138deg,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0.1) 43%,
+      rgba(255, 239, 228, 0.18) 100%
+    );
+    /* 不透明度通过变量叠加在背景之上（不动其它子元素） */
+    opacity: var(--sticker-opacity, 1);
+    box-shadow:
+      inset 0 1px 1px rgba(255, 255, 255, 0.5),
+      inset 0 -1px rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
+    -webkit-backdrop-filter: blur(var(--sticker-blur, 38px)) saturate(168%) contrast(1.04);
+  }
+  /* 启用外阴影（卡片 / 便利贴预设）。
+   * 由 StickerWindow / 设置页预览在 shadow=true 时追加 .sticker-shadow-on 类。 */
+  .sticker-shell.sticker-shadow-on {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.18),
+      0 2px 6px rgba(0, 0, 0, 0.1),
+      inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  }
+  .dark .sticker-shell {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: linear-gradient(
+      135deg,
+      rgba(61, 56, 49, 0.72),
+      rgba(34, 31, 28, 0.47) 48%,
+      rgba(103, 68, 54, 0.42)
+    );
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.16);
+  }
+  /* 玻璃专属的高光层（::before 径向光晕 / ::after 斜向反光）。
+   * 仅 glass 与未指定预设时显示；其它预设通过 display:none 关掉。 */
+  .sticker-shell::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: -30% -20% 40% 12%;
+    pointer-events: none;
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.62), transparent 67%);
+    filter: blur(12px);
+    transform: rotate(-12deg);
+  }
+  .sticker-shell::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.55;
+    background: linear-gradient(
+      115deg,
+      transparent 27%,
+      rgba(255, 255, 255, 0.26) 45%,
+      transparent 57%
+    );
+  }
+
+  /* ===== 预设覆盖规则 ===== */
+
+  /* 纯净：近实色、无模糊、无高光 */
+  .sticker-shell[data-sticker-preset='pure'] {
+    background: color-mix(in srgb, var(--bg-tertiary) 88%, transparent);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .dark .sticker-shell[data-sticker-preset='pure'] {
+    background: color-mix(in srgb, var(--bg-tertiary) 92%, transparent);
+  }
+  .sticker-shell[data-sticker-preset='pure']::before,
+  .sticker-shell[data-sticker-preset='pure']::after {
+    display: none;
+  }
+
+  /* 卡片：实色 + 明显描边 + 外阴影 */
+  .sticker-shell[data-sticker-preset='card'] {
+    background: var(--bg-tertiary);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--border-color);
+  }
+  .sticker-shell[data-sticker-preset='card']::before,
+  .sticker-shell[data-sticker-preset='card']::after {
+    display: none;
+  }
+
+  /* 便利贴：纸质感、轻微旋转、外阴影；header 底色随预设变暖 */
+  .sticker-shell[data-sticker-preset='note'] {
+    background: linear-gradient(160deg, #fff8e0 0%, #fdecb6 100%);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: rgba(0, 0, 0, 0.08);
+    transform: rotate(-1.2deg);
+  }
+  .dark .sticker-shell[data-sticker-preset='note'] {
+    background: linear-gradient(160deg, #5a4a2a 0%, #3d3220 100%);
+    border-color: rgba(0, 0, 0, 0.3);
+  }
+  .sticker-shell[data-sticker-preset='note']::before,
+  .sticker-shell[data-sticker-preset='note']::after {
+    display: none;
+  }
+
+  /* 设置页预设缩略图使用独立的轻量样式。不要复用 .sticker-shell：即使禁用
+   * backdrop-filter，它的 clip-path、isolation、伪元素和阴影在首次挂载时仍会
+   * 创建多个合成层，导致首次进入「贴图」分类掉帧。 */
+  .sticker-preview-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: linear-gradient(
+      138deg,
+      rgba(255, 255, 255, 0.32) 0%,
+      rgba(255, 255, 255, 0.1) 43%,
+      rgba(255, 239, 228, 0.18) 100%
+    );
+  }
+  .sticker-preview-card.sticker-preview-shadow {
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
+  }
+  .dark .sticker-preview-card {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, rgba(61, 56, 49, 0.72), rgba(34, 31, 28, 0.47));
+  }
+  .sticker-preview-card[data-sticker-preset='pure'] {
+    background: var(--bg-tertiary);
+  }
+  .sticker-preview-card[data-sticker-preset='card'] {
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+  }
+  .sticker-preview-card[data-sticker-preset='note'] {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: linear-gradient(160deg, #fff8e0 0%, #fdecb6 100%);
+  }
+  .dark .sticker-preview-card[data-sticker-preset='note'] {
+    border-color: rgba(0, 0, 0, 0.3);
+    background: linear-gradient(160deg, #5a4a2a 0%, #3d3220 100%);
+  }
+  .sticker-header {
+    position: relative;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px 0 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.13), transparent);
+  }
+  .sticker-project-picker {
+    position: relative;
+    max-width: 270px;
+  }
+  .sticker-project {
+    display: block;
+    max-width: 100%;
+    padding: 5px 8px;
+    border: 0;
+    border-radius: 12px;
+    outline: 0;
+    background: transparent;
+    color: var(--text-primary);
+    font: 600 15px var(--font-serif);
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+  .sticker-project:hover {
+    background: rgba(20, 20, 19, 0.12);
+  }
+  .dark .sticker-project:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .sticker-project-menu {
+    /* 通过 portal 渲染到 document.body，脱离 .sticker-shell 的 opacity 合成层，
+     * 避免被贴图整体透明度稀释到看不清。left/top/minWidth 由 JS 注入（fixed 定位贴在触发按钮下方）。 */
+    position: fixed;
+    z-index: 50;
+    min-width: 180px;
+    max-width: 280px;
+    /* 项目过多时限制最大高度并内部滚动，继承全局 ::-webkit-scrollbar 细滚动条风格。
+     * min(60vh, 360px)：大窗口约 11 项可见，小窗口按视口高度收缩避免溢出底部。 */
+    max-height: min(60vh, 360px);
+    overflow-y: auto;
+    padding: 5px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-md);
+  }
+  .sticker-project-option {
+    display: block;
+    width: 100%;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font: 13px var(--font-sans);
+    overflow: hidden;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .sticker-project-option:hover {
+    background: var(--bg-hover);
+  }
+  .sticker-project-option[aria-selected='true'] {
+    background: var(--bg-active);
+  }
+  /* 覆盖全局 :focus-visible 橙色描边：原生 select 关闭下拉后仍保有焦点，
+   * 但贴图标题不需要持续显示选中态。 */
+  .sticker-project:focus,
+  .sticker-project:focus-visible {
+    border: 0;
+    outline: none;
+    box-shadow: none;
+  }
+  /* 项目标题容器：首行居中。左侧只有小 ←、右侧是重色的 +/×，几何正中会因两侧留白
+     不对称（左空 ~100px、右空 ~57px）而"看起来偏右"。故在几何中线基础上左移 12px 做
+     光学校正。max-width 给左右按钮留位，避免长标题压到 ← 或 +/×。 */
+  .sticker-header-center {
+    position: absolute;
+    left: calc(50% - 12px);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-width: calc(100% - 140px);
+  }
+  /* 返回主窗口：项目名左侧的裸箭头，hover 才显底；与项目名同一文本行作导航返回。
+     复用项目名按钮的 hover 配色，让左侧整组视觉一致。 */
+  .sticker-back {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .sticker-back:hover {
+    background: rgba(20, 20, 19, 0.12);
+    color: var(--text-primary);
+  }
+  .dark .sticker-back:hover {
+    background: rgba(0, 0, 0, 0.28);
+  }
+  .sticker-back svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .sticker-close {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg-hover) 30%, transparent);
+    color: color-mix(in srgb, var(--text-secondary) 58%, transparent);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+  .sticker-close:hover {
+    background: color-mix(in srgb, var(--bg-hover) 52%, transparent);
+    color: color-mix(in srgb, var(--text-secondary) 82%, transparent);
+  }
+  .sticker-close svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+  }
+  /* header 右侧操作按钮组：[+ 新建] [× 关闭]。相对定位，承载浮层。 */
+  .sticker-header-actions {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  /* header「新建」触发按钮：accent 橙圆形 FAB。
+   * 展开时旋转 45°（+ → × 视觉切换），暗示再点一次即关闭浮层。 */
+  .sticker-add-trigger {
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition:
+      transform 0.18s ease,
+      filter 0.15s ease;
+  }
+  .sticker-add-trigger:hover {
+    filter: brightness(1.06);
+  }
+  .sticker-add-trigger[aria-expanded='true'] {
+    transform: rotate(45deg);
+  }
+  .sticker-add-trigger svg {
+    width: 10px;
+    height: 10px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  /* 「新建」浮层：相对贴图外壳水平居中、垂直紧贴 header 下方，与 + 按钮脱钩。
+   * 宽度容纳 textarea 与三个优先级点。 */
+  .sticker-add-popover {
+    position: absolute;
+    z-index: 25;
+    top: 54px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-md);
+  }
+  /* 浮层内的 .sticker-add 不再需要自带的外边距与底色 —— 浮层容器已提供。 */
+  .sticker-add-popover .sticker-add {
+    margin: 0;
+    background: transparent;
+  }
+  .sticker-body {
+    padding: 14px 12px 18px;
+    overflow-y: auto;
+    height: calc(100% - 48px);
+  }
+  /* ===== 贴图内新建输入框 =====
+   * 单行布局：[+按钮] [标题 textarea] [优先级三色点]。
+   * 文字浓度统一走 --text-primary，让贴图即便半透明也尽量清晰。 */
+  .sticker-add {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 4px 12px;
+    padding: 7px 8px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg-hover) 38%, transparent);
+  }
+  .sticker-add-btn {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition:
+      opacity 0.15s ease,
+      transform 0.15s ease;
+  }
+  .sticker-add-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+  .sticker-add-btn:not(:disabled):hover {
+    transform: scale(1.06);
+  }
+  .sticker-add-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+  }
+  .sticker-add-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    resize: none;
+    overflow-y: auto;
+    color: var(--text-primary);
+    font: 13px/1.5 var(--font-sans);
+    min-height: 1.5rem;
+  }
+  .sticker-add-title::placeholder {
+    color: var(--text-tertiary);
+  }
+  /* 优先级三色点：当前选中项实色描边，未选中半透明。紧凑、低存在感。 */
+  .sticker-add-priority {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .sticker-add-priority-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+  }
+  .sticker-add-priority-dot[data-selected='true'] {
+    opacity: 1;
+  }
+  .sticker-add-priority-dot[data-priority='high'] {
+    background: #dc2626;
+  }
+  .sticker-add-priority-dot[data-priority='medium'] {
+    background: #b45309;
+  }
+  .sticker-add-priority-dot[data-priority='low'] {
+    background: #475569;
+  }
+  .dark .sticker-add-priority-dot[data-priority='high'] {
+    background: #fca5a5;
+  }
+  .dark .sticker-add-priority-dot[data-priority='medium'] {
+    background: #fcd34d;
+  }
+  .dark .sticker-add-priority-dot[data-priority='low'] {
+    background: #cbd5e1;
+  }
+  .sticker-add-bulk-tag {
+    flex: none;
+    margin-left: 2px;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+  }
+  .sticker-eyebrow {
+    margin: 0 4px 10px;
+    color: var(--text-tertiary);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+  .sticker-todo {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: left;
+    padding: 11px 8px 11px 12px;
+    border: 0;
+    border-radius: 12px;
+    color: var(--text-primary);
+    background: transparent;
+    cursor: pointer;
+    font: 14px var(--font-sans);
+  }
+  .sticker-todo:hover {
+    background: color-mix(in srgb, var(--bg-hover) 64%, transparent);
+  }
+  /* 优先级左侧色条：3px 实色竖条，颜色由每行 inline --sticker-priority-color 注入。
+   * absolute 定位不占布局，叠在行最左侧作视觉锚点（与主页面左侧色条语义一致）。 */
+  .sticker-priority-bar {
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: var(--sticker-priority-color, var(--accent));
+  }
+  .sticker-check {
+    width: 17px;
+    height: 17px;
+    flex: none;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
+  }
+  /* 标题占据剩余空间，长标题省略，避免挤压右侧优先级 tag / 置顶标签。
+   * 显式声明 color 避免被父级 opacity 二次稀释误判（贴图整体走 --sticker-opacity）。 */
+  .sticker-todo-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+  }
+  /* 已完成事项：弱化整行 + 标题加删除线 + 色条/tag 退到背景。
+   * 仅贴图使用此规则，主窗口的完成态样式由 TodoItem.tsx 控制。 */
+  .sticker-todo[data-completed='true'] {
+    opacity: 0.55;
+  }
+  .sticker-todo[data-completed='true'] .sticker-todo-title {
+    text-decoration: line-through;
+    text-decoration-color: color-mix(in srgb, var(--text-tertiary) 80%, transparent);
+  }
+  .sticker-todo[data-completed='true'] .sticker-priority-bar,
+  .sticker-todo[data-completed='true'] .sticker-priority-tag {
+    opacity: 0.4;
+  }
+  /* 优先级文字 tag：紧凑浅底彩字 pill，margin-left:auto 把它顶到行末。
+   * 配色取与主页 PRIORITY_COLORS 同色系但更浅，适配贴图半透明背景。 */
+  .sticker-priority-tag {
+    flex: none;
+    margin-left: auto;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.6;
+  }
+  .sticker-priority-tag[data-priority='high'] {
+    background: rgba(239, 68, 68, 0.14);
+    color: #dc2626;
+  }
+  .sticker-priority-tag[data-priority='medium'] {
+    background: rgba(245, 158, 11, 0.16);
+    color: #b45309;
+  }
+  .sticker-priority-tag[data-priority='low'] {
+    background: rgba(100, 116, 139, 0.14);
+    color: #475569;
+  }
+  .dark .sticker-priority-tag[data-priority='high'] {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+  }
+  .dark .sticker-priority-tag[data-priority='medium'] {
+    background: rgba(245, 158, 11, 0.22);
+    color: #fcd34d;
+  }
+  .dark .sticker-priority-tag[data-priority='low'] {
+    background: rgba(148, 163, 184, 0.2);
+    color: #cbd5e1;
+  }
+  .sticker-todo i {
+    margin-left: 4px;
+    color: var(--accent);
+    font-size: 10px;
+    font-style: normal;
+  }
+  .sticker-empty {
+    padding: 32px 8px;
+    color: var(--text-secondary);
+    text-align: center;
+    font-family: var(--font-serif);
+  }
+  .sticker-drag {
+    -webkit-app-region: drag;
+  }
+  .sticker-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* 衬线标题：用于品牌字、章节大字 */
+  .font-serif {
+    font-family: var(--font-heading);
+    letter-spacing: -0.025em;
+    font-feature-settings:
+      'liga' 1,
+      'kern' 1;
+  }
+
+  /* Celery Todo 专用艺术字标：不跟随通用标题字体切换。 */
+  .brand-wordmark {
+    font-family: var(--font-brand);
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    font-feature-settings:
+      'liga' 1,
+      'kern' 1;
+  }
+
+  /* 选区使用品牌色 */
+  ::selection {
+    background-color: rgba(217, 119, 87, 0.22);
+    color: var(--text-primary);
+  }
+
+  /* 焦点环：可见但不刺眼 */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+@layer components {
+  /* 按钮 - 主要（实心珊瑚） */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: white;
+    background-color: var(--accent);
+    border: none;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      transform 0.1s ease,
+      box-shadow 0.15s ease;
+  }
+
+  .btn-primary:hover {
+    background-color: var(--accent-hover);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-primary:active {
+    transform: scale(0.97);
+    background-color: var(--accent-pressed);
+  }
+
+  /* 按钮 - 次要 */
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .btn-secondary:hover {
+    background-color: var(--bg-hover);
+    border-color: var(--text-quaternary);
+  }
+
+  /* 按钮 - 幽灵（透明，仅悬停反馈） */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.375rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .btn-ghost:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  /* 卡片：单层描边 + 极弱阴影，呈现"纸"的质感而非"卡片堆叠" */
+  .claude-card {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+  }
+
+  /* 输入框 */
+  .claude-input {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    width: 100%;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .claude-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.14);
+  }
+
+  .claude-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  /* 标签 */
+  .claude-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  /* 章节小标题：用于设置/分组标题，克制不喧哗 */
+  .claude-eyebrow {
+    font-family: var(--font-heading);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+
+  /* 主工作区像一张嵌入框架的纸，保留一条低对比的主题分割线。
+   * 分割线由框架色与边框色混合而成；不使用白色内高光，避免深色主题出现亮缝。 */
+  .workspace-surface {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border-color) 55%, var(--bg-frame));
+    border-radius: 1.25rem 0 0 0;
+    box-shadow: -10px 14px 36px -28px rgba(20, 20, 19, 0.32);
+  }
+
+  /* 设置页沿用主工作区的纸张卡片层级，避免旧版扁平灰色列表割裂视觉。 */
+  .settings-content > section,
+  .settings-content > div > section {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    background: var(--bg-tertiary);
+    box-shadow: var(--shadow-xs);
+    padding: 1.5rem;
+  }
+
+  /* 设置页信息密度较高，中文统一使用清晰、紧凑的无衬线字面。
+   * 不影响主工作区的正文与品牌排印。 */
+  .settings-panel {
+    font-family: 'Noto Sans SC', sans-serif;
+    font-feature-settings:
+      'kern' 1,
+      'palt' 1;
+  }
+
+  .settings-panel .font-serif,
+  .settings-panel .claude-eyebrow {
+    font-family: var(--font-heading);
+  }
+
+  .brand-progress {
+    background-image: linear-gradient(
+      90deg,
+      var(--accent) 0%,
+      var(--accent) 48%,
+      var(--accent-blue) 72%,
+      var(--accent-green) 100%
+    );
+  }
+
+  /* 热力图格子：hover 时从中心微微放大并置顶，transform 不触发 layout reflow，
+     邻格不被推开；transition 让缩放柔和（120ms ≈ 视觉即时但不突兀）。 */
+  .heatmap-cell {
+    position: relative;
+    transform-origin: center;
+    transition:
+      transform 120ms ease-out,
+      box-shadow 120ms ease-out;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.3);
+    z-index: 1;
+    box-shadow: 0 0 0 1px var(--bg-tertiary);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  /* 自定义滚动条：细而克制 */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-tertiary);
+    background-clip: content-box;
+  }
+
+  /* ============================================
+     Frameless 窗口拖动区
+     Electron 隐藏标题栏后，需要标记可拖动区域。
+     - .titlebar-drag：所在元素可拖动整窗（标题栏区域）
+     - .titlebar-no-drag：拖动区域内的可交互元素（按钮/输入框）需排除
+     在 Web 浏览器中这些属性被忽略，不影响 dev 模式。
+     ============================================ */
+  .titlebar-drag {
+    -webkit-app-region: drag;
+  }
+
+  .titlebar-no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /*
+   * 侧栏折叠动效：父级 grid 容器用 grid-template-columns 动画驱动布局占位，
+   * 避免传统 width 动画造成的 layout reflow。固定宽度的内层只做合成层动画。
+   * 顶部栏独立于此动画，收起侧栏时始终保持完整。
+   */
+  .sidebar-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* 侧栏挂载时切到双列：280px(侧栏) ↔ 0px(收起) + 1fr(主区) */
+  .sidebar-grid[data-sidebar='open'] {
+    grid-template-columns: 280px 1fr;
+  }
+
+  .sidebar-grid[data-sidebar='closed'] {
+    grid-template-columns: 0px 1fr;
+  }
+
+  .sidebar-grid > .sidebar-shell {
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .sidebar-grid > .workspace-surface {
+    min-width: 0;
+  }
+
+  .sidebar-shell {
+    contain: layout paint;
+  }
+
+  .sidebar-inner {
+    transition:
+      transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 160ms ease-out;
+    will-change: transform, opacity;
+  }
+
+  .sidebar-shell[data-open='false'] .sidebar-inner {
+    opacity: 0.72;
+    transform: translate3d(-12px, 0, 0);
+  }
+
+  /* 筛选只让整个列表短暂淡入。逐项进退场会在快速切换时叠加大量 motion / DnD 布局工作。 */
+  @keyframes todo-filter-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 3px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .todo-filter-content {
+    animation: todo-filter-enter 120ms ease-out both;
+  }
+
+  /* 虚拟列表自身已经通过绝对定位逐行更新。对它再做整层 transform/opacity 动画，
+   * 会把很高的占位容器提升为大合成层，筛选切换和持续滚动都会增加栅格化成本。
+   * 长列表直接呈现；每个可见行独立限制布局与绘制影响范围。 */
+  .todo-filter-content-virtual,
+  .todo-filter-content-large {
+    animation: none;
+  }
+
+  .todo-virtual-row {
+    contain: layout style;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-grid,
+    .sidebar-inner,
+    .todo-filter-content {
+      transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
+    }
+  }
+
+  /* Markdown 渲染 */
+  .markdown-body {
+    /* 事项标题使用无衬线标题字，描述保留衬线正文字，形成明确层级。 */
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    line-height: 1.65;
+  }
+
+  .markdown-body strong {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .markdown-body em {
+    font-style: italic;
+  }
+
+  .markdown-body code {
+    background-color: var(--bg-secondary);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    color: var(--accent);
+  }
+
+  .markdown-body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-thickness: 1px;
+  }
+
+  .markdown-body a:hover {
+    color: var(--accent-hover);
+  }
+
+  .markdown-body ul {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin: 0.25rem 0;
+  }
+
+  .markdown-body li {
+    margin: 0.125rem 0;
+  }
+
+  .markdown-body ol {
+    list-style: decimal;
+    padding-left: 1.5rem;
+    margin: 0.25rem 0;
+  }
+
+  .markdown-body p {
+    margin: 0.25rem 0;
+  }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3,
+  .markdown-body h4,
+  .markdown-body h5,
+  .markdown-body h6 {
+    margin: 0.75rem 0 0.25rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--text-primary);
+  }
+
+  .markdown-body h1 {
+    font-size: 1.5em;
+  }
+  .markdown-body h2 {
+    font-size: 1.3em;
+  }
+  .markdown-body h3 {
+    font-size: 1.15em;
+  }
+
+  .markdown-body blockquote {
+    margin: 0.5rem 0;
+    padding-left: 0.75rem;
+    border-left: 3px solid var(--border);
+    color: var(--text-tertiary);
+  }
+
+  .markdown-body pre {
+    overflow-x: auto;
+    margin: 0.5rem 0;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    background-color: var(--bg-secondary);
+  }
+
+  .markdown-body pre code {
+    padding: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  .markdown-body table {
+    display: block;
+    overflow-x: auto;
+    width: max-content;
+    max-width: 100%;
+    margin: 0.5rem 0;
+    border-collapse: collapse;
+  }
+
+  .markdown-body th,
+  .markdown-body td {
+    padding: 0.375rem 0.625rem;
+    border: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .markdown-body th {
+    font-weight: 600;
+    color: var(--text-primary);
+    background-color: var(--bg-secondary);
+  }
+
+  .markdown-body input[type='checkbox'] {
+    margin: 0 0.4rem 0 0;
+    vertical-align: middle;
+  }
+
+  .markdown-body ul.contains-task-list {
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .markdown-body .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin: 0.5rem 0;
+  }
+
+  /* 日期选择器图标颜色 */
+  input[type='date']::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.5;
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  /* 减弱动画偏好 */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

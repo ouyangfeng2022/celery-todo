@@ -1,0 +1,51 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "dist-electron/**"]
+    },
+    "build:electron": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "dist-electron/**"]
+    },
+    "build:cli": {
+      "outputs": ["dist-cli/**"]
+    },
+    "typecheck": {
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test:run": {
+      "outputs": []
+    },
+    "test:coverage": {
+      "outputs": ["coverage/**"],
+      "cache": false
+    },
+    "test:cli": {
+      "outputs": [],
+      "cache": false
+    },
+    "e2e": {
+      "cache": false
+    },
+    "e2e:install": {
+      "cache": false
+    },
+    "rebuild:electron": {
+      "cache": false
+    },
+    "rebuild:node": {
+      "cache": false
+    },
+    "tauri:dev": {
+      "cache": false
+    },
+    "tauri:build": {
+      "cache": false
+    }
+  }
+}

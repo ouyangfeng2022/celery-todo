@@ -22,9 +22,11 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
+// 2.x Electron 应用已迁入 apps/desktop-electron（3.0 迁移壳），图标源与产物都在应用内。
+const appDir = resolve(root, 'apps/desktop-electron');
 // 主配色 = 橙色 logo；如需切回芹绿版，把常量改成 'celery-todo-no-text.svg'。
-const svgPath = resolve(root, 'assets/celery-todo-no-text-light.svg');
-const publicDir = resolve(root, 'public');
+const svgPath = resolve(appDir, 'assets/celery-todo-no-text-light.svg');
+const publicDir = resolve(appDir, 'public');
 
 if (!existsSync(svgPath)) {
   console.error(`[generate-icons] 找不到 SVG 源文件: ${svgPath}`);

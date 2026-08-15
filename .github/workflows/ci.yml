@@ -42,3 +42,32 @@ jobs:
 
       - name: Build (tsc -b + Vite)
         run: bun run build
+
+  # 3.0 数据层：Rust 单测（含 ts-rs 重新生成 TS 绑定）+ 绑定漂移检查。
+  # 绑定文件由 cargo test 写入 packages/data/src/generated/，
+  # 若与提交版本不一致（有人改了 DTO 但没重新生成），git diff 会失败。
+  rust:
+    name: Rust tests + bindings drift
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+
+      - name: Test celery-db（同时刷新 TS 绑定）
+        run: cargo test -p celery-db
+
+      - name: Check Tauri host crate compiles
+        run: cargo check -p celery-desktop
+
+      - name: Verify generated bindings are committed
+        shell: bash
+        run: |
+          git diff --exit-code -- packages/data/src/generated \
+            || (echo "::error::packages/data/src/generated 与 Rust DTO 不一致；请运行 cargo test -p celery-db 并提交生成物" && exit 1)

@@ -1,0 +1,47 @@
+# 移动端（Expo）类型检查。
+# apps/mobile 独立于根 workspace（Windows 本机 bun 无法链接 RN 长路径依赖树），
+# 由本工作流在 ubuntu 上安装并 typecheck，保证 @celery/data 契约的
+# expo-sqlite 适配器与骨架 UI 类型正确。
+
+name: Mobile
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/data/**'
+      - 'packages/core/**'
+      - 'packages/ui-tokens/**'
+  workflow_dispatch:
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    name: Expo typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      # 先装根 workspace：@celery/* 经 file: 链接以真实路径参与编译，
+      # packages/core/src 的 'xlsx' 导入从源码位置向上解析到根 node_modules。
+      - name: Install root workspace（为共享包提供 xlsx 等类型解析）
+        run: bun install
+
+      - name: Install mobile deps（file 协议引用本地共享包，独立于根 workspace）
+        working-directory: apps/mobile
+        run: bun install
+
+      - name: Typecheck
+        working-directory: apps/mobile
+        run: bun run typecheck

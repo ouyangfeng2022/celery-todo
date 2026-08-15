@@ -22,7 +22,7 @@
  * 详见仓库根目录 VERSIONING.md。
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -31,6 +31,29 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 const pkgPath = resolve(root, 'package.json');
 const changelogPath = resolve(root, 'CHANGELOG.md');
+
+// 3.0 monorepo：版本号唯一源在根 package.json，但 Electron 安装包（electron-builder）
+// 与 Vite 注入读取的是 apps/*/package.json 的 version 字段，发版时必须同步写入。
+// 未来 Tauri/Expo 同样在构建期读取根版本，不各自持有独立版本号。
+function workspaceVersionFiles() {
+  const files = [pkgPath];
+  for (const group of ['apps', 'packages']) {
+    const groupDir = resolve(root, group);
+    if (!existsSync(groupDir)) continue;
+    for (const entry of readdirSync(groupDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const p = resolve(groupDir, entry.name, 'package.json');
+      if (!existsSync(p)) continue;
+      try {
+        const json = JSON.parse(readFileSync(p, 'utf-8'));
+        if (typeof json.version === 'string') files.push(p);
+      } catch {
+        /* 损坏的 package.json 交给 git/安装流程报错 */
+      }
+    }
+  }
+  return files;
+}
 
 // ============================================
 // 1. 解析 CLI 参数
@@ -161,7 +184,12 @@ function renderBlock(versionLabel, dateLabel) {
 const today = new Date().toISOString().slice(0, 10);
 
 // package.json：保持 2 空格缩进 + 末尾换行（与 prettier 一致）。
-const nextPkgText = `${JSON.stringify({ ...pkg, version: next }, null, 2)}\n`;
+// 根 + 所有声明了 version 的 workspace 包一起写为同一版本号。
+const versionFiles = workspaceVersionFiles();
+const nextPkgTexts = versionFiles.map((p) => {
+  const json = JSON.parse(readFileSync(p, 'utf-8'));
+  return [p, `${JSON.stringify({ ...json, version: next }, null, 2)}\n`];
+});
 
 // CHANGELOG.md：替换 ## [Unreleased] 段为正式版本块，并在顶部追加新的 Unreleased 占位。
 const originalChangelog = readFileSync(changelogPath, 'utf-8');
@@ -241,7 +269,7 @@ if (dryRun) {
   console.log('--- CHANGELOG 预览（首段）---');
   console.log(nextChangelog.split('\n\n\n')[0]);
   console.log('--- 待执行 git 命令 ---');
-  console.log(`git add package.json CHANGELOG.md`);
+  console.log(`git add package.json ${versionFiles.slice(1).map((p) => `"${p}"`).join(' ')} CHANGELOG.md`);
   console.log(`git commit -m "chore(release): v${next}"`);
   console.log(`git tag -a v${next} -m "Release v${next}"`);
   process.exit(0);
@@ -251,12 +279,15 @@ if (dryRun) {
 // 7. 落盘 + git 操作
 // ============================================
 try {
-  writeFileSync(pkgPath, nextPkgText, 'utf-8');
+  for (const [p, text] of nextPkgTexts) writeFileSync(p, text, 'utf-8');
   writeFileSync(changelogPath, nextChangelog, 'utf-8');
-  log(`✓ 已写入 package.json (${next})`);
+  log(`✓ 已写入 ${versionFiles.length} 个 package.json (${next})`);
   log(`✓ 已更新 CHANGELOG.md`);
 
-  execSync('git add package.json CHANGELOG.md', { cwd: root, stdio: 'inherit' });
+  execSync(
+    `git add ${versionFiles.map((p) => `"${p}"`).join(' ')} CHANGELOG.md`,
+    { cwd: root, stdio: 'inherit' },
+  );
   execSync(`git commit -m "chore(release): v${next}"`, { cwd: root, stdio: 'inherit' });
   execSync(`git tag -a v${next} -m "Release v${next}"`, { cwd: root, stdio: 'inherit' });
   log(`✓ 已提交并打 tag v${next}`);

@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Celery Todo",
+    "slug": "celery-todo",
+    "version": "3.0.0-alpha.2",
+    "orientation": "portrait",
+    "scheme": "celery-todo",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "backgroundColor": "#f9f9f7",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.celery.todo"
+    },
+    "android": {
+      "package": "com.celery.todo"
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}

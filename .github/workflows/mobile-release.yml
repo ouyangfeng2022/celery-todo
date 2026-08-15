@@ -1,0 +1,49 @@
+# 移动端 EAS 构建提交（手动触发）。
+#
+# 前置（仓库 Settings → Secrets）：
+#   EXPO_TOKEN —— `eas login` 后 `eas whoami` 对应的访问令牌
+# 未配置令牌时工作流以提示信息正常退出（不失败）。
+#
+# ios submit 的 Apple 账号信息在 apps/mobile/eas.json 的 submit.production.ios
+# 中配置（appleId / teamId）。
+
+name: Mobile Release (EAS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'EAS build profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+
+jobs:
+  eas:
+    name: EAS Build（android + ios）
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 令牌校验
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN 未配置：请按 .github/workflows/mobile-release.yml 头部说明添加 Secret 后重试。"
+            exit 0
+          fi
+
+      - name: EAS Build
+        working-directory: apps/mobile
+        run: eas build --platform all --profile ${{ inputs.profile || 'preview' }} --non-interactive

@@ -1,0 +1,37 @@
+{
+  "name": "@celery/mobile",
+  "private": true,
+  "version": "2.20.0",
+  "description": "Celery Todo 3.0 移动端（Expo + React Native），数据层复用 @celery/data 契约 + expo-sqlite",
+  "license": "MIT",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@celery/core": "file:../../packages/core",
+    "@celery/data": "file:../../packages/data",
+    "expo": "~54.0.0",
+    "expo-sqlite": "~15.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "19.1.0",
+    "react-native": "0.81.0",
+    "@celery/ui-tokens": "file:../../packages/ui-tokens",
+    "expo-linking": "~8.0.0",
+    "expo-constants": "~18.0.0",
+    "expo-router": "~6.0.0",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.0",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-draggable-flatlist": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.0",
+    "typescript": "^5.5.3",
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,115 @@
+# 3.0 桌面端三平台发布流水线（Tauri）。
+#
+# 触发：推送 v3* 标签（2.x Electron 的 release.yml 仍占用 v* 标签；两套并存），
+# 或手动 workflow_dispatch。
+#
+# 前置（仓库 Settings → Secrets，一次性配置）：
+#   TAURI_SIGNING_PRIVATE_KEY          —— `tauri signer generate` 的私钥内容
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD —— 生成私钥时的密码（空密码留空/跳过）
+# 未配置时构建仍会成功，但更新产物不签名（updater 会拒绝安装）。
+#
+# 产物：
+#   - 各平台安装包（windows NSIS / macOS app+dmg / linux deb+appimage）
+#   - 更新签名 .sig + 汇总的 latest.json（tauri-action 自动聚合三平台矩阵）
+#   - celery CLI（windows x64 二进制，附到同一 Release）
+
+name: Desktop Release (3.0)
+
+on:
+  push:
+    tags: ['v3*']
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: '--bundles nsis'
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin --bundles app,dmg'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin --bundles app,dmg'
+          - platform: ubuntu-22.04
+            args: '--bundles deb,appimage'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            .
+            apps/desktop/src-tauri
+
+      - name: Linux 系统依赖（webkit）
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install JS deps
+        run: bun install
+
+      - name: Build & Release（tauri-action：构建+签名+Release 附件+latest.json 聚合）
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Celery Todo ${{ github.ref_name }}'
+          releaseBody: '3.0 跨端桌面正式版。完整更新日志见 CHANGELOG.md。'
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: ${{ matrix.args }}
+
+  cli:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Build CLI
+        run: cargo build --release -p celery-cli
+
+      - name: Attach to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: target/release/celery.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

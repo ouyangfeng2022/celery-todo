@@ -3,6 +3,88 @@
 Workspace instructions for ZCode agents working in `celery-todo`.
 For deeper background see `README.md` and `CLAUDE.md` (Chinese + English).
 
+## 3.0 跨端重构（进行中，分支 `refactor/3.0-monorepo`）
+
+仓库正按「Celery Todo 3.0 跨端重构计划」迁移为 Bun workspaces + Turborepo
+monorepo。**除本节外，本文件其余章节描述的是 2.x Electron 应用** —— 它已整体迁入
+`apps/desktop-electron/`，作为迁移对照壳保留到 Tauri 端达到功能基线为止。阅读旧章节时，
+把 `src/…`、`electron/…`、`cli/…`、`e2e/…`、`public/…`、`build/…` 一律读作
+`apps/desktop-electron/` 下的同名目录。
+
+已完成阶段（每个阶段一个 commit，全部保持构建/测试绿色）：
+
+1. **Monorepo 骨架** —— Bun workspaces（`apps/*`、`packages/*`）+ Turborepo
+   （`turbo.json`）。根 `package.json` 是版本号唯一源；`scripts/bump-version.mjs`
+   发版时同步所有 workspace 包的 `version` 字段。
+2. **共享内核 `packages/core`（`@celery/core`）** —— 实体、校验、计划日期、排序、
+   模板、统计、v2 导入导出规则（76 个单测）。Electron 壳经 `@/types`、`@/utils/*`
+   兼容 shim 消费，应用内既有 import 未改动。
+3. **v3 数据层**：
+   - `crates/celery-db`（Rust）—— 全新 `schema_migrations` v1 起（不复用 2.x
+     `settings.dataVersion`）；`projects` / `todos` / `archived_todos`（原
+     `deleted_todos`，无 `expires_at`）/ `settings` / FTS5 trigram 全文索引；
+     WAL + 外键 + busy_timeout；游标分页；批量写单事务。43 个 Rust 测试。
+   - `packages/data`（`@celery/data`）—— Repository 契约（todos/projects/settings +
+     ChangeFeed）、v3 导出格式（`celery-todo/v3`，旧 JSON 明确拒绝）、内存适配器。
+     DTO 类型由 ts-rs 从 Rust 生成到 `src/generated/`（**改 Rust DTO 后必须
+     `cargo test -p celery-db` 重新生成并提交**，CI 有漂移检查）。
+   - `packages/test-contracts`（`@celery/test-contracts`）—— 共享契约测试套件
+     （16 条），内存适配器已接入；Tauri / Expo 适配器完成后挂同一套。
+4. **Tauri 桌面骨架 `apps/desktop`（`@celery/desktop`）** —— Tauri 2 + React/Vite，
+   29 个强类型命令薄封装 celery-db（`src-tauri/src/commands.rs`），renderer 经
+   `createTauriRepositories()` 走 Repository 契约（`src/lib/tauri-repositories.ts`）。
+   骨架 UI 验证全链路；正式 UI 沿用 2.x 信息架构迁移是后续里程碑。
+
+3.0 关键命令（根目录执行）：
+
+```bash
+cargo test -p celery-db          # Rust 单测 + 重新生成 TS 绑定
+cargo check -p celery-desktop    # Tauri 宿主 crate 编译检查
+bun run desktop:dev              # Tauri 桌面端开发（弹真实窗口，勿在无人值守时跑）
+bun run desktop:build            # Tauri NSIS 打包（release 慢，lto 全开）
+bun run test:run                 # turbo：所有 TS 包的单测
+bun run build                    # turbo：renderer/electron 壳/桌面端构建
+```
+
+5. **2.x 旧库导入（计划第 6 步后端）** —— `celery-db` 的 `legacy_v2` 模块：
+   `inspect_v2(path)` 永不抛错、所有问题进报告；`CeleryDb::import_from_v2` 以
+   只读 ATTACH 挂载源库后在目标 v3 库单事务转换（失败整体回滚、可重试）；
+   `detect_v2_source()` 自动探测 2.x 默认目录与 `storage-config.json` 自定义目录。
+   只认 `dataVersion` 4–9；活跃事项孤儿引用终止导入；归档保留项目名快照；
+   设置按白名单导入（主题/模板/视图/`sort.*`），OS 级状态跳过。9 项专项测试。
+   桌面端已接：`legacy_v2_*` Tauri 命令 + `@celery/data` 的
+   `LegacyV2ImportService` + 骨架 UI 的首启导入横幅（仅空库时出现）。
+6. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
+   `status/projects/list/add/done/archive`，复用 celery-db、与桌面端同一
+   `%APPDATA%/com.celery.todo/celery-v3.db`；id 支持前缀匹配。CLI 写入后的
+   桌面实时刷新（本地 IPC）待桌面 UI 里程碑接入。
+7. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
+   token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
+   字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
+8. **Expo 移动端骨架（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
+   Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页），骨架 UI 消费
+   `@celery/ui-tokens`。**独立于根 workspace**（Windows 本机 bun 链接 RN
+   长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
+   `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
+9. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
+   整体迁入 `apps/desktop`（Tailwind 3 + globals.css + 字体栈原样保留），
+   `src/utils/dataGateway.ts` 重写为 v3 Repository 契约实现（`order`↔`rank`、
+   `deletedAt`↔`archivedAt` 映射；分页抽取上限 1.2 万行防御）；App.tsx 拆分为
+   `src/app/`（启动/跨窗口同步/全局搜索/导入导出四个 hook + 自绘标题栏 +
+   首启导入横幅）。平台耦合收敛到 `src/platform`（能力开关 `capabilities`，
+   托盘/贴图/自启/更新/存储迁移未点亮前以 no-op 桩 + UI 门槛隐藏）。
+   配套 Rust：`replace_all`/`reset_db`（v2 JSON 全量导入单事务）、
+   `archived_count`/`incomplete_counts` 聚合、写命令后 `data-changed` 广播
+   （renderer 按窗口 label 过滤自发事件）。单测 51 项（含网关映射层 8 项，
+   经 `configureDataGateway` 注入内存适配器）。**阶段 B 待做**：托盘、多贴图
+   窗口、自启、窗口状态记忆、tauri-plugin-updater、原生保存对话框导出。
+
+尚未实施的计划阶段：移动端正式 UI（Expo
+Router 四入口、滑动/长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO
+Tauri E2E、性能夹具基线、三平台发布流水线（Tauri 签名更新 manifest、
+EAS Build/Submit）。
+SQLite 默认不加密；无云同步，各设备数据独立。
+
 ## Project purpose
 
 Celery Todo — an Electron desktop todo app (React 18 + TypeScript + Tailwind).
@@ -12,48 +94,38 @@ to IndexedDB. Multi-project, drag-and-drop, recycle bin, system tray, themes.
 ## Major directories
 
 ```
-electron/        # Main process (main.ts, preload.ts, tray.ts, types.ts)
-src/components/  # React UI grouped by domain: common, filters, layout,
-                 # projects, recycle, settings, stats, todos
-src/hooks/       # Custom hooks that wrap stores for components
-src/store/       # Zustand stores: useTodoStore, useProjectStore,
-                 # useSettingsStore, useNotificationStore
-src/utils/       # database.ts (SQLite layer), export.ts, helpers.ts
-src/types/       # Shared TS types
-src/test/        # Vitest specs + setup
-e2e/             # Playwright Electron E2E specs + helpers + fixtures
-public/          # Static assets (icons, favicon) — sql-wasm is Vite-managed via ?url
-scripts/         # Build helpers (fix-electron-cjs.mjs, verify-render.mjs)
-cli/             # Standalone CLI (celery) — better-sqlite3 + commander,
-                 # independent tsconfig → dist-cli/, separate vitest config.
-                 # Reads/writes the SAME SQLite file the app uses. See cli/README.md.
+apps/desktop-electron/   # 2.x Electron 应用（迁移对照壳）：内含原 electron/、src/、
+                         # cli/、e2e/、public/、build/、assets/ 与应用级 scripts/
+apps/desktop/            # 3.0 Tauri 2 桌面端（React/Vite renderer + src-tauri 命令层）
+packages/core/           # @celery/core 共享业务内核（实体/规则，平台无关）
+packages/data/           # @celery/data Repository 契约 + v3 导出格式 + 内存适配器
+packages/test-contracts/ # @celery/test-contracts 共享契约测试套件
+crates/celery-db/        # v3 SQLite 数据层（Rust）：schema、迁移、仓储、FTS5
+scripts/                 # 仓库级脚本（bump-version、check-repo-health、extract-changelog、
+                         # generate-icons —— 图标产物写入 apps/desktop-electron/public）
+.github/workflows/       # ci.yml（lint/test/build + Rust 任务）、e2e.yml、release.yml
 ```
 
 ## Commands
 
 Package manager is **bun** (declared via `packageManager` in package.json).
+根脚本经 Turbo / `bun run --filter` 委托到各 workspace；应用级脚本在
+`apps/desktop-electron/package.json`。在仓库根执行：
 
 ```bash
-bun install                 # install deps
-bun dev                     # Vite dev server only (web), http://localhost:5173
-bun run electron:dev        # build electron TS + run Vite + launch Electron
-bun run build               # tsc -b && vite build (React only)
-bun run build:electron      # add Electron TS build + fix-electron-cjs
-bun run electron:build      # full installable build (electron-builder → release/)
-bun run lint                # eslint, --max-warnings 0
-bun run format              # prettier on src/**/*.{ts,tsx,css} and cli/**/*.ts
-bun test                    # vitest watch
-bun run test:run            # vitest run once
-bun run test:coverage       # vitest + coverage
-bun run e2e                 # Playwright Electron E2E (full suite)
-bun run e2e:headed          # ...with visible Electron window
-bun run e2e:debug           # step-through debug
-bun run e2e:report          # open HTML report
-bun run e2e:install         # install Playwright chromium
-bun run cli                 # run CLI via tsx (e.g. `bun run cli list`)
-bun run build:cli           # tsc -p cli/tsconfig.json + fix-cli-cjs → dist-cli/
-bun run test:cli            # vitest for cli/test (independent config, node env)
+bun install                 # install deps（workspace 全量）
+bun run dev                 # 2.x 壳 Vite dev server (http://localhost:5173)
+bun run build               # turbo：tsc + vite（壳与桌面端 renderer）
+bun run lint                # eslint（所有包，--max-warnings 0）
+bun run format              # prettier（apps/*/src、packages/*/src）
+bun run test:run            # 所有 TS 包单测
+bun run e2e                 # 2.x 壳 Playwright E2E（完整套件，禁日常本地跑）
+bun run cli                 # 2.x 壳 Node CLI
+cargo test -p celery-db     # 3.0 Rust 数据层测试 + 生成 TS 绑定
 ```
+
+Electron 壳专属（也可在根经同名委托脚本调用）：`electron:dev`、`build:electron`、
+`electron:build`、`build:cli`、`test:cli`、`rebuild:electron`。
 
 There is no standalone `typecheck` script — `bun run build` (and
 `build:electron`) run `tsc -b`, which is the typecheck gate.
