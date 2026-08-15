@@ -8,8 +8,30 @@
 
 ## [Unreleased]
 
-## [v2.20.0] - 2026-08-14
+## [v3.0.0] - 2026-08-15
+
 ### Added
+
+- 全新 Tauri 2 + React + Rust 跨平台桌面端，提供 Windows、macOS（Intel / Apple Silicon）与 Linux 安装包
+- `celery-db` SQLite 数据层：WAL、外键、FTS5 搜索、游标分页及事务性批量写入
+- 共享领域内核、Repository 契约、跨端设计 token 与数据适配层
+- Rust CLI `celery`，支持项目、待办、完成与归档操作，并与桌面端共用 v3 数据库
+- 系统托盘、桌面贴图浮窗、自启动、窗口状态记忆、单实例、原生保存对话框和自动更新
+- 可检测并从本机 2.x 数据库导入数据；v3 导出格式为 `celery-todo/v3`
+
+### Changed
+
+- 桌面端从 Electron / sql.js 迁移至 Tauri / 原生 SQLite；2.x Electron 壳保留在 `apps/desktop-electron/`，仅作迁移对照
+- 仓库重组为 Bun workspaces + Turborepo monorepo
+
+### Security
+
+- 正式发行的 Windows、Linux AppImage / deb 与 macOS app 更新产物均附带更新签名；`latest.json` 提供自动更新清单
+
+## [v2.20.0] - 2026-08-14
+
+### Added
+
 - 贴图加返回主窗口按钮，主页面右上角加简洁模式入口
 - 本周安排改为点击添加就地展开输入框
 - 虚拟化阈值提到 200，中等列表留在渐进挂载
@@ -19,6 +41,7 @@
 - 新增事项详情浮窗，迁移编辑与描述展示
 
 ### Fixed
+
 - 顶栏标题行高改 leading-normal，避免 truncate 裁切拉丁降部
 - 项目菜单脱离透明度合成层并支持滚动，附 header 视觉打磨
 - 虚拟列表 ref 回调移到早返回之前，修复 rules-of-hooks
@@ -29,11 +52,14 @@
 - align import-export version assertion with EXPORT_FORMAT_VERSION=6
 
 ## [v2.19.4] - 2026-08-12
+
 ### Added
+
 - add permanent delete option to project context menu
 - coalesce data-change reloads to cut IPC frequency
 
 ### Fixed
+
 - surface create/rename/reorder failures via safeRun
 - surface project delete failures and complete wiring
 - include archived projects in history filter dropdown
@@ -41,7 +67,9 @@
 - assign inbox sort_order on server to avoid duplicates
 
 ## [v2.19.3] - 2026-08-11
+
 ### Added
+
 - add date-grouped card view
 - add template dialog and time view components
 - redesign weekly planning
@@ -49,56 +77,75 @@
 - add one-click weekly todo projects
 
 ### Fixed
+
 - replace template sparkle icon
 - preserve project names after project archival
 - show custom order in sort selector
 
 ### Documentation
+
 - refresh preview screenshots
 
 ## [v2.19.2] - 2026-08-10
+
 ### Fixed
+
 - stabilize virtual keyboard drag in large lists
 - 修 PR #15 暴露出的 sticker/virtual-list 回归
 - rebuild native modules for Electron ABI in CI
 
 ## [v2.19.1] - 2026-08-07
+
 ### Added
+
 - move desktop persistence to main process
 
 ## [v2.19.0] - 2026-08-07
+
 ### Added
+
 - show completed export location
 - Refactor data export functionality and introduce unified export dialog
 
 ## [v2.18.0] - 2026-08-06
+
 ### Added
+
 - 新增统计页（设置页内）支持热力图/优先级/项目分布
 
 ### Fixed
+
 - 热力图月份标签不再被压缩折行
 - 返回待办后立即点击不再被退场浮层拦截
 
 ## [v2.17.0] - 2026-08-06
+
 ### Added
+
 - 合并「导出当前项目」入口为统一对话框
 - 支持导出项目为图片
 
 ### Fixed
+
 - 让普通项的 hover 也触发回调以收起子菜单
 - 修复子菜单 key 冲突与不自动收起
 
 ## [v2.16.0] - 2026-08-06
+
 ### Added
+
 - 归档项目替代硬删除并优化确认弹窗布局
 - allow dismissing sidebar update card
 - add sticker entry to footer menu
 
 ### Fixed
+
 - keep hover background on right-clicked project
 
 ## [v2.15.1] - 2026-08-06
+
 ### Added
+
 - streamline filter transitions
 - enhance cross-window data synchronization with incremental patches
 - add performance measurement utilities for sync and async tasks
@@ -107,11 +154,14 @@
 - optimize data updates and list rendering
 
 ### Fixed
+
 - resolve bundled sql wasm asset
 - update moduleResolution to node10 for consistency
 
 ## [v2.15.0] - 2026-08-05
+
 ### Added
+
 - 右键菜单支持归档当前事项
 - 新建待办改为 header + 按钮触发悬浮输入框
 - 贴图支持新建待办、已完成沉底并加深字体
@@ -119,159 +169,219 @@
 - 支持空白处右键新建项目并接入导入导出
 
 ### Fixed
+
 - 统一多行输入框为内容自适应+可滚动
 
 ## [v2.14.0] - 2026-08-04
+
 ### Added
+
 - 将时间显示格式提升为全局持久化设置
 - implement archive and restore notifications with undo functionality
 - 支持点击直达最新版安装包
 
 ## [v2.13.0] - 2026-08-03
+
 ### Added
+
 - add GFM and math rendering
 - enhance project selection UI with improved styles and functionality
 - 支持右键关闭贴图并新增 E2E 测试
 
 ## [v2.12.2] - 2026-07-31
+
 ### Fixed
+
 - add fallback maintenance notes
 
 ## [v2.12.1] - 2026-07-31
+
 ## [v2.12.0] - 2026-07-31
+
 ### Added
+
 - add descriptions during creation
 
 ## [v2.11.2] - 2026-07-31
+
 ### Fixed
+
 - style priority in results
 
 ## [v2.11.1] - 2026-07-31
+
 ### Fixed
+
 - make data mutations atomic
 
 ## [v2.11.0] - 2026-07-30
+
 ### Added
+
 - global cross-project search with locate and a11y
 
 ## [v2.10.0] - 2026-07-30
+
 ### Added
+
 - sync native theme icons and duplicate stickers
 - add sticker shortcut to context menu
 - separate palette and color mode
 
 ### Fixed
+
 - group sticker context action
 
 ## [v2.9.2] - 2026-07-30
+
 ### Fixed
+
 - 修正左耳裁切——正方形 viewBox + generate-icons 用 fit:contain
 
 ## [v2.9.1] - 2026-07-30
+
 ### Fixed
+
 - 扩展 SVG viewBox 让兔耳不再贴边被裁
 
 ## [v2.9.0] - 2026-07-30
+
 ### Added
+
 - reduce sticker preview rendering cost
 - add celery visual identity
 - 归档视图改版，支持搜索/筛选/按项目分组，并重命名为「已归档事项」
 
 ## [v2.8.0] - 2026-07-28
+
 ### Added
+
 - 支持切换项目时保留输入框草稿
 - 新增历史记录视图与导出工具，并精简贴图预设
 
 ### Fixed
+
 - 项目切换时筛选条件同步派生，消除 useEffect 滞后一帧导致的残留问题
 
 ## [v2.7.1] - 2026-07-28
+
 ### Added
+
 - 支持导出归档历史为 JSON 快照
 
 ### Fixed
+
 - 设置页顶部栏复用主页面 Header 工具组，修复搜索/导入与设置页语境的交互死局
 - 命令结束后关闭 IPC socket 避免进程挂起
 - 修正 bin 入口路径为 dist-cli/index.js
 - 为项目悬浮操作按钮添加 title 提示
 
 ## [v2.7.0] - 2026-07-24
+
 ### Added
+
 - 新增全局键盘快捷键，重构顶部布局并调整主题
 - 优化贴图预设预览首次加载卡顿问题
 
 ## [v2.6.0] - 2026-07-24
+
 ### Added
+
 - 为项目/数据/窗口操作新增 Ctrl+Shift 快捷键
 - 重构排序逻辑、顶部导航栏并新增主题系统
 - 新增纸白(paper)主题模式
 
 ### Fixed
+
 - 修复托盘「快速添加事项」事件无人订阅的死代码
 - update background color for consistency across UI components
 - align sidebar and toolbar layout
 
 ## [v2.5.2] - 2026-07-24
+
 ### Fixed
+
 - 点击分组时也测量子菜单坐标,修复纯点击场景子菜单不渲染
 
 ## [v2.5.1] - 2026-07-24
+
 ### Fixed
+
 - 修复左上角菜单下拉列表被父容器裁切不可见
 
 ## [v2.5.0] - 2026-07-24
+
 ### Added
+
 - 贴图窗口复用主窗口排序逻辑并增加优先级样式
 
 ### Fixed
+
 - 修复 IPC 监听器未卸载导致的内存泄漏与数据覆盖问题
 
 ## [v2.4.1] - 2026-07-23
+
 ### Added
+
 - refine sidebar navigation and motion
 - redesign sidebar updates and settings page
 - 重构设置页为子页面结构并新增贴图样式设置
 - 发现新版本时主动弹窗，下载/进度/重启在同一弹窗完成
 
 ### Fixed
+
 - 跨窗口数据同步修复贴图完成无效
 - auto-close dropdowns when clicking outside
 
 ## [v2.4.0] - 2026-07-22
+
 ### ⚠️ Breaking
+
 - 移除「专注模式」设置与 `Ctrl+P` 快捷键，改由桌面简洁浮窗贴纸承担
 
 ### Added
+
 - 新增「简洁模式」桌面浮窗贴纸，支持快速查看项目待办并标记完成
 - 侧边栏新增进入简洁模式的快捷按钮
 - 托盘菜单新增「创建浮窗」与「显示所有浮窗」入口
 - 历史记录的恢复与永久删除加二次确认
 
 ### Fixed
+
 - 优化简洁浮窗的窗口边缘与关闭控件
 - 隔离项目切换时待办列表的动画，避免跨项目串扰
 
 ## [v2.3.0] - 2026-07-20
+
 ### Added
+
 - 支持安装时自定义开机启动与数据目录
 - 发现新版本时在 Header 主动提示，无需打开设置
 
 ## [v2.2.0] - 2026-07-17
+
 ### Added
+
 - 区分「已完成」与「进行中」的空状态 UI
 
 ### Fixed
+
 - 修复待办列表过长时输入框被滚走的问题
 
 ## [v2.1.0] - 2026-07-16
+
 ### Added
+
 - 历史记录数量移至弹窗标题旁，归档列表改为无限滚动分页加载
 
 ## [v2.0.0] - 2026-07-16
+
 ### ⚠️ Breaking
+
 - 移除事项的截止日期与到期提醒功能（v2.0.0）
 
 ### Added
+
 - 为置顶待办项添加背景色与左侧色条
 - 添加置顶功能
 - 启动时恢复上次激活的项目
@@ -280,6 +390,7 @@
 - add focus mode toggle setting and improve update status display
 
 ### Fixed
+
 - 增强优先级在所有位置的视觉区分度
 - 修复归档按钮导致排序选择框位置偏移的问题
 - 排序方式与状态筛选按项目独立持久化
@@ -287,88 +398,120 @@
 - enable native context menu for text selection in todo content
 
 ## [v1.5.2] - 2026-07-13
+
 ### Added
+
 - use native context menu for text selection - remove custom copy menu
 - 检查更新使用刷新图标替代下载图标
 
 ### Fixed
+
 - 为历史记录操作按钮添加悬浮提示
 - 重置所有数据使用正确的UploadIcon图标
 - 拖拽自动切入手动排序时不跳序 - 先快照当前显示顺序再切换
 
 ## [v1.5.1] - 2026-07-13
+
 ### Added
+
 - 新增仓库健康检查脚本 check-repo-health
 - 将事项"删除"按钮统一改为"归档" (#7)
 
 ### Fixed
+
 - 修复快速连续切换筛选时列表卡死 (#6)
 
 ## [v1.5.0] - 2026-07-13
+
 ### Added
+
 - 右键标题/描述弹出复制菜单 (#2)
 - 限制拖拽仅竖直方向，列表只能上下重排 (#4)
 
 ### Fixed
+
 - 修复切换筛选时列表卡死 (#3)
 
 ## [v1.4.1] - 2026-07-13
+
 ### Added
+
 - 精简打包产物体积
 
 ### Fixed
+
 - notifications.spec.ts 缺少 createProject 导致 AddTodoInput 不渲染
 
 ## [v1.4.0] - 2026-07-10
+
 ### Added
+
 - 删除改为归档，设置新增历史记录页
 - 关于区块新增 GitHub 仓库链接
 - 侧边栏项目名后显示未完成 todo 数
 
 ## [v1.3.0] - 2026-07-10
+
 ### Added
+
 - 彻底移除默认项目概念
 - 全部完成时显示庆祝卡片 + confetti 撒花
 
 ## [v1.2.1] - 2026-07-09
+
 ### Added
+
 - 显示待办完成时间
 - 非手动排序下拖拽自动切换为手动排序
 - 回收站列表显示项目名
 
 ## [v1.2.0] - 2026-07-08
+
 ### Added
+
 - 项目列表支持拖拽排序（整行可拖，按住任意位置拖动；小于 5px 视为点击切换项目）
 - 设置面板「检查更新」提示加入语义颜色与动画（旋转/弹性打钩/进度过渡/失败抖动）
 
 ### Changed
+
 - 放大侧边栏「项目」标签字号（11px eyebrow → 14px 普通粗体）
 
 ### Internal
+
 - `projects` 表新增 `sort_order` 列，DB_VERSION 1 → 2，迁移按 `created_at` 顺序回填，升级后顺序与升级前一致
 
 ## [v1.1.0] - 2026-07-07
+
 ### Added
+
 - 集成 electron-updater 实现应用内自动升级
 
 ### Fixed
+
 - 批量添加改为仅按换行分隔，标题允许逗号和分号
 - Markdown 描述中的外链改用系统默认浏览器打开
 - 修复新建待办误显示为"昨天创建"
 
 ## [v1.0.3] - 2026-07-07
+
 ### Fixed
+
 - 修复生产构建卡在初始界面
 
 ### Internal
+
 - 默认安装到 Program Files (x86)
 
 ## [v1.0.2] - 2026-07-06
+
 ### Added
+
 - 引入 schema 迁移机制 (MIGRATIONS + migrateDatabase)
 
 ## [v1.0.1] - 2026-07-06
+
 ### Added
+
 - 替换对号为 Logo 并修复创建项目切换
 - 侧边栏切换按钮改为悬浮箭头手柄
 - 新增应用 Logo 并替换 favicon
@@ -376,6 +519,7 @@
 - 支持自定义数据存储位置
 
 ### Fixed
+
 - 收紧 viewBox 四周留白并重新生成图标
 - 修复 framer-motion popLayout 向 SortableTodoItem 注入 ref 的警告
 - 修复侧边栏下半部分背景缺失
@@ -402,99 +546,52 @@
 - 专注模式：隐藏侧边栏 / 统计 / 筛选，仅保留标题与列表。
 
 [v1.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.0
-
 [v1.0.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.1
-
 [v1.0.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.2
-
 [v1.0.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.0.3
-
 [v1.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.1.0
-
 [v1.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.0
-
 [v1.2.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.2.1
-
 [v1.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.3.0
-
 [v1.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.0
-
 [v1.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.4.1
-
 [v1.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.0
-
 [v1.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.1
-
 [v1.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v1.5.2
-
 [v2.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.0.0
-
 [v2.1.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.1.0
-
 [v2.2.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.2.0
-
 [v2.3.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.3.0
-
 [v2.4.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.0
-
 [v2.4.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.4.1
-
 [v2.5.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.0
-
 [v2.5.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.1
-
 [v2.5.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.5.2
-
 [v2.6.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.6.0
-
 [v2.7.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.0
-
 [v2.7.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.7.1
-
 [v2.8.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.8.0
-
 [v2.9.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.0
-
 [v2.9.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.1
-
 [v2.9.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.9.2
-
 [v2.10.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.10.0
-
 [v2.11.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.0
-
 [v2.11.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.1
-
 [v2.11.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.11.2
-
 [v2.12.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.0
-
 [v2.12.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.1
-
 [v2.12.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.12.2
-
 [v2.13.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.13.0
-
 [v2.14.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.14.0
-
 [v2.15.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.0
-
 [v2.15.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.15.1
-
 [v2.16.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.16.0
-
 [v2.17.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.17.0
-
 [v2.18.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.18.0
-
 [v2.19.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.0
-
 [v2.19.1]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.1
-
 [v2.19.2]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.2
-
 [v2.19.3]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.3
-
 [v2.19.4]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.19.4
-
 [v2.20.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v2.20.0
+[v3.0.0]: https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.0.0
