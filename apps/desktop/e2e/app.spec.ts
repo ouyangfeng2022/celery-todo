@@ -59,7 +59,7 @@ describe('Celery Todo 桌面端冒烟', () => {
   });
 
   it('添加事项 → 勾选完成 → 全部搞定卡片', async () => {
-    const composer = await $('input[placeholder*="添加待办"]');
+    const composer = await $('textarea[placeholder*="添加待办"]');
     await composer.waitForDisplayed({ timeout: 5000 });
     await composer.setValue('第一条 E2E 事项');
     await pressEnter();
@@ -76,7 +76,11 @@ describe('Celery Todo 桌面端冒烟', () => {
   });
 
   it('侧边栏搜索命中标题', async () => {
+    const searchButton = await $('button[aria-label="搜索所有项目中的事项"]');
+    await searchButton.click();
+
     const searchInput = await $('input[placeholder*="搜索"]');
+    await searchInput.waitForDisplayed({ timeout: 5000 });
     await searchInput.setValue('E2E');
     const hit = await containsText('第一条 E2E 事项');
     await hit.waitForDisplayed({ timeout: 5000 });
