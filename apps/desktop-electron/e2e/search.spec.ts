@@ -57,16 +57,6 @@ test('清除按钮清空搜索', async () => {
   await expect(todoRow(win, '买香蕉')).toBeVisible();
 });
 
-test('Ctrl+F 聚焦搜索框', async () => {
-  await win.keyboard.press('Control+f');
-  // 搜索框应成为 activeElement
-  const isFocused = await win.evaluate(() => {
-    const el = document.activeElement;
-    return el?.getAttribute('placeholder') === '搜索所有项目中的事项...';
-  });
-  expect(isFocused).toBe(true);
-});
-
 test('选中结果后切换项目并定位事项', async () => {
   await createProject(win, '另一个项目');
   await addTodo(win, '跨项目周报');

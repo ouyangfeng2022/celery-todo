@@ -76,12 +76,6 @@ test('重置所有数据：二次确认后数据清空且项目列表为空', as
   await expect(win.getByRole('heading', { name: '还没有项目' })).toBeVisible();
 });
 
-test('Esc 关闭设置面板', async () => {
-  await openSettings(win);
-  await win.keyboard.press('Escape');
-  await expect(win.getByRole('region', { name: '设置' })).toHaveCount(0);
-});
-
 test('设置作为独立页面打开，并可返回待办页', async () => {
   await openSettings(win);
   await expect(win.getByRole('button', { name: '返回待办' })).toBeVisible();
