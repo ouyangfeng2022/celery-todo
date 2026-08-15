@@ -82,9 +82,9 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: 'Celery Todo ${{ github.ref_name }}'
-          releaseBody: '3.0 跨端版本。完整更新日志见 CHANGELOG.md。'
+          releaseBody: '3.0 跨端桌面正式版。完整更新日志见 CHANGELOG.md。'
           releaseDraft: false
-          prerelease: true
+          prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
