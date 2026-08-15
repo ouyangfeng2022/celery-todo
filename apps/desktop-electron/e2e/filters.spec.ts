@@ -52,22 +52,27 @@ function todoTitle(win: typeof win, title: string) {
   });
 }
 
+/** 精确定位 FilterBar 按钮，避免与 role="button" 的事项标题撞名。 */
+function filterButton(win: typeof win, label: string, count: number) {
+  return win.getByRole('button', { name: `${label} ${count}`, exact: true });
+}
+
 test('"全部"显示所有 5 条', async () => {
-  await win.getByRole('button', { name: /全部/ }).click();
+  await filterButton(win, '全部', 5).click();
   await expect(todoTitle(win, '进行中1')).toBeVisible();
   await expect(todoTitle(win, '已完成1')).toBeVisible();
   await expect(todoTitle(win, '已完成2')).toBeVisible();
 });
 
 test('"进行中"仅显示未完成的 3 条', async () => {
-  await win.getByRole('button', { name: /进行中/ }).click();
+  await filterButton(win, '进行中', 3).click();
   await expect(todoTitle(win, '进行中1')).toBeVisible();
   await expect(todoTitle(win, '已完成1')).toHaveCount(0);
   await expect(todoTitle(win, '已完成2')).toHaveCount(0);
 });
 
 test('"已完成"仅显示已完成的 2 条', async () => {
-  await win.getByRole('button', { name: /^已完成/ }).click();
+  await filterButton(win, '已完成', 2).click();
   await expect(todoTitle(win, '已完成1')).toBeVisible();
   await expect(todoTitle(win, '已完成2')).toBeVisible();
   await expect(todoTitle(win, '进行中1')).toHaveCount(0);
@@ -198,7 +203,7 @@ test('"归档已完成"按钮仅在有已完成时显示，点击后归档到历
   await expect(win.getByRole('button', { name: '归档已完成' })).toBeVisible();
   await win.getByRole('button', { name: '归档已完成' }).click();
   // 已完成的两条从"全部"视图消失
-  await win.getByRole('button', { name: /全部/ }).click();
+  await filterButton(win, '全部', 3).click();
   await expect(win.getByText('已完成1', { exact: true })).toHaveCount(0);
   await expect(win.getByText('已完成2', { exact: true })).toHaveCount(0);
   // 按钮也随之消失
@@ -212,9 +217,9 @@ test('"归档已完成"按钮仅在有已完成时显示，点击后归档到历
 // filter 快速切换的通用压力回归保留 —— 不带 toHaveCount 等待会掩盖卡死，故每轮
 // 立即断言可见性以暴露问题。
 test('快速连续切换 filter 不卡死（回归 framer-motion#2416）', async () => {
-  const btnAll = win.getByRole('button', { name: /全部/ });
-  const btnActive = win.getByRole('button', { name: /进行中/ });
-  const btnCompleted = win.getByRole('button', { name: /^已完成/ });
+  const btnAll = filterButton(win, '全部', 5);
+  const btnActive = filterButton(win, '进行中', 3);
+  const btnCompleted = filterButton(win, '已完成', 2);
 
   // 连续 5 轮：全部 → 进行中 → 已完成，中间不停顿等待动画
   for (let i = 0; i < 5; i++) {

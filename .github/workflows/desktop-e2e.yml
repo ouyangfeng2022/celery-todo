@@ -23,6 +23,9 @@ jobs:
   e2e:
     name: Tauri smoke (linux + xvfb)
     runs-on: ubuntu-22.04
+    env:
+      DISPLAY: ':99'
+      WEBKIT_DISABLE_COMPOSITING_MODE: '1'
 
     steps:
       - name: Checkout
@@ -63,6 +66,17 @@ jobs:
       - name: Install tauri-driver
         run: cargo install tauri-driver --locked
 
+      # tauri-driver 会自行派生 WebKitWebDriver / MiniBrowser；因此虚拟显示必须在
+      # driver 启动前常驻，不能只用 xvfb-run 包住后启动的 wdio 客户端。
+      - name: Start Xvfb
+        run: |
+          nohup Xvfb "$DISPLAY" -screen 0 1280x1024x24 > xvfb.log 2>&1 &
+          echo $! > xvfb.pid
+          for i in $(seq 1 60); do
+            [ -S "/tmp/.X11-unix/X${DISPLAY#:}" ] && break
+            sleep 0.5
+          done
+          [ -S "/tmp/.X11-unix/X${DISPLAY#:}" ]
 
       - name: Start tauri-driver
         run: |
@@ -73,12 +87,9 @@ jobs:
             sleep 0.5
           done
 
-      # webkit2gtk 在 xvfb 下的已知渲染问题需禁用合成模式
-      - name: Run WebdriverIO（xvfb）
+      - name: Run WebdriverIO
         working-directory: apps/desktop
-        env:
-          WEBKIT_DISABLE_COMPOSITING_MODE: '1'
-        run: xvfb-run -a bunx wdio run ./e2e/wdio.conf.ts
+        run: bunx wdio run ./e2e/wdio.conf.ts
 
       - name: Stop tauri-driver
         if: always()
@@ -86,6 +97,13 @@ jobs:
           [ -f tauri-driver.pid ] && kill "$(cat tauri-driver.pid)" 2>/dev/null || true
           pkill tauri-driver 2>/dev/null || true
 
-      - name: tauri-driver 日志
+      - name: Stop Xvfb
+        if: always()
+        run: |
+          [ -f xvfb.pid ] && kill "$(cat xvfb.pid)" 2>/dev/null || true
+
+      - name: E2E driver logs
         if: failure()
-        run: cat tauri-driver.log 2>/dev/null || true
+        run: |
+          cat tauri-driver.log 2>/dev/null || true
+          cat xvfb.log 2>/dev/null || true
