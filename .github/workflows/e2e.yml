@@ -1,7 +1,11 @@
 # E2E 工作流：用 Playwright 驱动真实 Electron 应用做端到端测试。
 #
-# 触发：PR 到 main 或手动 workflow_dispatch。
-# 与 ci.yml（lint + vitest unit + build）解耦，单独跑在 windows-latest 上，
+# 触发：仅手动 workflow_dispatch。不再跟随 PR 自动运行——
+# 整套串行冷启动耗时很长（单次约 10min+，慢 CI 上还会因 flaky 重试更久），
+# 且 main 分支无必检保护，自动跑只会拖慢每个 PR（含纯打包/发版改动）。
+# 需要 UI 级验证时由维护者手动触发（如改动 renderer / 主进程行为后）。
+#
+# 与 ci.yml（lint + vitest unit + build，快速闸门）解耦，单独跑在 windows-latest 上，
 # 与 release.yml 的构建目标平台一致（NSIS Windows）。
 #
 # 数据隔离：每个测试用独立临时 userData 目录（helpers.launchApp 经
@@ -10,8 +14,6 @@
 name: E2E
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
