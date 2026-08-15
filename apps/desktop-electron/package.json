@@ -1,5 +1,6 @@
 {
   "name": "@celery/desktop-electron",
+  "productName": "celery-todo",
   "private": true,
   "version": "2.20.2",
   "description": "Celery Todo 2.x Electron 桌面应用（3.0 迁移对照壳，不进入 3.0 成品）",
@@ -13,7 +14,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "rebuild:electron": "electron-rebuild -f -o better-sqlite3",
+    "rebuild:electron": "electron-rebuild -f -o better-sqlite3 -m ../.. && node scripts/verify-native-abi.mjs",
     "rebuild:node": "npm rebuild better-sqlite3 --foreground-scripts",
     "build:electron": "tsc -b && vite build && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs",
     "electron:dev": "bun run rebuild:electron && tsc -p electron/tsconfig.json && node scripts/fix-electron-cjs.mjs && concurrently \"vite\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
