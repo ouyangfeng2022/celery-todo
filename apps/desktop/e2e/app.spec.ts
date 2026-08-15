@@ -11,8 +11,8 @@ import { $, browser, expect } from '@wdio/globals';
 /** 任意元素文本包含匹配（wdio 的 *= 仅匹配 <a>，文本匹配走 XPath）。 */
 const containsText = (text: string) => $(`//*[contains(text(),"${text}")]`);
 
-/** wdio v9 的按键发送（替代旧 browser.keys）。 */
-const pressEnter = () => browser.action('key').down('Enter').up('Enter').perform();
+/** wdio 会把命名按键转换为对应的 WebDriver Unicode code point。 */
+const pressEnter = () => browser.keys('Enter');
 
 /** 排障输出：窗口/页面状态（失败时从 CI 日志直接定位隐藏/未加载/选择器错）。 */
 async function dumpDiagnostics(label: string) {
