@@ -1,7 +1,7 @@
 {
   "name": "@celery/desktop-electron",
   "private": true,
-  "version": "2.20.0",
+  "version": "2.20.1",
   "description": "Celery Todo 2.x Electron 桌面应用（3.0 迁移对照壳，不进入 3.0 成品）",
   "author": "",
   "license": "MIT",

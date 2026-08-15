@@ -15,6 +15,9 @@ import { autoUpdater, type UpdateInfo } from 'electron-updater';
 import type { IpcSenderValidator } from './ipc-auth';
 import { requireAuthorizedSender } from './ipc-auth';
 
+/** 2.x 的最终迁移过渡版本：此后改由应用内卡片引导用户手动安装 Tauri 3.x。 */
+const MIGRATION_BRIDGE_VERSION = '2.20.1';
+
 // ============================================
 // 配置
 // ============================================
@@ -106,6 +109,12 @@ export function registerUpdaterIpc(isMainWindowSender: IpcSenderValidator): void
     requireAuthorizedSender(event, isMainWindowSender);
     if (!app.isPackaged) {
       // 开发环境：electron-updater 无法工作，通知渲染进程"已是最新"
+      send('updater:update-not-available');
+      return;
+    }
+    // 2.20.1 是一次性迁移桥：不再把 Electron 更新器指向 3.x 的 Tauri 安装包。
+    // 旧版完成本次安全升级后，由 renderer 常驻提示用户前往 Release 页面手动安装 3.x。
+    if (app.getVersion() === MIGRATION_BRIDGE_VERSION) {
       send('updater:update-not-available');
       return;
     }
