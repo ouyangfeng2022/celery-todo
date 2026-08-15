@@ -201,9 +201,9 @@ export async function addTodosBulk(win: Page, titles: string[]): Promise<void> {
  * 用于在行范围内查找完成按钮、删除按钮等。
  */
 export function todoRow(win: Page, title: string) {
-  return win
-    .getByText(title, { exact: true })
-    .locator('xpath=ancestor::div[contains(@class,"group")][1]');
+  return win.locator('div.group.relative.flex.items-center.gap-3').filter({
+    has: win.getByRole('button', { name: title, exact: true }),
+  });
 }
 
 /** 完成/取消完成按钮 */

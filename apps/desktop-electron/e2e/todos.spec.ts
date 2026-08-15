@@ -175,7 +175,7 @@ test('点击标题打开详情浮窗，编辑标题后关闭自动保存', async
   // Esc 关闭浮窗 → flush 草稿到 store
   await win.keyboard.press('Escape');
 
-  await expect(win.getByText('新标题', { exact: true })).toBeVisible();
+  await expect(win.getByRole('button', { name: '新标题', exact: true })).toBeVisible();
   await expect(win.getByText('原标题', { exact: true })).toHaveCount(0);
 });
 
@@ -188,7 +188,7 @@ test('浮窗内 Esc 关闭时不丢失已输入的标题', async () => {
   await titleEditor.fill('新标题');
   await win.keyboard.press('Escape');
 
-  await expect(win.getByText('新标题', { exact: true })).toBeVisible();
+  await expect(win.getByRole('button', { name: '新标题', exact: true })).toBeVisible();
 });
 
 test('点浮窗右上 X 按钮关闭同样保存编辑', async () => {
@@ -199,15 +199,17 @@ test('点浮窗右上 X 按钮关闭同样保存编辑', async () => {
   await titleEditor.fill('已保存');
   // 点浮窗右上角 X 关闭按钮
   await win.getByRole('button', { name: '关闭' }).click();
-  await expect(win.getByText('已保存', { exact: true })).toBeVisible();
+  await expect(win.getByRole('button', { name: '已保存', exact: true })).toBeVisible();
 });
 
 test('浮窗内编辑描述，切到预览 tab 渲染 Markdown', async () => {
   await addTodo(win, '带描述的任务');
   await win.getByText('带描述的任务', { exact: true }).click();
 
-  // 浮窗描述 textarea 默认在「编辑」tab
-  await win.getByLabel('事项描述').fill('**重要** 内容');
+  // 浮窗默认展示预览，显式切到「编辑」后再填写 textarea。
+  const dialog = win.getByRole('dialog', { name: '事项详情' });
+  await dialog.getByRole('button', { name: '编辑', exact: true }).click();
+  await dialog.getByLabel('事项描述').fill('**重要** 内容');
   // 切到「预览」tab 才懒加载 Markdown 渲染器
   await win.getByRole('button', { name: '预览' }).click();
   await expect(win.getByText('重要').locator('xpath=ancestor-or-self::strong')).toBeVisible();
@@ -267,7 +269,7 @@ test('取消置顶：再次点击后"置顶"标签消失', async () => {
   await addTodo(win, '可切换置顶');
   const row = todoRow(win, '可切换置顶');
   await row.hover();
-  await row.getByRole('button', { name: '置顶' }).click();
+  await row.getByRole('button', { name: '置顶', exact: true }).click();
   await expect(row.locator('.claude-tag', { hasText: '置顶' })).toBeVisible();
 
   // 再点一次（此时按钮 aria-label 变为「取消置顶」）

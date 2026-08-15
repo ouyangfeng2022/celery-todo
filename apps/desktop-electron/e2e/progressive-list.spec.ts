@@ -57,11 +57,11 @@ test('60 条已完成事项按滚动位置分批挂载', async () => {
   await win.getByRole('button', { name: '已完成 60', exact: true }).click();
   const list = win.getByLabel('待办事项列表');
   const mountedRows = list.locator(':scope > div[id^="todo-"]');
-  await expect(mountedRows).toHaveCount(12);
-  await expect(list.locator('[data-remaining-todos="48"]')).toBeAttached();
+  await expect(mountedRows).toHaveCount(15);
+  await expect(list.locator('[data-remaining-todos="45"]')).toBeAttached();
 
   await win.locator('main').evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
-  await expect.poll(() => mountedRows.count()).toBeGreaterThan(12);
+  await expect.poll(() => mountedRows.count()).toBeGreaterThan(15);
 });

@@ -11,11 +11,11 @@ let appInfo: LaunchedApp;
 let win: Awaited<ReturnType<typeof launchApp>>['window'];
 
 const titles = Array.from(
-  { length: 101 },
+  { length: 201 },
   (_, index) => `虚拟事项 ${String(index + 1).padStart(3, '0')}`,
 );
 const thousandScaleTitles = Array.from(
-  { length: 900 },
+  { length: 800 },
   (_, index) => `千条基准事项 ${String(index + 1).padStart(4, '0')}`,
 );
 
@@ -35,7 +35,7 @@ test.afterEach(async () => {
   await closeApp(appInfo);
 });
 
-test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', async () => {
+test('201 条事项可滚至末行，并能由全局搜索定位到虚拟行', async () => {
   const lastTitle = titles[titles.length - 1]!;
   const main = win.locator('main');
   const list = win.getByLabel('待办事项列表');
@@ -61,12 +61,12 @@ test('101 条事项可滚至末行，并能由全局搜索定位到虚拟行', a
   await expect.poll(() => main.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
 });
 
-test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', async () => {
+test('201 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', async () => {
   // 此用例按 dnd-kit 的实际碰撞推进节流；慢 CI 上每步可能需要超过默认间隔，
   // 不应因 30 秒用例总时限而中断一个仍在健康推进的拖拽。
   test.setTimeout(60_000);
   const lastTitle = titles[titles.length - 1]!;
-  const targetTitle = titles[80]!;
+  const targetTitle = titles[180]!;
   const main = win.locator('main');
   await main.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
@@ -95,21 +95,21 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
       .getAttribute('data-index');
     return value === null ? Number.POSITIVE_INFINITY : Number(value);
   };
-  // 持续发送按键直到碰撞目标到达或越过 081，不把固定按键数当作测试契约。
+  // 持续发送按键直到碰撞目标到达或越过 181，不把固定按键数当作测试契约。
   // 次数上限仅用于在键盘碰撞完全停止推进时快速暴露回归。
   for (let i = 0; i < 100; i += 1) {
-    if ((await overIndex()) <= 80) break;
+    if ((await overIndex()) <= 180) break;
     await win.keyboard.press('ArrowUp');
     await win.waitForTimeout(150);
   }
-  await expect.poll(overIndex).toBeLessThanOrEqual(80);
+  await expect.poll(overIndex).toBeLessThanOrEqual(180);
   await win.keyboard.press('Space');
 
   await expect(win.getByLabel('排序方式')).toHaveValue('manual');
   await expect(
     win.getByLabel('排序方式').locator('option', { hasText: '自定义顺序' }),
   ).toBeDisabled();
-  // 落定后从 DB 读取持久化顺序：源行（101）已稳定落在目标行（081）之前。
+  // 落定后从 DB 读取持久化顺序：源行（201）已稳定落在目标行（181）之前。
   const projectId = (
     (await win.evaluate(() => window.electronAPI!.dataQuery('projects'))) as {
       id: string;
@@ -122,15 +122,15 @@ test('101 条事项中末行可通过键盘跨越虚拟窗口拖拽上移', asyn
       projectId,
     )) as { title: string }[];
     return {
-      p101: rows.findIndex((r) => r.title === lastTitle),
-      p081: rows.findIndex((r) => r.title === targetTitle),
+      sourceIndex: rows.findIndex((r) => r.title === lastTitle),
+      targetIndex: rows.findIndex((r) => r.title === targetTitle),
     };
   };
   await expect
     .poll(
       async () => {
-        const { p101, p081 } = await indexOfInSorted();
-        return p101 >= 0 && p081 >= 0 ? p101 < p081 : false;
+        const { sourceIndex, targetIndex } = await indexOfInSorted();
+        return sourceIndex >= 0 && targetIndex >= 0 ? sourceIndex < targetIndex : false;
       },
       { timeout: 20_000 },
     )
@@ -142,7 +142,7 @@ test('1,001 条事项仅挂载有限 DOM 行，且可定位末行', async () => 
   const list = win.getByLabel('待办事项列表');
   const lastTitle = thousandScaleTitles[thousandScaleTitles.length - 1]!;
 
-  // 在已有 101 条的真实 UI 数据上继续批量添加，覆盖超过千条时的渲染路径。
+  // 在已有 201 条的真实 UI 数据上继续批量添加，覆盖超过千条时的渲染路径。
   await input.fill(thousandScaleTitles.join('\n'));
   await win.keyboard.press('Enter');
   await expect(input).toHaveValue('');

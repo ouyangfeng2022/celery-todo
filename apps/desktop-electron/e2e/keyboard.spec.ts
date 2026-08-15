@@ -79,20 +79,21 @@ test('Ctrl+1/2/3 切换筛选视图', async () => {
   const completedRow = todoRow(win, '已完成项');
   await completedRow.hover();
   await completedRow.getByRole('button', { name: '标记为已完成' }).click();
-  // Ctrl+1/2/3 仅在非输入框聚焦时生效，addTodo 后 textarea 仍聚焦，先点页面外失焦
-  await win.locator('body').click();
+  // Ctrl+1/2/3 仅在非输入框聚焦时生效。直接 blur，避免点击 body 中央误中事项行、
+  // 打开详情浮窗后产生同标题的 textarea。
+  await win.getByLabel('新事项标题').evaluate((element) => (element as HTMLElement).blur());
   await win.waitForTimeout(200);
 
   // Electron 打包版通过 file:// 加载，不能依赖 URL 查询参数；直接断言列表状态。
   await win.keyboard.press('Control+3');
-  await expect(win.getByText('已完成项', { exact: true })).toBeVisible();
-  await expect(win.getByText('未完成项', { exact: true })).toHaveCount(0);
+  await expect(todoRow(win, '已完成项')).toBeVisible();
+  await expect(todoRow(win, '未完成项')).toHaveCount(0);
   await win.keyboard.press('Control+1');
-  await expect(win.getByText('已完成项', { exact: true })).toBeVisible();
-  await expect(win.getByText('未完成项', { exact: true })).toBeVisible();
+  await expect(todoRow(win, '已完成项')).toBeVisible();
+  await expect(todoRow(win, '未完成项')).toBeVisible();
   await win.keyboard.press('Control+2');
-  await expect(win.getByText('未完成项', { exact: true })).toBeVisible();
-  await expect(win.getByText('已完成项', { exact: true })).toHaveCount(0);
+  await expect(todoRow(win, '未完成项')).toBeVisible();
+  await expect(todoRow(win, '已完成项')).toHaveCount(0);
 });
 
 test('Esc 关闭设置面板', async () => {
