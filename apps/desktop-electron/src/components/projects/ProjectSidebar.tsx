@@ -120,7 +120,7 @@ interface SidebarUpdateCardProps {
 const V3_RELEASE_URL = 'https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.0.0';
 
 /**
- * 2.20.1 是 2.x 的最终过渡版。它不再尝试用 Electron 更新器安装 Tauri 包，
+ * 2.20.2 是 2.x 的最终过渡版。它不再尝试用 Electron 更新器安装 Tauri 包，
  * 而是始终给出清晰、可逆的人工迁移入口。
  */
 export function MigrationToV3Card() {

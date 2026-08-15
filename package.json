@@ -1,7 +1,7 @@
 {
   "name": "celery-todo",
   "private": true,
-  "version": "2.20.1",
+  "version": "2.20.2",
   "description": "Celery Todo monorepo（3.0 跨端：Tauri 桌面 + Expo 移动 + 共享核心）",
   "license": "MIT",
   "type": "module",
