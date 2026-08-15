@@ -120,6 +120,9 @@ function App() {
   const [mainScrollElement, setMainScrollElement] = useState<HTMLElement | null>(null);
   // === 初始化数据库 ===
   const [dbReady, setDbReady] = useState(false);
+  // 初始化链路任一步失败时展示原因，避免加载页无限转圈（如 2.20.2 的原生模块
+  // ABI 不匹配：首个数据查询 reject，用户只能看到一个永不停歇的 spinner）。
+  const [initError, setInitError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionId>('general');
@@ -387,25 +390,30 @@ function App() {
   // === 初始化 ===
   useEffect(() => {
     (async () => {
-      await data.initialize();
-      await useSettingsStore.getState().loadSettings();
-      await useProjectStore.getState().loadProjects();
-      // 启动时恢复上次激活的项目：
-      //   1) 读持久化的 lastActiveProjectId，若该项目仍在列表中 → 恢复；
-      //   2) 否则回退到列表第一个项目（若有）；
-      //   3) 列表为空时保持初始 ''，主区显示「请创建项目」。
-      // loadSettings 必须在 loadProjects 之前调用，这里才能拿到 lastActiveProjectId。
-      const lastId = useSettingsStore.getState().lastActiveProjectId;
-      const projects = useProjectStore.getState().projects;
-      if (lastId && projects.some((p) => p.id === lastId)) {
-        useProjectStore.getState().setActiveProject(lastId);
-      } else if (projects.length > 0) {
-        useProjectStore.getState().setActiveProject(projects[0].id);
+      try {
+        await data.initialize();
+        await useSettingsStore.getState().loadSettings();
+        await useProjectStore.getState().loadProjects();
+        // 启动时恢复上次激活的项目：
+        //   1) 读持久化的 lastActiveProjectId，若该项目仍在列表中 → 恢复；
+        //   2) 否则回退到列表第一个项目（若有）；
+        //   3) 列表为空时保持初始 ''，主区显示「请创建项目」。
+        // loadSettings 必须在 loadProjects 之前调用，这里才能拿到 lastActiveProjectId。
+        const lastId = useSettingsStore.getState().lastActiveProjectId;
+        const projects = useProjectStore.getState().projects;
+        if (lastId && projects.some((p) => p.id === lastId)) {
+          useProjectStore.getState().setActiveProject(lastId);
+        } else if (projects.length > 0) {
+          useProjectStore.getState().setActiveProject(projects[0].id);
+        }
+        const activeId = useProjectStore.getState().activeProjectId;
+        await useTodoStore.getState().loadProject(activeId);
+        await useTimeViewStore.getState().load();
+        setDbReady(true);
+      } catch (err) {
+        console.error('应用初始化失败：', err);
+        setInitError(err instanceof Error ? err.message : String(err));
       }
-      const activeId = useProjectStore.getState().activeProjectId;
-      await useTodoStore.getState().loadProject(activeId);
-      await useTimeViewStore.getState().load();
-      setDbReady(true);
     })();
   }, []);
 
@@ -881,6 +889,22 @@ function App() {
             className="w-5 h-5 border-[1.5px] rounded-full"
             style={{ borderColor: 'var(--border-strong)', borderTopColor: 'var(--accent)' }}
           />
+          {initError && (
+            <div
+              className="max-w-[420px] rounded-lg border px-4 py-3 text-center text-sm"
+              style={{
+                borderColor: 'var(--border-strong)',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--text-secondary)',
+              }}
+              role="alert"
+            >
+              <p className="mb-1 font-medium" style={{ color: 'var(--text-primary)' }}>
+                初始化失败
+              </p>
+              <p className="break-all">{initError}</p>
+            </div>
+          )}
         </motion.div>
       </div>
     );

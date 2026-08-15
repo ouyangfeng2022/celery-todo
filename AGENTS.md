@@ -300,6 +300,24 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
   on every `sql.js` upgrade.
 - electron-builder config is inlined in `package.json` (`build` field). Windows
   target is NSIS; output goes to `release/`.
+- **原生模块 ABI 闸门（2.20.2 事故）**：hoisted 布局下 `@electron/rebuild` 的模块
+  发现以 buildPath 的 package.json 依赖为种子、且向上扫描会在无 package.json 的
+  目录层截断 —— 直接 `electron-rebuild -f -o better-sqlite3` 会**静默重建 0 个
+  模块**（退出码 0），打包带进 Node/Bun ABI 的预编译产物，首个 `data:query` 即
+  dlopen 失败、加载页无限转圈。因此 `rebuild:electron` 固定为
+  `electron-rebuild -f -o better-sqlite3 -m ../..`（buildPath = 仓库根；根
+  `package.json` 的 devDependencies 也声明了 better-sqlite3 作为发现种子），并在
+  末尾接 `scripts/verify-native-abi.mjs` —— 用 Electron 自带 Node
+  （`ELECTRON_RUN_AS_NODE=1`）实际加载原生模块，不匹配即打包前失败。**不要移除
+  这道闸门**；`bun install` 后如果又跑过 `rebuild:node` / CLI 测试，重打包前必须
+  重新 `bun run rebuild:electron`。
+- **打包产物的 `productName` 决定 userData**：Electron 的 `app.name`（进而
+  `%APPDATA%` 下的数据目录、electron-updater 缓存标识）读的是 **asar 内
+  package.json 的顶层 `productName`**（无则用 `name`）；electron-builder 不会把
+  `build.productName` 写进 asar。`apps/desktop-electron/package.json` 顶层必须保持
+  `"productName": "celery-todo"`（与 2.x 一致），否则升级用户数据全部"消失"
+  （2.20.2 曾漂移到 `%APPDATA%\@celery\desktop-electron`）。`build.productName:
+  "Celery Todo"` 只影响 exe/安装包/快捷方式命名。
 - Windows 无框窗口（`titleBarStyle: 'hidden'` + `titleBarOverlay`）在拖拽改窗口
   大小时，OS 会在右上角绘制一个尺寸提示框（如 "1200 × 800"），与 overlay 的
   最小化按钮位置重叠。这是 Windows + Chromium 的已知行为

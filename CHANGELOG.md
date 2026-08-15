@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- 修复 2.20.2 安装包启动后停留在加载页无限转圈的问题：hoisted 布局下
+  `electron-rebuild` 静默漏建 better-sqlite3，安装包内是 Node/Bun ABI 的预编译
+  产物，首个数据查询即 dlopen 失败。`rebuild:electron` 显式把构建根指向仓库
+  并新增 Electron ABI 验证闸门（`scripts/verify-native-abi.mjs`），打包前实际
+  加载原生模块，不匹配立即失败
+- 恢复 2.x 的数据目录：打包产物 package.json 缺少顶层 `productName`，monorepo
+  改名后 userData 漂移到 `%APPDATA%\@celery\desktop-electron`，升级用户的数据
+  与升级器缓存不可见；补回 `productName: "celery-todo"` 后与旧版完全一致
+- 应用初始化失败时在加载页展示错误信息并写入控制台，不再只显示转圈
+
 ## [v3.0.0] - 2026-08-15
 
 ### Added
