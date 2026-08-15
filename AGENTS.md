@@ -334,10 +334,12 @@ adding or editing E2E tests, read `e2e/helpers.ts` and keep these conventions:
   `HTMLAnchorElement.prototype.click` to capture content; reuse that helper.
 - **Persistence**: DB writes are debounced 500ms. Before reloading or asserting
   cross-restart state, `waitForSave()` or press `Ctrl+S` (`flushSave`).
-- **CI**: `.github/workflows/e2e.yml` runs the full suite on `windows-latest`
-  for PRs. Local cold-start can flake (one known instance: the "首次启动" test
-  when a zombie electron process lingers); `playwright.config.ts` sets
-  `retries: 1` locally / `2` on CI as a safety net.
+- **CI**: `.github/workflows/e2e.yml` is **opt-in** (only `workflow_dispatch`,
+  no `pull_request` trigger) — it never runs/auto-blocks PRs. Trigger it
+  manually from the Actions tab when you want a full `windows-latest` run.
+  Local cold-start can flake (one known instance: the "首次启动" test when a
+  zombie electron process lingers); `playwright.config.ts` sets `retries: 1`
+  locally / `2` on CI as a safety net.
 
 ## Read before editing sensitive areas
 
