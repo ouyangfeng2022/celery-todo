@@ -161,7 +161,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setAutoStart: async (autoStart) => {
     await data.setSetting('autoStart', String(autoStart));
     set({ autoStart });
-    // 通知宿主（阶段 B 接 tauri-plugin-autostart；当前 no-op）
+    // 通知宿主同步 OS 登录项（tauri-plugin-autostart）
     setAutoStartHost(autoStart);
   },
 
@@ -198,7 +198,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       setStartupTheme(toStartupTheme(newSettings.theme, newSettings.colorMode));
     }
     // 贴图样式相关字段被改动时，通知宿主向所有已打开的贴图窗口广播刷新。
-    // 贴图是独立 webview，不共享 React 状态，必须经事件同步（阶段 B 落地）。
+    // 贴图是独立 webview，不共享 React 状态，必须经事件同步。
     const touchesSticker = Object.keys(updates).some((key) => STICKER_SETTING_KEYS.has(key));
     if (touchesSticker) {
       notifyStickerStyleChanged();

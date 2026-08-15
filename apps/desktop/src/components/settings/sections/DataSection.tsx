@@ -51,7 +51,7 @@ export function DataSection({ onOpenExport, onImportAll, onResetData }: DataSect
     };
   }, []);
 
-  const isStorageCustomizable = storageInfo?.mode === 'electron';
+  const isStorageCustomizable = storageInfo?.mode === 'native';
 
   // 选择并切换存储目录
   const handleChooseStorageDir = useCallback(async () => {

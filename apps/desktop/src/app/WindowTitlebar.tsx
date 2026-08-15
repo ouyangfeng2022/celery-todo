@@ -16,7 +16,7 @@ import { StickerIcon } from '../components/common/Icons';
 
 interface WindowTitlebarProps {
   title: string;
-  /** 贴图入口：阶段 B 点亮（capabilities.stickers） */
+  /** 贴图入口（capabilities.stickers，非 Tauri 环境隐藏） */
   onEnterCompactMode?: () => void;
 }
 
@@ -49,7 +49,7 @@ export function WindowTitlebar({ title, onEnterCompactMode }: WindowTitlebarProp
         </h1>
       </div>
 
-      {/* 简洁模式入口：贴近 caption 按钮组左侧（阶段 B 点亮前隐藏）。 */}
+      {/* 简洁模式入口：贴近 caption 按钮组左侧（非 Tauri 环境隐藏）。 */}
       {capabilities.stickers && (
         <button
           type="button"

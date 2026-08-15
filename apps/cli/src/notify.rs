@@ -1,9 +1,9 @@
 //! CLI → 桌面端写后通知。
 //!
-//! 桌面端在 `<db 同目录>/cli-notify.json` 发布 `{port, token}`（见
-//! apps/desktop/src-tauri/src/cli_notify.rs）。CLI 在每次写命令成功后发送
-//! 一行 JSON；桌面校验 token 后以 `source: "cli"` 广播 data-changed，
-//! 打开中的主窗口/贴图窗口即时刷新。
+//! 桌面端在 appData 根发布 `{port, token}`（见
+//! apps/desktop/src-tauri/src/cli_notify.rs；**不随自定义数据目录迁移**）。
+//! CLI 在每次写命令成功后发送一行 JSON；桌面校验 token 后以
+//! `source: "cli"` 广播 data-changed，打开中的主窗口/贴图窗口即时刷新。
 //!
 //! 桌面未运行 / 文件缺失 / 连接失败一律静默忽略 —— 数据已落盘，
 //! 下次桌面启动自然可见。
@@ -44,9 +44,9 @@ struct Payload<'a> {
     notice: &'a ChangeNotice,
 }
 
-/// 通知桌面（db_dir 为数据库所在目录，与桌面 appData 一致）。失败静默。
-pub fn notify_desktop(db_dir: &Path, notice: &ChangeNotice) {
-    let file = db_dir.join("cli-notify.json");
+/// 通知桌面（app_data 为桌面 appData 根，发现文件固定在这里）。失败静默。
+pub fn notify_desktop(app_data: &Path, notice: &ChangeNotice) {
+    let file = app_data.join("cli-notify.json");
     let Ok(bytes) = std::fs::read(&file) else { return };
     let Ok(discovery) = serde_json::from_slice::<Discovery>(&bytes) else { return };
 

@@ -184,7 +184,7 @@ function App() {
   // === 跨窗口数据同步（贴图窗口 / CLI 写入后刷新本窗口） ===
   useDataSync(dbReady);
 
-  // === 自动升级（阶段 B 接 tauri-plugin-updater；当前恒不可用，入口隐藏） ===
+  // === 自动升级（tauri-plugin-updater，非 Tauri 环境入口隐藏） ===
   const {
     isDesktop: isAutoUpdateAvailable,
     status: updateStatus,
@@ -412,7 +412,7 @@ function App() {
     },
   });
 
-  // === 托盘「快速添加事项」（阶段 B 托盘点亮后生效） ===
+  // === 托盘「快速添加事项」（tray.rs 菜单 → quick-add 事件） ===
   useEffect(() => {
     const off = onQuickAdd(() => {
       focusNewTodo();
@@ -422,7 +422,7 @@ function App() {
     };
   }, [focusNewTodo]);
 
-  // 原生保存对话框写盘完成事件（阶段 B 换原生导出路径后回传真实路径）。
+  // 原生保存对话框写盘完成事件（回传真实路径，供 ExportNotice 展示）。
   useEffect(() => {
     const off = onExportCompleted(setExportNotice);
     return () => off?.();

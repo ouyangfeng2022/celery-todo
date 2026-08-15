@@ -1,6 +1,6 @@
 /**
  * @file ExportNotice - 文件导出完成后的置顶反馈
- * @description 仅在 Electron 确认下载已写入磁盘后显示；文件名可直接定位到资源管理器。
+ * @description 原生「另存为」写盘完成后显示；文件名按钮可直接在文件管理器中定位。
  */
 
 import { memo, useEffect } from 'react';

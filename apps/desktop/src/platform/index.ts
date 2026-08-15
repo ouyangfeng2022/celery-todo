@@ -4,8 +4,8 @@
  *              2.x 的 window.electronAPI 耦合点在这里收敛，便于 jsdom 单测
  *              （非 Tauri 环境全部能力退化为 no-op / 浏览器回退）。
  *
- *              能力开关（阶段 B 已点亮：贴图/托盘/自启/原生导出保存；
- *              updater 等待阶段 G 发布流水线配置签名端点后打开）。
+ *              能力开关：贴图/托盘/自启/更新/原生导出保存/存储位置迁移
+ *              均已点亮（isTauri）；非 Tauri 环境全灭，UI 相应隐藏入口。
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -26,8 +26,7 @@ export function getPlatform(): DesktopPlatform {
 
 /**
  * 平台能力开关。关闭的能力以 no-op 实现，组件按开关隐藏入口。
- * - updater：阶段 G（发布流水线）配置 tauri-plugin-updater 端点后点亮
- * - storageRelocation：自定义数据目录迁移，后续里程碑
+ * （storageRelocation 在非 Tauri 环境关闭，storageGateway 返回 web 桩）
  */
 export const capabilities = {
   /** 多贴图浮窗（简洁模式） */
@@ -39,7 +38,7 @@ export const capabilities = {
   /** 应用内自动更新（tauri-plugin-updater，端点在 tauri.conf） */
   updater: isTauri,
   /** 自定义数据目录（storage-config 迁移） */
-  storageRelocation: false,
+  storageRelocation: isTauri,
 } as const;
 
 // ============================================

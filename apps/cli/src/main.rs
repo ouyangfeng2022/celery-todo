@@ -1,10 +1,11 @@
 //! Celery Todo 3.0 CLI —— 与 Tauri 桌面端读写同一个 v3 数据库。
 //!
-//! 数据文件：`<系统配置目录>/com.celery.todo/celery-v3.db`，与桌面端
-//! `app_data_dir` 一致（Windows `%APPDATA%\com.celery.todo`）。
+//! 数据文件：默认 `<系统配置目录>/com.celery.todo/celery-v3.db`，与桌面端
+//! `app_data_dir` 一致（Windows `%APPDATA%\com.celery.todo`）；桌面端迁移过
+//! 数据目录时经 storage-config.json 指向自定义目录，这里用同一解析保持同库。
 //!
 //! 写后刷新：每次写命令成功后经本地 TCP 通知桌面端（notify.rs，
-//! 发现文件 cli-notify.json 与 db 同目录）；桌面未运行时静默跳过。
+//! 发现文件 cli-notify.json 恒在 appData 根）；桌面未运行时静默跳过。
 
 mod notify;
 
@@ -14,12 +15,16 @@ use clap::{Parser, Subcommand};
 use notify::ChangeNotice;
 use std::path::PathBuf;
 
-/// v3 数据库文件位置（与 Tauri identifier 对应的 appData 目录）。
-pub fn default_db_path() -> PathBuf {
+/// v3 appData 根（与 Tauri identifier 对应；cli-notify 发现文件也固定在这里）。
+pub fn app_data_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("com.celery.todo")
-        .join("celery-v3.db")
+}
+
+/// v3 数据库文件位置（appData 根 + 桌面端 storage-config 自定义目录解析）。
+pub fn default_db_path() -> PathBuf {
+    celery_db::db_path(&app_data_dir())
 }
 
 #[derive(Parser)]
@@ -113,12 +118,9 @@ fn match_todo_prefix(db: &CeleryDb, prefix: &str) -> Result<String, String> {
 }
 
 fn run(cli: Cli) -> Result<(), String> {
-    let db_path = cli.db.clone().unwrap_or_else(default_db_path);
-    let db_dir = db_path
-        .parent()
-        .map(|p| p.to_path_buf())
-        .unwrap_or_else(|| PathBuf::from("."));
-    let notify = |notice: ChangeNotice| notify::notify_desktop(&db_dir, &notice);
+    // 发现文件恒在 appData 根（不随数据目录迁移），与桌面端 cli_notify.rs 一致
+    let app_data = app_data_dir();
+    let notify = |notice: ChangeNotice| notify::notify_desktop(&app_data, &notice);
     let db = open(cli.db.as_ref())?;
     match cli.command {
         Command::Status => {

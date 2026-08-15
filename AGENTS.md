@@ -56,8 +56,9 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    `LegacyV2ImportService` + 骨架 UI 的首启导入横幅（仅空库时出现）。
 6. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
    `status/projects/list/add/done/archive`，复用 celery-db、与桌面端同一
-   `%APPDATA%/com.celery.todo/celery-v3.db`；id 支持前缀匹配。CLI 写入后的
-   桌面实时刷新（本地 IPC）待桌面 UI 里程碑接入。
+   `%APPDATA%/com.celery.todo`（经 `celery_db::storage_config` 解析自定义数据
+   目录，两端同库）；id 支持前缀匹配。CLI 写入后的桌面实时刷新已接
+   （`cli_notify.rs` 回环 TCP + `data-changed` 广播）。
 7. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
    token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
    字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
@@ -76,13 +77,23 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    配套 Rust：`replace_all`/`reset_db`（v2 JSON 全量导入单事务）、
    `archived_count`/`incomplete_counts` 聚合、写命令后 `data-changed` 广播
    （renderer 按窗口 label 过滤自发事件）。单测 51 项（含网关映射层 8 项，
-   经 `configureDataGateway` 注入内存适配器）。**阶段 B 待做**：托盘、多贴图
-   窗口、自启、窗口状态记忆、tauri-plugin-updater、原生保存对话框导出。
+   经 `configureDataGateway` 注入内存适配器）。
+10. **平台能力·阶段 B（已完成，随 3.0.0/3.0.1 发布）** —— 托盘（`tray.rs`：
+    完整菜单 + 单击切换主窗 + 退出看门狗防死锁）、多贴图窗口（`stickers.rs`：
+    创建/复制/换项目/关闭/返回主窗 + **重启恢复**；Windows 建窗必须离开主线程，
+    wry#583）、开机自启（tauri-plugin-autostart）、窗口状态记忆
+    （`window_state.rs`：主窗 rect + **最大化标记** + 贴图清单，400ms debounce）、
+    单实例、应用内更新（tauri-plugin-updater + 端点/公钥在 tauri.conf，签名
+    发布流水线 `.github/workflows/desktop-release.yml`）、原生「另存为」导出
+    （`export_save_file` + `open_in_folder` + ExportNotice 真实路径回执）、
+    自定义数据目录（`storage.rs` + `celery_db::storage_config`：`storage-config.json`
+    恒在 appData 根，切换 = checkpoint WAL → 拷贝 → 配置 → 旧库重挂，失败回滚；
+    CLI 同一解析保持两端同库）。CLI 写入后桌面实时刷新也已接（`cli_notify.rs`
+    回环 TCP，发现文件恒在 appData 根）。
 
 尚未实施的计划阶段：移动端正式 UI（Expo
-Router 四入口、滑动/长按/原生拖拽）、CLI→桌面 IPC 刷新、WebdriverIO
-Tauri E2E、性能夹具基线、三平台发布流水线（Tauri 签名更新 manifest、
-EAS Build/Submit）。
+Router 四入口、滑动/长按/原生拖拽）、WebdriverIO Tauri E2E 扩充（现仅
+Linux + xvfd 4 条冒烟，见 `apps/desktop/e2e/`）、性能夹具基线。
 SQLite 默认不加密；无云同步，各设备数据独立。
 
 ## Project purpose

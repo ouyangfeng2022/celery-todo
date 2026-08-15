@@ -2,7 +2,7 @@
  * @file 跨窗口数据同步
  * @description Rust 写命令成功后向所有窗口广播 data-changed（自发事件已在平台层
  *              按窗口 label 过滤）。此处按事件粒度重读受影响的 store ——
- *              贴图窗口 / CLI 写入（阶段 B/C）后主窗口即时刷新。
+ *              贴图窗口 / CLI 写入 / 存储位置迁移后主窗口即时刷新。
  */
 
 import { useEffect } from 'react';

@@ -1,8 +1,10 @@
 /**
  * @file useTheme - 主题切换 Hook
  * @description 支持默认、经典、芹绿三组浅/深色主题及跟随系统模式。
- *              3.0 Tauri 版：标题栏为自绘（decorations: false），主题切换只改
- *              文档类名；原生窗口底色同步 / 任务栏图标换色在阶段 B 平台能力接。
+ *              3.0 Tauri 版：标题栏自绘（decorations: false），底色由
+ *              HTML/CSS 决定，无需宿主同步；favicon 随主题换色（见下）。
+ *              托盘/任务栏图标固定品牌橙，不随主题换色（2.x 的
+ *              set-app-icon 行为不移植 —— 品牌主色统一为橙）。
  */
 
 import { useCallback, useEffect } from 'react';

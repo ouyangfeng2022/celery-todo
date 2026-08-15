@@ -6,11 +6,13 @@
 //!   renderer 通过 `createTauriRepositories()` 调用，无任意 SQL / invoke 通道。
 //! - 平台能力（阶段 B）：托盘（tray.rs）、多贴图窗口（stickers.rs）、窗口状态
 //!   持久化（window_state.rs）、开机自启（tauri-plugin-autostart）、单实例、
-//!   原生导出保存（tauri-plugin-dialog + 直接写文件）。
+//!   原生导出保存（tauri-plugin-dialog + 直接写文件）、自定义数据目录
+//!   （storage.rs + celery_db::storage_config）。
 
 mod cli_notify;
 mod commands;
 mod stickers;
+mod storage;
 mod tray;
 mod window_state;
 
@@ -18,8 +20,6 @@ use celery_db::CeleryDb;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use window_state::WindowStateStore;
-
-const DB_FILE: &str = "celery-v3.db";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -64,9 +64,11 @@ pub fn run() {
                     // 允许默认关闭；全部窗口退出后应用结束
                 }
             }
-            // 主窗口位置/尺寸 → 持久化（debounce 合并）
+            // 主窗口位置/尺寸 → 持久化（debounce 合并）。
+            // 最大化期间不更新 rect（保存还原尺寸而非全屏 bounds），
+            // 只维护 main_maximized 标记；恢复时先应用 rect 再 maximize。
             tauri::WindowEvent::Moved(pos) => {
-                if window.label() == "main" {
+                if window.label() == "main" && !window.is_maximized().unwrap_or(false) {
                     if let Some(store) = window.app_handle().try_state::<WindowStateStore>() {
                         let size = window.inner_size().ok();
                         store.update(|s| {
@@ -86,13 +88,17 @@ pub fn run() {
                         window.app_handle().try_state::<WindowStateStore>(),
                         window.outer_position(),
                     ) {
+                        let maximized = window.is_maximized().unwrap_or(false);
                         store.update(|s| {
-                            s.main = Some(window_state::WindowRect {
-                                x: pos.x,
-                                y: pos.y,
-                                width: size.width,
-                                height: size.height,
-                            });
+                            s.main_maximized = maximized;
+                            if !maximized {
+                                s.main = Some(window_state::WindowRect {
+                                    x: pos.x,
+                                    y: pos.y,
+                                    width: size.width,
+                                    height: size.height,
+                                });
+                            }
                         });
                     }
                 }
@@ -104,9 +110,11 @@ pub fn run() {
             std::fs::create_dir_all(&dir)?;
             // E2E / 测试注入：覆盖数据库路径，避免污染真实用户数据
             //（tauri-driver 经 wdio:tauriOptions.env 传入）。
+            // 常规路径经 storage_config 解析：自定义目录（storage-config.json）
+            // 优先，默认 appData 根 —— CLI 侧用同一解析保持两端同库。
             let db_path = std::env::var("CELERY_DB_PATH")
                 .map(std::path::PathBuf::from)
-                .unwrap_or_else(|_| dir.join(DB_FILE));
+                .unwrap_or_else(|_| celery_db::db_path(&dir));
             if let Some(parent) = db_path.parent() {
                 std::fs::create_dir_all(parent)?;
             }
@@ -121,6 +129,9 @@ pub fn run() {
                     let _ = main.set_position(tauri::PhysicalPosition::new(rect.x, rect.y));
                     let _ = main.set_size(tauri::PhysicalSize::new(rect.width, rect.height));
                 }
+                if saved.main_maximized {
+                    let _ = main.maximize();
+                }
                 let _ = main.show();
             }
             app.manage(store);
@@ -128,7 +139,7 @@ pub fn run() {
             tray::create_tray(app.handle())?;
             // 重建上次会话的贴图窗口（主窗口已显示后再叠加，避免启动白屏误判）
             stickers::restore_stickers(app.handle());
-            // CLI 写入通知服务（发现文件随 db 同目录；失败不阻断启动）
+            // CLI 写入通知服务（发现文件恒在 appData 根，不随数据目录迁移；失败不阻断启动）
             cli_notify::start(app.handle());
             Ok(())
         })
@@ -172,6 +183,11 @@ pub fn run() {
             commands::set_auto_start,
             commands::export_save_file,
             commands::open_in_folder,
+            storage::storage_info,
+            storage::storage_choose_directory,
+            storage::storage_set_path,
+            storage::storage_reset_to_default,
+            storage::storage_open_in_folder,
             stickers::sticker_create,
             stickers::sticker_duplicate,
             stickers::sticker_set_project,

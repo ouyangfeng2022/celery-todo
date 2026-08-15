@@ -19,10 +19,12 @@ mod error;
 mod legacy_v2;
 mod migrations;
 mod repo;
+mod storage_config;
 
 pub use error::{CeleryDbError, Result};
 pub use legacy_v2::{detect_v2_source, inspect_v2};
 pub use repo::{CeleryDb, Page};
+pub use storage_config::{data_dir, db_filename, db_path, is_custom, set_data_dir};
 
 // DTO 既有 serde（Rust 侧 IPC 序列化）又有 TS（生成 TS 绑定），
 // 统一在 dto.rs 定义并从这里再导出。

@@ -2,7 +2,7 @@
  * @file 导入导出流程
  * @description 从 App.tsx 拆出：JSON / Excel / 图片导出、v2 JSON 导入、恢复出厂。
  *              导出文件经浏览器下载通道落盘（WebView2 下载条）；
- *              阶段 B 换原生保存对话框 + 真实路径回执。
+ *              Tauri 环境经原生「另存为」对话框落盘并回传真实路径（ExportNotice）。
  */
 
 import { useCallback, useState } from 'react';
@@ -234,7 +234,7 @@ export function useExportImport({
           await loadProjects();
           await useSettingsStore.getState().loadSettings();
           // autoStart 同时存在于 SQLite 设置和操作系统登录项；全量导入恢复了前者，
-          // 这里同步后者（阶段 B 前为 no-op），避免设置面板与系统实际状态不一致。
+          // 这里同步后者（tauri-plugin-autostart），避免设置面板与系统实际状态不一致。
           setAutoStartHost(useSettingsStore.getState().autoStart);
           // 导入后优先恢复备份中的上次活跃项目；该项目不存在或旧备份没有该设置时，
           // 再回退到第一个项目。不能沿用导入前的 activeProjectId，否则偶发同 ID

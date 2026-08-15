@@ -91,4 +91,65 @@ impl CeleryDb {
         let mut conn = self.lock_conn()?;
         migrations::migrate(&mut conn)
     }
+
+    /// 数据目录迁移原语：checkpoint WAL 后关闭当前连接（释放 db 文件
+    /// 句柄，`-wal`/`-shm` 随之清理），执行 `between`（拷贝库文件 + 写
+    /// storage-config），成功后在 `new_path` 重开连接；`between` 失败则在
+    /// `old_path` 原样重开（连接与数据状态不变，调用方可安全报错重试）。
+    ///
+    /// 全程持有连接锁 —— 迁移期间其他线程的仓储调用阻塞等待而非报错，
+    /// 也看不到中间状态。
+    pub fn relocate(
+        &self,
+        old_path: &Path,
+        new_path: &Path,
+        between: impl FnOnce() -> std::io::Result<()>,
+    ) -> Result<()> {
+        let mut guard = self.lock_conn()?;
+        let _ = guard.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+        // 占位内存库换出旧连接并立即 drop；占位连接不会被执行任何命令
+        // （下一步必然被新/旧文件连接替换）。
+        let old = std::mem::replace(&mut *guard, rusqlite::Connection::open_in_memory()?);
+        drop(old);
+        match between() {
+            Ok(()) => {
+                *guard = open_connection(Some(new_path))?;
+                Ok(())
+            }
+            Err(e) => {
+                *guard = open_connection(Some(old_path))?;
+                Err(e.into())
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relocate_swaps_connection_or_rolls_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let old = dir.path().join("old.db");
+        let new = dir.path().join("new.db");
+
+        let db = CeleryDb::open(&old).unwrap();
+        db.set_setting("k", "v").unwrap();
+
+        // 成功路径：between 拷贝文件 → 同一门面已指向新文件，数据可见
+        db.relocate(&old, &new, || std::fs::copy(&old, &new).map(|_| ()))
+            .unwrap();
+        assert!(new.exists());
+        assert_eq!(db.get_setting("k").unwrap().as_deref(), Some("v"));
+
+        // 失败路径：between 报错 → 连接回到 old_path（当前文件），数据不丢
+        let target = dir.path().join("t.db");
+        let err = db
+            .relocate(&new, &target, || Err(std::io::Error::other("boom")))
+            .unwrap_err();
+        assert!(err.to_string().contains("boom"));
+        assert!(!target.exists());
+        assert_eq!(db.get_setting("k").unwrap().as_deref(), Some("v"));
+    }
 }
