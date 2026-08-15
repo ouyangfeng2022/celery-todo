@@ -73,7 +73,7 @@
     },
     "apps/desktop-electron": {
       "name": "@celery/desktop-electron",
-      "version": "2.20.0",
+      "version": "2.20.1",
       "bin": {
         "celery": "dist-cli/index.js",
       },

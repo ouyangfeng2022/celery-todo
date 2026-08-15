@@ -1,0 +1,58 @@
+# 为已安装的 2.x Electron 客户端构建一次性的 2.20.1 迁移过渡包。
+#
+# 该工作流不创建 2.x Release，而是把 Electron 安装包与 latest.yml 附加到现有
+# v3.0.0 Release。如此 GitHub 的 releases/latest 同时提供：
+# - latest.yml + Electron 2.20.1 安装包（旧客户端安全升级到迁移提示页）
+# - latest.json + Tauri 3.0 安装包（3.x 客户端自动更新）
+name: Legacy Electron Migration Bridge
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: '承载兼容更新附件的 3.x Release tag'
+        required: true
+        default: v3.0.0
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-attach:
+    name: Build Electron 2.20.1 and attach to v3 Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout migration bridge source
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify Electron bridge version
+        shell: bash
+        run: |
+          test "$(node -p \"require('./package.json').version\")" = '2.20.1'
+          test "$(node -p \"require('./apps/desktop-electron/package.json').version\")" = '2.20.1'
+
+      - name: Test migration notice
+        run: bun run --filter @celery/desktop-electron test:run -- src/test/ProjectSidebar.test.tsx
+
+      - name: Build Electron bridge installer
+        run: bun run electron:build -- --publish never
+
+      - name: Attach legacy updater artifacts to 3.x Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release view '${{ inputs.release_tag }}' >/dev/null
+          gh release upload '${{ inputs.release_tag }}' \
+            apps/desktop-electron/release/Celery-Todo-Setup-2.20.1.exe \
+            apps/desktop-electron/release/latest.yml \
+            --clobber

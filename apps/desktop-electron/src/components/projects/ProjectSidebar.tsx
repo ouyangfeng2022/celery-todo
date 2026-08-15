@@ -117,6 +117,48 @@ interface SidebarUpdateCardProps {
   onDismiss?: () => void;
 }
 
+const V3_RELEASE_URL = 'https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.0.0';
+
+/**
+ * 2.20.1 是 2.x 的最终过渡版。它不再尝试用 Electron 更新器安装 Tauri 包，
+ * 而是始终给出清晰、可逆的人工迁移入口。
+ */
+export function MigrationToV3Card() {
+  return (
+    <a
+      href={V3_RELEASE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mb-2 block w-full rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-[var(--bg-hover)]"
+      style={{
+        backgroundColor: 'var(--accent-subtle)',
+        borderColor: 'var(--accent)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
+      <span className="flex items-start gap-2.5">
+        <span
+          className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--accent)' }}
+        >
+          <DownloadIcon size={14} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium" style={{ color: 'var(--text-primary)' }}>
+            Celery Todo 3.0 已发布
+          </span>
+          <span
+            className="mt-0.5 block text-[11px] leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            点击下载跨平台新版；首次启动会检测并引导导入 2.x 数据。
+          </span>
+        </span>
+      </span>
+    </a>
+  );
+}
+
 /** 侧栏内的升级状态卡：升级过程始终留在用户视线内，不再打断当前工作。 */
 export function SidebarUpdateCard({
   status,
@@ -903,6 +945,7 @@ function ProjectSidebarComponent({
 
       {/* 底部更新状态与品牌签名 */}
       <div className="relative px-3 pb-3 pt-2">
+        <MigrationToV3Card />
         <SidebarUpdateCard
           status={updateStatus}
           info={updateInfo}

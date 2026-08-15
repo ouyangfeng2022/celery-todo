@@ -1,6 +1,23 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ProjectSidebar, SidebarUpdateCard } from '@/components/projects/ProjectSidebar';
+import {
+  MigrationToV3Card,
+  ProjectSidebar,
+  SidebarUpdateCard,
+} from '@/components/projects/ProjectSidebar';
+
+describe('MigrationToV3Card', () => {
+  it('提供 3.0 正式版下载入口与迁移说明', () => {
+    render(<MigrationToV3Card />);
+
+    expect(screen.getByText('Celery Todo 3.0 已发布')).toBeInTheDocument();
+    expect(screen.getByText(/检测并引导导入 2.x 数据/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Celery Todo 3.0 已发布/ })).toHaveAttribute(
+      'href',
+      'https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.0.0',
+    );
+  });
+});
 
 describe('SidebarUpdateCard', () => {
   it('发现新版本时可从侧栏开始下载', () => {
