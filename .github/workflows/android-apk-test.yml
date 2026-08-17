@@ -1,11 +1,17 @@
 # 临时验证工作流：只跑 android APK job（desktop-release.yml 的副本，
 # 去掉 needs: build），用于快速迭代，验证完成后删除。
-# 手动 workflow_dispatch 触发，不创建/触碰任何 Release。
+# push 本分支即触发（dispatch 需要工作流注册在默认分支，push 不受此限），
+# 不创建/触碰任何 Release。
 
 name: Android APK Test
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ci/android-apk]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+      - '.github/workflows/android-apk-test.yml'
 
 jobs:
   android:
