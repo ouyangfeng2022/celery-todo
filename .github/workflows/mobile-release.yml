@@ -1,5 +1,9 @@
 # 移动端 EAS 构建提交（手动触发）。
 #
+# 注：安卓 APK 的自动构建不在本工作流 —— v3* tag 推送时由
+# desktop-release.yml 在 ubuntu runner 上 prebuild + gradle 直接构建并附
+# 到桌面端 Release。本工作流负责 EAS 云端构建（app-bundle / TestFlight）。
+#
 # 前置（仓库 Settings → Secrets）：
 #   EXPO_TOKEN —— `eas login` 后 `eas whoami` 对应的访问令牌
 # 未配置令牌时工作流以提示信息正常退出（不失败）。
