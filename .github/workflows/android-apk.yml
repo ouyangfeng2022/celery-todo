@@ -1,0 +1,84 @@
+# 临时：只打移动端安卓 APK（不跑桌面端三平台矩阵，不创建 Release）。
+# 复用 desktop-release.yml android job 的已验证步骤；产物走 artifact 下载。
+# 验证完 APK 可删本文件。
+name: Android APK (temp)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '写入 app.json 的版本号（如 3.2.1）；留空则保持 app.json 现值'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install root workspace（共享包类型解析来源）
+        run: bun install
+
+      - name: Install mobile deps
+        working-directory: apps/mobile
+        run: bun install
+
+      - name: 版本同步（app.json ← 输入）
+        working-directory: apps/mobile
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(process.argv[1] || "");
+            if (m) {
+              app.expo.version = m[1] + "." + m[2] + "." + m[3];
+              app.expo.android = app.expo.android || {};
+              app.expo.android.versionCode = Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]);
+              fs.writeFileSync("app.json", JSON.stringify(app, null, 2) + "\n");
+            }
+            console.log("app.json ->", app.expo.version, "versionCode", app.expo.android.versionCode);
+          ' "${{ inputs.version }}"
+
+      - name: Expo prebuild（生成 android/）
+        working-directory: apps/mobile
+        run: bunx expo prebuild -p android --no-install
+
+      # Expo SDK 54（RN 0.81 / Gradle 8.14）：JDK 17 为官方最低要求。
+      # 必须放在 prebuild 之后：setup-java 的 gradle 缓存以 **/*.gradle
+      # 文件计算缓存 key，而 android/ 目录由 prebuild 生成。
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Gradle assembleRelease
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: 重命名 APK
+        working-directory: apps/mobile
+        run: |
+          VERSION=$(node -p "require('./app.json').expo.version")
+          cp android/app/build/outputs/apk/release/app-release.apk "Celery.Todo_${VERSION}_android.apk"
+          ls -lh Celery.Todo_*_android.apk
+
+      - name: 上传 APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: celery-todo-apk
+          path: apps/mobile/Celery.Todo_*_android.apk
+          if-no-files-found: error
