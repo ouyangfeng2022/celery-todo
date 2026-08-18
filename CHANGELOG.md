@@ -20,6 +20,18 @@
   与升级器缓存不可见；补回 `productName: "celery-todo"` 后与旧版完全一致
 - 应用初始化失败时在加载页展示错误信息并写入控制台，不再只显示转圈
 
+## [v3.2.0] - 2026-08-18
+
+### Added
+
+- 发版流水线自动构建安卓 APK：v3* 标签此后除桌面三端安装包与 CLI 外，
+  同时构建移动端 APK 附到同一 Release（debug keystore 签名、可直接侧载，
+  上 Google Play 仍走 EAS 线）；构建前按标签同步移动端版本号与
+  `versionCode`，保证升级单调递增。移动端目前仍是骨架 UI，APK 仅供尝鲜
+- 移动端新增 Metro monorepo 配置（`apps/mobile/metro.config.js`）：修复
+  共享包（`@celery/*`）经 `file:` 软链引用时 Metro 无法解析打包的问题，
+  本地与 CI 构建 APK 均依赖此配置
+
 ## [v3.1.0] - 2026-08-16
 
 ### Added
