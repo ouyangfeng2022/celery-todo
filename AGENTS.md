@@ -67,6 +67,10 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    `@celery/ui-tokens`。**独立于根 workspace**（Windows 本机 bun 链接 RN
    长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
    `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
+   安卓发版：`desktop-release.yml` 的 v3* tag 自动构建 APK（ubuntu 上
+   `expo prebuild` + `gradle assembleRelease`，构建前按 tag 同步 `app.json`
+   的 `expo.version` 与 `versionCode`；debug keystore 签名、可侧载，
+   附到桌面端同一 Release；Play 商店分发仍走 EAS 线 `mobile-release.yml`）。
 9. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
    整体迁入 `apps/desktop`（Tailwind 3 + globals.css + 字体栈原样保留），
    `src/utils/dataGateway.ts` 重写为 v3 Repository 契约实现（`order`↔`rank`、

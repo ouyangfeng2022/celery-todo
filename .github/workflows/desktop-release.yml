@@ -12,6 +12,7 @@
 #   - 各平台安装包（windows NSIS / macOS app+dmg / linux deb+appimage）
 #   - 更新签名 .sig + 汇总的 latest.json（tauri-action 自动聚合三平台矩阵）
 #   - celery CLI（windows x64 二进制，附到同一 Release）
+#   - 移动端安卓 APK（Expo prebuild + Gradle，附到同一 Release；见 android job）
 
 name: Desktop Release (3.0)
 
@@ -111,5 +112,84 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: target/release/celery.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 移动端安卓 APK：不用 EAS（无 EXPO_TOKEN 依赖），ubuntu runner 上
+  # expo prebuild 生成 android/ 后直接 gradle assembleRelease。
+  # Expo 模板的 release 构建用 debug keystore 签名 —— 产物可直接侧载安装，
+  # 但不能上 Google Play；商店分发仍走 mobile-release.yml 的 EAS 线。
+  # apps/mobile 独立于根 workspace（file: 依赖本地共享包），先装根再装 mobile
+  # （与 mobile.yml 的 typecheck 流程一致，为共享包提供 xlsx 等解析来源）。
+  # app.json 的版本不跟随发版脚本，构建前按 tag 同步 expo.version 与
+  # android.versionCode（semver 数值化：3.1.0 → 30100，保证升级单调递增）。
+  android:
+    name: Android APK
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Install root workspace（共享包类型解析来源）
+        run: bun install
+
+      - name: Install mobile deps
+        working-directory: apps/mobile
+        run: bun install
+
+      - name: 版本同步（app.json ← tag）
+        working-directory: apps/mobile
+        run: |
+          node -e '
+            const fs = require("fs");
+            const app = JSON.parse(fs.readFileSync("app.json", "utf8"));
+            const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(process.argv[1] || "");
+            if (m) {
+              app.expo.version = m[1] + "." + m[2] + "." + m[3];
+              app.expo.android = app.expo.android || {};
+              app.expo.android.versionCode = Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]);
+              fs.writeFileSync("app.json", JSON.stringify(app, null, 2) + "\n");
+            }
+            console.log("app.json ->", app.expo.version, "versionCode", app.expo.android.versionCode);
+          ' "$GITHUB_REF_NAME"
+
+      - name: Expo prebuild（生成 android/）
+        working-directory: apps/mobile
+        run: bunx expo prebuild -p android --no-install
+
+      # Expo SDK 54（RN 0.81 / Gradle 8.14）：JDK 17 为官方最低要求。
+      # 必须放在 prebuild 之后：setup-java 的 gradle 缓存以 **/*.gradle
+      # 文件计算缓存 key，而 android/ 目录由 prebuild 生成。
+      - name: Setup JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Gradle assembleRelease
+        working-directory: apps/mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: 重命名 APK
+        working-directory: apps/mobile
+        run: |
+          VERSION=$(node -p "require('./app.json').expo.version")
+          cp android/app/build/outputs/apk/release/app-release.apk "Celery.Todo_${VERSION}_android.apk"
+          ls -lh Celery.Todo_*_android.apk
+
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: apps/mobile/Celery.Todo_*_android.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
