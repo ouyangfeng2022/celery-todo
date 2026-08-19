@@ -34,6 +34,11 @@ interface AppDataValue {
   currentProjectId: string;
   currentProject: ProjectView | null;
   switchProject: (id: string) => void;
+  /** 新建项目并切换过去 */
+  createProject: (name: string) => Promise<void>;
+  renameProject: (id: string, name: string) => Promise<void>;
+  /** 永久删除项目（其活跃事项先带项目名快照归档，与桌面端一致） */
+  deleteProject: (id: string) => Promise<void>;
   /** 当前项目事项（manual 序） */
   todos: TodoDto[];
   /** 手动排序提交 */
@@ -112,7 +117,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setAllTodos(await drainTodos(null));
   }, []);
 
-  // 首启：读主题 + 确保收集箱 + 激活第一个项目
+  // 首启：读主题 + 确保收集箱（与桌面端同语义，全新安装即可直接添加事项）
+  // + 激活第一个项目
   useEffect(() => {
     void (async () => {
       try {
@@ -123,6 +129,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } catch {
         /* 首次启动无设置 */
       }
+      await repos.projects.ensureInbox();
       const views = await refreshProjects();
       const first = views[0]?.id ?? '';
       setCurrentProjectId(first);
@@ -142,6 +149,50 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       void refreshTodos(id);
     },
     [refreshTodos],
+  );
+
+  const createProject = useCallback(
+    async (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const created = await repos.projects.create({
+        id: crypto.randomUUID(),
+        name: trimmed,
+        kind: 'user',
+        color: null,
+      });
+      const views = await refreshProjects();
+      const target = views.find((p) => p.id === created.id);
+      if (target) {
+        setCurrentProjectId(target.id);
+        await refreshTodos(target.id);
+      }
+    },
+    [refreshProjects, refreshTodos],
+  );
+
+  const renameProject = useCallback(
+    async (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      await repos.projects.update(id, { name: trimmed });
+      await refreshProjects();
+    },
+    [refreshProjects],
+  );
+
+  const deleteProject = useCallback(
+    async (id: string) => {
+      await repos.projects.deletePermanently(id);
+      const views = await refreshProjects();
+      if (currentProjectId === id) {
+        const next = views[0]?.id ?? '';
+        setCurrentProjectId(next);
+        await refreshTodos(next);
+      }
+      await refreshAllTodos();
+    },
+    [currentProjectId, refreshProjects, refreshTodos, refreshAllTodos],
   );
 
   const addTodo = useCallback(
@@ -244,6 +295,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       currentProjectId,
       currentProject: projects.find((p) => p.id === currentProjectId) ?? null,
       switchProject,
+      createProject,
+      renameProject,
+      deleteProject,
       todos,
       reorder,
       addTodo,
@@ -263,6 +317,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       projects,
       currentProjectId,
       switchProject,
+      createProject,
+      renameProject,
+      deleteProject,
       todos,
       reorder,
       addTodo,

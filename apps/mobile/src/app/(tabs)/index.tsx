@@ -21,6 +21,8 @@ import { useAppData } from '../../state/AppData';
 import { palette, PRIORITY_LABELS } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+import { ProjectSheet } from '../../components/ProjectSheet';
+import type { ProjectView } from '../../state/AppData';
 
 export default function TodosScreen() {
   const {
@@ -30,6 +32,9 @@ export default function TodosScreen() {
     currentProject,
     currentProjectId,
     switchProject,
+    createProject,
+    renameProject,
+    deleteProject,
     todos,
     reorder,
     addTodo,
@@ -45,6 +50,8 @@ export default function TodosScreen() {
   const [priority, setPriorityState] = useState<TodoPriority>('medium');
   const [manualSort, setManualSort] = useState(false);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
+  // 项目面板：null = 关闭；'create' = 新建；ProjectView = 长按管理
+  const [projectSheet, setProjectSheet] = useState<'create' | ProjectView | null>(null);
 
   const visible = useMemo(() => {
     // 非手动排序时置顶恒浮顶（与服务端排序语义一致）
@@ -108,6 +115,7 @@ export default function TodosScreen() {
             <Pressable
               key={p.id}
               onPress={() => switchProject(p.id)}
+              onLongPress={() => setProjectSheet(p)}
               style={[
                 styles.chip,
                 {
@@ -126,6 +134,14 @@ export default function TodosScreen() {
             </Pressable>
           );
         })}
+        {/* 新建项目入口：移动端独立于桌面端，项目全程在本机创建管理 */}
+        <Pressable
+          onPress={() => setProjectSheet('create')}
+          hitSlop={6}
+          style={[styles.chip, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}
+        >
+          <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>＋</Text>
+        </Pressable>
       </ScrollView>
 
       {/* 添加输入行 */}
@@ -190,7 +206,7 @@ export default function TodosScreen() {
           ))}
           {visible.length === 0 && (
             <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 48 }}>
-              {projects.length === 0 ? '首次使用：请在桌面端导入或创建项目' : '从一件小事开始'}
+              从一件小事开始
             </Text>
           )}
         </ScrollView>
@@ -216,6 +232,29 @@ export default function TodosScreen() {
         onArchive={() => {
           if (sheetTodo) void archiveTodo(sheetTodo.id);
           setSheetTodo(null);
+        }}
+      />
+
+      <ProjectSheet
+        visible={projectSheet !== null}
+        target={
+          projectSheet && projectSheet !== 'create'
+            ? { id: projectSheet.id, name: projectSheet.name, kind: projectSheet.kind }
+            : null
+        }
+        colors={colors}
+        onClose={() => setProjectSheet(null)}
+        onCreate={(name) => {
+          setProjectSheet(null);
+          void createProject(name);
+        }}
+        onRename={(id, name) => {
+          setProjectSheet(null);
+          void renameProject(id, name);
+        }}
+        onDelete={(id) => {
+          setProjectSheet(null);
+          void deleteProject(id);
         }}
       />
     </SafeAreaView>

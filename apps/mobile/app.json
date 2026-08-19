@@ -8,12 +8,22 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "backgroundColor": "#f9f9f7",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f9f9f7"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.celery.todo"
     },
     "android": {
-      "package": "com.celery.todo"
+      "package": "com.celery.todo",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#f9f9f7"
+      }
     },
     "plugins": [
       "expo-router"

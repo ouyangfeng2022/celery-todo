@@ -62,9 +62,14 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
 7. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
    token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
    字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
-8. **Expo 移动端骨架（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
-   Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页），骨架 UI 消费
-   `@celery/ui-tokens`。**独立于根 workspace**（Windows 本机 bun 链接 RN
+8. **Expo 移动端（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
+   Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页）。正式 UI 已实施：
+   Expo Router 四入口（事项/计划/搜索/设置）、右滑完成左滑归档、长按操作面板、
+   原生拖拽手动排序、三主题；项目管理在端内闭环（首启 `ensureInbox` 自动建
+   收集箱，项目栏「＋」新建、长按重命名/删除）——移动端是**独立应用**，
+   数据只存本机，与桌面端互不相通、无导入关系。品牌图标（icon/adaptive/
+   splash）由根 `scripts/generate-mobile-icons.mjs` 生成、`app.json` 引用。
+   **独立于根 workspace**（Windows 本机 bun 链接 RN
    长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
    `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
    安卓发版：`desktop-release.yml` 的 v3* tag 自动构建 APK（ubuntu 上
@@ -95,8 +100,7 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
     CLI 同一解析保持两端同库）。CLI 写入后桌面实时刷新也已接（`cli_notify.rs`
     回环 TCP，发现文件恒在 appData 根）。
 
-尚未实施的计划阶段：移动端正式 UI（Expo
-Router 四入口、滑动/长按/原生拖拽）、WebdriverIO Tauri E2E 扩充（现仅
+尚未实施的计划阶段：WebdriverIO Tauri E2E 扩充（现仅
 Linux + xvfd 4 条冒烟，见 `apps/desktop/e2e/`）、性能夹具基线。
 SQLite 默认不加密；无云同步，各设备数据独立。
 
@@ -117,7 +121,8 @@ packages/data/           # @celery/data Repository 契约 + v3 导出格式 + �
 packages/test-contracts/ # @celery/test-contracts 共享契约测试套件
 crates/celery-db/        # v3 SQLite 数据层（Rust）：schema、迁移、仓储、FTS5
 scripts/                 # 仓库级脚本（bump-version、check-repo-health、extract-changelog、
-                         # generate-icons —— 图标产物写入 apps/desktop-electron/public）
+                         # generate-icons —— 图标产物写入 apps/desktop-electron/public；
+                         # generate-mobile-icons —— 移动端图标写入 apps/mobile/assets）
 .github/workflows/       # ci.yml（lint/test/build + Rust 任务）、e2e.yml、release.yml
 ```
 
