@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Repositories, TodoDto, TodoPriority } from '@celery/data';
-import { createExpoSqliteRepositories } from '../data/expo-sqlite-repositories';
+import { createExpoSqliteRepositories, uuid } from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
 
 /** 项目在 UI 层的形状（桌面 ProjectDto + 计数聚合）。 */
@@ -28,6 +28,8 @@ export interface ProjectView {
 
 interface AppDataValue {
   ready: boolean;
+  /** 初始化失败原因（兜底展示，避免无限卡在"正在初始化"） */
+  initError: string | null;
   theme: ThemeName;
   setTheme: (name: ThemeName) => void;
   projects: ProjectView[];
@@ -93,6 +95,7 @@ async function loadProjects(): Promise<ProjectView[]> {
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [theme, setThemeState] = useState<ThemeName>('light');
   const [projects, setProjects] = useState<ProjectView[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState('');
@@ -129,12 +132,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       } catch {
         /* 首次启动无设置 */
       }
-      await repos.projects.ensureInbox();
-      const views = await refreshProjects();
-      const first = views[0]?.id ?? '';
-      setCurrentProjectId(first);
-      await refreshTodos(first);
-      setReady(true);
+      try {
+        await repos.projects.ensureInbox();
+        const views = await refreshProjects();
+        const first = views[0]?.id ?? '';
+        setCurrentProjectId(first);
+        await refreshTodos(first);
+        setReady(true);
+      } catch (e) {
+        setInitError(e instanceof Error ? e.message : String(e));
+      }
     })();
   }, [refreshProjects, refreshTodos]);
 
@@ -156,7 +163,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const trimmed = name.trim();
       if (!trimmed) return;
       const created = await repos.projects.create({
-        id: crypto.randomUUID(),
+        id: uuid(),
         name: trimmed,
         kind: 'user',
         color: null,
@@ -201,7 +208,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // 追加语义：时间戳毫秒恒排尾部（与 CLI 同策略）
       const rank = Date.now();
       await repos.todos.create({
-        id: crypto.randomUUID(),
+        id: uuid(),
         projectId: currentProjectId,
         title,
         description: null,
@@ -289,6 +296,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppDataValue>(
     () => ({
       ready,
+      initError,
       theme,
       setTheme,
       projects,
@@ -312,6 +320,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }),
     [
       ready,
+      initError,
       theme,
       setTheme,
       projects,

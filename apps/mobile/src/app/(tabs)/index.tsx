@@ -28,6 +28,7 @@ export default function TodosScreen() {
   const {
     theme,
     ready,
+    initError,
     projects,
     currentProject,
     currentProjectId,
@@ -96,6 +97,13 @@ export default function TodosScreen() {
         <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 64 }}>
           正在初始化…
         </Text>
+        {initError ? (
+          <Text
+            style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginHorizontal: 24 }}
+          >
+            初始化失败：{initError}
+          </Text>
+        ) : null}
       </SafeAreaView>
     );
   }

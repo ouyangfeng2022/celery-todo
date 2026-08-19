@@ -47,17 +47,26 @@ interface CursorPayload {
   keys: (string | number)[];
 }
 
+/** RN/Hermes 无 Web crypto/btoa/Buffer 全局，UUID 与游标编码都不能依赖宿主 API。 */
+export function uuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // 降级 v4：本地单机 ID，只需唯一性，无加密需求
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function encodeCursor(sort: string, keys: (string | number)[]): string {
-  const json = JSON.stringify({ sort, keys });
-  // 游标内容恒为 ASCII（ISO 时间 / uuid / 数字），btoa 足够
-  return typeof btoa === 'function' ? btoa(json) : Buffer.from(json, 'utf8').toString('base64');
+  // 游标内容恒为 ASCII（ISO 时间 / uuid / 数字），encodeURIComponent 可逆且无宿主依赖
+  return encodeURIComponent(JSON.stringify({ sort, keys }));
 }
 
 function decodeCursor(sort: string, cursor: string): (string | number)[] {
   try {
-    const json =
-      typeof atob === 'function' ? atob(cursor) : Buffer.from(cursor, 'base64').toString('utf8');
-    const parsed = JSON.parse(json) as CursorPayload;
+    const parsed = JSON.parse(decodeURIComponent(cursor)) as CursorPayload;
     if (parsed.sort !== sort || !Array.isArray(parsed.keys)) throw new Error();
     return parsed.keys;
   } catch {
@@ -655,7 +664,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         );
         if (existing) return toProject(existing);
         const now = nowIso();
-        const id = crypto.randomUUID();
+        const id = uuid();
         db.runSync(
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?, '收集箱', 'inbox', NULL, ?, ?, ?)`,
