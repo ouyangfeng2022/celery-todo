@@ -38,6 +38,31 @@ const RANK_GAP = 65_536;
 
 const nowIso = (): string => new Date().toISOString();
 
+/**
+ * expo-sqlite 15（SDK 54）Android 桥不透传 null 绑定值：runSync 直接抛
+ * "Cannot convert '[object Object]' to a Kotlin type"（含 null 参数的
+ * INSERT/UPDATE 全部静默失败）。这里把 null 占位符改写为 SQL 字面 NULL，
+ * 其余参数前移绑定。SQL 为模块内常量、占位符与参数一一对应，改写安全。
+ */
+function runSafe(
+  db: SQLite.SQLiteDatabase,
+  sql: string,
+  params: SQLite.SQLiteBindValue[] = [],
+): SQLite.SQLiteRunResult {
+  if (!params.some((p) => p === null || p === undefined)) {
+    return db.runSync(sql, params);
+  }
+  const kept: SQLite.SQLiteBindValue[] = [];
+  let i = 0;
+  const rewritten = sql.replace(/\?/g, () => {
+    const p = params[i++];
+    if (p === null || p === undefined) return 'NULL';
+    kept.push(p);
+    return '?';
+  });
+  return db.runSync(rewritten, kept);
+}
+
 const priorityWeightSql = "CASE t.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END";
 
 const clampLimit = (limit: number | undefined): number => Math.min(Math.max(limit ?? 50, 1), 200);
@@ -175,7 +200,7 @@ function fail(message: string, kind: 'invalid' | 'not-found' = 'invalid'): never
 export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositories {
   const db = SQLite.openDatabaseSync(dbName);
   db.execSync(SCHEMA_SQL);
-  db.runSync(
+  runSafe(db, 
     "INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (1, 'v3-initial', ?)",
     [nowIso()],
   );
@@ -352,7 +377,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         if (!title) fail('标题不能为空');
         requireProject(newTodo.projectId);
         const now = nowIso();
-        db.runSync(
+        runSafe(db, 
           `INSERT INTO todos (id, project_id, title, description, completed, priority,
            planned_date, pinned, rank, created_at, updated_at)
            VALUES (?,?,?,?,0,?,?,?,?,?,?)`,
@@ -381,7 +406,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
           }
           const now = nowIso();
           for (const n of items) {
-            db.runSync(
+            runSafe(db, 
               `INSERT INTO todos (id, project_id, title, description, completed, priority,
                planned_date, pinned, rank, created_at, updated_at)
                VALUES (?,?,?,?,0,?,?,?,?,?,?)`,
@@ -405,7 +430,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async update(id, patch) {
         requireTodo(id);
         const { sets, vals } = applyPatchSql(patch, nowIso());
-        db.runSync(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [...vals, id]);
+        runSafe(db, `UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [...vals, id]);
         return (await this.get(id))!;
       },
       async batchUpdate(payload) {
@@ -413,7 +438,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         db.withTransactionSync(() => {
           const { sets, vals } = applyPatchSql(payload.patch, nowIso());
           for (const id of payload.ids) {
-            const res = db.runSync(`UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [
+            const res = runSafe(db, `UPDATE todos SET ${sets.join(', ')} WHERE id = ?`, [
               ...vals,
               id,
             ]);
@@ -427,7 +452,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           for (const id of payload.ids) {
-            n += db.runSync('UPDATE todos SET project_id = ?, updated_at = ? WHERE id = ?', [
+            n += runSafe(db, 'UPDATE todos SET project_id = ?, updated_at = ? WHERE id = ?', [
               payload.targetProjectId,
               nowIso(),
               id,
@@ -440,7 +465,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           payload.orderedIds.forEach((id, i) => {
-            n += db.runSync(
+            n += runSafe(db, 
               'UPDATE todos SET rank = ?, updated_at = ? WHERE id = ? AND project_id = ?',
               [i * RANK_GAP, nowIso(), id, payload.projectId],
             ).changes;
@@ -452,7 +477,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           for (const id of ids) {
-            n += db.runSync(
+            n += runSafe(db, 
               `INSERT INTO archived_todos (id, project_id, title, description, completed,
                priority, planned_date, pinned, rank, created_at, updated_at, completed_at,
                archived_at, project_name)
@@ -463,7 +488,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
                FROM todos t WHERE t.id = ?`,
               [nowIso(), id],
             ).changes;
-            db.runSync('DELETE FROM todos WHERE id = ?', [id]);
+            runSafe(db, 'DELETE FROM todos WHERE id = ?', [id]);
           }
         });
         return n;
@@ -524,7 +549,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
               requireProject(fallbackProjectId);
               target = fallbackProjectId;
             }
-            n += db.runSync(
+            n += runSafe(db, 
               `INSERT INTO todos (id, project_id, title, description, completed, priority,
                planned_date, pinned, rank, created_at, updated_at, completed_at)
                SELECT a.id, ?, a.title, a.description, a.completed, a.priority,
@@ -532,7 +557,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
                FROM archived_todos a WHERE a.id = ?`,
               [target, nowIso(), id],
             ).changes;
-            db.runSync('DELETE FROM archived_todos WHERE id = ?', [id]);
+            runSafe(db, 'DELETE FROM archived_todos WHERE id = ?', [id]);
           }
         });
         return n;
@@ -540,12 +565,12 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async purgeArchived(ids) {
         let n = 0;
         for (const id of ids) {
-          n += db.runSync('DELETE FROM archived_todos WHERE id = ?', [id]).changes;
+          n += runSafe(db, 'DELETE FROM archived_todos WHERE id = ?', [id]).changes;
         }
         return n;
       },
       async purgeAllArchived() {
-        return db.runSync('DELETE FROM archived_todos').changes;
+        return runSafe(db, 'DELETE FROM archived_todos').changes;
       },
       async search(query) {
         const term = query.term.trim();
@@ -589,7 +614,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
           fail(`创建项目失败: 主键冲突 ${newProject.id}`);
         }
         const now = nowIso();
-        db.runSync(
+        runSafe(db, 
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?,?,?,?,?,?,?)`,
           [
@@ -610,17 +635,17 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         if (patch.name !== undefined && patch.name !== null) {
           const name = patch.name.trim();
           if (!name) fail('项目名不能为空');
-          db.runSync('UPDATE projects SET name = ?, updated_at = ? WHERE id = ?', [name, now, id]);
+          runSafe(db, 'UPDATE projects SET name = ?, updated_at = ? WHERE id = ?', [name, now, id]);
         }
         if (patch.color !== undefined) {
-          db.runSync('UPDATE projects SET color = ?, updated_at = ? WHERE id = ?', [
+          runSafe(db, 'UPDATE projects SET color = ?, updated_at = ? WHERE id = ?', [
             patch.color,
             now,
             id,
           ]);
         }
         if (patch.archived !== undefined && patch.archived !== null) {
-          db.runSync('UPDATE projects SET archived_at = ?, updated_at = ? WHERE id = ?', [
+          runSafe(db, 'UPDATE projects SET archived_at = ?, updated_at = ? WHERE id = ?', [
             patch.archived ? nowIso() : null,
             now,
             id,
@@ -632,7 +657,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           payload.orderedIds.forEach((id, i) => {
-            n += db.runSync('UPDATE projects SET rank = ?, updated_at = ? WHERE id = ?', [
+            n += runSafe(db, 'UPDATE projects SET rank = ?, updated_at = ? WHERE id = ?', [
               i * RANK_GAP,
               nowIso(),
               id,
@@ -644,7 +669,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async deletePermanently(id) {
         requireProject(id);
         db.withTransactionSync(() => {
-          db.runSync(
+          runSafe(db, 
             `INSERT INTO archived_todos (id, project_id, title, description, completed,
              priority, planned_date, pinned, rank, created_at, updated_at, completed_at,
              archived_at, project_name)
@@ -654,8 +679,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
              FROM todos t WHERE t.project_id = ?`,
             [nowIso(), id, id],
           );
-          db.runSync('DELETE FROM todos WHERE project_id = ?', [id]);
-          db.runSync('DELETE FROM projects WHERE id = ?', [id]);
+          runSafe(db, 'DELETE FROM todos WHERE project_id = ?', [id]);
+          runSafe(db, 'DELETE FROM projects WHERE id = ?', [id]);
         });
       },
       async ensureInbox() {
@@ -665,7 +690,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         if (existing) return toProject(existing);
         const now = nowIso();
         const id = uuid();
-        db.runSync(
+        runSafe(db, 
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?, '收集箱', 'inbox', NULL, ?, ?, ?)`,
           [id, nextProjectRank(), now, now],
@@ -682,7 +707,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         return row?.value ?? null;
       },
       async set(key, value) {
-        db.runSync(
+        runSafe(db, 
           'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
           [key, value],
         );
@@ -690,7 +715,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async setBulk(entries) {
         db.withTransactionSync(() => {
           for (const kv of entries) {
-            db.runSync(
+            runSafe(db, 
               'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
               [kv.key, kv.value],
             );
@@ -705,7 +730,7 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         return all.filter((kv) => kv.key.startsWith(prefix));
       },
       async delete(key) {
-        db.runSync('DELETE FROM settings WHERE key = ?', [key]);
+        runSafe(db, 'DELETE FROM settings WHERE key = ?', [key]);
       },
     },
   };
