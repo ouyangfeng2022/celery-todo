@@ -272,6 +272,16 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           {todo.title}
         </div>
 
+        {/* 描述预览：仅显示开头一行（省略号截断），完整内容点击打开详情浮窗查看 */}
+        {todo.description?.trim() && (
+          <div
+            className="mt-1 text-xs leading-snug truncate"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            {todo.description.trim()}
+          </div>
+        )}
+
         {/* 元信息标签 */}
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
           {/* 优先级 - 点击“高/中/低”标签展开菜单切换；左侧 2px 色条 + 加粗字 */}
