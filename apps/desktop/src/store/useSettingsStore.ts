@@ -110,6 +110,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ...normalizedTheme,
       autoStart: stored.autoStart === 'true',
       minimizeToTray: stored.minimizeToTray !== 'false',
+      // startupWindow：老数据无该键时默认主窗口
+      startupWindow:
+        stored.startupWindow === 'sticker'
+          ? 'sticker'
+          : DEFAULT_SETTINGS.startupWindow,
       dataVersion: Number(stored.dataVersion ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: false,
       autoUpdateEnabled:

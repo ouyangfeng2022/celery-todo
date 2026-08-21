@@ -208,6 +208,8 @@ export interface AppSettings {
   autoStart: boolean;
   /** 是否最小化到托盘 */
   minimizeToTray: boolean;
+  /** 启动时打开的窗口：main=主窗口，sticker=简洁模式浮窗（仅桌面端生效） */
+  startupWindow: 'main' | 'sticker';
   /** 数据版本号（用于迁移） */
   dataVersion: number;
   /** 是否处于专注模式（隐藏侧边栏 / 统计 / 筛选 / 添加框 / Header 图标） */
@@ -243,6 +245,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   colorMode: 'system',
   autoStart: false,
   minimizeToTray: true,
+  // 默认启动进主窗口；简洁模式浮窗由设置页显式开启
+  startupWindow: 'main',
   dataVersion: 1,
   // 旧版专注模式保留兼容读取；新安装默认完整界面
   focusMode: false,

@@ -307,6 +307,7 @@ function SettingsPanelComponent({
 
                 {activeSection === 'desktop' && (
                   <DesktopSection
+                    startupWindow={settings.startupWindow}
                     autoStart={settings.autoStart}
                     minimizeToTray={settings.minimizeToTray}
                     autoUpdateEnabled={settings.autoUpdateEnabled}

@@ -166,6 +166,7 @@ describe('dataGateway（v3 内存适配器）', () => {
         colorMode: 'dark',
         autoStart: true,
         minimizeToTray: true,
+        startupWindow: 'main',
         dataVersion: 9,
         focusMode: false,
         autoUpdateEnabled: true,

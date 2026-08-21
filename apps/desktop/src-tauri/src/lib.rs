@@ -119,10 +119,20 @@ pub fn run() {
                 std::fs::create_dir_all(parent)?;
             }
             let db = CeleryDb::open(&db_path)?;
+            // 启动形态：startupWindow=sticker 时启动进简洁模式 —— 主窗口保持隐藏
+            // （托盘单击 / 贴图「返回主窗口」可唤起），贴图窗口即门面。
+            // 与 minimizeToTray 同一 settings K/V 通道，renderer 设置页写入。
+            let start_as_sticker = db
+                .get_setting("startupWindow")
+                .ok()
+                .flatten()
+                .map(|v| v == "sticker")
+                .unwrap_or(false);
             app.manage(db);
 
             let store = WindowStateStore::new(app.handle());
-            // 恢复主窗口位置（conf 中 visible=false 防止默认位置闪现）
+            // 恢复主窗口位置（conf 中 visible=false 防止默认位置闪现）。
+            // 简洁模式启动时跳过 show；maximize 在部分平台会带出窗口，故再显式隐藏。
             let saved = store.get();
             if let Some(main) = app.get_webview_window("main") {
                 if let Some(rect) = saved.main.clone() {
@@ -132,13 +142,30 @@ pub fn run() {
                 if saved.main_maximized {
                     let _ = main.maximize();
                 }
-                let _ = main.show();
+                if start_as_sticker {
+                    let _ = main.hide();
+                } else {
+                    let _ = main.show();
+                }
             }
             app.manage(store);
 
             tray::create_tray(app.handle())?;
             // 重建上次会话的贴图窗口（主窗口已显示后再叠加，避免启动白屏误判）
             stickers::restore_stickers(app.handle());
+            // 简洁模式启动且上次会话没有贴图可恢复时，补开一个浮窗；
+            // 项目 id 传空由贴图 renderer 回落到第一个项目（与托盘新建一致）。
+            if start_as_sticker
+                && !app
+                    .webview_windows()
+                    .keys()
+                    .any(|label| label.starts_with("sticker-"))
+            {
+                let id = uuid::Uuid::new_v4().to_string();
+                if let Err(e) = stickers::create_sticker_window(app.handle(), &id, "") {
+                    eprintln!("启动贴图创建失败: {e}");
+                }
+            }
             // CLI 写入通知服务（发现文件恒在 appData 根，不随数据目录迁移；失败不阻断启动）
             cli_notify::start(app.handle());
             Ok(())
