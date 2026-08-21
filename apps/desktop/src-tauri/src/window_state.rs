@@ -38,6 +38,9 @@ pub struct WindowStateFile {
     pub main_maximized: bool,
     #[serde(default)]
     pub stickers: Vec<StickerState>,
+    /// 上次关闭贴图时的 bounds：下次新建贴图（新 id 无自身记录）回到该位置。
+    #[serde(default)]
+    pub last_sticker_bounds: Option<WindowRect>,
 }
 
 /// 持久化调度器：channel + debounce 线程合并高频窗口事件；退出前 flush。
@@ -136,14 +139,22 @@ mod tests {
                     height: 460,
                 }),
             }],
+            last_sticker_bounds: Some(WindowRect {
+                x: 100,
+                y: 200,
+                width: 340,
+                height: 460,
+            }),
         };
         let bytes = serde_json::to_vec(&file).unwrap();
         let parsed: WindowStateFile = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(parsed.main.unwrap().width, 1100);
         assert_eq!(parsed.stickers.len(), 1);
-        // 缺省字段反序列化（旧文件无 stickers 字段）
+        assert_eq!(parsed.last_sticker_bounds.unwrap().y, 200);
+        // 缺省字段反序列化（旧文件无 stickers / last_sticker_bounds 字段）
         let empty: WindowStateFile = serde_json::from_str("{}").unwrap();
         assert!(empty.stickers.is_empty());
+        assert!(empty.last_sticker_bounds.is_none());
         file.stickers.clear();
     }
 }

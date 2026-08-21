@@ -1,10 +1,12 @@
 //! 多贴图（简洁模式）浮窗管理。
 //!
 //! 行为对齐 2.x electron/main.ts 的 createStickerWindow + sticker:* IPC：
-//! - 无框 / 透明 / 置顶 / 不进任务栏，300–420 × 380–620，新建向左上级联排布；
+//! - 无框 / 透明 / 置顶 / 不进任务栏，300–420 × 380–620，新建向左级联排布；
 //! - 状态（id / 项目 / bounds）持久化到 window-state.json，启动时重建；
 //! - 复制以源窗口尺寸为准向右下错开 28px；
 //! - 「返回主窗口」先唤起主窗口再关闭贴图，避免中间一帧全部不可见。
+//! - 新建贴图回到上次关闭贴图的位置（last_sticker_bounds）；无记忆时贴
+//!   主显示器**工作区**右下角（工作区不含任务栏，底边留边距，不再压任务栏）。
 //!
 //! renderer 与主窗口共用同一 bundle，URL 查询参数 `?sticker=<id>&project=<pid>`
 //! 区分渲染分支（main.tsx）。
@@ -16,9 +18,35 @@ const STICKER_MIN_W: f64 = 300.0;
 const STICKER_MIN_H: f64 = 380.0;
 const STICKER_MAX_W: f64 = 420.0;
 const STICKER_MAX_H: f64 = 620.0;
+const STICKER_DEFAULT_W: f64 = 340.0;
+const STICKER_DEFAULT_H: f64 = 460.0;
 
 fn sticker_label(id: &str) -> String {
     format!("sticker-{id}")
+}
+
+/// 主显示器工作区（不含任务栏），物理像素换算为逻辑坐标。
+/// 多显示器下取「当前」显示器不便跨平台，退化为 primary。
+fn primary_work_area(app: &AppHandle) -> Option<(f64, f64, f64, f64)> {
+    let monitor = app.primary_monitor().ok().flatten()?;
+    let scale = monitor.scale_factor();
+    let work = monitor.work_area();
+    Some((
+        work.position.x as f64 / scale,
+        work.position.y as f64 / scale,
+        work.size.width as f64 / scale,
+        work.size.height as f64 / scale,
+    ))
+}
+
+/// 工作区右下角默认位置（逻辑坐标）：右边距 24px、底边距 40px，按 index 向左级联 28px。
+/// 2.x 按全屏高度摆放，窗口底部会压进任务栏，这里以工作区为界并抬高底边距。
+fn workarea_default_origin(work: (f64, f64, f64, f64), index: usize) -> (f64, f64) {
+    let (wx, wy, ww, wh) = work;
+    (
+        wx + ww - STICKER_DEFAULT_W - 24.0 - index as f64 * 28.0,
+        wy + wh - STICKER_DEFAULT_H - 40.0,
+    )
 }
 
 /// 新建（或唤起已有）贴图窗口。
@@ -35,40 +63,46 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
     }
 
     let store = app.state::<WindowStateStore>();
-    let (index, bounds) = {
+    let (index, bounds, last_bounds) = {
         let state = store.get();
-        let index = state.stickers.len();
-        let bounds = state
-            .stickers
-            .iter()
-            .find(|s| s.id == id)
-            .and_then(|s| s.bounds.clone());
-        (index, bounds)
+        (
+            state.stickers.len(),
+            state
+                .stickers
+                .iter()
+                .find(|s| s.id == id)
+                .and_then(|s| s.bounds.clone()),
+            state.last_sticker_bounds.clone(),
+        )
     };
 
-    // 无保存位置时贴着主显示器右下角向左上级联（与 2.x 一致）
-    let (x, y) = match &bounds {
-        Some(b) => (b.x, b.y),
-        None => {
-            // 主显示器工作区：多显示器下取「当前」显示器不便跨平台，退化为primary
-            if let Some(monitor) = app.primary_monitor().ok().flatten() {
-                let size = monitor.size();
-                let pos = monitor.position();
-                let scale = monitor.scale_factor();
-                let wa_w = size.width as f64 / scale;
-                let wa_h = size.height as f64 / scale;
-                (
-                    pos.x as i32 + (wa_w - 364.0 - (index as f64) * 28.0) as i32,
-                    pos.y as i32 + (wa_h - 484.0) as i32,
-                )
-            } else {
-                (80 + (index as i32) * 28, 80 + (index as i32) * 28)
-            }
-        }
-    };
-    let (w, h) = match &bounds {
-        Some(b) => (b.width as f64, b.height as f64),
-        None => (340.0, 460.0),
+    // 初始位置优先级：贴图自身已保存的 bounds（重启恢复/唤起）→ 上次关闭贴图
+    // 记住的位置（已有贴图时向左级联错开防重叠）→ 工作区右下角默认。
+    let cascade = index as f64 * 28.0;
+    let had_saved_bounds = bounds.is_some();
+    let had_last_bounds = last_bounds.is_some();
+    let (x, y, w, h) = match bounds {
+        Some(b) => (b.x as f64, b.y as f64, b.width as f64, b.height as f64),
+        None => match last_bounds {
+            Some(last) => (
+                last.x as f64 - cascade,
+                last.y as f64,
+                last.width as f64,
+                last.height as f64,
+            ),
+            None => match primary_work_area(app) {
+                Some(work) => {
+                    let (x, y) = workarea_default_origin(work, index);
+                    (x, y, STICKER_DEFAULT_W, STICKER_DEFAULT_H)
+                }
+                None => (
+                    80.0 + cascade,
+                    80.0 + cascade,
+                    STICKER_DEFAULT_W,
+                    STICKER_DEFAULT_H,
+                ),
+            },
+        },
     };
 
     store.update(|s| {
@@ -93,8 +127,22 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
         .inner_size(w.min(STICKER_MAX_W).max(STICKER_MIN_W), h.min(STICKER_MAX_H).max(STICKER_MIN_H))
         .min_inner_size(STICKER_MIN_W, STICKER_MIN_H)
         .max_inner_size(STICKER_MAX_W, STICKER_MAX_H)
-        .position(x as f64, y as f64)
+        .position(x, y)
         .build()?;
+
+    // 已保存/记忆的位置是物理像素（Moved 事件口径），而 builder.position 接受
+    // 逻辑坐标：显示缩放 ≠100% 时会漂移，建窗后按物理坐标精确落位。
+    if had_saved_bounds || had_last_bounds {
+        let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+    }
+
+    // 新建（无历史 bounds）时立即落一份实际 bounds：用户未拖动就关闭，关闭
+    // 位置才有据可记；重启恢复也不会因现存贴图数量（index）变化而漂移。
+    if !had_saved_bounds {
+        if let (Ok(pos), Ok(size)) = (window.outer_position(), window.inner_size()) {
+            persist_bounds(app, id, pos.x, pos.y, size.width, size.height);
+        }
+    }
 
     // 位置/尺寸变化 → 持久化（debounce 由 store 内部合并）
     let app_handle = app.clone();
@@ -120,7 +168,18 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
         }
         tauri::WindowEvent::Destroyed => {
             let store = app_handle.state::<WindowStateStore>();
-            store.update(|s| s.stickers.retain(|item| item.id != id_owned));
+            store.update(|s| {
+                // 先把关闭时的位置记为「上次位置」（下次新建贴图回到这里），再移除记录。
+                if let Some(closed) = s
+                    .stickers
+                    .iter()
+                    .find(|item| item.id == id_owned)
+                    .and_then(|item| item.bounds.clone())
+                {
+                    s.last_sticker_bounds = Some(closed);
+                }
+                s.stickers.retain(|item| item.id != id_owned);
+            });
         }
         _ => {}
     });
@@ -131,7 +190,7 @@ fn current_size(app: &AppHandle, id: &str) -> (u32, u32) {
     app.get_webview_window(&sticker_label(id))
         .and_then(|w| w.inner_size().ok())
         .map(|s| (s.width, s.height))
-        .unwrap_or((340, 460))
+        .unwrap_or((STICKER_DEFAULT_W as u32, STICKER_DEFAULT_H as u32))
 }
 
 fn persist_bounds(app: &AppHandle, id: &str, x: i32, y: i32, width: u32, height: u32) {
@@ -206,7 +265,7 @@ pub async fn sticker_duplicate(
         .outer_position()
         .ok()
         .and_then(|pos| source.inner_size().ok().map(|size| (pos.x, pos.y, size.width, size.height)))
-        .unwrap_or((80, 80, 340, 460));
+        .unwrap_or((80, 80, STICKER_DEFAULT_W as u32, STICKER_DEFAULT_H as u32));
 
     let store = app.state::<WindowStateStore>();
     let new_id = uuid::Uuid::new_v4().to_string();
@@ -300,4 +359,37 @@ pub fn sticker_style_changed(app: AppHandle, window: tauri::WebviewWindow) -> Re
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 1920×1080、任务栏 48px 的工作区。
+    const WORK: (f64, f64, f64, f64) = (0.0, 0.0, 1920.0, 1032.0);
+
+    #[test]
+    fn default_origin_clears_taskbar_with_margin() {
+        // 底边距工作区底 40px（2.x 按全屏高度摆放会压进任务栏）
+        let (x, y) = workarea_default_origin(WORK, 0);
+        assert_eq!(x, 1920.0 - STICKER_DEFAULT_W - 24.0);
+        assert_eq!(y, 1032.0 - STICKER_DEFAULT_H - 40.0);
+    }
+
+    #[test]
+    fn default_origin_uses_workarea_origin() {
+        // 副显示器（工作区原点非 0）：位置相对工作区原点计算
+        let work = (2560.0, 0.0, 1920.0, 1032.0);
+        let (x, y) = workarea_default_origin(work, 0);
+        assert_eq!(x, 2560.0 + 1920.0 - STICKER_DEFAULT_W - 24.0);
+        assert_eq!(y, 0.0 + 1032.0 - STICKER_DEFAULT_H - 40.0);
+    }
+
+    #[test]
+    fn default_origin_cascades_left() {
+        let (x0, y0) = workarea_default_origin(WORK, 0);
+        let (x2, y2) = workarea_default_origin(WORK, 2);
+        assert!((x0 - x2 - 56.0).abs() < f64::EPSILON);
+        assert_eq!(y0, y2);
+    }
 }
