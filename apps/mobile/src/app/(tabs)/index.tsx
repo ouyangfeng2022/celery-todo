@@ -3,14 +3,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, {
   ScaleDecorator,
@@ -99,7 +92,12 @@ export default function TodosScreen() {
         </Text>
         {initError ? (
           <Text
-            style={{ color: colors.textSecondary, textAlign: 'center', marginTop: 12, marginHorizontal: 24 }}
+            style={{
+              color: colors.textSecondary,
+              textAlign: 'center',
+              marginTop: 12,
+              marginHorizontal: 24,
+            }}
           >
             初始化失败：{initError}
           </Text>
@@ -154,7 +152,10 @@ export default function TodosScreen() {
 
       {/* 添加输入行 */}
       <View
-        style={[styles.composer, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}
+        style={[
+          styles.composer,
+          { backgroundColor: colors.bgTertiary, borderColor: colors.border },
+        ]}
       >
         <TextInput
           value={draft}
@@ -180,14 +181,24 @@ export default function TodosScreen() {
             </Pressable>
           ))}
         </View>
+        {/* 真机软键盘的回车键不直观（部分输入法显示为换行），提供显式添加按钮 */}
+        <Pressable
+          onPress={submit}
+          disabled={!draft.trim() || !currentProjectId}
+          style={({ pressed }) => [
+            styles.addBtn,
+            {
+              backgroundColor: colors.accent,
+              opacity: !draft.trim() || !currentProjectId || pressed ? 0.5 : 1,
+            },
+          ]}
+        >
+          <Text style={styles.addBtnText}>添加</Text>
+        </Pressable>
       </View>
 
       {/* 手动排序开关 */}
-      <Pressable
-        onPress={() => setManualSort((v) => !v)}
-        style={styles.sortToggle}
-        hitSlop={8}
-      >
+      <Pressable onPress={() => setManualSort((v) => !v)} style={styles.sortToggle} hitSlop={8}>
         <Text style={{ color: manualSort ? colors.accent : colors.textTertiary, fontSize: 12 }}>
           {manualSort ? '拖拽排序中 · 点按结束' : '手动排序'}
         </Text>
@@ -289,6 +300,13 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, paddingVertical: 10, fontSize: 15 },
   prioritySwitch: { flexDirection: 'row', gap: 10, paddingLeft: 10 },
+  addBtn: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginLeft: 10,
+  },
+  addBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '600' },
   sortToggle: { alignSelf: 'flex-end', paddingRight: 18, paddingBottom: 6 },
   dragHandle: { paddingRight: 8 },
 });

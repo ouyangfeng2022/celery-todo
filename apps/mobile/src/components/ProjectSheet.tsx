@@ -5,7 +5,15 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import type { ThemeColors } from '@celery/ui-tokens';
 
 export interface ProjectSheetTarget {
@@ -55,81 +63,90 @@ export function ProjectSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable
-          style={[styles.sheet, { backgroundColor: colors.bgTertiary }]}
-          onPress={(e) => e.stopPropagation()}
-        >
-          <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-            {target ? '管理项目' : '新建项目'}
-          </Text>
+        {/* Android 15 edge-to-edge 下 Modal 弹层的 adjustResize 不生效，软键盘会直接
+            盖住底部按钮；KAV 按键盘与面板的实际重叠量抬升，adjustResize 有效的设备
+            上重叠为 0、不会双重上移 */}
+        <KeyboardAvoidingView behavior="padding">
+          <Pressable
+            style={[styles.sheet, { backgroundColor: colors.bgTertiary }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+              {target ? '管理项目' : '新建项目'}
+            </Text>
 
-          <TextInput
-            value={draft}
-            onChangeText={setDraft}
-            onSubmitEditing={submit}
-            returnKeyType="done"
-            placeholder="项目名称"
-            placeholderTextColor={colors.textTertiary}
-            autoFocus
-            style={[
-              styles.input,
-              { color: colors.textPrimary, backgroundColor: colors.bgPrimary, borderColor: colors.border },
-            ]}
-          />
-
-          <View style={styles.actions}>
-            <Pressable
-              onPress={submit}
-              disabled={!draft.trim()}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                { backgroundColor: colors.accent, opacity: !draft.trim() || pressed ? 0.5 : 1 },
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              onSubmitEditing={submit}
+              returnKeyType="done"
+              placeholder="项目名称"
+              placeholderTextColor={colors.textTertiary}
+              autoFocus
+              style={[
+                styles.input,
+                {
+                  color: colors.textPrimary,
+                  backgroundColor: colors.bgPrimary,
+                  borderColor: colors.border,
+                },
               ]}
-            >
-              <Text style={styles.primaryBtnText}>{target ? '保存' : '创建'}</Text>
-            </Pressable>
-          </View>
+            />
 
-          {target && target.kind === 'user' && (
-            <>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              {confirmDelete ? (
-                <View style={styles.deleteConfirm}>
-                  <Text style={[styles.deleteHint, { color: colors.textTertiary }]}>
-                    删除后项目内未完成事项将移入归档，确认删除？
-                  </Text>
-                  <View style={styles.actions}>
-                    <Pressable
-                      onPress={() => onDelete(target.id)}
-                      style={[styles.dangerBtn, { backgroundColor: '#c0392b' }]}
-                    >
-                      <Text style={styles.primaryBtnText}>确认删除</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => setConfirmDelete(false)}
-                      style={({ pressed }) => [
-                        styles.ghostBtn,
-                        { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
-                      ]}
-                    >
-                      <Text style={{ color: colors.textPrimary, fontSize: 14 }}>取消</Text>
-                    </Pressable>
+            <View style={styles.actions}>
+              <Pressable
+                onPress={submit}
+                disabled={!draft.trim()}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  { backgroundColor: colors.accent, opacity: !draft.trim() || pressed ? 0.5 : 1 },
+                ]}
+              >
+                <Text style={styles.primaryBtnText}>{target ? '保存' : '创建'}</Text>
+              </Pressable>
+            </View>
+
+            {target && target.kind === 'user' && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                {confirmDelete ? (
+                  <View style={styles.deleteConfirm}>
+                    <Text style={[styles.deleteHint, { color: colors.textTertiary }]}>
+                      删除后项目内未完成事项将移入归档，确认删除？
+                    </Text>
+                    <View style={styles.actions}>
+                      <Pressable
+                        onPress={() => onDelete(target.id)}
+                        style={[styles.dangerBtn, { backgroundColor: '#c0392b' }]}
+                      >
+                        <Text style={styles.primaryBtnText}>确认删除</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => setConfirmDelete(false)}
+                        style={({ pressed }) => [
+                          styles.ghostBtn,
+                          { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                        ]}
+                      >
+                        <Text style={{ color: colors.textPrimary, fontSize: 14 }}>取消</Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => setConfirmDelete(true)}
-                  style={({ pressed }) => [
-                    styles.deleteRow,
-                    { backgroundColor: pressed ? colors.bgHover : 'transparent' },
-                  ]}
-                >
-                  <Text style={{ color: '#c0392b', fontSize: 15 }}>删除项目</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-        </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => setConfirmDelete(true)}
+                    style={({ pressed }) => [
+                      styles.deleteRow,
+                      { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                    ]}
+                  >
+                    <Text style={{ color: '#c0392b', fontSize: 15 }}>删除项目</Text>
+                  </Pressable>
+                )}
+              </>
+            )}
+          </Pressable>
+        </KeyboardAvoidingView>
       </Pressable>
     </Modal>
   );
