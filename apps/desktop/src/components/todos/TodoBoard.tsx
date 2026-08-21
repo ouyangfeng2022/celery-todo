@@ -18,7 +18,7 @@ interface TodoBoardProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
-  /** 点击标题/编辑按钮 → 打开详情浮窗 */
+  /** 点击标题/空白区域 → 打开详情浮窗 */
   onOpenDetail: (id: string) => void;
   /** 全局搜索选中后定位并高亮的事项。 */
   focusTarget?: { id: string; signal: number } | null;

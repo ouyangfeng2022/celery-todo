@@ -55,7 +55,7 @@ interface TodoListProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
-  /** 点击标题/编辑按钮 → 打开详情浮窗 */
+  /** 点击标题/空白区域 → 打开详情浮窗 */
   onOpenDetail: (id: string) => void;
   onReorder: (sourceId: string, targetId: string) => Promise<void>;
   /** 切换排序方式（拖拽时用于自动切到「手动排序」） */

@@ -13,7 +13,7 @@ import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
 import { formatPlannedDate } from '../../utils/planning';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
-import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon, CalendarIcon } from '../common/Icons';
+import { CheckIcon, ArchiveIcon, GripIcon, PinIcon, CalendarIcon } from '../common/Icons';
 
 export interface TodoItemProps {
   todo: Todo;
@@ -24,7 +24,7 @@ export interface TodoItemProps {
   onEdit: (id: string, updates: Partial<Todo>) => void;
   onDelete: (id: string) => void;
   onToggleSelect: (id: string) => void;
-  /** 点击标题/编辑按钮 → 打开详情浮窗（在 App 顶层渲染） */
+  /** 点击标题/空白区域 → 打开详情浮窗（在 App 顶层渲染） */
   onOpenDetail: (id: string) => void;
   /** 拖拽手柄属性（由 dnd-kit 注入） */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
@@ -405,9 +405,6 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           />
         </label>
         <span className="mx-0.5 h-4 w-px" style={{ backgroundColor: 'var(--border-color)' }} />
-        <DockButton label="编辑" onClick={openDetail}>
-          <EditIcon size={15} />
-        </DockButton>
         <DockButton label="归档" danger onClick={() => onDelete(todo.id)}>
           <ArchiveIcon size={15} />
         </DockButton>
