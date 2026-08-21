@@ -49,6 +49,30 @@ fn workarea_default_origin(work: (f64, f64, f64, f64), index: usize) -> (f64, f6
     )
 }
 
+/// 物理坐标所在显示器的缩放（供物理 bounds 换算 builder 逻辑坐标）。
+/// 点不在任何显示器上时退化为 primary，再退化 1.0——只影响建窗初始落点的
+/// 近似值，build 后的 set_position 按物理坐标精确落位。
+fn scale_at_physical(app: &AppHandle, x: f64, y: f64) -> f64 {
+    app.monitor_from_point(x, y)
+        .ok()
+        .flatten()
+        .or_else(|| app.primary_monitor().ok().flatten())
+        .map(|m| m.scale_factor())
+        .unwrap_or(1.0)
+}
+
+/// 物理 bounds → builder 逻辑参数：位置/尺寸除以缩放，尺寸夹取到贴图范围。
+/// 不换算尺寸会把物理值当逻辑值传给 inner_size，缩放 ≠100% 时恢复的贴图
+/// 每次重启都放大一档，直到撞 max_inner_size 上限。
+fn physical_to_builder(x: f64, y: f64, w: f64, h: f64, scale: f64) -> (f64, f64, f64, f64) {
+    (
+        x / scale,
+        y / scale,
+        (w / scale).clamp(STICKER_MIN_W, STICKER_MAX_W),
+        (h / scale).clamp(STICKER_MIN_H, STICKER_MAX_H),
+    )
+}
+
 /// 新建（或唤起已有）贴图窗口。
 ///
 /// 线程约束：Windows 下不得在主线程的 IPC 回调 / 菜单事件里同步调用本函数
@@ -78,14 +102,16 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
 
     // 初始位置优先级：贴图自身已保存的 bounds（重启恢复/唤起）→ 上次关闭贴图
     // 记住的位置（已有贴图时向左级联错开防重叠）→ 工作区右下角默认。
+    // 已保存/记忆的 bounds 是物理像素（Moved/Resized 事件口径），级联偏移在
+    // build 后按实际缩放折算物理像素扣除，这里先取未经级联的原始值。
     let cascade = index as f64 * 28.0;
     let had_saved_bounds = bounds.is_some();
-    let had_last_bounds = last_bounds.is_some();
+    let use_last_bounds = bounds.is_none() && last_bounds.is_some();
     let (x, y, w, h) = match bounds {
         Some(b) => (b.x as f64, b.y as f64, b.width as f64, b.height as f64),
         None => match last_bounds {
             Some(last) => (
-                last.x as f64 - cascade,
+                last.x as f64,
                 last.y as f64,
                 last.width as f64,
                 last.height as f64,
@@ -116,6 +142,14 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
     });
 
     let url = format!("index.html?sticker={}&project={}", id, project_id);
+    // builder 的 position/inner_size 接受逻辑坐标：物理 bounds 按落点显示器缩放
+    // 换算（工作区默认路径本就是逻辑值，scale = 1.0 直通）。
+    let scale = if had_saved_bounds || use_last_bounds {
+        scale_at_physical(app, x, y)
+    } else {
+        1.0
+    };
+    let (bx, by, bw, bh) = physical_to_builder(x, y, w, h, scale);
     let window = WebviewWindowBuilder::new(app, &label, WebviewUrl::App(url.into()))
         .title("Celery Todo 简洁模式")
         .decorations(false)
@@ -124,16 +158,25 @@ pub fn create_sticker_window(app: &AppHandle, id: &str, project_id: &str) -> tau
         .skip_taskbar(true)
         .shadow(false)
         .resizable(true)
-        .inner_size(w.min(STICKER_MAX_W).max(STICKER_MIN_W), h.min(STICKER_MAX_H).max(STICKER_MIN_H))
+        .inner_size(bw, bh)
         .min_inner_size(STICKER_MIN_W, STICKER_MIN_H)
         .max_inner_size(STICKER_MAX_W, STICKER_MAX_H)
-        .position(x, y)
+        .position(bx, by)
         .build()?;
 
-    // 已保存/记忆的位置是物理像素（Moved 事件口径），而 builder.position 接受
-    // 逻辑坐标：显示缩放 ≠100% 时会漂移，建窗后按物理坐标精确落位。
-    if had_saved_bounds || had_last_bounds {
-        let _ = window.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+    // 建窗后按物理坐标精确落位（覆盖按显示器缩放近似换算的初始位置）；
+    // last_bounds 路径的级联偏移按窗口实际缩放折算成物理像素扣除，
+    // 缩放 ≠100% 时 28 逻辑像素不再变成 28×scale 的视觉错位。
+    if had_saved_bounds || use_last_bounds {
+        let cascade_phys = if use_last_bounds {
+            cascade * window.scale_factor().unwrap_or(1.0)
+        } else {
+            0.0
+        };
+        let _ = window.set_position(tauri::PhysicalPosition::new(
+            (x - cascade_phys) as i32,
+            y as i32,
+        ));
     }
 
     // 新建（无历史 bounds）时立即落一份实际 bounds：用户未拖动就关闭，关闭
@@ -269,6 +312,8 @@ pub async fn sticker_duplicate(
 
     let store = app.state::<WindowStateStore>();
     let new_id = uuid::Uuid::new_v4().to_string();
+    // 错开 28 逻辑像素，按源窗口缩放折算物理坐标（bounds 存的是物理口径）
+    let offset = (28.0 * source.scale_factor().unwrap_or(1.0)) as i32;
     store.update(|s| {
         // 同步源贴图当前项目
         if let Some(src) = s.stickers.iter_mut().find(|item| item.id == source_id) {
@@ -278,8 +323,8 @@ pub async fn sticker_duplicate(
             id: new_id.clone(),
             project_id,
             bounds: Some(WindowRect {
-                x: offset_x + 28,
-                y: offset_y + 28,
+                x: offset_x + offset,
+                y: offset_y + offset,
                 width: w,
                 height: h,
             }),
@@ -391,5 +436,27 @@ mod tests {
         let (x2, y2) = workarea_default_origin(WORK, 2);
         assert!((x0 - x2 - 56.0).abs() < f64::EPSILON);
         assert_eq!(y0, y2);
+    }
+
+    #[test]
+    fn physical_to_builder_scales_position_and_size() {
+        // 150% 缩放：物理 (300,450,510,690) 是 340×460 逻辑贴图的物理口径，
+        // 换算回逻辑后位置 (200,300)、尺寸 (340,460)——不换算尺寸则恢复时
+        // 逐次放大（510 逻辑 × 1.5 = 765 物理，如此循环直到撞上限）
+        let (x, y, w, h) = physical_to_builder(300.0, 450.0, 510.0, 690.0, 1.5);
+        assert!((x - 200.0).abs() < f64::EPSILON);
+        assert!((y - 300.0).abs() < f64::EPSILON);
+        assert!((w - 340.0).abs() < f64::EPSILON);
+        assert!((h - 460.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn physical_to_builder_passthrough_and_clamp() {
+        // 100% 缩放直通；尺寸超贴图范围时夹取
+        let (x, y, w, h) = physical_to_builder(10.0, 20.0, 800.0, 200.0, 1.0);
+        assert!((x - 10.0).abs() < f64::EPSILON);
+        assert!((y - 20.0).abs() < f64::EPSILON);
+        assert!((w - STICKER_MAX_W).abs() < f64::EPSILON);
+        assert!((h - STICKER_MIN_H).abs() < f64::EPSILON);
     }
 }
