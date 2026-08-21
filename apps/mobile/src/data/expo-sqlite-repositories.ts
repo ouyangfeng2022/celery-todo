@@ -39,10 +39,54 @@ const RANK_GAP = 65_536;
 const nowIso = (): string => new Date().toISOString();
 
 /**
+ * 把 SQL 中的 null/undefined 占位符改写为字面 NULL、其余参数前移。
+ * 占位符识别跳过单引号字符串字面量（含 '' 转义），并在改写后校验占位符
+ * 与参数数量一致——数量不匹配时原生绑定会抛错，这里自行动了 SQL 就必须
+ * 自己把住这道关，否则会静默错位绑定（写错列）而非报错。
+ */
+export function rewriteNullBinds(
+  sql: string,
+  params: SQLite.SQLiteBindValue[],
+): { sql: string; params: SQLite.SQLiteBindValue[] } {
+  const kept: SQLite.SQLiteBindValue[] = [];
+  let inLiteral = false;
+  let out = '';
+  let consumed = 0;
+  for (let pos = 0; pos < sql.length; pos += 1) {
+    const ch = sql[pos];
+    if (ch === "'") {
+      // '' 是字面量内的转义单引号，不结束字面量
+      if (inLiteral && sql[pos + 1] === "'") {
+        out += "''";
+        pos += 1;
+        continue;
+      }
+      inLiteral = !inLiteral;
+      out += ch;
+    } else if (ch === '?' && !inLiteral) {
+      const p = params[consumed];
+      consumed += 1;
+      if (p === null || p === undefined) {
+        out += 'NULL';
+      } else {
+        kept.push(p);
+        out += '?';
+      }
+    } else {
+      out += ch;
+    }
+  }
+  if (consumed !== params.length) {
+    throw new Error(`SQL 占位符 ${consumed} 个与参数 ${params.length} 个不一致: ${sql}`);
+  }
+  return { sql: out, params: kept };
+}
+
+/**
  * expo-sqlite 15（SDK 54）Android 桥不透传 null 绑定值：runSync 直接抛
  * "Cannot convert '[object Object]' to a Kotlin type"（含 null 参数的
- * INSERT/UPDATE 全部静默失败）。这里把 null 占位符改写为 SQL 字面 NULL，
- * 其余参数前移绑定。SQL 为模块内常量、占位符与参数一一对应，改写安全。
+ * INSERT/UPDATE 全部静默失败）。经 rewriteNullBinds 改写后绑定值不含
+ * null，其余行为与 runSync 一致（数量不匹配同样抛错）。
  */
 function runSafe(
   db: SQLite.SQLiteDatabase,
@@ -52,15 +96,8 @@ function runSafe(
   if (!params.some((p) => p === null || p === undefined)) {
     return db.runSync(sql, params);
   }
-  const kept: SQLite.SQLiteBindValue[] = [];
-  let i = 0;
-  const rewritten = sql.replace(/\?/g, () => {
-    const p = params[i++];
-    if (p === null || p === undefined) return 'NULL';
-    kept.push(p);
-    return '?';
-  });
-  return db.runSync(rewritten, kept);
+  const rewritten = rewriteNullBinds(sql, params);
+  return db.runSync(rewritten.sql, rewritten.params);
 }
 
 const priorityWeightSql = "CASE t.priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END";
@@ -195,12 +232,13 @@ const toProject = (r: ProjectRow): ProjectDto => ({
 
 function fail(message: string, kind: 'invalid' | 'not-found' = 'invalid'): never {
   throw new RepositoryError(kind, message);
-};
+}
 
 export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositories {
   const db = SQLite.openDatabaseSync(dbName);
   db.execSync(SCHEMA_SQL);
-  runSafe(db, 
+  runSafe(
+    db,
     "INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (1, 'v3-initial', ?)",
     [nowIso()],
   );
@@ -225,9 +263,9 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
   };
 
   const applyPatchSql = (
-  patch: TodoPatch,
-  now: string,
-): { sets: string[]; vals: SQLite.SQLiteBindValue[] } => {
+    patch: TodoPatch,
+    now: string,
+  ): { sets: string[]; vals: SQLite.SQLiteBindValue[] } => {
     const sets: string[] = ['updated_at = ?'];
     const vals: SQLite.SQLiteBindValue[] = [now];
     if (patch.title !== undefined && patch.title !== null) {
@@ -377,7 +415,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         if (!title) fail('标题不能为空');
         requireProject(newTodo.projectId);
         const now = nowIso();
-        runSafe(db, 
+        runSafe(
+          db,
           `INSERT INTO todos (id, project_id, title, description, completed, priority,
            planned_date, pinned, rank, created_at, updated_at)
            VALUES (?,?,?,?,0,?,?,?,?,?,?)`,
@@ -406,7 +445,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
           }
           const now = nowIso();
           for (const n of items) {
-            runSafe(db, 
+            runSafe(
+              db,
               `INSERT INTO todos (id, project_id, title, description, completed, priority,
                planned_date, pinned, rank, created_at, updated_at)
                VALUES (?,?,?,?,0,?,?,?,?,?,?)`,
@@ -465,7 +505,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           payload.orderedIds.forEach((id, i) => {
-            n += runSafe(db, 
+            n += runSafe(
+              db,
               'UPDATE todos SET rank = ?, updated_at = ? WHERE id = ? AND project_id = ?',
               [i * RANK_GAP, nowIso(), id, payload.projectId],
             ).changes;
@@ -477,7 +518,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         let n = 0;
         db.withTransactionSync(() => {
           for (const id of ids) {
-            n += runSafe(db, 
+            n += runSafe(
+              db,
               `INSERT INTO archived_todos (id, project_id, title, description, completed,
                priority, planned_date, pinned, rank, created_at, updated_at, completed_at,
                archived_at, project_name)
@@ -549,7 +591,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
               requireProject(fallbackProjectId);
               target = fallbackProjectId;
             }
-            n += runSafe(db, 
+            n += runSafe(
+              db,
               `INSERT INTO todos (id, project_id, title, description, completed, priority,
                planned_date, pinned, rank, created_at, updated_at, completed_at)
                SELECT a.id, ?, a.title, a.description, a.completed, a.priority,
@@ -614,7 +657,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
           fail(`创建项目失败: 主键冲突 ${newProject.id}`);
         }
         const now = nowIso();
-        runSafe(db, 
+        runSafe(
+          db,
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?,?,?,?,?,?,?)`,
           [
@@ -669,7 +713,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async deletePermanently(id) {
         requireProject(id);
         db.withTransactionSync(() => {
-          runSafe(db, 
+          runSafe(
+            db,
             `INSERT INTO archived_todos (id, project_id, title, description, completed,
              priority, planned_date, pinned, rank, created_at, updated_at, completed_at,
              archived_at, project_name)
@@ -690,7 +735,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         if (existing) return toProject(existing);
         const now = nowIso();
         const id = uuid();
-        runSafe(db, 
+        runSafe(
+          db,
           `INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at)
            VALUES (?, '收集箱', 'inbox', NULL, ?, ?, ?)`,
           [id, nextProjectRank(), now, now],
@@ -707,7 +753,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
         return row?.value ?? null;
       },
       async set(key, value) {
-        runSafe(db, 
+        runSafe(
+          db,
           'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
           [key, value],
         );
@@ -715,7 +762,8 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
       async setBulk(entries) {
         db.withTransactionSync(() => {
           for (const kv of entries) {
-            runSafe(db, 
+            runSafe(
+              db,
               'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
               [kv.key, kv.value],
             );
