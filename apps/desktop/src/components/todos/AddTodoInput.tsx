@@ -270,7 +270,7 @@ function AddTodoInputComponent({
         <button
           onClick={handleAdd}
           disabled={title.trim().length === 0}
-          className="flex-shrink-0 w-7 h-7 mt-px rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="flex-shrink-0 w-7 h-7 -mt-0.5 rounded-full flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           style={{
             backgroundColor: 'var(--accent)',
             color: 'white',
