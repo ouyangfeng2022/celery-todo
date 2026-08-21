@@ -8,7 +8,6 @@
 import {
   capabilities,
   closeWindow,
-  createSticker,
   minimizeWindow,
   toggleMaximizeWindow,
 } from '../platform';
@@ -16,8 +15,8 @@ import { StickerIcon } from '../components/common/Icons';
 
 interface WindowTitlebarProps {
   title: string;
-  /** 贴图入口（capabilities.stickers，非 Tauri 环境隐藏） */
-  onEnterCompactMode?: () => void;
+  /** 贴图入口（capabilities.stickers，非 Tauri 环境隐藏）；必传当前项目 id */
+  onEnterCompactMode: () => void;
 }
 
 /** caption 按钮共用样式：36px 高、46px 宽、hover 反馈，视觉与原生 overlay 接近。 */
@@ -57,7 +56,7 @@ export function WindowTitlebar({ title, onEnterCompactMode }: WindowTitlebarProp
           style={{ color: 'var(--text-secondary)' }}
           aria-label="进入简洁模式"
           title="进入简洁模式 (Ctrl+Shift+K)"
-          onClick={() => (onEnterCompactMode ?? createSticker)(undefined)}
+          onClick={onEnterCompactMode}
         >
           <StickerIcon size={16} />
         </button>

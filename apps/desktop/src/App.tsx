@@ -571,6 +571,7 @@ function App() {
                 ? TIME_BUCKET_LABELS[timeBucket]
                 : (activeProject?.name ?? 'Celery Todo')
             }
+            onEnterCompactMode={() => createSticker(activeProjectId)}
           />
         </div>
       )}
