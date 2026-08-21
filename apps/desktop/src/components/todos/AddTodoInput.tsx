@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { PlusIcon } from '../common/Icons';
+import { DateInput } from '../common/DateInput';
 import { hasBulkSeparator } from '../../utils/helpers';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { autosizeTextarea, TEXTAREA_MAX_HEIGHT } from '../../utils/textarea';
@@ -373,12 +374,9 @@ function AddTodoInputComponent({
                 style={{ color: 'var(--text-tertiary)' }}
               >
                 计划日期
-                <input
-                  type="date"
+                <DateInput
                   value={plannedDate}
-                  onChange={(event) => handlePlannedDateChange(event.target.value)}
-                  className="rounded-md border-none px-2 py-1 text-xs"
-                  style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}
+                  onChange={handlePlannedDateChange}
                   aria-label="计划日期"
                 />
                 {plannedDate && (

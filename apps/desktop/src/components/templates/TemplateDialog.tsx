@@ -5,6 +5,7 @@ import * as data from '../../utils/dataGateway';
 import { createTemplateFromProject, instantiateTemplate } from '../../utils/todoTemplates';
 import { formatLocalDate } from '../../utils/planning';
 import { XIcon } from '../common/Icons';
+import { DateInput } from '../common/DateInput';
 
 interface TemplateDialogProps {
   open: boolean;
@@ -212,11 +213,12 @@ export function TemplateDialog({ open, saveTarget, onClose, onCreated }: Templat
                 {selected.items.some((item) => item.plannedDayOffset !== undefined) && (
                   <label className="block text-sm" style={{ color: 'var(--text-secondary)' }}>
                     起始日期
-                    <input
-                      type="date"
+                    <DateInput
                       value={startDate}
-                      onChange={(event) => setStartDate(event.target.value)}
-                      className="claude-input mt-1.5"
+                      onChange={setStartDate}
+                      variant="field"
+                      className="mt-1.5"
+                      aria-label="起始日期"
                     />
                   </label>
                 )}

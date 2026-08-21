@@ -5,7 +5,7 @@
 
 import { memo, useEffect, useMemo } from 'react';
 import type { FilterType, Todo } from '../../types';
-import { addLocalDays, formatLocalDate } from '../../utils/planning';
+import { addLocalDays, formatLocalDate, formatPlannedDate } from '../../utils/planning';
 import { EmptyState } from '../common/EmptyState';
 import { TodoItem } from './TodoItem';
 
@@ -56,8 +56,7 @@ function boardDateLabel(date: string, today: string): { title: string; detail: s
       : date === tomorrow
         ? '明天'
         : (WEEKDAY_LABELS[localDate.getDay()] ?? date);
-  const currentYear = Number(today.slice(0, 4));
-  const detail = year === currentYear ? `${month}月${day}日` : `${year}年${month}月${day}日`;
+  const detail = formatPlannedDate(date, today);
   return { title, detail };
 }
 

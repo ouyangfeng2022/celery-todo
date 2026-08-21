@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Todo, Priority } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_COLORS, PRIORITY_SOLID } from '../../types';
 import { cn, formatRelativeTime, formatDateTime } from '../../utils/helpers';
+import { formatPlannedDate } from '../../utils/planning';
 import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { CheckIcon, EditIcon, ArchiveIcon, GripIcon, PinIcon, CalendarIcon } from '../common/Icons';
@@ -306,9 +307,10 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
             <span
               className="claude-tag inline-flex items-center gap-1"
               style={{ color: 'var(--text-secondary)' }}
+              title={todo.plannedDate}
             >
               <CalendarIcon size={11} />
-              {todo.plannedDate}
+              {formatPlannedDate(todo.plannedDate)}
             </span>
           )}
 

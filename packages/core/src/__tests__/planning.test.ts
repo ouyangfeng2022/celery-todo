@@ -9,6 +9,7 @@ import {
   daysBetween,
   defaultPlannedDateForBucket,
   formatLocalDate,
+  formatPlannedDate,
   getCurrentWeekDates,
   getPlanningBoundaries,
   isDateInCurrentWeek,
@@ -47,6 +48,17 @@ describe('planning', () => {
       expect(() => startOfWeekMonday('not-a-date')).toThrow(RangeError);
       expect(() => addLocalDays('2026-08-10', 1.5)).toThrow(RangeError);
       expect(() => formatLocalDate(new Date(Number.NaN))).toThrow(RangeError);
+    });
+
+    it('计划日期中文显示：同年省略年份、跨年补年份', () => {
+      expect(formatPlannedDate('2026-08-21', '2026-12-01')).toBe('8月21日');
+      expect(formatPlannedDate('2027-01-01', '2026-12-01')).toBe('2027年1月1日');
+      expect(formatPlannedDate('2025-12-31', '2026-01-01')).toBe('2025年12月31日');
+      expect(formatPlannedDate('2026-08-21')).toBe('8月21日'); // 不传 today 时按当年
+    });
+
+    it('计划日期中文显示：非法输入原样返回、不抛错', () => {
+      expect(formatPlannedDate('not-a-date', '2026-08-21')).toBe('not-a-date');
     });
   });
 

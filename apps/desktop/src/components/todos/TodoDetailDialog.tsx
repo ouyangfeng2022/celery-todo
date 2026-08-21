@@ -19,6 +19,7 @@ import { cn } from '../../utils/helpers';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import type { Priority } from '../../types';
 import { CheckIcon, ArchiveIcon, PinIcon, CalendarIcon, XIcon } from '../common/Icons';
+import { DateInput } from '../common/DateInput';
 
 // Markdown/GFM/KaTeX 仅在浮窗切到「预览」tab 时加载。
 const MarkdownContent = lazy(() =>
@@ -311,17 +312,12 @@ function TodoDetailDialogComponent() {
                       style={{ color: 'var(--text-tertiary)' }}
                     >
                       <CalendarIcon size={13} />
-                      <input
-                        type="date"
+                      <DateInput
                         value={todo.plannedDate ?? ''}
-                        onChange={(e) =>
-                          updateTodo(todo.id, { plannedDate: e.target.value || undefined })
+                        onChange={(value) =>
+                          updateTodo(todo.id, { plannedDate: value || undefined })
                         }
-                        className="min-w-0 rounded-md border-none px-1.5 py-0.5 text-xs"
-                        style={{
-                          backgroundColor: 'var(--bg-secondary)',
-                          color: 'var(--text-secondary)',
-                        }}
+                        aria-label="计划日期"
                       />
                       {todo.plannedDate && (
                         <button

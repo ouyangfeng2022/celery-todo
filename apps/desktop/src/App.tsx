@@ -54,7 +54,7 @@ import { closeWindow, createSticker, onExportCompleted, onQuickAdd } from './pla
 
 import * as data from './utils/dataGateway';
 import { cn } from './utils/helpers';
-import type { TimeBucket } from './utils/planning';
+import { formatLocalDate, type TimeBucket } from './utils/planning';
 import type { DeletedTodo, FilterType, NavigationMode, Priority, Project, Todo } from './types';
 
 // 设置与导出不属于首屏工作流；只在用户打开相应入口时请求代码。
@@ -721,6 +721,8 @@ function App() {
                     >
                       <AddTodoInput
                         projectId={activeProjectId}
+                        // 新事项默认安排到今天（用户在输入框中可改/可清）
+                        defaultPlannedDate={formatLocalDate(new Date())}
                         onAdd={(title, priority, description, plannedDate) => {
                           addTodo(title, priority, description, plannedDate);
                           // 专注模式下添加完成后收起 composer

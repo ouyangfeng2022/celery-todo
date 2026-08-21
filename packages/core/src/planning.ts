@@ -71,6 +71,18 @@ export function formatLocalDate(date: Date): LocalDate {
   return `${year}-${month}-${day}`;
 }
 
+/** 计划日期的中文显示：同年省略年份（「8月21日」），跨年补年份（「2027年1月1日」）。 */
+export function formatPlannedDate(
+  value: LocalDate,
+  today: LocalDate = formatLocalDate(new Date()),
+): string {
+  const match = LOCAL_DATE_PATTERN.exec(value);
+  if (!match) return value;
+  const [, year, month, day] = match;
+  const monthDay = `${Number(month)}月${Number(day)}日`;
+  return year === today.slice(0, 4) ? monthDay : `${year}年${monthDay}`;
+}
+
 /** 按本地日历增加天数。 */
 export function addLocalDays(date: LocalDate, days: number): LocalDate {
   if (!Number.isInteger(days)) throw new RangeError(`天数必须是整数: ${days}`);
