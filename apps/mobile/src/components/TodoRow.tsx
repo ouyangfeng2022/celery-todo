@@ -21,6 +21,28 @@ interface TodoRowProps {
   selectionMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  /** 搜索关键词：标题命中部分高亮（大小写不敏感） */
+  highlight?: string;
+}
+
+/** 把标题按关键词切成 高亮/普通 片段（大小写不敏感，多命中全标）。 */
+function splitHighlight(text: string, term: string): { text: string; hit: boolean }[] {
+  const needle = term.trim().toLowerCase();
+  if (!needle) return [{ text, hit: false }];
+  const lower = text.toLowerCase();
+  const out: { text: string; hit: boolean }[] = [];
+  let i = 0;
+  while (i < text.length) {
+    const idx = lower.indexOf(needle, i);
+    if (idx === -1) {
+      out.push({ text: text.slice(i), hit: false });
+      break;
+    }
+    if (idx > i) out.push({ text: text.slice(i, idx), hit: false });
+    out.push({ text: text.slice(idx, idx + needle.length), hit: true });
+    i = idx + needle.length;
+  }
+  return out;
 }
 
 export function TodoRow({
@@ -33,6 +55,7 @@ export function TodoRow({
   selectionMode = false,
   selected = false,
   onToggleSelect,
+  highlight,
 }: TodoRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -111,7 +134,17 @@ export function TodoRow({
                 },
               ]}
             >
-              {todo.title}
+              {highlight
+                ? splitHighlight(todo.title, highlight).map((seg, i) =>
+                    seg.hit ? (
+                      <Text key={i} style={{ color: colors.accent, fontWeight: '600' }}>
+                        {seg.text}
+                      </Text>
+                    ) : (
+                      <Text key={i}>{seg.text}</Text>
+                    ),
+                  )
+                : todo.title}
             </Text>
             {todo.description ? (
               <Text numberOfLines={1} style={[styles.desc, { color: colors.textSecondary }]}>

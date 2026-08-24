@@ -86,6 +86,7 @@ export default function SearchScreen() {
             <TodoRow
               todo={todo}
               colors={colors}
+              highlight={term.trim() || undefined}
               onToggle={() => void toggleTodo(todo.id)}
               onArchive={() => void archiveTodo(todo.id)}
               onLongPress={() => setSheetTodo(todo)}
