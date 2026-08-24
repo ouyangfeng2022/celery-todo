@@ -15,7 +15,14 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { ArchivedTodoDto, Repositories, TodoDto, TodoPriority } from '@celery/data';
+import type {
+  ArchivedTodoDto,
+  Repositories,
+  TodoDto,
+  TodoFilter,
+  TodoPriority,
+  TodoSort,
+} from '@celery/data';
 import { createExpoSqliteRepositories, uuid } from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
 
@@ -42,8 +49,13 @@ interface AppDataValue {
   renameProject: (id: string, name: string) => Promise<void>;
   /** 永久删除项目（其活跃事项先带项目名快照归档，与桌面端一致） */
   deleteProject: (id: string) => Promise<void>;
-  /** 当前项目事项（manual 序） */
+  /** 当前项目事项（按当前排序/过滤拉取） */
   todos: TodoDto[];
+  /** 列表排序 / 状态过滤（按项目持久化：settings 键 sort.<pid> / filter.<pid>，与桌面端同名同义） */
+  todoSort: TodoSort;
+  todoFilter: TodoFilter;
+  setTodoSort: (sort: TodoSort) => void;
+  setTodoFilter: (filter: TodoFilter) => void;
   /** 手动排序提交 */
   reorder: (orderedIds: string[]) => Promise<void>;
   addTodo: (title: string, priority?: TodoPriority, plannedDate?: string | null) => Promise<void>;
@@ -77,17 +89,21 @@ const AppDataContext = createContext<AppDataValue | null>(null);
 const repos: Repositories = createExpoSqliteRepositories();
 
 /** 抽干分页（移动端量级：单项目数千行以内）。 */
-async function drainTodos(projectId: string | null): Promise<TodoDto[]> {
+async function drainTodos(
+  projectId: string | null,
+  sort: TodoSort = 'created-desc',
+  filter: TodoFilter = 'all',
+): Promise<TodoDto[]> {
   const out: TodoDto[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 50; i++) {
     const page = await repos.todos.page({
       projectId,
-      filter: 'all',
+      filter,
       priority: null,
       plannedFrom: null,
       plannedTo: null,
-      sort: 'manual',
+      sort,
       limit: 200,
       cursor,
     });
@@ -115,6 +131,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<ProjectView[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState('');
   const [todos, setTodos] = useState<TodoDto[]>([]);
+  const [todoSort, setTodoSortState] = useState<TodoSort>('created-desc');
+  const [todoFilter, setTodoFilterState] = useState<TodoFilter>('all');
   const [allTodos, setAllTodos] = useState<TodoDto[]>([]);
   const [archived, setArchived] = useState<ArchivedTodoDto[]>([]);
   const [archivedExhausted, setArchivedExhausted] = useState(true);
@@ -128,17 +146,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return views;
   }, []);
 
-  const refreshTodos = useCallback(async (projectId: string) => {
-    if (!projectId) {
-      setTodos([]);
-      return;
-    }
-    setTodos(await drainTodos(projectId));
-  }, []);
+  const refreshTodos = useCallback(
+    async (projectId: string, sort: TodoSort = todoSort, filter: TodoFilter = todoFilter) => {
+      if (!projectId) {
+        setTodos([]);
+        return;
+      }
+      setTodos(await drainTodos(projectId, sort, filter));
+    },
+    [todoSort, todoFilter],
+  );
 
   const refreshAllTodos = useCallback(async () => {
     setAllTodos(await drainTodos(null));
   }, []);
+
+  /** 激活项目：载入该项目持久化的排序/过滤（脏值回退默认）再拉列表。 */
+  const activateProject = useCallback(
+    async (id: string) => {
+      let sort: TodoSort = 'created-desc';
+      let filter: TodoFilter = 'all';
+      try {
+        const [s, f] = await Promise.all([
+          repos.settings.get(`sort.${id}`),
+          repos.settings.get(`filter.${id}`),
+        ]);
+        if (s === 'created-desc' || s === 'priority' || s === 'manual') sort = s;
+        if (f === 'all' || f === 'active' || f === 'completed') filter = f;
+      } catch {
+        /* 该项目无持久化设置 */
+      }
+      setTodoSortState(sort);
+      setTodoFilterState(filter);
+      setCurrentProjectId(id);
+      await refreshTodos(id, sort, filter);
+    },
+    [refreshTodos],
+  );
 
   // 首启：读主题 + 确保收集箱（与桌面端同语义，全新安装即可直接添加事项）
   // + 激活第一个项目
@@ -156,14 +200,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         await repos.projects.ensureInbox();
         const views = await refreshProjects();
         const first = views[0]?.id ?? '';
-        setCurrentProjectId(first);
-        await refreshTodos(first);
+        await activateProject(first);
         setReady(true);
       } catch (e) {
         setInitError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [refreshProjects, refreshTodos]);
+  }, [refreshProjects, activateProject]);
 
   const setTheme = useCallback((name: ThemeName) => {
     setThemeState(name);
@@ -172,10 +215,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const switchProject = useCallback(
     (id: string) => {
-      setCurrentProjectId(id);
-      void refreshTodos(id);
+      void activateProject(id);
     },
-    [refreshTodos],
+    [activateProject],
   );
 
   const createProject = useCallback(
@@ -188,14 +230,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         kind: 'user',
         color: null,
       });
-      const views = await refreshProjects();
-      const target = views.find((p) => p.id === created.id);
-      if (target) {
-        setCurrentProjectId(target.id);
-        await refreshTodos(target.id);
-      }
+      await refreshProjects();
+      await activateProject(created.id);
     },
-    [refreshProjects, refreshTodos],
+    [refreshProjects, activateProject],
   );
 
   const renameProject = useCallback(
@@ -214,12 +252,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const views = await refreshProjects();
       if (currentProjectId === id) {
         const next = views[0]?.id ?? '';
-        setCurrentProjectId(next);
-        await refreshTodos(next);
+        await activateProject(next);
       }
       await refreshAllTodos();
     },
-    [currentProjectId, refreshProjects, refreshTodos, refreshAllTodos],
+    [currentProjectId, refreshProjects, activateProject, refreshAllTodos],
   );
 
   const addTodo = useCallback(
@@ -315,6 +352,28 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [currentProjectId, refreshTodos],
   );
 
+  const setTodoSort = useCallback(
+    (sort: TodoSort) => {
+      setTodoSortState(sort);
+      if (currentProjectId) {
+        void repos.settings.set(`sort.${currentProjectId}`, sort).catch(() => {});
+      }
+      void refreshTodos(currentProjectId, sort, todoFilter);
+    },
+    [currentProjectId, todoFilter, refreshTodos],
+  );
+
+  const setTodoFilter = useCallback(
+    (filter: TodoFilter) => {
+      setTodoFilterState(filter);
+      if (currentProjectId) {
+        void repos.settings.set(`filter.${currentProjectId}`, filter).catch(() => {});
+      }
+      void refreshTodos(currentProjectId, todoSort, filter);
+    },
+    [currentProjectId, todoSort, refreshTodos],
+  );
+
   const search = useCallback(async (term: string) => {
     const t = term.trim();
     if (!t) return [];
@@ -400,6 +459,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       renameProject,
       deleteProject,
       todos,
+      todoSort,
+      todoFilter,
+      setTodoSort,
+      setTodoFilter,
       reorder,
       addTodo,
       toggleTodo,
@@ -431,6 +494,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       renameProject,
       deleteProject,
       todos,
+      todoSort,
+      todoFilter,
+      setTodoSort,
+      setTodoFilter,
       reorder,
       addTodo,
       toggleTodo,

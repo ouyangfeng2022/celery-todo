@@ -1,15 +1,15 @@
 /**
- * @file 事项页：项目切换 / 添加 / 列表（滑动 + 长按）/ 手动排序拖拽。
+ * @file 事项页：项目切换 / 添加 / 排序与状态过滤 / 列表（滑动 + 长按）/ 手动拖拽排序。
  */
 
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, {
   ScaleDecorator,
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
-import type { TodoDto, TodoPriority } from '@celery/data';
+import type { TodoDto, TodoFilter, TodoPriority, TodoSort } from '@celery/data';
 import { formatPlannedDate } from '@celery/core';
 import { useAppData } from '../../state/AppData';
 import { palette, PRIORITY_LABELS } from '../../theme';
@@ -19,6 +19,18 @@ import { TodoDetailSheet } from '../../components/TodoDetailSheet';
 import { PlannedDateMenu } from '../../components/PlannedDateMenu';
 import { ProjectSheet } from '../../components/ProjectSheet';
 import type { ProjectView } from '../../state/AppData';
+
+const FILTERS: { key: TodoFilter; label: string }[] = [
+  { key: 'all', label: '全部' },
+  { key: 'active', label: '进行中' },
+  { key: 'completed', label: '已完成' },
+];
+
+const SORTS: { key: TodoSort; label: string; hint: string }[] = [
+  { key: 'created-desc', label: '按创建时间', hint: '新添加的在前' },
+  { key: 'priority', label: '按优先级', hint: '高 → 中 → 低' },
+  { key: 'manual', label: '自定义顺序', hint: '拖拽调整，长按菜单停用' },
+];
 
 export default function TodosScreen() {
   const {
@@ -33,6 +45,10 @@ export default function TodosScreen() {
     renameProject,
     deleteProject,
     todos,
+    todoSort,
+    todoFilter,
+    setTodoSort,
+    setTodoFilter,
     reorder,
     addTodo,
     toggleTodo,
@@ -50,19 +66,15 @@ export default function TodosScreen() {
   // 新建事项的计划日期（null = 不安排）；dateMenuOpen 控制输入行下的快捷菜单展开
   const [draftDate, setDraftDate] = useState<string | null>(null);
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
-  const [manualSort, setManualSort] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
   // 详情编辑面板目标事项（从长按面板「编辑内容」进入）
   const [detailTodo, setDetailTodo] = useState<TodoDto | null>(null);
   // 项目面板：null = 关闭；'create' = 新建；ProjectView = 长按管理
   const [projectSheet, setProjectSheet] = useState<'create' | ProjectView | null>(null);
 
-  const visible = useMemo(() => {
-    // 非手动排序时置顶恒浮顶（与服务端排序语义一致）
-    const pinned = todos.filter((t) => t.pinned);
-    const rest = todos.filter((t) => !t.pinned);
-    return manualSort ? todos : [...pinned, ...rest];
-  }, [todos, manualSort]);
+  // 自定义顺序 = 拖拽模式（置顶分组由服务端排序保证）
+  const manualSort = todoSort === 'manual';
 
   const submit = () => {
     const title = draft.trim();
@@ -243,18 +255,41 @@ export default function TodosScreen() {
         </View>
       )}
 
-      {/* 手动排序开关 */}
-      <Pressable onPress={() => setManualSort((v) => !v)} style={styles.sortToggle} hitSlop={8}>
-        <Text style={{ color: manualSort ? colors.accent : colors.textTertiary, fontSize: 12 }}>
-          {manualSort ? '拖拽排序中 · 点按结束' : '手动排序'}
-        </Text>
-      </Pressable>
+      {/* 状态过滤 + 排序选择（按项目持久化，与桌面端同键同义） */}
+      <View style={styles.controlRow}>
+        {FILTERS.map(({ key, label }) => {
+          const active = key === todoFilter;
+          return (
+            <Pressable key={key} onPress={() => setTodoFilter(key)} hitSlop={6}>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontWeight: active ? '700' : '400',
+                  color: active ? colors.accent : colors.textTertiary,
+                }}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          );
+        })}
+        <View style={{ flex: 1 }} />
+        <Pressable
+          onPress={() => setSortMenuOpen(true)}
+          hitSlop={6}
+          style={[styles.sortChip, { borderColor: colors.border }]}
+        >
+          <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+            {SORTS.find((s) => s.key === todoSort)?.label} ▾
+          </Text>
+        </Pressable>
+      </View>
 
-      {/* 列表：手动排序用 DraggableFlatList（原生拖拽），否则普通 FlatList */}
+      {/* 列表：自定义顺序用 DraggableFlatList（原生拖拽），否则普通列表 */}
       {manualSort ? (
         <View style={{ flex: 1 }}>
           <DraggableFlatList
-            data={visible}
+            data={todos}
             keyExtractor={(t) => t.id}
             onDragEnd={onDragEnd}
             renderItem={({ item, drag, isActive }) => (
@@ -266,16 +301,54 @@ export default function TodosScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-          {visible.map((todo) => (
+          {todos.map((todo) => (
             <View key={todo.id}>{row(todo)}</View>
           ))}
-          {visible.length === 0 && (
+          {todos.length === 0 && (
             <Text style={{ color: colors.textTertiary, textAlign: 'center', marginTop: 48 }}>
-              从一件小事开始
+              {todoFilter === 'all' ? '从一件小事开始' : '该视图暂无事项'}
             </Text>
           )}
         </ScrollView>
       )}
+
+      {/* 排序方式选择 */}
+      <Modal
+        visible={sortMenuOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSortMenuOpen(false)}
+      >
+        <Pressable style={styles.backdrop} onPress={() => setSortMenuOpen(false)}>
+          <Pressable
+            style={[styles.menuSheet, { backgroundColor: colors.bgTertiary }]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.menuTitle, { color: colors.textPrimary }]}>排序方式</Text>
+            {SORTS.map(({ key, label, hint }) => (
+              <Pressable
+                key={key}
+                onPress={() => {
+                  setTodoSort(key);
+                  setSortMenuOpen(false);
+                }}
+                style={({ pressed }) => [
+                  styles.menuRow,
+                  { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.textPrimary, fontSize: 15 }}>{label}</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 2 }}>
+                    {hint}
+                  </Text>
+                </View>
+                {todoSort === key && <Text style={{ color: colors.accent, fontSize: 15 }}>✓</Text>}
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <TodoActionsSheet
         todo={sheetTodo}
@@ -383,6 +456,44 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   addBtnText: { color: '#ffffff', fontSize: 13, fontWeight: '600' },
-  sortToggle: { alignSelf: 'flex-end', paddingRight: 18, paddingBottom: 6 },
+  controlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+    paddingHorizontal: 18,
+    paddingBottom: 6,
+  },
+  sortChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  menuSheet: {
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    paddingBottom: 32,
+  },
+  menuTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 10,
+  },
   dragHandle: { paddingRight: 8 },
 });
