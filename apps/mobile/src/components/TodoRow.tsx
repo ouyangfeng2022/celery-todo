@@ -1,5 +1,5 @@
 /**
- * @file 事项行：右滑完成、左滑归档、长按弹出操作菜单。
+ * @file 事项行：右滑完成、左滑归档、长按弹出操作菜单；多选模式下点按勾选。
  */
 
 import { useRef } from 'react';
@@ -9,13 +9,6 @@ import type { ThemeColors } from '@celery/ui-tokens';
 import type { TodoDto, TodoPriority } from '@celery/data';
 import { PRIORITY_DOT } from '../theme';
 
-export interface TodoRowAction {
-  pin: (pinned: boolean) => void;
-  setPriority: (priority: TodoPriority) => void;
-  move: (projectId: string) => void;
-  archive: () => void;
-}
-
 interface TodoRowProps {
   todo: TodoDto;
   colors: ThemeColors;
@@ -24,6 +17,10 @@ interface TodoRowProps {
   onLongPress: () => void;
   /** 拖拽排序模式下行内容左侧的把手 */
   dragHandle?: React.ReactNode;
+  /** 多选模式：点按勾选/取消，滑动与长按停用 */
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
 export function TodoRow({
@@ -33,6 +30,9 @@ export function TodoRow({
   onArchive,
   onLongPress,
   dragHandle,
+  selectionMode = false,
+  selected = false,
+  onToggleSelect,
 }: TodoRowProps) {
   const swipeableRef = useRef<Swipeable>(null);
 
@@ -53,6 +53,7 @@ export function TodoRow({
     <GestureHandlerRootView>
       <Swipeable
         ref={swipeableRef}
+        enabled={!selectionMode}
         renderRightActions={renderRightActions}
         renderLeftActions={renderLeftActions}
         overshootRight={false}
@@ -65,23 +66,39 @@ export function TodoRow({
         }}
       >
         <Pressable
-          onPress={onToggle}
-          onLongPress={onLongPress}
+          onPress={selectionMode ? onToggleSelect : onToggle}
+          onLongPress={selectionMode ? undefined : onLongPress}
           style={[
             styles.row,
             { backgroundColor: todo.pinned ? colors.pinnedBg : colors.bgTertiary },
           ]}
         >
+          {selectionMode ? (
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  borderColor: selected ? colors.accent : colors.borderStrong,
+                  backgroundColor: selected ? colors.accent : 'transparent',
+                },
+                styles.selectBox,
+              ]}
+            >
+              {selected && <Text style={styles.selectMark}>✓</Text>}
+            </View>
+          ) : null}
           {dragHandle}
-          <View
-            style={[
-              styles.checkbox,
-              {
-                borderColor: todo.completed ? colors.accent : colors.borderStrong,
-                backgroundColor: todo.completed ? colors.accent : 'transparent',
-              },
-            ]}
-          />
+          {!selectionMode && (
+            <View
+              style={[
+                styles.checkbox,
+                {
+                  borderColor: todo.completed ? colors.accent : colors.borderStrong,
+                  backgroundColor: todo.completed ? colors.accent : 'transparent',
+                },
+              ]}
+            />
+          )}
           <View style={styles.body}>
             <Text
               numberOfLines={2}
@@ -134,6 +151,16 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     borderWidth: 1.5,
     marginRight: 12,
+  },
+  selectBox: {
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectMark: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   body: {
     flex: 1,

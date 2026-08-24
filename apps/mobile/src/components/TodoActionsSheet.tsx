@@ -20,6 +20,8 @@ interface TodoActionsSheetProps {
   colors: ThemeColors;
   onClose: () => void;
   onEdit: () => void;
+  /** 进入多选模式（以当前事项为首个选中项）；不提供则不显示该行 */
+  onMultiSelect?: () => void;
   onPin: (pinned: boolean) => void;
   onSetPriority: (priority: TodoPriority) => void;
   onSetPlannedDate: (date: string | null) => void;
@@ -33,6 +35,7 @@ export function TodoActionsSheet({
   colors,
   onClose,
   onEdit,
+  onMultiSelect,
   onPin,
   onSetPriority,
   onSetPlannedDate,
@@ -53,6 +56,9 @@ export function TodoActionsSheet({
               </Text>
 
               <SheetRow label="编辑内容" colors={colors} onPress={onEdit} />
+              {onMultiSelect && (
+                <SheetRow label="多选事项" colors={colors} onPress={onMultiSelect} />
+              )}
               <SheetRow
                 label={todo.pinned ? '取消置顶' : '置顶'}
                 colors={colors}

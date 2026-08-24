@@ -75,6 +75,12 @@ interface AppDataValue {
   setPlannedDate: (id: string, plannedDate: string | null) => Promise<void>;
   /** 编辑标题/描述；标题 trim 后为空时忽略标题改动（描述空串存 null） */
   updateTodoContent: (id: string, patch: { title?: string; description?: string }) => Promise<void>;
+  /** 批量：设完成/取消完成（completedAt 由仓储维护） */
+  batchSetCompleted: (ids: string[], completed: boolean) => Promise<void>;
+  /** 批量：设优先级 */
+  batchSetPriority: (ids: string[], priority: TodoPriority) => Promise<void>;
+  /** 批量：归档 */
+  archiveTodos: (ids: string[]) => Promise<void>;
   /** 全量事项（计划/搜索页用；进入相应页时拉取） */
   allTodos: TodoDto[];
   refreshAllTodos: () => Promise<void>;
@@ -372,6 +378,35 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [currentProjectId, refreshTodos, refreshAllTodos],
   );
 
+  // ============ 批量操作（多选模式） ============
+
+  const batchSetCompleted = useCallback(
+    async (ids: string[], completed: boolean) => {
+      if (ids.length === 0) return;
+      await repos.todos.batchUpdate({ ids, patch: { completed } });
+      await Promise.all([refreshTodos(currentProjectId), refreshProjects(), refreshAllTodos()]);
+    },
+    [currentProjectId, refreshTodos, refreshProjects, refreshAllTodos],
+  );
+
+  const batchSetPriority = useCallback(
+    async (ids: string[], priority: TodoPriority) => {
+      if (ids.length === 0) return;
+      await repos.todos.batchUpdate({ ids, patch: { priority } });
+      await Promise.all([refreshTodos(currentProjectId), refreshAllTodos()]);
+    },
+    [currentProjectId, refreshTodos, refreshAllTodos],
+  );
+
+  const archiveTodos = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      await repos.todos.archive(ids);
+      await Promise.all([refreshTodos(currentProjectId), refreshProjects(), refreshAllTodos()]);
+    },
+    [currentProjectId, refreshTodos, refreshProjects, refreshAllTodos],
+  );
+
   const reorder = useCallback(
     async (orderedIds: string[]) => {
       if (!currentProjectId) return;
@@ -542,6 +577,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       moveTodo,
       setPlannedDate,
       updateTodoContent,
+      batchSetCompleted,
+      batchSetPriority,
+      archiveTodos,
       allTodos,
       refreshAllTodos,
       search,
@@ -579,6 +617,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       moveTodo,
       setPlannedDate,
       updateTodoContent,
+      batchSetCompleted,
+      batchSetPriority,
+      archiveTodos,
       allTodos,
       refreshAllTodos,
       search,
