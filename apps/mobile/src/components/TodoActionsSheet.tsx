@@ -1,5 +1,5 @@
 /**
- * @file 长按操作菜单：置顶 / 优先级 / 移动项目 / 归档。
+ * @file 长按操作菜单：置顶 / 优先级 / 计划日期 / 移动项目 / 归档。
  * @description 用 RN Modal 实现（底部弹出面板），不引入额外 UI 依赖。
  */
 
@@ -7,6 +7,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ThemeColors } from '@celery/ui-tokens';
 import type { TodoDto, TodoPriority } from '@celery/data';
 import { PRIORITY_DOT, PRIORITY_LABELS } from '../theme';
+import { PlannedDateMenu } from './PlannedDateMenu';
 
 interface ProjectOption {
   id: string;
@@ -20,6 +21,7 @@ interface TodoActionsSheetProps {
   onClose: () => void;
   onPin: (pinned: boolean) => void;
   onSetPriority: (priority: TodoPriority) => void;
+  onSetPlannedDate: (date: string | null) => void;
   onMove: (projectId: string) => void;
   onArchive: () => void;
 }
@@ -31,6 +33,7 @@ export function TodoActionsSheet({
   onClose,
   onPin,
   onSetPriority,
+  onSetPlannedDate,
   onMove,
   onArchive,
 }: TodoActionsSheetProps) {
@@ -61,6 +64,14 @@ export function TodoActionsSheet({
                   onPress={() => onSetPriority(p)}
                 />
               ))}
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <Text style={[styles.section, { color: colors.textTertiary }]}>计划日期</Text>
+              <PlannedDateMenu
+                current={todo.plannedDate ?? null}
+                colors={colors}
+                onPick={onSetPlannedDate}
+              />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
               <Text style={[styles.section, { color: colors.textTertiary }]}>移动到项目</Text>

@@ -12,7 +12,7 @@ import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
 
 export default function SearchScreen() {
-  const { theme, projects, search, toggleTodo, archiveTodo, pinTodo, setPriority, moveTodo } =
+  const { theme, projects, search, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, moveTodo } =
     useAppData();
   const colors = palette(theme);
   const [term, setTerm] = useState('');
@@ -89,6 +89,10 @@ export default function SearchScreen() {
         }}
         onSetPriority={(p) => {
           if (sheetTodo) void setPriority(sheetTodo.id, p);
+          setSheetTodo(null);
+        }}
+        onSetPlannedDate={(d) => {
+          if (sheetTodo) void setPlannedDate(sheetTodo.id, d);
           setSheetTodo(null);
         }}
         onMove={(projectId) => {

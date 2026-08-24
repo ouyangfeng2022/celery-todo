@@ -10,10 +10,12 @@ import DraggableFlatList, {
   type DragEndParams,
 } from 'react-native-draggable-flatlist';
 import type { TodoDto, TodoPriority } from '@celery/data';
+import { formatPlannedDate } from '@celery/core';
 import { useAppData } from '../../state/AppData';
 import { palette, PRIORITY_LABELS } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+import { PlannedDateMenu } from '../../components/PlannedDateMenu';
 import { ProjectSheet } from '../../components/ProjectSheet';
 import type { ProjectView } from '../../state/AppData';
 
@@ -36,12 +38,16 @@ export default function TodosScreen() {
     archiveTodo,
     pinTodo,
     setPriority,
+    setPlannedDate,
     moveTodo,
   } = useAppData();
   const colors = palette(theme);
 
   const [draft, setDraft] = useState('');
   const [priority, setPriorityState] = useState<TodoPriority>('medium');
+  // 新建事项的计划日期（null = 不安排）；dateMenuOpen 控制输入行下的快捷菜单展开
+  const [draftDate, setDraftDate] = useState<string | null>(null);
+  const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [manualSort, setManualSort] = useState(false);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
   // 项目面板：null = 关闭；'create' = 新建；ProjectView = 长按管理
@@ -58,7 +64,9 @@ export default function TodosScreen() {
     const title = draft.trim();
     if (!title || !currentProjectId) return;
     setDraft('');
-    void addTodo(title, priority);
+    setDraftDate(null);
+    setDateMenuOpen(false);
+    void addTodo(title, priority, draftDate);
   };
 
   const onDragEnd = ({ data }: DragEndParams<TodoDto>) => {
@@ -166,6 +174,24 @@ export default function TodosScreen() {
           placeholderTextColor={colors.textTertiary}
           style={[styles.input, { color: colors.textPrimary }]}
         />
+        {/* 新建计划日期：点击展开快捷菜单，随事项一并提交 */}
+        <Pressable
+          onPress={() => setDateMenuOpen((v) => !v)}
+          hitSlop={6}
+          style={[
+            styles.dateChip,
+            { borderColor: draftDate ? colors.accent : colors.border },
+          ]}
+        >
+          <Text
+            style={{
+              fontSize: 12,
+              color: draftDate ? colors.accent : colors.textTertiary,
+            }}
+          >
+            {draftDate ? formatPlannedDate(draftDate) : '日期'}
+          </Text>
+        </Pressable>
         <View style={styles.prioritySwitch}>
           {(['high', 'medium', 'low'] as const).map((p) => (
             <Pressable key={p} onPress={() => setPriorityState(p)} hitSlop={6}>
@@ -196,6 +222,25 @@ export default function TodosScreen() {
           <Text style={styles.addBtnText}>添加</Text>
         </Pressable>
       </View>
+
+      {/* 计划日期快捷菜单（输入行下方展开，选中即收起） */}
+      {dateMenuOpen && (
+        <View
+          style={[
+            styles.dateMenu,
+            { backgroundColor: colors.bgTertiary, borderColor: colors.border },
+          ]}
+        >
+          <PlannedDateMenu
+            current={draftDate}
+            colors={colors}
+            onPick={(d) => {
+              setDraftDate(d);
+              setDateMenuOpen(false);
+            }}
+          />
+        </View>
+      )}
 
       {/* 手动排序开关 */}
       <Pressable onPress={() => setManualSort((v) => !v)} style={styles.sortToggle} hitSlop={8}>
@@ -242,6 +287,10 @@ export default function TodosScreen() {
         }}
         onSetPriority={(p) => {
           if (sheetTodo) void setPriority(sheetTodo.id, p);
+          setSheetTodo(null);
+        }}
+        onSetPlannedDate={(d) => {
+          if (sheetTodo) void setPlannedDate(sheetTodo.id, d);
           setSheetTodo(null);
         }}
         onMove={(projectId) => {
@@ -299,6 +348,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   input: { flex: 1, paddingVertical: 10, fontSize: 15 },
+  dateChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginLeft: 10,
+  },
+  dateMenu: {
+    marginHorizontal: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
   prioritySwitch: { flexDirection: 'row', gap: 10, paddingLeft: 10 },
   addBtn: {
     borderRadius: 999,

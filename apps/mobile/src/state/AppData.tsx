@@ -45,12 +45,14 @@ interface AppDataValue {
   todos: TodoDto[];
   /** 手动排序提交 */
   reorder: (orderedIds: string[]) => Promise<void>;
-  addTodo: (title: string, priority?: TodoPriority) => Promise<void>;
+  addTodo: (title: string, priority?: TodoPriority, plannedDate?: string | null) => Promise<void>;
   toggleTodo: (id: string) => Promise<void>;
   archiveTodo: (id: string) => Promise<void>;
   pinTodo: (id: string, pinned: boolean) => Promise<void>;
   setPriority: (id: string, priority: TodoPriority) => Promise<void>;
   moveTodo: (id: string, projectId: string) => Promise<void>;
+  /** 设置/清除计划日期（null = 清除）；计划页分桶随之变化 */
+  setPlannedDate: (id: string, plannedDate: string | null) => Promise<void>;
   /** 全量事项（计划/搜索页用；进入相应页时拉取） */
   allTodos: TodoDto[];
   refreshAllTodos: () => Promise<void>;
@@ -203,7 +205,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const addTodo = useCallback(
-    async (title: string, priority: TodoPriority = 'medium') => {
+    async (title: string, priority: TodoPriority = 'medium', plannedDate: string | null = null) => {
       if (!currentProjectId) return;
       // 追加语义：时间戳毫秒恒排尾部（与 CLI 同策略）
       const rank = Date.now();
@@ -213,7 +215,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         title,
         description: null,
         priority,
-        plannedDate: null,
+        plannedDate,
         pinned: false,
         rank,
       });
@@ -262,6 +264,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       await Promise.all([refreshTodos(currentProjectId), refreshProjects(), refreshAllTodos()]);
     },
     [currentProjectId, refreshProjects, refreshTodos, refreshAllTodos],
+  );
+
+  const setPlannedDate = useCallback(
+    async (id: string, plannedDate: string | null) => {
+      await repos.todos.update(id, { plannedDate });
+      await Promise.all([refreshTodos(currentProjectId), refreshAllTodos()]);
+    },
+    [currentProjectId, refreshTodos, refreshAllTodos],
   );
 
   const reorder = useCallback(
@@ -314,6 +324,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       pinTodo,
       setPriority,
       moveTodo,
+      setPlannedDate,
       allTodos,
       refreshAllTodos,
       search,
@@ -337,6 +348,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       pinTodo,
       setPriority,
       moveTodo,
+      setPlannedDate,
       allTodos,
       refreshAllTodos,
       search,

@@ -23,7 +23,7 @@ const BUCKETS: { key: TimeBucket; label: string }[] = [
 ];
 
 export default function PlanScreen() {
-  const { theme, allTodos, refreshAllTodos, toggleTodo, archiveTodo, pinTodo, setPriority, moveTodo, projects } =
+  const { theme, allTodos, refreshAllTodos, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, moveTodo, projects } =
     useAppData();
   const colors = palette(theme);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
@@ -86,6 +86,10 @@ export default function PlanScreen() {
         }}
         onSetPriority={(p) => {
           if (sheetTodo) void setPriority(sheetTodo.id, p);
+          setSheetTodo(null);
+        }}
+        onSetPlannedDate={(d) => {
+          if (sheetTodo) void setPlannedDate(sheetTodo.id, d);
           setSheetTodo(null);
         }}
         onMove={(projectId) => {
