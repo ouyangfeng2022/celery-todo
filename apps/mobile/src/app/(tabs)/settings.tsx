@@ -12,6 +12,7 @@ import { parseV3Export, serializeV3Export, type ParsedV3Export } from '@celery/d
 import { useAppData } from '../../state/AppData';
 import { palette, THEME_LABELS, type ThemeName } from '../../theme';
 import { ArchiveHistorySheet } from '../../components/ArchiveHistorySheet';
+import { StatsSheet } from '../../components/StatsSheet';
 
 const THEME_KEYS: ThemeName[] = ['light', 'dark', 'celery'];
 
@@ -19,6 +20,7 @@ export default function SettingsScreen() {
   const { theme, setTheme, buildV3Export, importBackup } = useAppData();
   const colors = palette(theme);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const exportBackup = async () => {
@@ -112,6 +114,21 @@ export default function SettingsScreen() {
           );
         })}
 
+        <Text style={[styles.section, { color: colors.textTertiary }]}>统计</Text>
+        <Pressable
+          onPress={() => setStatsOpen(true)}
+          style={({ pressed }) => [
+            styles.row,
+            {
+              backgroundColor: pressed ? colors.bgHover : colors.bgTertiary,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={{ color: colors.textPrimary, fontSize: 15, flex: 1 }}>统计</Text>
+          <Text style={{ color: colors.textTertiary, fontSize: 13 }}>热力图 / 完成率</Text>
+        </Pressable>
+
         <Text style={[styles.section, { color: colors.textTertiary }]}>数据</Text>
         <Pressable
           onPress={() => setArchiveOpen(true)}
@@ -169,6 +186,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <ArchiveHistorySheet visible={archiveOpen} onClose={() => setArchiveOpen(false)} />
+      <StatsSheet visible={statsOpen} onClose={() => setStatsOpen(false)} />
     </SafeAreaView>
   );
 }

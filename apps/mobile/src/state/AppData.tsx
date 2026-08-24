@@ -33,11 +33,13 @@ import {
 } from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
 
-/** 项目在 UI 层的形状（桌面 ProjectDto + 计数聚合）。 */
+/** 项目在 UI 层的形状（桌面 ProjectDto 关键字段 + 计数聚合）。 */
 export interface ProjectView {
   id: string;
   name: string;
   kind: 'user' | 'inbox' | 'weekly';
+  color: string | null;
+  rank: number;
   activeCount: number;
 }
 
@@ -91,6 +93,8 @@ interface AppDataValue {
   archivedExhausted: boolean;
   /** reset=true 从头加载（term 为本次过滤词）；false 续拉下一页 */
   loadArchived: (reset?: boolean, term?: string | null) => Promise<void>;
+  /** 一次性抽干全部归档（统计页用；重置过滤词，加载完置 exhausted） */
+  loadAllArchived: () => Promise<void>;
   /** 恢复归档事项回原项目（原项目已删时回收集箱） */
   restoreArchivedTodo: (id: string) => Promise<void>;
   purgeArchivedTodo: (id: string) => Promise<void>;
@@ -154,7 +158,14 @@ async function loadProjects(): Promise<ProjectView[]> {
   const views: ProjectView[] = [];
   for (const p of list) {
     const counts = await repos.todos.counts(p.id);
-    views.push({ id: p.id, name: p.name, kind: p.kind, activeCount: counts.active });
+    views.push({
+      id: p.id,
+      name: p.name,
+      kind: p.kind,
+      color: p.color,
+      rank: p.rank,
+      activeCount: counts.active,
+    });
   }
   return views;
 }
@@ -496,6 +507,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [projects, currentProjectId, refreshTodos, refreshProjects, refreshAllTodos, loadArchived],
   );
 
+  const loadAllArchived = useCallback(async () => {
+    archivedCursorRef.current = null;
+    archivedTermRef.current = null;
+    const all: ArchivedTodoDto[] = [];
+    let cursor: string | null = null;
+    for (let i = 0; i < 100; i++) {
+      const page = await repos.todos.archivedPage({
+        projectId: null,
+        term: null,
+        limit: 200,
+        cursor,
+      });
+      all.push(...page.items);
+      cursor = page.nextCursor;
+      if (!cursor) break;
+    }
+    archivedCursorRef.current = cursor;
+    setArchivedExhausted(cursor === null);
+    setArchived(all);
+  }, []);
+
   const purgeArchivedTodo = useCallback(async (id: string) => {
     await repos.todos.purgeArchived([id]);
     setArchived((prev) => prev.filter((t) => t.id !== id));
@@ -586,6 +618,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       archived,
       archivedExhausted,
       loadArchived,
+      loadAllArchived,
       restoreArchivedTodo,
       purgeArchivedTodo,
       clearArchived,
@@ -626,6 +659,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       archived,
       archivedExhausted,
       loadArchived,
+      loadAllArchived,
       restoreArchivedTodo,
       purgeArchivedTodo,
       clearArchived,
