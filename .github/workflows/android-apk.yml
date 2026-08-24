@@ -65,6 +65,17 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      # release APK 固定签名：专用上传证书（Actions secrets），防止相邻版本因
+      # runner 临时 debug keystore 签名不一致而无法原地升级（注入脚本缺口令即失败）
+      - name: 注入上传签名
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > apps/mobile/android/app/celery-upload.keystore
+          node scripts/inject-android-signing.mjs
+
       - name: Gradle assembleRelease
         working-directory: apps/mobile/android
         run: ./gradlew assembleRelease --no-daemon

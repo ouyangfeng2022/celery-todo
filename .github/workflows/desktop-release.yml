@@ -117,8 +117,8 @@ jobs:
 
   # 移动端安卓 APK：不用 EAS（无 EXPO_TOKEN 依赖），ubuntu runner 上
   # expo prebuild 生成 android/ 后直接 gradle assembleRelease。
-  # Expo 模板的 release 构建用 debug keystore 签名 —— 产物可直接侧载安装，
-  # 但不能上 Google Play；商店分发仍走 mobile-release.yml 的 EAS 线。
+  # release APK 用专用上传证书签名（Actions secrets，见「注入上传签名」步骤）——
+  # 保证相邻版本证书一致、侧载可原地升级；商店分发仍走 mobile-release.yml 的 EAS 线。
   # apps/mobile 独立于根 workspace（file: 依赖本地共享包），先装根再装 mobile
   # （与 mobile.yml 的 typecheck 流程一致，为共享包提供 xlsx 等解析来源）。
   # app.json 的版本不跟随发版脚本，构建前按 tag 同步 expo.version 与
@@ -173,6 +173,17 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
+
+      # release APK 固定签名：专用上传证书（Actions secrets），防止相邻版本因
+      # runner 临时 debug keystore 签名不一致而无法原地升级（注入脚本缺口令即失败）
+      - name: 注入上传签名
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > apps/mobile/android/app/celery-upload.keystore
+          node scripts/inject-android-signing.mjs
 
       - name: Gradle assembleRelease
         working-directory: apps/mobile/android

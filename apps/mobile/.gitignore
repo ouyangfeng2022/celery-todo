@@ -1,0 +1,20 @@
+node_modules/
+.expo/
+dist/
+npm-debug.*
+web-build/
+
+# 密钥材料绝不入库（上传 keystore 存 Actions secrets，本地副本在仓库外）
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# prebuild 产物（CI 每次重新生成，不入库）
+/android/
+/ios/
+
+# macOS
+.DS_Store
