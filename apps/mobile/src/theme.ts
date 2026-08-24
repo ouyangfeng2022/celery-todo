@@ -37,3 +37,16 @@ export const PRIORITY_LABELS: Record<'high' | 'medium' | 'low', string> = {
   medium: '中',
   low: '低',
 };
+
+/**
+ * 项目颜色预设：取自 @celery/ui-tokens 色阶（coral/ink/sand）+ 品牌绿。
+ * null = 无颜色（DB 列可空，桌面端模型同义）。
+ */
+export const PROJECT_COLORS: readonly string[] = [
+  '#d97757', // coral 500 品牌主色
+  '#a64a2f', // coral 700
+  '#788c5d', // 品牌绿（完成动作色）
+  '#f59e0b', // 琥珀
+  '#667491', // ink 500
+  '#736e60', // sand 600
+];

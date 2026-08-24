@@ -60,9 +60,11 @@ interface AppDataValue {
   currentProjectId: string;
   currentProject: ProjectView | null;
   switchProject: (id: string) => void;
-  /** 新建项目并切换过去 */
-  createProject: (name: string) => Promise<void>;
+  /** 新建项目并切换过去（color 可空） */
+  createProject: (name: string, color?: string | null) => Promise<void>;
   renameProject: (id: string, name: string) => Promise<void>;
+  /** 设置/清除项目颜色 */
+  setProjectColor: (id: string, color: string | null) => Promise<void>;
   /** 永久删除项目（其活跃事项先带项目名快照归档，与桌面端一致） */
   deleteProject: (id: string) => Promise<void>;
   /** 调整项目顺序（收集箱固定置顶不参与，与桌面端一致） */
@@ -298,19 +300,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const createProject = useCallback(
-    async (name: string) => {
+    async (name: string, color: string | null = null) => {
       const trimmed = name.trim();
       if (!trimmed) return;
       const created = await repos.projects.create({
         id: uuid(),
         name: trimmed,
         kind: 'user',
-        color: null,
+        color,
       });
       await refreshProjects();
       await activateProject(created.id);
     },
     [refreshProjects, activateProject],
+  );
+
+  const setProjectColor = useCallback(
+    async (id: string, color: string | null) => {
+      await repos.projects.update(id, { color });
+      await refreshProjects();
+    },
+    [refreshProjects],
   );
 
   const renameProject = useCallback(
@@ -699,6 +709,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       switchProject,
       createProject,
       renameProject,
+      setProjectColor,
       deleteProject,
       reorderProjects,
       todos,
@@ -745,6 +756,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       switchProject,
       createProject,
       renameProject,
+      setProjectColor,
       deleteProject,
       reorderProjects,
       todos,

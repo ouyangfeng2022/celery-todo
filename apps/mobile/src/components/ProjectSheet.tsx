@@ -20,11 +20,13 @@ import {
   View,
 } from 'react-native';
 import type { ThemeColors } from '@celery/ui-tokens';
+import { PROJECT_COLORS } from '../theme';
 
 export interface ProjectSheetTarget {
   id: string;
   name: string;
   kind: 'user' | 'inbox' | 'weekly';
+  color: string | null;
 }
 
 export interface TemplateOption {
@@ -48,8 +50,10 @@ interface ProjectSheetProps {
   /** 参与排序的项目（收集箱除外，rank 序） */
   orderableProjects: OrderableProject[];
   onClose: () => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, color: string | null) => void;
   onRename: (id: string, name: string) => void;
+  /** 管理模式点选颜色即时生效 */
+  onSetColor: (id: string, color: string | null) => void;
   onDelete: (id: string) => void;
   /** 用模板新建项目（面板自行关闭） */
   onUseTemplate: (id: string) => void;
@@ -69,6 +73,7 @@ export function ProjectSheet({
   onClose,
   onCreate,
   onRename,
+  onSetColor,
   onDelete,
   onUseTemplate,
   onDeleteTemplate,
@@ -81,6 +86,8 @@ export function ProjectSheet({
   const [savingTemplate, setSavingTemplate] = useState(false);
   // 排序模式：管理模式下点「调整项目顺序」进入
   const [orderMode, setOrderMode] = useState(false);
+  // 选中颜色（null = 无颜色）；管理模式即时提交，新建模式随创建提交
+  const [colorSel, setColorSel] = useState<string | null>(null);
 
   // 每次打开重置草稿与删除确认态
   useEffect(() => {
@@ -90,6 +97,7 @@ export function ProjectSheet({
       setTemplateName(target?.name ?? '');
       setSavingTemplate(false);
       setOrderMode(false);
+      setColorSel(target?.color ?? null);
     }
   }, [visible, target]);
 
@@ -97,7 +105,13 @@ export function ProjectSheet({
     const name = draft.trim();
     if (!name) return;
     if (target) onRename(target.id, name);
-    else onCreate(name);
+    else onCreate(name, colorSel);
+  };
+
+  const pickColor = (color: string | null) => {
+    setColorSel(color);
+    // 管理模式下即时写库（新建模式随「创建」提交）
+    if (target) onSetColor(target.id, color);
   };
 
   const submitTemplate = async () => {
@@ -199,6 +213,32 @@ export function ProjectSheet({
                     },
                   ]}
                 />
+
+                {/* 颜色选择：管理模式即时生效，新建模式随创建提交 */}
+                <View style={styles.colorRow}>
+                  {PROJECT_COLORS.map((c) => (
+                    <Pressable
+                      key={c}
+                      onPress={() => pickColor(c)}
+                      hitSlop={4}
+                      style={[
+                        styles.colorDot,
+                        { backgroundColor: c },
+                        colorSel === c && { borderWidth: 3, borderColor: colors.textPrimary },
+                      ]}
+                    />
+                  ))}
+                  <Pressable onPress={() => pickColor(null)} hitSlop={4} style={styles.colorNone}>
+                    <Text
+                      style={{
+                        color: colorSel === null ? colors.accent : colors.textTertiary,
+                        fontSize: 12,
+                      }}
+                    >
+                      无色
+                    </Text>
+                  </Pressable>
+                </View>
 
                 <View style={styles.actions}>
                   <Pressable
@@ -380,6 +420,23 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 15,
     marginTop: 6,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 10,
+    flexWrap: 'wrap',
+  },
+  colorDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.12)',
+  },
+  colorNone: {
+    paddingHorizontal: 6,
   },
   actions: {
     flexDirection: 'row',

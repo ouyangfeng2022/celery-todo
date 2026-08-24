@@ -52,6 +52,7 @@ export default function TodosScreen() {
     switchProject,
     createProject,
     renameProject,
+    setProjectColor,
     deleteProject,
     reorderProjects,
     templates,
@@ -194,6 +195,9 @@ export default function TodosScreen() {
                 },
               ]}
             >
+              {!active && p.color ? (
+                <View style={[styles.chipDot, { backgroundColor: p.color }]} />
+              ) : null}
               <Text
                 style={{ color: active ? '#ffffff' : colors.textPrimary, fontSize: 13 }}
                 numberOfLines={1}
@@ -568,7 +572,12 @@ export default function TodosScreen() {
         visible={projectSheet !== null}
         target={
           projectSheet && projectSheet !== 'create'
-            ? { id: projectSheet.id, name: projectSheet.name, kind: projectSheet.kind }
+            ? {
+                id: projectSheet.id,
+                name: projectSheet.name,
+                kind: projectSheet.kind,
+                color: projectSheet.color,
+              }
             : null
         }
         colors={colors}
@@ -580,13 +589,16 @@ export default function TodosScreen() {
           void reorderProjects(ids);
         }}
         onClose={() => setProjectSheet(null)}
-        onCreate={(name) => {
+        onCreate={(name, color) => {
           setProjectSheet(null);
-          void createProject(name);
+          void createProject(name, color);
         }}
         onRename={(id, name) => {
           setProjectSheet(null);
           void renameProject(id, name);
+        }}
+        onSetColor={(id, color) => {
+          void setProjectColor(id, color);
         }}
         onDelete={(id) => {
           setProjectSheet(null);
@@ -618,10 +630,18 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   projectBar: { flexGrow: 0, paddingVertical: 8 },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
+  },
+  chipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   composer: {
     flexDirection: 'row',
