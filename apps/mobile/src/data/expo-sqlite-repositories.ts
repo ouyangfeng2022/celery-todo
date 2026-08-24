@@ -31,8 +31,18 @@ import type {
   TodoPage,
   TodoPatch,
   TodoQuery,
+  V3ExportFile,
 } from '@celery/data';
 import { RepositoryError } from '@celery/data';
+
+/**
+ * 移动端在 Repository 契约之外扩展的能力：v3 备份全量导入
+ * （桌面端同义功能走 Rust replace_all 命令，两端对等）。
+ */
+export interface MobileRepositories extends Repositories {
+  /** 单事务清库重灌（projects → todos → archived → settings）；任一失败整体回滚。 */
+  replaceAllV3(file: V3ExportFile): void;
+}
 
 const RANK_GAP = 65_536;
 
@@ -234,7 +244,7 @@ function fail(message: string, kind: 'invalid' | 'not-found' = 'invalid'): never
   throw new RepositoryError(kind, message);
 }
 
-export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositories {
+export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): MobileRepositories {
   const db = SQLite.openDatabaseSync(dbName);
   db.execSync(SCHEMA_SQL);
   runSafe(
@@ -358,6 +368,75 @@ export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): Repositor
   };
 
   return {
+    /**
+     * v3 备份全量导入（契约外扩展）。archived_todos 无外键约束，可安全引用
+     * 已删除项目（靠 project_name 快照展示）；todos 有外键，projects 必须先插。
+     * 导入的是仅含活跃项目的导出文件（移动端/桌面端导出语义一致）。
+     */
+    replaceAllV3(file: V3ExportFile): void {
+      db.withTransactionSync(() => {
+        runSafe(db, 'DELETE FROM todos');
+        runSafe(db, 'DELETE FROM archived_todos');
+        runSafe(db, 'DELETE FROM projects');
+        runSafe(db, 'DELETE FROM settings');
+        for (const p of file.projects) {
+          runSafe(
+            db,
+            'INSERT INTO projects (id, name, kind, color, rank, created_at, updated_at) VALUES (?,?,?,?,?,?,?)',
+            [p.id, p.name, p.kind, p.color, p.rank, p.createdAt, p.updatedAt],
+          );
+        }
+        for (const t of file.todos) {
+          runSafe(
+            db,
+            `INSERT INTO todos (id, project_id, title, description, completed, priority,
+             planned_date, pinned, rank, created_at, updated_at, completed_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              t.id,
+              t.projectId,
+              t.title,
+              t.description,
+              t.completed ? 1 : 0,
+              t.priority,
+              t.plannedDate,
+              t.pinned ? 1 : 0,
+              t.rank,
+              t.createdAt,
+              t.updatedAt,
+              t.completedAt,
+            ],
+          );
+        }
+        for (const a of file.archivedTodos) {
+          runSafe(
+            db,
+            `INSERT INTO archived_todos (id, project_id, title, description, completed, priority,
+             planned_date, pinned, rank, created_at, updated_at, completed_at, archived_at, project_name)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            [
+              a.id,
+              a.projectId,
+              a.title,
+              a.description,
+              a.completed ? 1 : 0,
+              a.priority,
+              a.plannedDate,
+              a.pinned ? 1 : 0,
+              a.rank,
+              a.createdAt,
+              a.updatedAt,
+              a.completedAt,
+              a.archivedAt,
+              a.projectName,
+            ],
+          );
+        }
+        for (const kv of file.settings) {
+          runSafe(db, 'INSERT INTO settings (key, value) VALUES (?, ?)', [kv.key, kv.value]);
+        }
+      });
+    },
     todos: {
       async page(query) {
         const sort = query.sort ?? 'created-desc';

@@ -22,8 +22,15 @@ import type {
   TodoFilter,
   TodoPriority,
   TodoSort,
+  V3ExportFile,
 } from '@celery/data';
-import { createExpoSqliteRepositories, uuid } from '../data/expo-sqlite-repositories';
+import { V3_EXPORT_FORMAT_VERSION, V3_FORMAT_ID } from '@celery/data';
+import Constants from 'expo-constants';
+import {
+  createExpoSqliteRepositories,
+  uuid,
+  type MobileRepositories,
+} from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
 
 /** 项目在 UI 层的形状（桌面 ProjectDto + 计数聚合）。 */
@@ -82,11 +89,15 @@ interface AppDataValue {
   restoreArchivedTodo: (id: string) => Promise<void>;
   purgeArchivedTodo: (id: string) => Promise<void>;
   clearArchived: () => Promise<void>;
+  /** 组装 v3 备份文件（项目/事项/归档/设置全量快照；文件落盘与分享由调用方做） */
+  buildV3Export: () => Promise<V3ExportFile>;
+  /** v3 备份全量导入（单事务清库重灌）；完成后重载主题/项目/列表 */
+  importBackup: (file: V3ExportFile) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataValue | null>(null);
 
-const repos: Repositories = createExpoSqliteRepositories();
+const repos: MobileRepositories = createExpoSqliteRepositories();
 
 /** 抽干分页（移动端量级：单项目数千行以内）。 */
 async function drainTodos(
@@ -104,6 +115,24 @@ async function drainTodos(
       plannedFrom: null,
       plannedTo: null,
       sort,
+      limit: 200,
+      cursor,
+    });
+    out.push(...page.items);
+    cursor = page.nextCursor;
+    if (!cursor) break;
+  }
+  return out;
+}
+
+/** 抽干归档分页（备份导出用）。 */
+async function drainArchived(): Promise<ArchivedTodoDto[]> {
+  const out: ArchivedTodoDto[] = [];
+  let cursor: string | null = null;
+  for (let i = 0; i < 100; i++) {
+    const page = await repos.todos.archivedPage({
+      projectId: null,
+      term: null,
       limit: 200,
       cursor,
     });
@@ -445,6 +474,47 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setArchivedExhausted(true);
   }, []);
 
+  // ============ 备份（v3 JSON，celery-todo/v3 格式） ============
+
+  const buildV3Export = useCallback(async (): Promise<V3ExportFile> => {
+    // 只导出活跃项目：已删项目由归档行的 projectName 快照承载（两端同语义）
+    const [projects, todos, archivedTodos, settings] = await Promise.all([
+      repos.projects.list(),
+      drainTodos(null),
+      drainArchived(),
+      repos.settings.all(),
+    ]);
+    return {
+      format: V3_FORMAT_ID,
+      formatVersion: V3_EXPORT_FORMAT_VERSION,
+      exportedAt: new Date().toISOString(),
+      appVersion: Constants.expoConfig?.version ?? '0.0.0',
+      projects,
+      todos,
+      archivedTodos,
+      settings,
+    };
+  }, []);
+
+  const importBackup = useCallback(
+    async (file: V3ExportFile) => {
+      repos.replaceAllV3(file);
+      // 备份的设置里可能带不同的主题键
+      try {
+        const stored = await repos.settings.get('theme');
+        if (stored === 'dark' || stored === 'celery' || stored === 'light') {
+          setThemeState(stored);
+        }
+      } catch {
+        /* 备份无主题键 */
+      }
+      const views = await refreshProjects();
+      await activateProject(views[0]?.id ?? '');
+      await Promise.all([refreshAllTodos(), loadArchived(true, null)]);
+    },
+    [refreshProjects, activateProject, refreshAllTodos, loadArchived],
+  );
+
   const value = useMemo<AppDataValue>(
     () => ({
       ready,
@@ -481,6 +551,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       restoreArchivedTodo,
       purgeArchivedTodo,
       clearArchived,
+      buildV3Export,
+      importBackup,
     }),
     [
       ready,
@@ -516,6 +588,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       restoreArchivedTodo,
       purgeArchivedTodo,
       clearArchived,
+      buildV3Export,
+      importBackup,
     ],
   );
 
