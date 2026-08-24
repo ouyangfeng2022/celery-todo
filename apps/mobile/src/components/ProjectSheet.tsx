@@ -1,10 +1,15 @@
 /**
- * @file 项目面板：新建项目（可从模板）/ 重命名 + 删除 / 保存为模板（长按项目 chip 弹出）。
+ * @file 项目面板：新建项目（可从模板）/ 重命名 + 删除 / 保存为模板 / 调整顺序。
  * @description 与 TodoActionsSheet 同样的 RN Modal 底部面板，不引入额外 UI 依赖。
- *              收集箱等系统项目只可重命名，不提供删除与存模板。
+ *              收集箱等系统项目只可重命名，不提供删除与存模板，也不参与排序。
  */
 
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import DraggableFlatList, {
+  ScaleDecorator,
+  type DragEndParams,
+} from 'react-native-draggable-flatlist';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -28,6 +33,11 @@ export interface TemplateOption {
   count: number;
 }
 
+export interface OrderableProject {
+  id: string;
+  name: string;
+}
+
 interface ProjectSheetProps {
   /** null = 关闭；无 target = 新建模式 */
   target: ProjectSheetTarget | null;
@@ -35,6 +45,8 @@ interface ProjectSheetProps {
   colors: ThemeColors;
   /** 模板列表（新建模式展示「从模板新建」） */
   templates: TemplateOption[];
+  /** 参与排序的项目（收集箱除外，rank 序） */
+  orderableProjects: OrderableProject[];
   onClose: () => void;
   onCreate: (name: string) => void;
   onRename: (id: string, name: string) => void;
@@ -44,6 +56,8 @@ interface ProjectSheetProps {
   onDeleteTemplate: (id: string) => void;
   /** 项目存为模板（同名替换）；错误由调用方 Alert */
   onSaveTemplate: (id: string, name: string) => Promise<void>;
+  /** 提交新项目顺序（整组重编 rank） */
+  onReorderProjects: (orderedIds: string[]) => void;
 }
 
 export function ProjectSheet({
@@ -51,6 +65,7 @@ export function ProjectSheet({
   visible,
   colors,
   templates,
+  orderableProjects,
   onClose,
   onCreate,
   onRename,
@@ -58,11 +73,14 @@ export function ProjectSheet({
   onUseTemplate,
   onDeleteTemplate,
   onSaveTemplate,
+  onReorderProjects,
 }: ProjectSheetProps) {
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [savingTemplate, setSavingTemplate] = useState(false);
+  // 排序模式：管理模式下点「调整项目顺序」进入
+  const [orderMode, setOrderMode] = useState(false);
 
   // 每次打开重置草稿与删除确认态
   useEffect(() => {
@@ -71,6 +89,7 @@ export function ProjectSheet({
       setConfirmDelete(false);
       setTemplateName(target?.name ?? '');
       setSavingTemplate(false);
+      setOrderMode(false);
     }
   }, [visible, target]);
 
@@ -102,85 +121,75 @@ export function ProjectSheet({
             style={[styles.sheet, { backgroundColor: colors.bgTertiary }]}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
-              {target ? '管理项目' : '新建项目'}
-            </Text>
-
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              onSubmitEditing={submit}
-              returnKeyType="done"
-              placeholder="项目名称"
-              placeholderTextColor={colors.textTertiary}
-              autoFocus
-              style={[
-                styles.input,
-                {
-                  color: colors.textPrimary,
-                  backgroundColor: colors.bgPrimary,
-                  borderColor: colors.border,
-                },
-              ]}
-            />
-
-            <View style={styles.actions}>
-              <Pressable
-                onPress={submit}
-                disabled={!draft.trim()}
-                style={({ pressed }) => [
-                  styles.primaryBtn,
-                  { backgroundColor: colors.accent, opacity: !draft.trim() || pressed ? 0.5 : 1 },
-                ]}
-              >
-                <Text style={styles.primaryBtnText}>{target ? '保存' : '创建'}</Text>
-              </Pressable>
-            </View>
-
-            {/* 新建模式：从模板新建（模板存在才显示） */}
-            {!target && templates.length > 0 && (
+            {orderMode && target ? (
+              /* 排序模式：拖拽调整项目顺序（收集箱固定置顶不参与） */
               <>
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                <Text style={[styles.section, { color: colors.textTertiary }]}>从模板新建</Text>
-                {templates.map((t) => (
-                  <View key={t.id} style={styles.templateRow}>
-                    <Pressable
-                      onPress={() => onUseTemplate(t.id)}
-                      style={({ pressed }) => [
-                        styles.templateMain,
-                        { backgroundColor: pressed ? colors.bgHover : 'transparent' },
-                      ]}
-                    >
-                      <Text
-                        style={{ color: colors.textPrimary, fontSize: 15, flex: 1 }}
-                        numberOfLines={1}
-                      >
-                        {t.name}
-                      </Text>
-                      <Text style={{ color: colors.textTertiary, fontSize: 12 }}>{t.count} 项</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => onDeleteTemplate(t.id)}
-                      hitSlop={6}
-                      style={styles.templateDel}
-                    >
-                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>删除</Text>
-                    </Pressable>
+                <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>调整项目顺序</Text>
+                <Text style={[styles.section, { color: colors.textTertiary }]}>
+                  收集箱固定置顶，其余项目拖拽排序
+                </Text>
+                {/* Modal 内手势需要独立的 GestureHandlerRootView */}
+                <GestureHandlerRootView>
+                  <View style={{ maxHeight: 320 }}>
+                    <DraggableFlatList
+                      data={orderableProjects}
+                      keyExtractor={(p) => p.id}
+                      onDragEnd={({ data }: DragEndParams<OrderableProject>) => {
+                        onReorderProjects(data.map((p) => p.id));
+                      }}
+                      renderItem={({ item, drag, isActive }) => (
+                        <ScaleDecorator>
+                          <Pressable
+                            onPressIn={drag}
+                            disabled={isActive}
+                            style={[
+                              styles.orderRow,
+                              {
+                                backgroundColor: colors.bgPrimary,
+                                borderColor: colors.border,
+                                opacity: isActive ? 0.85 : 1,
+                              },
+                            ]}
+                          >
+                            <Text style={{ color: colors.textTertiary, fontSize: 16 }}>☰</Text>
+                            <Text
+                              style={{ color: colors.textPrimary, fontSize: 15, flex: 1 }}
+                              numberOfLines={1}
+                            >
+                              {item.name}
+                            </Text>
+                          </Pressable>
+                        </ScaleDecorator>
+                      )}
+                    />
                   </View>
-                ))}
+                </GestureHandlerRootView>
+                <View style={styles.actions}>
+                  <Pressable
+                    onPress={() => setOrderMode(false)}
+                    style={({ pressed }) => [
+                      styles.ghostBtn,
+                      { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                    ]}
+                  >
+                    <Text style={{ color: colors.textPrimary, fontSize: 14 }}>完成</Text>
+                  </Pressable>
+                </View>
               </>
-            )}
-
-            {/* 管理模式（user 项目）：保存为模板（收集箱不可存，与桌面端一致） */}
-            {target && target.kind === 'user' && (
+            ) : (
               <>
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                <Text style={[styles.section, { color: colors.textTertiary }]}>保存为模板</Text>
+                <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
+                  {target ? '管理项目' : '新建项目'}
+                </Text>
+
                 <TextInput
-                  value={templateName}
-                  onChangeText={setTemplateName}
-                  placeholder="模板名称"
+                  value={draft}
+                  onChangeText={setDraft}
+                  onSubmitEditing={submit}
+                  returnKeyType="done"
+                  placeholder="项目名称"
                   placeholderTextColor={colors.textTertiary}
+                  autoFocus
                   style={[
                     styles.input,
                     {
@@ -190,62 +199,152 @@ export function ProjectSheet({
                     },
                   ]}
                 />
+
                 <View style={styles.actions}>
                   <Pressable
-                    onPress={() => void submitTemplate()}
-                    disabled={!templateName.trim() || savingTemplate}
+                    onPress={submit}
+                    disabled={!draft.trim()}
                     style={({ pressed }) => [
                       styles.primaryBtn,
                       {
                         backgroundColor: colors.accent,
-                        opacity: !templateName.trim() || savingTemplate || pressed ? 0.5 : 1,
+                        opacity: !draft.trim() || pressed ? 0.5 : 1,
                       },
                     ]}
                   >
-                    <Text style={styles.primaryBtnText}>
-                      {savingTemplate ? '保存中…' : '存为模板（未完成事项）'}
-                    </Text>
+                    <Text style={styles.primaryBtnText}>{target ? '保存' : '创建'}</Text>
                   </Pressable>
                 </View>
-              </>
-            )}
 
-            {target && target.kind === 'user' && (
-              <>
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-                {confirmDelete ? (
-                  <View style={styles.deleteConfirm}>
-                    <Text style={[styles.deleteHint, { color: colors.textTertiary }]}>
-                      删除后项目内未完成事项将移入归档，确认删除？
-                    </Text>
+                {/* 新建模式：从模板新建（模板存在才显示） */}
+                {!target && templates.length > 0 && (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.section, { color: colors.textTertiary }]}>从模板新建</Text>
+                    {templates.map((t) => (
+                      <View key={t.id} style={styles.templateRow}>
+                        <Pressable
+                          onPress={() => onUseTemplate(t.id)}
+                          style={({ pressed }) => [
+                            styles.templateMain,
+                            { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                          ]}
+                        >
+                          <Text
+                            style={{ color: colors.textPrimary, fontSize: 15, flex: 1 }}
+                            numberOfLines={1}
+                          >
+                            {t.name}
+                          </Text>
+                          <Text style={{ color: colors.textTertiary, fontSize: 12 }}>
+                            {t.count} 项
+                          </Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => onDeleteTemplate(t.id)}
+                          hitSlop={6}
+                          style={styles.templateDel}
+                        >
+                          <Text style={{ color: colors.textTertiary, fontSize: 13 }}>删除</Text>
+                        </Pressable>
+                      </View>
+                    ))}
+                  </>
+                )}
+
+                {/* 管理模式（user 项目）：保存为模板（收集箱不可存，与桌面端一致） */}
+                {target && target.kind === 'user' && (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <Text style={[styles.section, { color: colors.textTertiary }]}>保存为模板</Text>
+                    <TextInput
+                      value={templateName}
+                      onChangeText={setTemplateName}
+                      placeholder="模板名称"
+                      placeholderTextColor={colors.textTertiary}
+                      style={[
+                        styles.input,
+                        {
+                          color: colors.textPrimary,
+                          backgroundColor: colors.bgPrimary,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    />
                     <View style={styles.actions}>
                       <Pressable
-                        onPress={() => onDelete(target.id)}
-                        style={[styles.dangerBtn, { backgroundColor: '#c0392b' }]}
-                      >
-                        <Text style={styles.primaryBtnText}>确认删除</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => setConfirmDelete(false)}
+                        onPress={() => void submitTemplate()}
+                        disabled={!templateName.trim() || savingTemplate}
                         style={({ pressed }) => [
-                          styles.ghostBtn,
-                          { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                          styles.primaryBtn,
+                          {
+                            backgroundColor: colors.accent,
+                            opacity: !templateName.trim() || savingTemplate || pressed ? 0.5 : 1,
+                          },
                         ]}
                       >
-                        <Text style={{ color: colors.textPrimary, fontSize: 14 }}>取消</Text>
+                        <Text style={styles.primaryBtnText}>
+                          {savingTemplate ? '保存中…' : '存为模板（未完成事项）'}
+                        </Text>
                       </Pressable>
                     </View>
-                  </View>
-                ) : (
-                  <Pressable
-                    onPress={() => setConfirmDelete(true)}
-                    style={({ pressed }) => [
-                      styles.deleteRow,
-                      { backgroundColor: pressed ? colors.bgHover : 'transparent' },
-                    ]}
-                  >
-                    <Text style={{ color: '#c0392b', fontSize: 15 }}>删除项目</Text>
-                  </Pressable>
+                  </>
+                )}
+
+                {target && target.kind === 'user' && (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    {confirmDelete ? (
+                      <View style={styles.deleteConfirm}>
+                        <Text style={[styles.deleteHint, { color: colors.textTertiary }]}>
+                          删除后项目内未完成事项将移入归档，确认删除？
+                        </Text>
+                        <View style={styles.actions}>
+                          <Pressable
+                            onPress={() => onDelete(target.id)}
+                            style={[styles.dangerBtn, { backgroundColor: '#c0392b' }]}
+                          >
+                            <Text style={styles.primaryBtnText}>确认删除</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => setConfirmDelete(false)}
+                            style={({ pressed }) => [
+                              styles.ghostBtn,
+                              { borderColor: colors.border, opacity: pressed ? 0.6 : 1 },
+                            ]}
+                          >
+                            <Text style={{ color: colors.textPrimary, fontSize: 14 }}>取消</Text>
+                          </Pressable>
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable
+                        onPress={() => setConfirmDelete(true)}
+                        style={({ pressed }) => [
+                          styles.deleteRow,
+                          { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                        ]}
+                      >
+                        <Text style={{ color: '#c0392b', fontSize: 15 }}>删除项目</Text>
+                      </Pressable>
+                    )}
+                  </>
+                )}
+
+                {/* 管理模式：调整项目顺序（全局功能，收集箱置顶不参与） */}
+                {target && target.kind === 'user' && !orderMode && (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <Pressable
+                      onPress={() => setOrderMode(true)}
+                      style={({ pressed }) => [
+                        styles.deleteRow,
+                        { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                      ]}
+                    >
+                      <Text style={{ color: colors.textPrimary, fontSize: 15 }}>调整项目顺序</Text>
+                    </Pressable>
+                  </>
                 )}
               </>
             )}
@@ -335,6 +434,16 @@ const styles = StyleSheet.create({
   templateDel: {
     paddingHorizontal: 12,
     paddingVertical: 12,
+  },
+  orderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginVertical: 3,
   },
   deleteRow: {
     borderRadius: 8,

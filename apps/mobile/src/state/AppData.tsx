@@ -65,6 +65,8 @@ interface AppDataValue {
   renameProject: (id: string, name: string) => Promise<void>;
   /** 永久删除项目（其活跃事项先带项目名快照归档，与桌面端一致） */
   deleteProject: (id: string) => Promise<void>;
+  /** 调整项目顺序（收集箱固定置顶不参与，与桌面端一致） */
+  reorderProjects: (orderedIds: string[]) => Promise<void>;
   /** 当前项目事项（按当前排序/过滤拉取） */
   todos: TodoDto[];
   /** 列表排序 / 状态过滤（按项目持久化：settings 键 sort.<pid> / filter.<pid>，与桌面端同名同义） */
@@ -332,6 +334,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       await refreshAllTodos();
     },
     [currentProjectId, refreshProjects, activateProject, refreshAllTodos],
+  );
+
+  const reorderProjects = useCallback(
+    async (orderedIds: string[]) => {
+      if (orderedIds.length === 0) return;
+      await repos.projects.reorder({ orderedIds });
+      await refreshProjects();
+    },
+    [refreshProjects],
   );
 
   const addTodo = useCallback(
@@ -689,6 +700,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createProject,
       renameProject,
       deleteProject,
+      reorderProjects,
       todos,
       todoSort,
       todoFilter,
@@ -734,6 +746,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       createProject,
       renameProject,
       deleteProject,
+      reorderProjects,
       todos,
       todoSort,
       todoFilter,

@@ -53,6 +53,7 @@ export default function TodosScreen() {
     createProject,
     renameProject,
     deleteProject,
+    reorderProjects,
     templates,
     saveTemplate,
     createProjectFromTemplate,
@@ -572,6 +573,12 @@ export default function TodosScreen() {
         }
         colors={colors}
         templates={templates.map((t) => ({ id: t.id, name: t.name, count: t.items.length }))}
+        orderableProjects={projects
+          .filter((p) => p.kind === 'user')
+          .map((p) => ({ id: p.id, name: p.name }))}
+        onReorderProjects={(ids) => {
+          void reorderProjects(ids);
+        }}
         onClose={() => setProjectSheet(null)}
         onCreate={(name) => {
           setProjectSheet(null);
