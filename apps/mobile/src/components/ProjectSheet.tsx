@@ -1,7 +1,7 @@
 /**
- * @file 项目面板：新建项目 / 重命名 + 删除（长按项目 chip 弹出）。
+ * @file 项目面板：新建项目（可从模板）/ 重命名 + 删除 / 保存为模板（长按项目 chip 弹出）。
  * @description 与 TodoActionsSheet 同样的 RN Modal 底部面板，不引入额外 UI 依赖。
- *              收集箱等系统项目只可重命名，不提供删除。
+ *              收集箱等系统项目只可重命名，不提供删除与存模板。
  */
 
 import { useEffect, useState } from 'react';
@@ -22,34 +22,55 @@ export interface ProjectSheetTarget {
   kind: 'user' | 'inbox' | 'weekly';
 }
 
+export interface TemplateOption {
+  id: string;
+  name: string;
+  count: number;
+}
+
 interface ProjectSheetProps {
   /** null = 关闭；无 target = 新建模式 */
   target: ProjectSheetTarget | null;
   visible: boolean;
   colors: ThemeColors;
+  /** 模板列表（新建模式展示「从模板新建」） */
+  templates: TemplateOption[];
   onClose: () => void;
   onCreate: (name: string) => void;
   onRename: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  /** 用模板新建项目（面板自行关闭） */
+  onUseTemplate: (id: string) => void;
+  onDeleteTemplate: (id: string) => void;
+  /** 项目存为模板（同名替换）；错误由调用方 Alert */
+  onSaveTemplate: (id: string, name: string) => Promise<void>;
 }
 
 export function ProjectSheet({
   target,
   visible,
   colors,
+  templates,
   onClose,
   onCreate,
   onRename,
   onDelete,
+  onUseTemplate,
+  onDeleteTemplate,
+  onSaveTemplate,
 }: ProjectSheetProps) {
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   // 每次打开重置草稿与删除确认态
   useEffect(() => {
     if (visible) {
       setDraft(target?.name ?? '');
       setConfirmDelete(false);
+      setTemplateName(target?.name ?? '');
+      setSavingTemplate(false);
     }
   }, [visible, target]);
 
@@ -58,6 +79,16 @@ export function ProjectSheet({
     if (!name) return;
     if (target) onRename(target.id, name);
     else onCreate(name);
+  };
+
+  const submitTemplate = async () => {
+    if (!target || !templateName.trim() || savingTemplate) return;
+    setSavingTemplate(true);
+    try {
+      await onSaveTemplate(target.id, templateName);
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   return (
@@ -105,6 +136,79 @@ export function ProjectSheet({
                 <Text style={styles.primaryBtnText}>{target ? '保存' : '创建'}</Text>
               </Pressable>
             </View>
+
+            {/* 新建模式：从模板新建（模板存在才显示） */}
+            {!target && templates.length > 0 && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.section, { color: colors.textTertiary }]}>从模板新建</Text>
+                {templates.map((t) => (
+                  <View key={t.id} style={styles.templateRow}>
+                    <Pressable
+                      onPress={() => onUseTemplate(t.id)}
+                      style={({ pressed }) => [
+                        styles.templateMain,
+                        { backgroundColor: pressed ? colors.bgHover : 'transparent' },
+                      ]}
+                    >
+                      <Text
+                        style={{ color: colors.textPrimary, fontSize: 15, flex: 1 }}
+                        numberOfLines={1}
+                      >
+                        {t.name}
+                      </Text>
+                      <Text style={{ color: colors.textTertiary, fontSize: 12 }}>{t.count} 项</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => onDeleteTemplate(t.id)}
+                      hitSlop={6}
+                      style={styles.templateDel}
+                    >
+                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>删除</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* 管理模式（user 项目）：保存为模板（收集箱不可存，与桌面端一致） */}
+            {target && target.kind === 'user' && (
+              <>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <Text style={[styles.section, { color: colors.textTertiary }]}>保存为模板</Text>
+                <TextInput
+                  value={templateName}
+                  onChangeText={setTemplateName}
+                  placeholder="模板名称"
+                  placeholderTextColor={colors.textTertiary}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.textPrimary,
+                      backgroundColor: colors.bgPrimary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+                <View style={styles.actions}>
+                  <Pressable
+                    onPress={() => void submitTemplate()}
+                    disabled={!templateName.trim() || savingTemplate}
+                    style={({ pressed }) => [
+                      styles.primaryBtn,
+                      {
+                        backgroundColor: colors.accent,
+                        opacity: !templateName.trim() || savingTemplate || pressed ? 0.5 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.primaryBtnText}>
+                      {savingTemplate ? '保存中…' : '存为模板（未完成事项）'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
 
             {target && target.kind === 'user' && (
               <>
@@ -209,6 +313,28 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth * 2,
     marginVertical: 10,
+  },
+  section: {
+    fontSize: 12,
+    paddingBottom: 6,
+  },
+  templateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  templateMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  templateDel: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   deleteRow: {
     borderRadius: 8,

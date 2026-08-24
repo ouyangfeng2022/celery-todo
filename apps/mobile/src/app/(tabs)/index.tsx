@@ -3,7 +3,16 @@
  */
 
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DraggableFlatList, {
   ScaleDecorator,
@@ -44,6 +53,10 @@ export default function TodosScreen() {
     createProject,
     renameProject,
     deleteProject,
+    templates,
+    saveTemplate,
+    createProjectFromTemplate,
+    deleteTemplate,
     todos,
     todoSort,
     todoFilter,
@@ -558,6 +571,7 @@ export default function TodosScreen() {
             : null
         }
         colors={colors}
+        templates={templates.map((t) => ({ id: t.id, name: t.name, count: t.items.length }))}
         onClose={() => setProjectSheet(null)}
         onCreate={(name) => {
           setProjectSheet(null);
@@ -570,6 +584,23 @@ export default function TodosScreen() {
         onDelete={(id) => {
           setProjectSheet(null);
           void deleteProject(id);
+        }}
+        onUseTemplate={(id) => {
+          setProjectSheet(null);
+          createProjectFromTemplate(id).catch((e: unknown) =>
+            Alert.alert('新建失败', e instanceof Error ? e.message : String(e)),
+          );
+        }}
+        onDeleteTemplate={(id) => {
+          void deleteTemplate(id);
+        }}
+        onSaveTemplate={async (id, name) => {
+          try {
+            await saveTemplate(id, name);
+            Alert.alert('已保存为模板', name);
+          } catch (e) {
+            Alert.alert('保存失败', e instanceof Error ? e.message : String(e));
+          }
         }}
       />
     </SafeAreaView>

@@ -32,6 +32,13 @@ import {
   type MobileRepositories,
 } from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
+import {
+  createTemplateFromProject,
+  formatLocalDate,
+  instantiateTemplate,
+  type TodoTemplate,
+} from '@celery/core';
+import { toCoreProject, toCoreTodo } from '../utils/coreAdapter';
 
 /** 项目在 UI 层的形状（桌面 ProjectDto 关键字段 + 计数聚合）。 */
 export interface ProjectView {
@@ -103,6 +110,13 @@ interface AppDataValue {
   buildV3Export: () => Promise<V3ExportFile>;
   /** v3 备份全量导入（单事务清库重灌）；完成后重载主题/项目/列表 */
   importBackup: (file: V3ExportFile) => Promise<void>;
+  /** 项目模板（settings 键 customTemplates，与桌面端同构） */
+  templates: TodoTemplate[];
+  /** 把项目未完成事项存为模板（同名替换）；无可存事项时抛错 */
+  saveTemplate: (projectId: string, name: string) => Promise<void>;
+  /** 从模板新建项目（日期偏移以今天为起点）并切换过去 */
+  createProjectFromTemplate: (templateId: string) => Promise<void>;
+  deleteTemplate: (templateId: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataValue | null>(null);
@@ -182,6 +196,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [allTodos, setAllTodos] = useState<TodoDto[]>([]);
   const [archived, setArchived] = useState<ArchivedTodoDto[]>([]);
   const [archivedExhausted, setArchivedExhausted] = useState(true);
+  const [templates, setTemplates] = useState<TodoTemplate[]>([]);
   // 归档游标与过滤词跨「续拉」保留在 ref（不触发重渲染）
   const archivedCursorRef = useRef<string | null>(null);
   const archivedTermRef = useRef<string | null>(null);
@@ -205,6 +220,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const refreshAllTodos = useCallback(async () => {
     setAllTodos(await drainTodos(null));
+  }, []);
+
+  // ============ 项目模板（settings 键 customTemplates，JSON 数组） ============
+
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const raw = await repos.settings.get('customTemplates');
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      // 脏值（非数组/结构不符）一律回退空，不让单个坏值拖垮启动
+      setTemplates(Array.isArray(parsed) ? (parsed as TodoTemplate[]) : []);
+    } catch {
+      setTemplates([]);
+    }
   }, []);
 
   /** 激活项目：载入该项目持久化的排序/过滤（脏值回退默认）再拉列表。 */
@@ -247,12 +275,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const views = await refreshProjects();
         const first = views[0]?.id ?? '';
         await activateProject(first);
+        void refreshTemplates();
         setReady(true);
       } catch (e) {
         setInitError(e instanceof Error ? e.message : String(e));
       }
     })();
-  }, [refreshProjects, activateProject]);
+  }, [refreshProjects, activateProject, refreshTemplates]);
 
   const setTheme = useCallback((name: ThemeName) => {
     setThemeState(name);
@@ -577,9 +606,74 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       }
       const views = await refreshProjects();
       await activateProject(views[0]?.id ?? '');
-      await Promise.all([refreshAllTodos(), loadArchived(true, null)]);
+      await Promise.all([refreshAllTodos(), loadArchived(true, null), refreshTemplates()]);
     },
-    [refreshProjects, activateProject, refreshAllTodos, loadArchived],
+    [refreshProjects, activateProject, refreshAllTodos, loadArchived, refreshTemplates],
+  );
+
+  const saveTemplate = useCallback(
+    async (projectId: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const view = projects.find((p) => p.id === projectId);
+      if (!view) return;
+      // core 纯函数：默认只收未完成事项、收集箱抛错、无可存事项抛错
+      const todos = await drainTodos(projectId);
+      const template = createTemplateFromProject(
+        toCoreProject(view),
+        todos.map(toCoreTodo),
+        trimmed,
+      );
+      const next = [...templates.filter((t) => t.name !== trimmed), template];
+      await repos.settings.set('customTemplates', JSON.stringify(next));
+      setTemplates(next);
+    },
+    [projects, templates],
+  );
+
+  const createProjectFromTemplate = useCallback(
+    async (templateId: string) => {
+      const template = templates.find((t) => t.id === templateId);
+      if (!template) return;
+      // 以今天为起始日重放模板的日期偏移（无偏移项不受影响）
+      const { project, todos } = instantiateTemplate(
+        template,
+        template.projectName,
+        formatLocalDate(new Date()),
+      );
+      await repos.projects.create({
+        id: project.id,
+        name: project.name,
+        kind: 'user',
+        color: project.color ?? null,
+      });
+      if (todos.length > 0) {
+        await repos.todos.createBulk(
+          todos.map((t) => ({
+            id: t.id,
+            projectId: t.projectId,
+            title: t.title,
+            description: t.description ?? null,
+            priority: t.priority,
+            plannedDate: t.plannedDate ?? null,
+            pinned: t.pinned,
+            rank: t.order,
+          })),
+        );
+      }
+      await refreshProjects();
+      await activateProject(project.id);
+    },
+    [templates, refreshProjects, activateProject],
+  );
+
+  const deleteTemplate = useCallback(
+    async (templateId: string) => {
+      const next = templates.filter((t) => t.id !== templateId);
+      await repos.settings.set('customTemplates', JSON.stringify(next));
+      setTemplates(next);
+    },
+    [templates],
   );
 
   const value = useMemo<AppDataValue>(
@@ -624,6 +718,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearArchived,
       buildV3Export,
       importBackup,
+      templates,
+      saveTemplate,
+      createProjectFromTemplate,
+      deleteTemplate,
     }),
     [
       ready,
@@ -665,6 +763,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       clearArchived,
       buildV3Export,
       importBackup,
+      templates,
+      saveTemplate,
+      createProjectFromTemplate,
+      deleteTemplate,
     ],
   );
 
