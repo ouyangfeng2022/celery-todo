@@ -6,14 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput } from 'react-native';
 import type { ThemeColors } from '@celery/ui-tokens';
 import type { TodoDto } from '@celery/data';
 

@@ -67,7 +67,10 @@ export function TodoRow({
         <Pressable
           onPress={onToggle}
           onLongPress={onLongPress}
-          style={[styles.row, { backgroundColor: todo.pinned ? colors.pinnedBg : colors.bgTertiary }]}
+          style={[
+            styles.row,
+            { backgroundColor: todo.pinned ? colors.pinnedBg : colors.bgTertiary },
+          ]}
         >
           {dragHandle}
           <View
@@ -85,7 +88,10 @@ export function TodoRow({
               style={[
                 styles.title,
                 { color: colors.textPrimary },
-                todo.completed && { color: colors.textTertiary, textDecorationLine: 'line-through' },
+                todo.completed && {
+                  color: colors.textTertiary,
+                  textDecorationLine: 'line-through',
+                },
               ]}
             >
               {todo.title}
@@ -96,7 +102,9 @@ export function TodoRow({
               </Text>
             ) : null}
             <View style={styles.meta}>
-              <View style={[styles.priorityDot, { backgroundColor: PRIORITY_DOT[todo.priority] }]} />
+              <View
+                style={[styles.priorityDot, { backgroundColor: PRIORITY_DOT[todo.priority] }]}
+              />
               {todo.plannedDate ? (
                 <Text style={[styles.metaText, { color: colors.textTertiary }]}>
                   {todo.plannedDate.slice(5)}

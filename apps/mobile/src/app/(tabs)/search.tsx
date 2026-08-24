@@ -13,8 +13,18 @@ import { TodoActionsSheet } from '../../components/TodoActionsSheet';
 import { TodoDetailSheet } from '../../components/TodoDetailSheet';
 
 export default function SearchScreen() {
-  const { theme, projects, search, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, updateTodoContent, moveTodo } =
-    useAppData();
+  const {
+    theme,
+    projects,
+    search,
+    toggleTodo,
+    archiveTodo,
+    pinTodo,
+    setPriority,
+    setPlannedDate,
+    updateTodoContent,
+    moveTodo,
+  } = useAppData();
   const colors = palette(theme);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<TodoDto[]>([]);
@@ -48,7 +58,10 @@ export default function SearchScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]} edges={['top']}>
       <Text style={[styles.header, { color: colors.textPrimary }]}>搜索</Text>
       <View
-        style={[styles.composer, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}
+        style={[
+          styles.composer,
+          { backgroundColor: colors.bgTertiary, borderColor: colors.border },
+        ]}
       >
         <TextInput
           value={term}

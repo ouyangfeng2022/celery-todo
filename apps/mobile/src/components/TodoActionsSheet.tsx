@@ -53,7 +53,11 @@ export function TodoActionsSheet({
               </Text>
 
               <SheetRow label="编辑内容" colors={colors} onPress={onEdit} />
-              <SheetRow label={todo.pinned ? '取消置顶' : '置顶'} colors={colors} onPress={() => onPin(!todo.pinned)} />
+              <SheetRow
+                label={todo.pinned ? '取消置顶' : '置顶'}
+                colors={colors}
+                onPress={() => onPin(!todo.pinned)}
+              />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
               <Text style={[styles.section, { color: colors.textTertiary }]}>优先级</Text>
@@ -81,7 +85,12 @@ export function TodoActionsSheet({
               {projects
                 .filter((p) => p.id !== todo.projectId)
                 .map((p) => (
-                  <SheetRow key={p.id} label={p.name} colors={colors} onPress={() => onMove(p.id)} />
+                  <SheetRow
+                    key={p.id}
+                    label={p.name}
+                    colors={colors}
+                    onPress={() => onMove(p.id)}
+                  />
                 ))}
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 

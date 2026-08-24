@@ -182,10 +182,7 @@ export default function TodosScreen() {
         <Pressable
           onPress={() => setDateMenuOpen((v) => !v)}
           hitSlop={6}
-          style={[
-            styles.dateChip,
-            { borderColor: draftDate ? colors.accent : colors.border },
-          ]}
+          style={[styles.dateChip, { borderColor: draftDate ? colors.accent : colors.border }]}
         >
           <Text
             style={{

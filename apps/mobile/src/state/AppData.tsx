@@ -11,10 +11,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
-import type { Repositories, TodoDto, TodoPriority } from '@celery/data';
+import type { ArchivedTodoDto, Repositories, TodoDto, TodoPriority } from '@celery/data';
 import { createExpoSqliteRepositories, uuid } from '../data/expo-sqlite-repositories';
 import type { ThemeName } from '../theme';
 
@@ -54,14 +55,21 @@ interface AppDataValue {
   /** 设置/清除计划日期（null = 清除）；计划页分桶随之变化 */
   setPlannedDate: (id: string, plannedDate: string | null) => Promise<void>;
   /** 编辑标题/描述；标题 trim 后为空时忽略标题改动（描述空串存 null） */
-  updateTodoContent: (
-    id: string,
-    patch: { title?: string; description?: string },
-  ) => Promise<void>;
+  updateTodoContent: (id: string, patch: { title?: string; description?: string }) => Promise<void>;
   /** 全量事项（计划/搜索页用；进入相应页时拉取） */
   allTodos: TodoDto[];
   refreshAllTodos: () => Promise<void>;
   search: (term: string) => Promise<TodoDto[]>;
+  /** 已归档事项（游标增量加载；term 下推 SQL LIKE 过滤标题/描述） */
+  archived: ArchivedTodoDto[];
+  /** true = 后续无更多页 */
+  archivedExhausted: boolean;
+  /** reset=true 从头加载（term 为本次过滤词）；false 续拉下一页 */
+  loadArchived: (reset?: boolean, term?: string | null) => Promise<void>;
+  /** 恢复归档事项回原项目（原项目已删时回收集箱） */
+  restoreArchivedTodo: (id: string) => Promise<void>;
+  purgeArchivedTodo: (id: string) => Promise<void>;
+  clearArchived: () => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataValue | null>(null);
@@ -108,6 +116,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [currentProjectId, setCurrentProjectId] = useState('');
   const [todos, setTodos] = useState<TodoDto[]>([]);
   const [allTodos, setAllTodos] = useState<TodoDto[]>([]);
+  const [archived, setArchived] = useState<ArchivedTodoDto[]>([]);
+  const [archivedExhausted, setArchivedExhausted] = useState(true);
+  // 归档游标与过滤词跨「续拉」保留在 ref（不触发重渲染）
+  const archivedCursorRef = useRef<string | null>(null);
+  const archivedTermRef = useRef<string | null>(null);
 
   const refreshProjects = useCallback(async () => {
     const views = await loadProjects();
@@ -322,6 +335,57 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return out;
   }, []);
 
+  // ============ 归档历史（设置页「已归档事项」） ============
+
+  const loadArchived = useCallback(async (reset?: boolean, term?: string | null) => {
+    if (reset) {
+      archivedCursorRef.current = null;
+      if (term !== undefined) {
+        const keyword = term?.trim() ?? '';
+        archivedTermRef.current = keyword || null;
+      }
+    }
+    // 续拉时没有游标 = 已抽干
+    if (!reset && !archivedCursorRef.current) return;
+    const page = await repos.todos.archivedPage({
+      projectId: null,
+      term: archivedTermRef.current,
+      limit: 50,
+      cursor: archivedCursorRef.current,
+    });
+    archivedCursorRef.current = page.nextCursor;
+    setArchivedExhausted(page.nextCursor === null);
+    setArchived((prev) => (reset ? page.items : [...prev, ...page.items]));
+  }, []);
+
+  const restoreArchivedTodo = useCallback(
+    async (id: string) => {
+      // 原项目被删时仓储要求 fallback，收集箱首启必有
+      const fallback = projects.find((p) => p.kind === 'inbox')?.id ?? null;
+      await repos.todos.restoreArchived([id], fallback);
+      await Promise.all([
+        refreshTodos(currentProjectId),
+        refreshProjects(),
+        refreshAllTodos(),
+        loadArchived(true),
+      ]);
+    },
+    [projects, currentProjectId, refreshTodos, refreshProjects, refreshAllTodos, loadArchived],
+  );
+
+  const purgeArchivedTodo = useCallback(async (id: string) => {
+    await repos.todos.purgeArchived([id]);
+    setArchived((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const clearArchived = useCallback(async () => {
+    await repos.todos.purgeAllArchived();
+    archivedCursorRef.current = null;
+    archivedTermRef.current = null;
+    setArchived([]);
+    setArchivedExhausted(true);
+  }, []);
+
   const value = useMemo<AppDataValue>(
     () => ({
       ready,
@@ -348,6 +412,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       allTodos,
       refreshAllTodos,
       search,
+      archived,
+      archivedExhausted,
+      loadArchived,
+      restoreArchivedTodo,
+      purgeArchivedTodo,
+      clearArchived,
     }),
     [
       ready,
@@ -373,6 +443,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       allTodos,
       refreshAllTodos,
       search,
+      archived,
+      archivedExhausted,
+      loadArchived,
+      restoreArchivedTodo,
+      purgeArchivedTodo,
+      clearArchived,
     ],
   );
 

@@ -24,8 +24,19 @@ const BUCKETS: { key: TimeBucket; label: string }[] = [
 ];
 
 export default function PlanScreen() {
-  const { theme, allTodos, refreshAllTodos, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, updateTodoContent, moveTodo, projects } =
-    useAppData();
+  const {
+    theme,
+    allTodos,
+    refreshAllTodos,
+    toggleTodo,
+    archiveTodo,
+    pinTodo,
+    setPriority,
+    setPlannedDate,
+    updateTodoContent,
+    moveTodo,
+    projects,
+  } = useAppData();
   const colors = palette(theme);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
   const [detailTodo, setDetailTodo] = useState<TodoDto | null>(null);
