@@ -53,6 +53,11 @@ interface AppDataValue {
   moveTodo: (id: string, projectId: string) => Promise<void>;
   /** 设置/清除计划日期（null = 清除）；计划页分桶随之变化 */
   setPlannedDate: (id: string, plannedDate: string | null) => Promise<void>;
+  /** 编辑标题/描述；标题 trim 后为空时忽略标题改动（描述空串存 null） */
+  updateTodoContent: (
+    id: string,
+    patch: { title?: string; description?: string },
+  ) => Promise<void>;
   /** 全量事项（计划/搜索页用；进入相应页时拉取） */
   allTodos: TodoDto[];
   refreshAllTodos: () => Promise<void>;
@@ -274,6 +279,20 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [currentProjectId, refreshTodos, refreshAllTodos],
   );
 
+  const updateTodoContent = useCallback(
+    async (id: string, patch: { title?: string; description?: string }) => {
+      const next: { title?: string; description?: string | null } = {};
+      if (patch.title !== undefined && patch.title.trim()) next.title = patch.title.trim();
+      if (patch.description !== undefined) {
+        next.description = patch.description.trim() ? patch.description : null;
+      }
+      if (!next.title && next.description === undefined) return;
+      await repos.todos.update(id, next);
+      await Promise.all([refreshTodos(currentProjectId), refreshAllTodos()]);
+    },
+    [currentProjectId, refreshTodos, refreshAllTodos],
+  );
+
   const reorder = useCallback(
     async (orderedIds: string[]) => {
       if (!currentProjectId) return;
@@ -325,6 +344,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPriority,
       moveTodo,
       setPlannedDate,
+      updateTodoContent,
       allTodos,
       refreshAllTodos,
       search,
@@ -349,6 +369,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setPriority,
       moveTodo,
       setPlannedDate,
+      updateTodoContent,
       allTodos,
       refreshAllTodos,
       search,

@@ -90,6 +90,11 @@ export function TodoRow({
             >
               {todo.title}
             </Text>
+            {todo.description ? (
+              <Text numberOfLines={1} style={[styles.desc, { color: colors.textSecondary }]}>
+                {todo.description}
+              </Text>
+            ) : null}
             <View style={styles.meta}>
               <View style={[styles.priorityDot, { backgroundColor: PRIORITY_DOT[todo.priority] }]} />
               {todo.plannedDate ? (
@@ -129,6 +134,9 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  desc: {
+    fontSize: 12,
   },
   meta: {
     flexDirection: 'row',

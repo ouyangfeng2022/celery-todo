@@ -15,6 +15,7 @@ import { useAppData } from '../../state/AppData';
 import { palette, PRIORITY_LABELS } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+import { TodoDetailSheet } from '../../components/TodoDetailSheet';
 import { PlannedDateMenu } from '../../components/PlannedDateMenu';
 import { ProjectSheet } from '../../components/ProjectSheet';
 import type { ProjectView } from '../../state/AppData';
@@ -39,6 +40,7 @@ export default function TodosScreen() {
     pinTodo,
     setPriority,
     setPlannedDate,
+    updateTodoContent,
     moveTodo,
   } = useAppData();
   const colors = palette(theme);
@@ -50,6 +52,8 @@ export default function TodosScreen() {
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const [manualSort, setManualSort] = useState(false);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
+  // 详情编辑面板目标事项（从长按面板「编辑内容」进入）
+  const [detailTodo, setDetailTodo] = useState<TodoDto | null>(null);
   // 项目面板：null = 关闭；'create' = 新建；ProjectView = 长按管理
   const [projectSheet, setProjectSheet] = useState<'create' | ProjectView | null>(null);
 
@@ -281,6 +285,10 @@ export default function TodosScreen() {
         projects={projects.map((p) => ({ id: p.id, name: p.name }))}
         colors={colors}
         onClose={() => setSheetTodo(null)}
+        onEdit={() => {
+          if (sheetTodo) setDetailTodo(sheetTodo);
+          setSheetTodo(null);
+        }}
         onPin={(pinned) => {
           if (sheetTodo) void pinTodo(sheetTodo.id, pinned);
           setSheetTodo(null);
@@ -300,6 +308,15 @@ export default function TodosScreen() {
         onArchive={() => {
           if (sheetTodo) void archiveTodo(sheetTodo.id);
           setSheetTodo(null);
+        }}
+      />
+
+      <TodoDetailSheet
+        todo={detailTodo}
+        colors={colors}
+        onClose={(draft) => {
+          if (detailTodo) void updateTodoContent(detailTodo.id, draft);
+          setDetailTodo(null);
         }}
       />
 

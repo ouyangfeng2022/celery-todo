@@ -10,14 +10,16 @@ import { useAppData } from '../../state/AppData';
 import { palette } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+import { TodoDetailSheet } from '../../components/TodoDetailSheet';
 
 export default function SearchScreen() {
-  const { theme, projects, search, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, moveTodo } =
+  const { theme, projects, search, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, updateTodoContent, moveTodo } =
     useAppData();
   const colors = palette(theme);
   const [term, setTerm] = useState('');
   const [results, setResults] = useState<TodoDto[]>([]);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
+  const [detailTodo, setDetailTodo] = useState<TodoDto | null>(null);
 
   useEffect(() => {
     const keyword = term.trim();
@@ -83,6 +85,10 @@ export default function SearchScreen() {
         projects={projects.map((p) => ({ id: p.id, name: p.name }))}
         colors={colors}
         onClose={() => setSheetTodo(null)}
+        onEdit={() => {
+          if (sheetTodo) setDetailTodo(sheetTodo);
+          setSheetTodo(null);
+        }}
         onPin={(pinned) => {
           if (sheetTodo) void pinTodo(sheetTodo.id, pinned);
           setSheetTodo(null);
@@ -102,6 +108,15 @@ export default function SearchScreen() {
         onArchive={() => {
           if (sheetTodo) void archiveTodo(sheetTodo.id);
           setSheetTodo(null);
+        }}
+      />
+
+      <TodoDetailSheet
+        todo={detailTodo}
+        colors={colors}
+        onClose={(draft) => {
+          if (detailTodo) void updateTodoContent(detailTodo.id, draft);
+          setDetailTodo(null);
         }}
       />
     </SafeAreaView>

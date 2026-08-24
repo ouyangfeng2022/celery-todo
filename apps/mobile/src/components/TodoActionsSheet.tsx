@@ -19,6 +19,7 @@ interface TodoActionsSheetProps {
   projects: ProjectOption[];
   colors: ThemeColors;
   onClose: () => void;
+  onEdit: () => void;
   onPin: (pinned: boolean) => void;
   onSetPriority: (priority: TodoPriority) => void;
   onSetPlannedDate: (date: string | null) => void;
@@ -31,6 +32,7 @@ export function TodoActionsSheet({
   projects,
   colors,
   onClose,
+  onEdit,
   onPin,
   onSetPriority,
   onSetPlannedDate,
@@ -50,6 +52,7 @@ export function TodoActionsSheet({
                 {todo.title}
               </Text>
 
+              <SheetRow label="编辑内容" colors={colors} onPress={onEdit} />
               <SheetRow label={todo.pinned ? '取消置顶' : '置顶'} colors={colors} onPress={() => onPin(!todo.pinned)} />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
 

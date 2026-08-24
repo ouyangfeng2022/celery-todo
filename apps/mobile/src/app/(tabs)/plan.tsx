@@ -12,6 +12,7 @@ import { useAppData } from '../../state/AppData';
 import { palette } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
+import { TodoDetailSheet } from '../../components/TodoDetailSheet';
 
 const BUCKETS: { key: TimeBucket; label: string }[] = [
   { key: 'today', label: '今天' },
@@ -23,10 +24,11 @@ const BUCKETS: { key: TimeBucket; label: string }[] = [
 ];
 
 export default function PlanScreen() {
-  const { theme, allTodos, refreshAllTodos, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, moveTodo, projects } =
+  const { theme, allTodos, refreshAllTodos, toggleTodo, archiveTodo, pinTodo, setPriority, setPlannedDate, updateTodoContent, moveTodo, projects } =
     useAppData();
   const colors = palette(theme);
   const [sheetTodo, setSheetTodo] = useState<TodoDto | null>(null);
+  const [detailTodo, setDetailTodo] = useState<TodoDto | null>(null);
 
   useEffect(() => {
     // 进入计划页时拉全量（时间视图跨项目）
@@ -80,6 +82,10 @@ export default function PlanScreen() {
         projects={projects.map((p) => ({ id: p.id, name: p.name }))}
         colors={colors}
         onClose={() => setSheetTodo(null)}
+        onEdit={() => {
+          if (sheetTodo) setDetailTodo(sheetTodo);
+          setSheetTodo(null);
+        }}
         onPin={(pinned) => {
           if (sheetTodo) void pinTodo(sheetTodo.id, pinned);
           setSheetTodo(null);
@@ -99,6 +105,15 @@ export default function PlanScreen() {
         onArchive={() => {
           if (sheetTodo) void archiveTodo(sheetTodo.id);
           setSheetTodo(null);
+        }}
+      />
+
+      <TodoDetailSheet
+        todo={detailTodo}
+        colors={colors}
+        onClose={(draft) => {
+          if (detailTodo) void updateTodoContent(detailTodo.id, draft);
+          setDetailTodo(null);
         }}
       />
     </SafeAreaView>
