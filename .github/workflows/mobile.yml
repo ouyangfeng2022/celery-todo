@@ -6,6 +6,14 @@
 name: Mobile
 
 on:
+  # 直推 main 也跑（此前仅 PR 触发，直接 push 的移动端提交会完全绕过类型检查）
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/data/**'
+      - 'packages/core/**'
+      - 'packages/ui-tokens/**'
   pull_request:
     branches: [main]
     paths:
