@@ -127,11 +127,13 @@ const AppDataContext = createContext<AppDataValue | null>(null);
 
 const repos: MobileRepositories = createExpoSqliteRepositories();
 
-/** 抽干分页（移动端量级：单项目数千行以内）。 */
+/** 抽干分页（移动端量级：单项目数千行以内）。strict=true 供备份导出用：
+ *  撞到分页上限即抛错中止，宁可不出备份也不能出缺尾部却看似完整的备份。 */
 async function drainTodos(
   projectId: string | null,
   sort: TodoSort = 'created-desc',
   filter: TodoFilter = 'all',
+  strict = false,
 ): Promise<TodoDto[]> {
   const out: TodoDto[] = [];
   let cursor: string | null = null;
@@ -150,11 +152,14 @@ async function drainTodos(
     cursor = page.nextCursor;
     if (!cursor) break;
   }
+  if (strict && cursor) {
+    throw new Error(`活跃事项超过备份抽取上限（${50 * 200} 条），已中止导出`);
+  }
   return out;
 }
 
-/** 抽干归档分页（备份导出用）。 */
-async function drainArchived(): Promise<ArchivedTodoDto[]> {
+/** 抽干归档分页（备份导出用；strict 语义同 drainTodos）。 */
+async function drainArchived(strict = false): Promise<ArchivedTodoDto[]> {
   const out: ArchivedTodoDto[] = [];
   let cursor: string | null = null;
   for (let i = 0; i < 100; i++) {
@@ -167,6 +172,9 @@ async function drainArchived(): Promise<ArchivedTodoDto[]> {
     out.push(...page.items);
     cursor = page.nextCursor;
     if (!cursor) break;
+  }
+  if (strict && cursor) {
+    throw new Error(`已归档事项超过备份抽取上限（${100 * 200} 条），已中止导出`);
   }
   return out;
 }
@@ -597,8 +605,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     // 只导出活跃项目：已删项目由归档行的 projectName 快照承载（两端同语义）
     const [projects, todos, archivedTodos, settings] = await Promise.all([
       repos.projects.list(),
-      drainTodos(null),
-      drainArchived(),
+      drainTodos(null, 'created-desc', 'all', true),
+      drainArchived(true),
       repos.settings.all(),
     ]);
     return {
@@ -616,6 +624,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const importBackup = useCallback(
     async (file: V3ExportFile) => {
       repos.replaceAllV3(file);
+      // 备份可能来自异构/手工文件而没有收集箱；移动端多处依赖 inbox 必在
+      // （归档恢复的 fallback 项目、首激活项目），导入后重建（已存在时为 no-op）。
+      await repos.projects.ensureInbox();
       // 备份的设置里可能带不同的主题键
       try {
         const stored = await repos.settings.get('theme');

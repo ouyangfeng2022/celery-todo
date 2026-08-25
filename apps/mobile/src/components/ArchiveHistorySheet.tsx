@@ -10,6 +10,7 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ArchivedTodoDto } from '@celery/data';
 import { useAppData } from '../state/AppData';
+import { alertError } from '../utils/alertError';
 import { palette, PRIORITY_DOT } from '../theme';
 
 type StatusFilter = 'all' | 'active' | 'completed';
@@ -103,7 +104,7 @@ export function ArchiveHistorySheet({ visible, onClose }: ArchiveHistorySheetPro
         </View>
       </View>
       <Pressable
-        onPress={() => void restoreArchivedTodo(item.id)}
+        onPress={() => void restoreArchivedTodo(item.id).catch(alertError)}
         hitSlop={6}
         style={styles.rowAction}
       >
@@ -113,7 +114,7 @@ export function ArchiveHistorySheet({ visible, onClose }: ArchiveHistorySheetPro
         onPress={() => {
           if (pendingPurgeId === item.id) {
             setPendingPurgeId(null);
-            void purgeArchivedTodo(item.id);
+            void purgeArchivedTodo(item.id).catch(alertError);
           } else {
             setPendingPurgeId(item.id);
           }
@@ -176,7 +177,7 @@ export function ArchiveHistorySheet({ visible, onClose }: ArchiveHistorySheetPro
               <Pressable
                 onPress={() => {
                   setConfirmClear(false);
-                  void clearArchived();
+                  void clearArchived().catch(alertError);
                 }}
                 hitSlop={6}
               >

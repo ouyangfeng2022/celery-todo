@@ -21,6 +21,7 @@ import DraggableFlatList, {
 import type { TodoDto, TodoFilter, TodoPriority, TodoSort } from '@celery/data';
 import { formatPlannedDate } from '@celery/core';
 import { useAppData } from '../../state/AppData';
+import { alertError } from '../../utils/alertError';
 import { palette, PRIORITY_DOT, PRIORITY_LABELS } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
@@ -111,7 +112,7 @@ export default function TodosScreen() {
   };
   const allSelected = todos.length > 0 && selectedIds.length === todos.length;
   const runBatch = (fn: () => Promise<void>) => {
-    void fn().then(exitSelection);
+    void fn().then(exitSelection).catch(alertError);
   };
 
   const submit = () => {
@@ -546,7 +547,7 @@ export default function TodosScreen() {
           setSheetTodo(null);
         }}
         onSetPlannedDate={(d) => {
-          if (sheetTodo) void setPlannedDate(sheetTodo.id, d);
+          if (sheetTodo) void setPlannedDate(sheetTodo.id, d).catch(alertError);
           setSheetTodo(null);
         }}
         onMove={(projectId) => {
@@ -563,7 +564,7 @@ export default function TodosScreen() {
         todo={detailTodo}
         colors={colors}
         onClose={(draft) => {
-          if (detailTodo) void updateTodoContent(detailTodo.id, draft);
+          if (detailTodo) void updateTodoContent(detailTodo.id, draft).catch(alertError);
           setDetailTodo(null);
         }}
       />
@@ -586,7 +587,7 @@ export default function TodosScreen() {
           .filter((p) => p.kind === 'user')
           .map((p) => ({ id: p.id, name: p.name }))}
         onReorderProjects={(ids) => {
-          void reorderProjects(ids);
+          void reorderProjects(ids).catch(alertError);
         }}
         onClose={() => setProjectSheet(null)}
         onCreate={(name, color) => {
@@ -598,7 +599,7 @@ export default function TodosScreen() {
           void renameProject(id, name);
         }}
         onSetColor={(id, color) => {
-          void setProjectColor(id, color);
+          void setProjectColor(id, color).catch(alertError);
         }}
         onDelete={(id) => {
           setProjectSheet(null);
@@ -611,7 +612,7 @@ export default function TodosScreen() {
           );
         }}
         onDeleteTemplate={(id) => {
-          void deleteTemplate(id);
+          void deleteTemplate(id).catch(alertError);
         }}
         onSaveTemplate={async (id, name) => {
           try {

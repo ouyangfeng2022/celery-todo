@@ -7,6 +7,7 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TodoDto } from '@celery/data';
 import { useAppData } from '../../state/AppData';
+import { alertError } from '../../utils/alertError';
 import { palette } from '../../theme';
 import { TodoRow } from '../../components/TodoRow';
 import { TodoActionsSheet } from '../../components/TodoActionsSheet';
@@ -112,7 +113,7 @@ export default function SearchScreen() {
           setSheetTodo(null);
         }}
         onSetPlannedDate={(d) => {
-          if (sheetTodo) void setPlannedDate(sheetTodo.id, d);
+          if (sheetTodo) void setPlannedDate(sheetTodo.id, d).catch(alertError);
           setSheetTodo(null);
         }}
         onMove={(projectId) => {
@@ -129,7 +130,7 @@ export default function SearchScreen() {
         todo={detailTodo}
         colors={colors}
         onClose={(draft) => {
-          if (detailTodo) void updateTodoContent(detailTodo.id, draft);
+          if (detailTodo) void updateTodoContent(detailTodo.id, draft).catch(alertError);
           setDetailTodo(null);
         }}
       />

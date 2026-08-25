@@ -247,6 +247,12 @@ function fail(message: string, kind: 'invalid' | 'not-found' = 'invalid'): never
 export function createExpoSqliteRepositories(dbName = 'celery-v3.db'): MobileRepositories {
   const db = SQLite.openDatabaseSync(dbName);
   db.execSync(SCHEMA_SQL);
+  // 外键约束 SQLite 默认关闭（expo-sqlite JS/原生层也不会代开），与桌面 Rust 端
+  // （repo/mod.rs 显式 foreign_keys=ON）对齐显式开启。现有写路径都已自行处理子行
+  // （deletePermanently / replaceAllV3 均先删/插子表再动 projects），开启无行为变化；
+  // 作用是导入含孤儿事项（projectId 无对应项目）的 v3 文件时按 FK 拒绝并整体回滚，
+  // 而不是静默收下桌面端会拒绝的同一文件。
+  db.execSync('PRAGMA foreign_keys = ON');
   runSafe(
     db,
     "INSERT OR IGNORE INTO schema_migrations (version, name, applied_at) VALUES (1, 'v3-initial', ?)",
