@@ -4,9 +4,10 @@
  *              （日语/英语环境显示 yyyy/mm/dd），与中文界面混排。这里改为自绘
  *              中文文本（「8月21日」），原生控件透明覆盖其上负责弹日历与键盘
  *              输入，value 仍为 YYYY-MM-DD，不影响数据层。
+ *              视觉集中在 globals.css 的 .date-input（chip / field 两变体），
+ *              hover 与焦点态走 CSS 伪类，无需 JS 状态。
  */
 
-import { useState } from 'react';
 import { cn } from '../../utils/helpers';
 import { formatPlannedDate } from '../../utils/planning';
 
@@ -29,26 +30,14 @@ export function DateInput({
   className,
   'aria-label': ariaLabel,
 }: DateInputProps) {
-  const [focused, setFocused] = useState(false);
-  const isField = variant === 'field';
-
   return (
     <span
       className={cn(
-        'relative inline-flex cursor-pointer select-none items-center rounded-md transition-shadow',
-        isField ? 'w-full px-3 py-2 text-[0.9375rem]' : 'px-2 py-1 text-xs',
+        'date-input',
+        variant === 'field' ? 'date-input--field' : 'date-input--chip',
+        !value && 'is-empty',
         className,
       )}
-      style={{
-        backgroundColor: isField ? 'var(--bg-tertiary)' : 'var(--bg-secondary)',
-        color: value
-          ? isField
-            ? 'var(--text-primary)'
-            : 'var(--text-secondary)'
-          : 'var(--text-quaternary)',
-        border: isField ? `1px solid ${focused ? 'var(--accent)' : 'var(--border-strong)'}` : undefined,
-        boxShadow: focused ? '0 0 0 3px rgba(217, 119, 87, 0.14)' : undefined,
-      }}
     >
       {value ? formatPlannedDate(value) : placeholder}
       <input
@@ -56,8 +45,6 @@ export function DateInput({
         value={value}
         aria-label={ariaLabel}
         onChange={(event) => onChange(event.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         onClick={(event) => {
           // 原生日期输入仅右侧日历图标可弹面板；整块点击都直接弹出。
           try {

@@ -11,6 +11,10 @@
 
 @layer base {
   :root {
+    /* 声明配色模式：原生控件（日期选择弹层、滚动条、表单控件）跟随明暗主题渲染，
+     * 否则暗色主题下原生日历仍是亮白色弹层，与界面割裂。 */
+    color-scheme: light;
+
     /* 背景层：中性纸白默认 —— 主画布 / 框架同色，避免漏出暖灰；
      * 卡片 / 浮层用纯白拉开层级；hover/active 用透明黑叠底保持中性反馈。 */
     --bg-primary: rgb(249, 249, 247); /* 主画布：中性灰白 */
@@ -70,6 +74,8 @@
   }
 
   .dark {
+    color-scheme: dark;
+
     --bg-primary: #1a1916;
     --bg-secondary: #21201d;
     --bg-tertiary: #282723;
@@ -980,6 +986,56 @@
 
   .claude-input::placeholder {
     color: var(--text-tertiary);
+  }
+
+  /* 日期输入（DateInput）：自绘中文文本覆盖在透明原生 <input type="date"> 上。
+   * 视觉集中在此处以获得 :hover / :focus-within，无需 JS 状态；
+   * 焦点环与 .claude-input:focus 保持同一语言。 */
+  .date-input {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .date-input:hover {
+    border-color: var(--border-strong);
+    background-color: var(--bg-hover);
+  }
+
+  .date-input:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.14);
+  }
+
+  .date-input.is-empty {
+    color: var(--text-quaternary);
+  }
+
+  /* chip = 紧凑内联（工具栏）；field = 表单整行（与 .claude-input 视觉对齐） */
+  .date-input--chip {
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .date-input--field {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    border-radius: var(--radius-md);
+    border-color: var(--border-strong);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   /* 标签 */
