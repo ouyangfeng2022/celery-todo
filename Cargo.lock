@@ -492,7 +492,7 @@ dependencies = [
 
 [[package]]
 name = "celery-cli"
-version = "3.3.0"
+version = "3.3.1"
 dependencies = [
  "celery-db",
  "clap",
@@ -505,7 +505,7 @@ dependencies = [
 
 [[package]]
 name = "celery-db"
-version = "3.3.0"
+version = "3.3.1"
 dependencies = [
  "dirs 6.0.0",
  "rusqlite",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "celery-desktop"
-version = "3.3.0"
+version = "3.3.1"
 dependencies = [
  "celery-db",
  "serde",
