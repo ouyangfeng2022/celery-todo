@@ -307,7 +307,10 @@ function App() {
 
   // === 全部完成庆祝 ===
   // 该项目有待办且全部已完成；stats 基于当前项目全量 todos（不受筛选器影响）。
+  // 庆祝卡只在「全部」分类下顶替列表：「进行中」如实显示空态、「已完成」必须
+  // 能看到已完成的事项本身，否则用户在任一分类下都找不到刚完成的事项。
   const allDone = stats.total > 0 && stats.active === 0;
+  const showAllDoneCard = allDone && filter === 'all';
   // 撒花触发条件（两层防重复）：
   //   1) prevAllDoneRef —— 防同一 mount 周期内反复重渲染时重复触发（上升边沿）。
   //   2) celebrated.<projectId> 持久化键（settings 表）—— 防重启/切走再切回时重复撒花。
@@ -315,6 +318,7 @@ function App() {
   //      下次重新完成全部待办会再次庆祝。
   const prevAllDoneRef = useRef(false);
   useEffect(() => {
+    if (!showAllDoneCard) return;
     const celebratedKey = activeProjectId ? `celebrated.${activeProjectId}` : '';
     void data.getSetting(celebratedKey).then((value) => {
       const alreadyCelebrated = !!celebratedKey && value === 'true';
@@ -324,7 +328,7 @@ function App() {
       }
       prevAllDoneRef.current = allDone;
     });
-  }, [allDone, activeProjectId]);
+  }, [showAllDoneCard, allDone, activeProjectId]);
 
   // 点击「全部搞定」对号：归档本项目所有已完成项（进历史记录），并重置该项目庆祝键，
   // 让下次重新完成全部待办时再次撒花。归档后 todos 清空 → allDone 回落 false →
@@ -770,8 +774,8 @@ function App() {
                     />
                   )}
 
-                  {/* 事项列表 / 全部完成庆祝卡片（互斥） */}
-                  {allDone ? (
+                  {/* 事项列表 / 全部完成庆祝卡片（互斥；庆祝仅在「全部」分类显示） */}
+                  {showAllDoneCard ? (
                     <AllDoneCelebration
                       completed={stats.completed}
                       onRestore={handleAllDoneRestore}
@@ -825,9 +829,11 @@ function App() {
         </div>
       </div>
 
-      {/* 批量操作工具栏 */}
+      {/* 批量操作工具栏（完成/取消完成按选中项实际状态显示，未完成项不出现「取消完成」） */}
       <BatchToolbar
         selectedCount={selectedIds.size}
+        canComplete={todos.some((t) => selectedIds.has(t.id) && !t.completed)}
+        canUncomplete={todos.some((t) => selectedIds.has(t.id) && t.completed)}
         onClearSelection={clearSelection}
         onBatchComplete={() => batchAction('complete')}
         onBatchUncomplete={() => batchAction('uncomplete')}

@@ -12,6 +12,10 @@ import { useDismissibleLayer } from '../../hooks/useDismissibleLayer';
 
 interface BatchToolbarProps {
   selectedCount: number;
+  /** 选中项中存在未完成事项（「完成」按钮是否显示） */
+  canComplete: boolean;
+  /** 选中项中存在已完成事项（「取消完成」按钮是否显示） */
+  canUncomplete: boolean;
   onClearSelection: () => void;
   onBatchComplete: () => void;
   onBatchUncomplete: () => void;
@@ -21,6 +25,8 @@ interface BatchToolbarProps {
 
 function BatchToolbarComponent({
   selectedCount,
+  canComplete,
+  canUncomplete,
   onClearSelection,
   onBatchComplete,
   onBatchUncomplete,
@@ -63,17 +69,21 @@ function BatchToolbarComponent({
 
             <div className="w-px h-5 mx-1" style={{ backgroundColor: 'var(--border-color)' }} />
 
-            <button
-              onClick={onBatchComplete}
-              className="btn-ghost text-sm flex items-center gap-1.5"
-            >
-              <CheckIcon size={14} />
-              完成
-            </button>
+            {canComplete && (
+              <button
+                onClick={onBatchComplete}
+                className="btn-ghost text-sm flex items-center gap-1.5"
+              >
+                <CheckIcon size={14} />
+                完成
+              </button>
+            )}
 
-            <button onClick={onBatchUncomplete} className="btn-ghost text-sm">
-              取消完成
-            </button>
+            {canUncomplete && (
+              <button onClick={onBatchUncomplete} className="btn-ghost text-sm">
+                取消完成
+              </button>
+            )}
 
             {/* 优先级下拉 - 使用受控菜单避免被裁切 */}
             <div ref={wrapRef} className="relative">
