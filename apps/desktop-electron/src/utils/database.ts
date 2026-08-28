@@ -1559,6 +1559,10 @@ export function exportAllData(): import('../types').AppExportData {
       stickerShadow: settingsMap.stickerShadow !== 'false',
       // 字段由共享类型引入；2.x 无对应设置项，导出恒为 true（与 loadSettings 对齐）
       stickerShowCompleted: true,
+      // 以下三项均由共享类型引入，2.x 无对应设置项，导出恒为旧行为默认值
+      completedSinkToBottom: false,
+      showTimeLabels: true,
+      showAllDoneCelebration: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），导出恒为主窗口
       startupWindow: DEFAULT_SETTINGS.startupWindow,
     },

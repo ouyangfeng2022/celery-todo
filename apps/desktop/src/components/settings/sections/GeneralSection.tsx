@@ -10,10 +10,16 @@ interface GeneralSectionProps {
   theme: ThemeName;
   colorMode: ThemeMode;
   showWeeklyProjects: boolean;
+  completedSinkToBottom: boolean;
+  showTimeLabels: boolean;
+  showAllDoneCelebration: boolean;
   onUpdateSettings: (updates: {
     theme?: ThemeName;
     colorMode?: ThemeMode;
     showWeeklyProjects?: boolean;
+    completedSinkToBottom?: boolean;
+    showTimeLabels?: boolean;
+    showAllDoneCelebration?: boolean;
   }) => void;
 }
 
@@ -33,6 +39,9 @@ export function GeneralSection({
   theme,
   colorMode,
   showWeeklyProjects,
+  completedSinkToBottom,
+  showTimeLabels,
+  showAllDoneCelebration,
   onUpdateSettings,
 }: GeneralSectionProps) {
   return (
@@ -77,6 +86,66 @@ export function GeneralSection({
             className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
           />
         </label>
+      </section>
+
+      <section>
+        <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+          事项列表
+        </h3>
+        <div className="space-y-1">
+          <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+            <span>
+              <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+                已完成沉底
+              </span>
+              <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                「全部」视图下，已完成事项排在未完成事项后面
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={completedSinkToBottom}
+              onChange={(event) =>
+                onUpdateSettings({ completedSinkToBottom: event.target.checked })
+              }
+              className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+            />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+            <span>
+              <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+                显示时间标签
+              </span>
+              <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                列表事项行显示创建与完成时间
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={showTimeLabels}
+              onChange={(event) => onUpdateSettings({ showTimeLabels: event.target.checked })}
+              className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+            />
+          </label>
+          <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+            <span>
+              <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+                全部完成庆祝
+              </span>
+              <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                项目待办全部完成时显示庆祝卡片
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={showAllDoneCelebration}
+              onChange={(event) =>
+                onUpdateSettings({ showAllDoneCelebration: event.target.checked })
+              }
+              className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+            />
+          </label>
+        </div>
       </section>
     </div>
   );

@@ -166,6 +166,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
   // 时间格式为全局设置：任一事项上点击都会切换全应用的相对/精确计时
   const timeFormat = useSettingsStore((s) => s.timeFormat);
   const setTimeFormat = useSettingsStore((s) => s.setTimeFormat);
+  const showTimeLabels = useSettingsStore((s) => s.showTimeLabels);
 
   useEffect(() => {
     if (!focusSignal) return;
@@ -325,7 +326,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           )}
 
           {/* 创建时间：点击在 模糊计时 ↔ 精确计时（精确到分钟）间切换（全局生效） */}
-          {!isCard && (
+          {!isCard && showTimeLabels && (
             <span
               role="button"
               tabIndex={0}
@@ -348,7 +349,7 @@ const TodoItemComponent = forwardRef<HTMLDivElement, TodoItemProps>(function Tod
           )}
 
           {/* 完成时间：与创建时间共用全局 timeFormat 设置 */}
-          {!isCard && todo.completedAt && (
+          {!isCard && showTimeLabels && todo.completedAt && (
             <span
               role="button"
               tabIndex={0}

@@ -145,6 +145,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       stickerShadow: stored.stickerShadow !== 'false',
       // 老数据无该键时保持原有行为：显示已完成事项
       stickerShowCompleted: stored.stickerShowCompleted !== 'false',
+      // ===== 主窗口展示选项（老数据缺失键时全部回退旧行为） =====
+      completedSinkToBottom: stored.completedSinkToBottom === 'true',
+      showTimeLabels: stored.showTimeLabels !== 'false',
+      showAllDoneCelebration: stored.showAllDoneCelebration !== 'false',
     };
     set(settings);
     // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，

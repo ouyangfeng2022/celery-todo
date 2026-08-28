@@ -294,6 +294,9 @@ function SettingsPanelComponent({
                     theme={settings.theme}
                     colorMode={settings.colorMode}
                     showWeeklyProjects={settings.showWeeklyProjects}
+                    completedSinkToBottom={settings.completedSinkToBottom}
+                    showTimeLabels={settings.showTimeLabels}
+                    showAllDoneCelebration={settings.showAllDoneCelebration}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}

@@ -239,6 +239,12 @@ export interface AppSettings {
   stickerShadow: boolean;
   /** 贴图（简洁模式浮窗）是否显示已完成事项 */
   stickerShowCompleted: boolean;
+  /** 主窗口「全部」视图下已完成事项是否沉到列表底部（默认混排，保持旧行为） */
+  completedSinkToBottom: boolean;
+  /** 列表事项行是否显示创建/完成时间标签 */
+  showTimeLabels: boolean;
+  /** 项目待办全部完成时是否显示庆祝卡片 */
+  showAllDoneCelebration: boolean;
 }
 
 /** 默认设置 */
@@ -270,6 +276,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   stickerShadow: STICKER_PRESET_VALUES.glass.shadow,
   // 贴图默认沿用旧行为：已完成事项画横线展示在列表底部
   stickerShowCompleted: true,
+  // 主窗口默认保持「全部」视图混排；沉底是可选项
+  completedSinkToBottom: false,
+  // 默认显示行内时间标签
+  showTimeLabels: true,
+  // 默认显示全部完成庆祝卡
+  showAllDoneCelebration: true,
 };
 
 // ============================================

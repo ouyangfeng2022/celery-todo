@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
 import * as data from '../utils/dataGateway';
 import { DEFAULT_SORT, sortKey, sortTodos } from '../utils/sortTodos';
+import { useSettingsStore } from '../store/useSettingsStore';
 
 /** 默认值 */
 const DEFAULT_FILTER: FilterType = 'all';
@@ -70,6 +71,11 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
     return sortOverrides[projectId] ?? DEFAULT_SORT;
   }, [projectId, sortOverrides]);
 
+  // 「已完成沉底」全局设置。仅是展示层策略，不写入 sortTodos —— 那是主窗口
+  // 与贴图共用实现；此处拆分发生在排序之后，TodoList 的拖拽快照
+  // （handleDragEnd 的 todos.map(id)）与本列表同源，快照顺序与所见一致。
+  const sinkCompleted = useSettingsStore((s) => s.completedSinkToBottom);
+
   /** 筛选后的 Todo 列表 */
   const filteredTodos = useMemo(() => {
     let result = [...todos];
@@ -90,8 +96,12 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
     //    与贴图窗口共用同一份实现，保证两端排序完全一致）。
     result = sortTodos(result, sort);
 
+    // 3. 已完成沉底（「全部」视图下才有混合两类；单类筛选下拆分是无操作）
+    if (sinkCompleted && filter === 'all') {
+      return [...result.filter((t) => !t.completed), ...result.filter((t) => t.completed)];
+    }
     return result;
-  }, [todos, filter, sort]);
+  }, [todos, filter, sort, sinkCompleted]);
 
   /** 统计信息 */
   const stats = useMemo(() => {
