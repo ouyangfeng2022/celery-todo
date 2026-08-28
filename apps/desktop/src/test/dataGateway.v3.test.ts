@@ -180,6 +180,7 @@ describe('dataGateway（v3 内存适配器）', () => {
         stickerBlur: 38,
         stickerOpacity: 80,
         stickerShadow: false,
+        stickerShowCompleted: true,
       },
     });
 

@@ -24,6 +24,7 @@ const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
   'stickerBlur',
   'stickerOpacity',
   'stickerShadow',
+  'stickerShowCompleted',
 ]);
 
 function parseCustomTemplates(value: string | undefined): AppSettings['customTemplates'] {
@@ -142,6 +143,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           (stored.stickerPreset as StickerPreset | undefined) ?? DEFAULT_SETTINGS.stickerPreset
         ].opacity,
       stickerShadow: stored.stickerShadow !== 'false',
+      // 老数据无该键时保持原有行为：显示已完成事项
+      stickerShowCompleted: stored.stickerShowCompleted !== 'false',
     };
     set(settings);
     // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，

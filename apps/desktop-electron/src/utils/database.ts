@@ -1557,6 +1557,8 @@ export function exportAllData(): import('../types').AppExportData {
       // stickerOpacity 由 preset 派生（与 loadSettings 对齐），不直读 DB 旧值
       stickerOpacity: STICKER_PRESET_VALUES[stickerPreset].opacity,
       stickerShadow: settingsMap.stickerShadow !== 'false',
+      // 字段由共享类型引入；2.x 无对应设置项，导出恒为 true（与 loadSettings 对齐）
+      stickerShowCompleted: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），导出恒为主窗口
       startupWindow: DEFAULT_SETTINGS.startupWindow,
     },

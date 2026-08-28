@@ -10,12 +10,14 @@ import { STICKER_PRESET_VALUES } from '../../../types';
 
 interface StickerSectionProps {
   preset: StickerPreset;
+  showCompleted: boolean;
   onUpdateSettings: (updates: {
     stickerPreset?: StickerPreset;
     stickerRadius?: number;
     stickerBlur?: number;
     stickerOpacity?: number;
     stickerShadow?: boolean;
+    stickerShowCompleted?: boolean;
   }) => void;
 }
 
@@ -26,7 +28,7 @@ const PRESETS: { id: StickerPreset; label: string; desc: string }[] = [
   { id: 'note', label: '便利贴', desc: '纸质 · 微旋转' },
 ];
 
-export function StickerSection({ preset, onUpdateSettings }: StickerSectionProps) {
+export function StickerSection({ preset, showCompleted, onUpdateSettings }: StickerSectionProps) {
   // 选中某个预设 → 一次性写入该预设的整套视觉参数
   const applyPreset = useCallback(
     (id: StickerPreset) => {
@@ -88,6 +90,30 @@ export function StickerSection({ preset, onUpdateSettings }: StickerSectionProps
           );
         })}
       </div>
+
+      <section className="mt-6">
+        <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+          列表内容
+        </h3>
+        <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+          <span>
+            <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+              显示已完成事项
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              已完成的事项画横线展示在列表底部，关闭后仅在贴图中隐藏
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={showCompleted}
+            onChange={(event) =>
+              onUpdateSettings({ stickerShowCompleted: event.target.checked })
+            }
+            className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+          />
+        </label>
+      </section>
     </section>
   );
 }

@@ -150,6 +150,7 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
   const stickerBlur = useSettingsStore((s) => s.stickerBlur);
   const stickerOpacity = useSettingsStore((s) => s.stickerOpacity);
   const stickerShadow = useSettingsStore((s) => s.stickerShadow);
+  const stickerShowCompleted = useSettingsStore((s) => s.stickerShowCompleted);
 
   // 仅按"当前 projectId 重读项目列表 + 该项目的未完成 todo"。
   // 不再回写 setProjectId —— 回写会与 select 受控值互相打架，导致项目反复横跳。
@@ -316,6 +317,12 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
     () => todos.find((t) => t.id === contextMenuTodoId) ?? null,
     [todos, contextMenuTodoId],
   );
+  // 「显示已完成」关闭时仅隐藏渲染，不影响数据加载 —— 设置经广播回读后此处直接重渲，
+  // 已完成行走 AnimatePresence 退场动画。
+  const visibleTodos = useMemo(
+    () => (stickerShowCompleted ? todos : todos.filter((t) => !t.completed)),
+    [todos, stickerShowCompleted],
+  );
   const contextMenuItems: ContextMenuItem[] = [
     {
       label: '复制贴图',
@@ -466,14 +473,15 @@ export function StickerWindow({ stickerId, initialProjectId }: Props) {
         {project && (
           <p className="sticker-eyebrow">
             {`${todos.filter((t) => !t.completed).length} 项待完成`}
-            {todos.some((t) => t.completed) &&
+            {stickerShowCompleted &&
+              todos.some((t) => t.completed) &&
               ` · ${todos.filter((t) => t.completed).length} 项已完成`}
           </p>
         )}
         {!project && <p className="sticker-eyebrow">选择一个项目</p>}
         <StickerTodoList
           key={projectId}
-          todos={todos}
+          todos={visibleTodos}
           ready={ready}
           onToggle={(todo) => void toggle(todo)}
         />

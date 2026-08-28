@@ -132,6 +132,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           (stored.stickerPreset as StickerPreset | undefined) ?? DEFAULT_SETTINGS.stickerPreset
         ].opacity,
       stickerShadow: stored.stickerShadow !== 'false',
+      // 字段由共享类型引入；2.x 无对应设置项，恒为 true（贴图始终显示已完成事项）
+      stickerShowCompleted: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），恒为主窗口行为
       startupWindow: DEFAULT_SETTINGS.startupWindow,
     };

@@ -301,6 +301,7 @@ function SettingsPanelComponent({
                 {activeSection === 'sticker' && (
                   <StickerSection
                     preset={settings.stickerPreset}
+                    showCompleted={settings.stickerShowCompleted}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}

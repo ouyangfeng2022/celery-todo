@@ -237,6 +237,8 @@ export interface AppSettings {
   stickerOpacity: number;
   /** 贴图是否显示外阴影（高级设置） */
   stickerShadow: boolean;
+  /** 贴图（简洁模式浮窗）是否显示已完成事项 */
+  stickerShowCompleted: boolean;
 }
 
 /** 默认设置 */
@@ -266,6 +268,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   stickerBlur: STICKER_PRESET_VALUES.glass.blur,
   stickerOpacity: STICKER_PRESET_VALUES.glass.opacity,
   stickerShadow: STICKER_PRESET_VALUES.glass.shadow,
+  // 贴图默认沿用旧行为：已完成事项画横线展示在列表底部
+  stickerShowCompleted: true,
 };
 
 // ============================================
