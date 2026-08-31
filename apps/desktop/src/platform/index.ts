@@ -201,9 +201,20 @@ export function setStartupTheme(_theme: string): void {}
 // 多贴图窗口（简洁模式）
 // ============================================
 
-export function createSticker(projectId: string | undefined): void {
+/**
+ * 新建贴图。`hideMain` 默认 true：「进入简洁模式」各入口语义是贴图作为
+ * 主窗口的轻量替代，创建后隐藏主窗口；右键项目「创建贴图」传 false，
+ * 贴图作为该项目的附加浮窗，主窗口保持可见。
+ */
+export function createSticker(
+  projectId: string | undefined,
+  opts?: { hideMain?: boolean }
+): void {
   if (!isTauri) return;
-  void invoke('sticker_create', { projectId: projectId ?? null }).catch(() => {});
+  void invoke('sticker_create', {
+    projectId: projectId ?? null,
+    hideMain: opts?.hideMain ?? true,
+  }).catch(() => {});
 }
 
 export function notifyStickerStyleChanged(): void {

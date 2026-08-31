@@ -265,7 +265,9 @@ pub fn restore_stickers(app: &AppHandle) {
 // Tauri 命令（renderer 经 src/platform 调用）
 // ============================================
 
-/// 新建贴图；与 2.x 一致，从主窗口发起时隐藏主窗口（贴图即轻量替代）。
+/// 新建贴图。`hide_main`（默认 true）控制从主窗口发起时是否隐藏主窗口：
+/// 「进入简洁模式」各入口语义是贴图作为主窗口的轻量替代，保持隐藏；
+/// 右键项目「创建贴图」传 false——贴图是该项目的附加浮窗，主窗口保持可见。
 ///
 /// 必须是 async 命令：Windows 上 WebView2 的 IPC 回调在主线程内联执行，
 /// 同步命令里 `WebviewWindowBuilder::build()` 会等控制器创建完成而死锁
@@ -276,12 +278,13 @@ pub async fn sticker_create(
     app: AppHandle,
     window: tauri::WebviewWindow,
     project_id: Option<String>,
+    hide_main: Option<bool>,
 ) -> Result<(), String> {
     let sender_is_main = window.label() == "main";
     let id = uuid::Uuid::new_v4().to_string();
     create_sticker_window(&app, &id, project_id.as_deref().unwrap_or(""))
         .map_err(|e| e.to_string())?;
-    if sender_is_main {
+    if sender_is_main && hide_main.unwrap_or(true) {
         if let Some(main) = app.get_webview_window("main") {
             let _ = main.hide();
         }

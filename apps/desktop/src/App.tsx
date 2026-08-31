@@ -628,7 +628,7 @@ function App() {
                   window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
                 }
                 onNewTodoInProject={handleNewTodoInProject}
-                onCreateSticker={(projectId) => createSticker(projectId)}
+                onCreateSticker={(projectId, opts) => createSticker(projectId, opts)}
                 onImport={handleImportClick}
                 incompleteCounts={incompleteCounts}
                 autofocusCreateSignal={createProjectSignal}

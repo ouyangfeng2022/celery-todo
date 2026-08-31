@@ -84,7 +84,7 @@ interface ProjectSidebarProps {
   /** 在指定项目下新建事项：切换到该项目并唤出新建事项输入框 */
   onNewTodoInProject: (projectId: string) => void;
   /** 为指定项目创建桌面贴图 */
-  onCreateSticker: (projectId: string) => void;
+  onCreateSticker: (projectId: string, opts?: { hideMain?: boolean }) => void;
   /** 导入数据（与 Header「数据 → 导入数据」同一条路径） */
   onImport: () => void;
   /** 各项目未完成 todo 数：projectId → count */
@@ -621,7 +621,8 @@ function ProjectSidebarComponent({
               {
                 label: '创建贴图',
                 onClick: () => {
-                  onCreateSticker(ctxMenu.project!.id);
+                  // 右键建贴图是附加浮窗，不隐藏主窗口（区别于「简洁模式」入口）
+                  onCreateSticker(ctxMenu.project!.id, { hideMain: false });
                 },
               },
               { separator: true },

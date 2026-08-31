@@ -282,7 +282,8 @@ describe('ProjectSidebar 设置菜单', () => {
     fireEvent.contextMenu(screen.getByRole('button', { name: '贴图项目（拖动以排序）' }));
     fireEvent.click(screen.getByRole('button', { name: '创建贴图' }));
 
-    expect(onCreateSticker).toHaveBeenCalledWith('project-sticker');
+    // 右键建贴图是附加浮窗：不隐藏主窗口（hideMain: false）
+    expect(onCreateSticker).toHaveBeenCalledWith('project-sticker', { hideMain: false });
   });
 
   it('在项目行右键可一步新建项目', () => {
