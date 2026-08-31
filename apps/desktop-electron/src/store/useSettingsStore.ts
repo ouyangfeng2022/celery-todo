@@ -140,6 +140,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       showAllDoneCelebration: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），恒为主窗口行为
       startupWindow: DEFAULT_SETTINGS.startupWindow,
+      // 2.x 无「网络代理」设置项（该键由共享类型引入），恒为默认直连
+      proxyEnabled: false,
+      proxyMode: DEFAULT_SETTINGS.proxyMode,
+      proxyUrl: DEFAULT_SETTINGS.proxyUrl,
     };
     set(settings);
     // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，
