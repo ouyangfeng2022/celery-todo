@@ -178,6 +178,22 @@ export function setAutoStart(enabled: boolean): void {
   void invoke('set_auto_start', { enabled }).catch(() => {});
 }
 
+// ============================================
+// 网络代理（更新器）
+// ============================================
+
+/**
+ * 设置页改动网络代理后调用：宿主读 DB 设置并把代理写入 HTTP(S)_PROXY
+ * 环境变量（reqwest 只认环境变量、不读系统代理）。无需重启，下次
+ * 检查更新即走新代理。
+ */
+export function applyUpdaterProxy(): void {
+  if (!isTauri) return;
+  void invoke('apply_updater_proxy').catch((e) => {
+    console.error('网络代理设置应用失败', e);
+  });
+}
+
 /** 2.x 首帧窗口底色 hack；Tauri 窗口底色由 HTML/CSS 同步，无需宿主配合。 */
 export function setStartupTheme(_theme: string): void {}
 

@@ -245,6 +245,13 @@ export interface AppSettings {
   showTimeLabels: boolean;
   /** 项目待办全部完成时是否显示庆祝卡片 */
   showAllDoneCelebration: boolean;
+  // ===== 网络代理（仅桌面端更新器生效） =====
+  /** 是否为应用内检查/下载更新启用代理 */
+  proxyEnabled: boolean;
+  /** 代理模式：system=跟随系统代理（Windows 读注册表），custom=自定义地址 */
+  proxyMode: 'system' | 'custom';
+  /** 自定义代理地址（host:port 或 http://host:port；proxyMode=custom 时生效） */
+  proxyUrl: string;
 }
 
 /** 默认设置 */
@@ -282,6 +289,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showTimeLabels: true,
   // 默认显示全部完成庆祝卡
   showAllDoneCelebration: true,
+  // 默认不走代理直连更新服务器；需要时在设置页开启（系统代理或自定义）
+  proxyEnabled: false,
+  proxyMode: 'system',
+  proxyUrl: '',
 };
 
 // ============================================

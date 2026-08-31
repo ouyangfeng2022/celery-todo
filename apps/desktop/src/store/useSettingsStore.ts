@@ -8,6 +8,7 @@ import type { AppSettings, ThemeMode, ThemeName } from '../types';
 import { DEFAULT_SETTINGS, STICKER_PRESET_VALUES, type StickerPreset } from '../types';
 import * as data from '../utils/dataGateway';
 import {
+  applyUpdaterProxy,
   notifyStickerStyleChanged,
   setAutoStart as setAutoStartHost,
   setStartupTheme,
@@ -26,6 +27,9 @@ const STICKER_SETTING_KEYS: ReadonlySet<string> = new Set([
   'stickerShadow',
   'stickerShowCompleted',
 ]);
+
+/** 网络代理相关字段名集合 —— 改动后通知宿主重设 HTTP(S)_PROXY 环境变量 */
+const PROXY_SETTING_KEYS: ReadonlySet<string> = new Set(['proxyEnabled', 'proxyMode', 'proxyUrl']);
 
 function parseCustomTemplates(value: string | undefined): AppSettings['customTemplates'] {
   if (!value) return [];
@@ -113,9 +117,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       minimizeToTray: stored.minimizeToTray !== 'false',
       // startupWindow：老数据无该键时默认主窗口
       startupWindow:
-        stored.startupWindow === 'sticker'
-          ? 'sticker'
-          : DEFAULT_SETTINGS.startupWindow,
+        stored.startupWindow === 'sticker' ? 'sticker' : DEFAULT_SETTINGS.startupWindow,
       dataVersion: Number(stored.dataVersion ?? DEFAULT_SETTINGS.dataVersion),
       focusMode: false,
       autoUpdateEnabled:
@@ -149,6 +151,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       completedSinkToBottom: stored.completedSinkToBottom === 'true',
       showTimeLabels: stored.showTimeLabels !== 'false',
       showAllDoneCelebration: stored.showAllDoneCelebration !== 'false',
+      // ===== 网络代理（老数据缺失键时默认关闭、跟随系统代理） =====
+      proxyEnabled: stored.proxyEnabled === 'true',
+      proxyMode: stored.proxyMode === 'custom' ? 'custom' : 'system',
+      proxyUrl: stored.proxyUrl ?? DEFAULT_SETTINGS.proxyUrl,
     };
     set(settings);
     // 仅完整主窗口可以持久化启动主题。贴图 renderer 也会复用本 store 加载视觉设置，
@@ -214,6 +220,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const touchesSticker = Object.keys(updates).some((key) => STICKER_SETTING_KEYS.has(key));
     if (touchesSticker) {
       notifyStickerStyleChanged();
+    }
+    // 网络代理字段被改动时，通知宿主读库重设 HTTP(S)_PROXY（即时生效，无需重启）。
+    const touchesProxy = Object.keys(updates).some((key) => PROXY_SETTING_KEYS.has(key));
+    if (touchesProxy) {
+      applyUpdaterProxy();
     }
   },
 }));

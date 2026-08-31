@@ -315,6 +315,9 @@ function SettingsPanelComponent({
                     autoStart={settings.autoStart}
                     minimizeToTray={settings.minimizeToTray}
                     autoUpdateEnabled={settings.autoUpdateEnabled}
+                    proxyEnabled={settings.proxyEnabled}
+                    proxyMode={settings.proxyMode}
+                    proxyUrl={settings.proxyUrl}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}

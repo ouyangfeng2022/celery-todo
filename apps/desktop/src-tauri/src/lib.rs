@@ -11,6 +11,7 @@
 
 mod cli_notify;
 mod commands;
+mod proxy;
 mod stickers;
 mod storage;
 mod tray;
@@ -119,6 +120,9 @@ pub fn run() {
                 std::fs::create_dir_all(parent)?;
             }
             let db = CeleryDb::open(&db_path)?;
+            // 网络代理设置（proxyEnabled/proxyMode/proxyUrl）→ HTTP(S)_PROXY
+            // 环境变量。必须在首个窗口加载（可能的更新检查）前应用。
+            proxy::apply_from_settings(&db);
             // 启动形态：startupWindow=sticker 时启动进简洁模式 —— 主窗口保持隐藏
             // （托盘单击 / 贴图「返回主窗口」可唤起），贴图窗口即门面。
             // 与 minimizeToTray 同一 settings K/V 通道，renderer 设置页写入。
@@ -210,6 +214,7 @@ pub fn run() {
             commands::set_auto_start,
             commands::export_save_file,
             commands::open_in_folder,
+            proxy::apply_updater_proxy,
             storage::storage_info,
             storage::storage_choose_directory,
             storage::storage_set_path,

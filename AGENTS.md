@@ -93,7 +93,10 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
     wry#583）、开机自启（tauri-plugin-autostart）、窗口状态记忆
     （`window_state.rs`：主窗 rect + **最大化标记** + 贴图清单，400ms debounce）、
     单实例、应用内更新（tauri-plugin-updater + 端点/公钥在 tauri.conf，签名
-    发布流水线 `.github/workflows/desktop-release.yml`）、原生「另存为」导出
+    发布流水线 `.github/workflows/desktop-release.yml`；reqwest 不读 Windows
+    系统代理，设置页「网络代理」三键 proxyEnabled/proxyMode/proxyUrl 经
+    `proxy.rs` 映射为 HTTP(S)_PROXY 环境变量并即时生效，否则国内直连
+    GitHub 超时）、原生「另存为」导出
     （`export_save_file` + `open_in_folder` + ExportNotice 真实路径回执）、
     自定义数据目录（`storage.rs` + `celery_db::storage_config`：`storage-config.json`
     恒在 appData 根，切换 = checkpoint WAL → 拷贝 → 配置 → 旧库重挂，失败回滚；

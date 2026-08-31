@@ -49,6 +49,23 @@ export interface UseAutoUpdateOptions {
   dbReady: boolean;
 }
 
+/**
+ * 把更新器底层错误翻译为用户可读文案。
+ * reqwest 网络层失败统一表现为 "error sending request for url …"（DNS 失败 /
+ * 连接超时等），常见于未走代理直连 GitHub 被阻断——原样展示毫无信息量。
+ */
+function describeUpdateError(e: unknown): string {
+  const raw = e instanceof Error ? e.message : String(e);
+  if (
+    /error sending request|error trying to connect|dns error|timed out|connection (refused|closed)/i.test(
+      raw,
+    )
+  ) {
+    return '无法连接更新服务器（GitHub），请检查网络或代理后重试';
+  }
+  return raw;
+}
+
 export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
   const [status, setStatus] = useState<UpdateStatus>('idle');
   const [updateInfo, setUpdateInfo] = useState<UpdateInfoLite | null>(null);
@@ -98,7 +115,7 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
         setStatus('not-available');
       }
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      setErrorMsg(describeUpdateError(e));
       setStatus('error');
     }
   }, [isDesktop]);
@@ -123,7 +140,11 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
             break;
           case 'Progress':
             transferred += event.data.chunkLength;
-            setProgress({ percent: total > 0 ? (transferred / total) * 100 : 0, transferred, total });
+            setProgress({
+              percent: total > 0 ? (transferred / total) * 100 : 0,
+              transferred,
+              total,
+            });
             break;
           case 'Finished':
             setProgress({ percent: 100, transferred, total });
@@ -132,7 +153,7 @@ export function useAutoUpdate({ dbReady }: UseAutoUpdateOptions) {
       });
       setStatus('downloaded');
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e));
+      setErrorMsg(describeUpdateError(e));
       setStatus('error');
     }
   }, [isDesktop]);
