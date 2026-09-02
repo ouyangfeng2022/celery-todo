@@ -50,7 +50,13 @@ import { useGlobalSearch } from './app/useGlobalSearch';
 import { useExportImport } from './app/useExportImport';
 import { MigrationOffer } from './app/MigrationOffer';
 import { WindowTitlebar } from './app/WindowTitlebar';
-import { closeWindow, createSticker, onExportCompleted, onQuickAdd } from './platform';
+import {
+  closeWindow,
+  createSticker,
+  onExportCompleted,
+  onQuickAdd,
+  openExternal,
+} from './platform';
 
 import * as data from './utils/dataGateway';
 import { cn } from './utils/helpers';
@@ -625,7 +631,7 @@ function App() {
                 onOpenStats={openStats}
                 onOpenHistory={() => openSettings('history')}
                 onOpenHelp={() =>
-                  window.open('https://github.com/ouyangfeng2022/celery-todo#readme', '_blank')
+                  openExternal('https://github.com/ouyangfeng2022/celery-todo#readme')
                 }
                 onNewTodoInProject={handleNewTodoInProject}
                 onCreateSticker={(projectId, opts) => createSticker(projectId, opts)}

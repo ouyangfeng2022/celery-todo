@@ -170,6 +170,57 @@ export function openInFolder(path: string): void {
 }
 
 // ============================================
+// 外部链接（默认浏览器打开）
+// ============================================
+
+/**
+ * 用系统默认浏览器打开外部链接（http/https/mailto/tel 等）。
+ * 非 Tauri（jsdom 单测 / 纯浏览器 dev）回退为新标签页。
+ */
+export function openExternal(url: string): void {
+  if (!isTauri) {
+    window.open(url, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  // tauri-plugin-opener 的 open_url 命令：链接交给系统默认程序
+  void invoke('plugin:opener|open_url', { url }).catch((e) => {
+    console.error('打开外部链接失败', e);
+  });
+}
+
+let externalLinksBound = false;
+
+/**
+ * 全局拦截外链点击。默认行为会在当前窗口内导航，把整个应用替换成目标
+ * 页面（Markdown 描述里的 url 等）；这里统一改为默认浏览器打开，语义与
+ * 2.x 壳主进程 setWindowOpenHandler / will-navigate 一致。主窗与贴图窗
+ * 共用同一 bundle，由 main.tsx 调用一次即可覆盖所有窗口。
+ */
+export function bindExternalLinks(): void {
+  if (externalLinksBound || typeof document === 'undefined') return;
+  externalLinksBound = true;
+  document.addEventListener('click', (e) => {
+    // 已由 opener 插件注入脚本处理（target=_blank / Ctrl/Shift 点击）时不重复打开
+    if (e.defaultPrevented || e.button !== 0) return;
+    const anchor = (e.target as Element | null)?.closest?.('a');
+    if (!anchor) return;
+    let parsed: URL;
+    try {
+      parsed = new URL(anchor.href);
+    } catch {
+      return;
+    }
+    const isHttp = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    const isMailTo = parsed.protocol === 'mailto:' || parsed.protocol === 'tel:';
+    // 同源链接（应用内相对路径）保留默认导航；仅拦截外部 http(s)/mailto/tel
+    if (isMailTo || (isHttp && parsed.origin !== window.location.origin)) {
+      e.preventDefault();
+      openExternal(parsed.href);
+    }
+  });
+}
+
+// ============================================
 // 开机自启（tauri-plugin-autostart）
 // ============================================
 
@@ -206,10 +257,7 @@ export function setStartupTheme(_theme: string): void {}
  * 主窗口的轻量替代，创建后隐藏主窗口；右键项目「创建贴图」传 false，
  * 贴图作为该项目的附加浮窗，主窗口保持可见。
  */
-export function createSticker(
-  projectId: string | undefined,
-  opts?: { hideMain?: boolean }
-): void {
+export function createSticker(projectId: string | undefined, opts?: { hideMain?: boolean }): void {
   if (!isTauri) return;
   void invoke('sticker_create', {
     projectId: projectId ?? null,
