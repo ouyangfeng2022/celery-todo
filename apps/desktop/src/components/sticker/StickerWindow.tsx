@@ -88,7 +88,8 @@ function StickerTodoList({ todos, ready, onToggle }: StickerTodoListProps) {
             data-completed={todo.completed}
             data-todo-id={todo.id}
             onClick={() => onToggle(todo)}
-            title={todo.completed ? '取消完成' : '标记为完成'}
+            // 悬浮显示完整标题：行内标题会被省略号截断，原生 tooltip 兜底展示全文
+            title={todo.title}
             style={
               {
                 '--sticker-priority-color': PRIORITY_SOLID[todo.priority],
