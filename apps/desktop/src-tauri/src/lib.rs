@@ -69,7 +69,11 @@ pub fn run() {
             // 最大化期间不更新 rect（保存还原尺寸而非全屏 bounds），
             // 只维护 main_maximized 标记；恢复时先应用 rect 再 maximize。
             tauri::WindowEvent::Moved(pos) => {
-                if window.label() == "main" && !window.is_maximized().unwrap_or(false) {
+                // 最小化会触发 (-32000,-32000) 的 Moved，跳过持久化，避免下次启动还原到屏幕外。
+                if window.label() == "main"
+                    && !window.is_maximized().unwrap_or(false)
+                    && !window.is_minimized().unwrap_or(false)
+                {
                     if let Some(store) = window.app_handle().try_state::<WindowStateStore>() {
                         let size = window.inner_size().ok();
                         store.update(|s| {
@@ -84,7 +88,7 @@ pub fn run() {
                 }
             }
             tauri::WindowEvent::Resized(size) => {
-                if window.label() == "main" {
+                if window.label() == "main" && !window.is_minimized().unwrap_or(false) {
                     if let (Some(store), Ok(pos)) = (
                         window.app_handle().try_state::<WindowStateStore>(),
                         window.outer_position(),
@@ -139,7 +143,9 @@ pub fn run() {
             // 简洁模式启动时跳过 show；maximize 在部分平台会带出窗口，故再显式隐藏。
             let saved = store.get();
             if let Some(main) = app.get_webview_window("main") {
-                if let Some(rect) = saved.main.clone() {
+                // 只还原「可还原」的位置：过滤掉离屏/过小的脏数据（如最小化哨兵坐标），
+                // 回落到默认（居中）位置，避免窗口跑到屏幕外看不到。
+                if let Some(rect) = saved.main.clone().filter(|r| r.is_restorable()) {
                     let _ = main.set_position(tauri::PhysicalPosition::new(rect.x, rect.y));
                     let _ = main.set_size(tauri::PhysicalSize::new(rect.width, rect.height));
                 }

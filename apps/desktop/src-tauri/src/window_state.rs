@@ -21,6 +21,14 @@ pub struct WindowRect {
     pub height: u32,
 }
 
+impl WindowRect {
+    /// 是否值得还原：过滤离屏坐标（Windows 最小化哨兵值 -32000）与异常小尺寸。
+    /// 若这些脏数据被还原，主窗口会跑到屏幕外，表现为「启动后看不到窗口」。
+    pub fn is_restorable(&self) -> bool {
+        self.x > -10000 && self.y > -10000 && self.width >= 100 && self.height >= 100
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StickerState {
     pub id: String,
