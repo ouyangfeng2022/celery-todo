@@ -88,6 +88,17 @@ function TodoDetailDialogComponent() {
     return () => cancelAnimationFrame(raf);
   }, [todo]);
 
+  // 标题/描述草稿落位后重新自适应高度。首次打开时 titleDraft/descDraft 初始为空串，
+  // 单靠上方「打开」effect 里的 rAF 量到的是空内容，长标题会被 overflow-hidden 截断；
+  // 改为在草稿变化（含首次同步、编辑输入）后测量，确保读到完整内容。
+  useEffect(() => {
+    autosizeTextarea(titleRef.current);
+  }, [titleDraft]);
+
+  useEffect(() => {
+    autosizeTextarea(descRef.current);
+  }, [descDraft]);
+
   // 卸载时清理 debounce timer（不在这里 flush —— 关闭流程已显式 flush）
   useEffect(() => {
     return () => {
@@ -264,7 +275,7 @@ function TodoDetailDialogComponent() {
                     placeholder="事项标题"
                     aria-label="事项标题"
                     rows={1}
-                    className="w-full resize-none overflow-hidden bg-transparent text-2xl font-semibold leading-snug outline-none sm:text-3xl"
+                    className="w-full resize-none overflow-y-auto bg-transparent text-2xl font-semibold leading-snug outline-none sm:text-3xl"
                     style={{
                       color: 'var(--text-primary)',
                       fontFamily: 'var(--font-heading)',
