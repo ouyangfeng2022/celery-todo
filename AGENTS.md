@@ -46,7 +46,7 @@ bun run test:run                 # turbo：所有 TS 包的单测
 bun run build                    # turbo：renderer/electron 壳/桌面端构建
 ```
 
-5. **2.x 旧库导入（计划第 6 步后端）** —— `celery-db` 的 `legacy_v2` 模块：
+1. **2.x 旧库导入（计划第 6 步后端）** —— `celery-db` 的 `legacy_v2` 模块：
    `inspect_v2(path)` 永不抛错、所有问题进报告；`CeleryDb::import_from_v2` 以
    只读 ATTACH 挂载源库后在目标 v3 库单事务转换（失败整体回滚、可重试）；
    `detect_v2_source()` 自动探测 2.x 默认目录与 `storage-config.json` 自定义目录。
@@ -54,15 +54,15 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    设置按白名单导入（主题/模板/视图/`sort.*`），OS 级状态跳过。9 项专项测试。
    桌面端已接：`legacy_v2_*` Tauri 命令 + `@celery/data` 的
    `LegacyV2ImportService` + 骨架 UI 的首启导入横幅（仅空库时出现）。
-6. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
+2. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
    `status/projects/list/add/done/archive`，复用 celery-db、与桌面端同一
    `%APPDATA%/com.celery.todo`（经 `celery_db::storage_config` 解析自定义数据
    目录，两端同库）；id 支持前缀匹配。CLI 写入后的桌面实时刷新已接
    （`cli_notify.rs` 回环 TCP + `data-changed` 广播）。
-7. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
+3. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
    token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
    字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
-8. **Expo 移动端（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
+4. **Expo 移动端（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
    Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页）。正式 UI 已实施：
    Expo Router 四入口（事项/计划/搜索/设置）、右滑完成左滑归档、长按操作面板、
    原生拖拽手动排序、三主题；项目管理在端内闭环（首启 `ensureInbox` 自动建
@@ -76,7 +76,7 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    `expo prebuild` + `gradle assembleRelease`，构建前按 tag 同步 `app.json`
    的 `expo.version` 与 `versionCode`；debug keystore 签名、可侧载，
    附到桌面端同一 Release；Play 商店分发仍走 EAS 线 `mobile-release.yml`）。
-9. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
+5. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
    整体迁入 `apps/desktop`（Tailwind 3 + globals.css + 字体栈原样保留），
    `src/utils/dataGateway.ts` 重写为 v3 Repository 契约实现（`order`↔`rank`、
    `deletedAt`↔`archivedAt` 映射；分页抽取上限 1.2 万行防御）；App.tsx 拆分为
@@ -87,7 +87,7 @@ bun run build                    # turbo：renderer/electron 壳/桌面端构建
    `archived_count`/`incomplete_counts` 聚合、写命令后 `data-changed` 广播
    （renderer 按窗口 label 过滤自发事件）。单测 51 项（含网关映射层 8 项，
    经 `configureDataGateway` 注入内存适配器）。
-10. **平台能力·阶段 B（已完成，随 3.0.0/3.0.1 发布）** —— 托盘（`tray.rs`：
+6. **平台能力·阶段 B（已完成，随 3.0.0/3.0.1 发布）** —— 托盘（`tray.rs`：
     完整菜单 + 单击切换主窗 + 退出看门狗防死锁）、多贴图窗口（`stickers.rs`：
     创建/复制/换项目/关闭/返回主窗 + **重启恢复**；Windows 建窗必须离开主线程，
     wry#583）、开机自启（tauri-plugin-autostart）、窗口状态记忆
@@ -115,7 +115,7 @@ to IndexedDB. Multi-project, drag-and-drop, recycle bin, system tray, themes.
 
 ## Major directories
 
-```
+```text
 apps/desktop-electron/   # 2.x Electron 应用（迁移对照壳）：内含原 electron/、src/、
                          # cli/、e2e/、public/、build/、assets/ 与应用级 scripts/
 apps/desktop/            # 3.0 Tauri 2 桌面端（React/Vite renderer + src-tauri 命令层）
@@ -183,7 +183,7 @@ bunx playwright test e2e/filters.spec.ts --headed         # 看显式窗口运�
 ### Change-area → spec map
 
 | Changed area | Run this spec |
-|---|---|
+| --- | --- |
 | `src/components/todos/` | `e2e/todos.spec.ts` |
 | `src/components/filters/` | `e2e/filters.spec.ts`, `e2e/search.spec.ts` |
 | `src/components/projects/` | `e2e/projects.spec.ts` |
@@ -208,7 +208,7 @@ When in doubt about blast radius (e.g. touching `database.ts`, a Zustand store,
 
 ## Data flow
 
-```
+```text
 React Components
   │  (Header, TodoList, ProjectSidebar, SettingsPanel, …)
   ▼
@@ -225,7 +225,7 @@ Tables: projects · todos · deleted_todos · settings · notifications
 
 ## Database schema
 
-```
+```text
 projects:        id, name, color, created_at, updated_at
 todos:           id, project_id, title, description, completed, priority,
                  due_date, created_at, updated_at, completed_at, sort_order
@@ -301,6 +301,12 @@ Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VE
   "Read and write permissions".
 - The workflow fails fast if `package.json:version` ≠ the pushed tag, so the
   two cannot drift. See `VERSIONING.md` §8 for the full chain diagram.
+- **Every release MUST update `README.md` in the same release commit**: sync
+  the 下载 section's version-pinned link and installer file names (e.g.
+  `Celery.Todo_3.4.2_x64-setup.exe`) to the new version, and sweep the rest of
+  the file for other stale version/branch references. Applies to both release
+  lines — 3.x Tauri (`v3*` tags → `desktop-release.yml`) and 2.x Electron
+  (`v*` tags → `release.yml`).
 
 ## Electron / build gotchas
 

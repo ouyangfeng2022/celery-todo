@@ -15,7 +15,7 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 拖拽排序 · 本
   <img src="https://img.shields.io/badge/Rust-2021-DEA584?style=flat-square&logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white" alt="SQLite">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-8dbf33?style=flat-square" alt="License"></a>
-  <a href="https://github.com/ouyangfeng2022/celery-todo/actions"><img src="https://img.shields.io/github/actions/workflow/status/ouyangfeng2022/celery-todo/ci.yml?branch=refactor%2F3.0-monorepo&style=flat-square&label=CI" alt="CI"></a>
+  <a href="https://github.com/ouyangfeng2022/celery-todo/actions"><img src="https://img.shields.io/github/actions/workflow/status/ouyangfeng2022/celery-todo/ci.yml?branch=main&style=flat-square&label=CI" alt="CI"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-8dbf33?style=flat-square" alt="Platform">
 </p>
 
@@ -31,21 +31,22 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 拖拽排序 · 本
 
 Celery Todo 3.0 基于 Tauri 2、React 与 Rust 构建。数据保存在本机 SQLite 数据库中，无需账号或网络连接；`celery` CLI 与桌面端读写同一份 v3 数据库。
 
-> 3.0 是一次跨端重构：2.x Electron 应用保留在 `apps/desktop-electron/`，仅作迁移对照；当前正式桌面端位于 `apps/desktop/`。
+> 3.0 是一次跨端重构：主线桌面端位于 `apps/desktop/`（Tauri）；2.x Electron 应用保留在 `apps/desktop-electron/`，作为独立版本线并行维护发版。
 
 ---
 
 ## 下载
 
-在 [v3.0.0 正式版](https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.0.0) 或 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 下载对应平台的安装包。
+在 [v3.4.2 正式版](https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.4.2) 或 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 下载对应平台的安装包。
 
-| 平台                | 文件                                                                |
-| ------------------- | ------------------------------------------------------------------- |
-| Windows x64         | `Celery.Todo_3.0.0_x64-setup.exe`                                   |
-| macOS Apple Silicon | `Celery.Todo_3.0.0_aarch64.dmg`                                     |
-| macOS Intel         | `Celery.Todo_3.0.0_x64.dmg`                                         |
-| Linux               | `Celery.Todo_3.0.0_amd64.AppImage` 或 `Celery.Todo_3.0.0_amd64.deb` |
-| Windows CLI         | `celery.exe`                                                        |
+| 平台                | 文件                                                                 |
+| ------------------- | -------------------------------------------------------------------- |
+| Windows x64         | `Celery.Todo_3.4.2_x64-setup.exe`                                    |
+| macOS Apple Silicon | `Celery.Todo_3.4.2_aarch64.dmg`                                      |
+| macOS Intel         | `Celery.Todo_3.4.2_x64.dmg`                                          |
+| Linux               | `Celery.Todo_3.4.2_amd64.AppImage` 或 `Celery.Todo_3.4.2_amd64.deb` |
+| Android             | `Celery.Todo_3.4.2_android.apk`                                      |
+| Windows CLI         | `celery.exe`                                                         |
 
 发布附件中的 `.sig` 与 `latest.json` 用于 Tauri 自动更新校验。应用会检查 GitHub Release 上的新版本。
 
@@ -176,7 +177,7 @@ celery CLI ───────────────────────
 | [`AGENTS.md`](./AGENTS.md)                         | Monorepo 架构、命令、约束与测试约定 |
 | [`CHANGELOG.md`](./CHANGELOG.md)                   | 用户可见版本变更日志                |
 | [`apps/mobile/README.md`](./apps/mobile/README.md) | Expo 移动端的独立开发说明           |
-| [`VERSIONING.md`](./VERSIONING.md)                 | 2.x Electron 版本策略历史说明       |
+| [`VERSIONING.md`](./VERSIONING.md)                 | 版本号策略与发版流程（App/DB/导出格式） |
 
 ---
 
