@@ -275,7 +275,7 @@ function TodoDetailDialogComponent() {
                     placeholder="事项标题"
                     aria-label="事项标题"
                     rows={1}
-                    className="w-full resize-none overflow-y-auto bg-transparent text-2xl font-semibold leading-snug outline-none sm:text-3xl"
+                    className="todo-title-input w-full resize-none overflow-y-auto text-2xl font-semibold leading-snug sm:text-3xl"
                     style={{
                       color: 'var(--text-primary)',
                       fontFamily: 'var(--font-heading)',

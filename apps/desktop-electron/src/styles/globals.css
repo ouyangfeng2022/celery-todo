@@ -982,6 +982,30 @@
     color: var(--text-tertiary);
   }
 
+  /* 可编辑标题：默认呈纯标题状，hover/focus 出现淡底，用克制的样式暗示可编辑，
+   * 不做「正在编辑」这类过强的视觉提示。 */
+  .todo-title-input {
+    background-color: transparent;
+    border-radius: var(--radius-md);
+    padding: 0.125rem 0.5rem;
+    margin: -0.125rem -0.5rem;
+    transition: background-color 0.15s ease;
+  }
+
+  .todo-title-input:hover {
+    outline: none;
+    background-color: var(--bg-hover);
+  }
+
+  .todo-title-input:focus {
+    outline: none;
+    background-color: var(--bg-hover);
+    /* 编辑态：字重从 600 略降到 500、光标变 accent 色，安静地提示正在编辑。
+     * 不用斜体——中文没有真正的斜体，浏览器只会机械倾斜字形，观感不佳。 */
+    font-weight: 500;
+    caret-color: var(--accent);
+  }
+
   /* 标签 */
   .claude-tag {
     display: inline-flex;
