@@ -3,8 +3,6 @@ node_modules/
 
 # 构建产物（模式不含前导斜杠，匹配任意层级）
 dist/
-dist-electron/
-dist-cli/
 release/
 coverage/
 
@@ -14,9 +12,6 @@ coverage/
 # vite.config.ts 编译产物
 vite.config.js
 vite.config.d.ts
-
-# cli/vitest.config.ts 经 vitest 运行时编译的 CJS 产物
-apps/desktop-electron/cli/vitest.config.js
 
 # Rust / cargo
 target/
@@ -33,11 +28,9 @@ skills/
 # Git worktrees
 .worktrees/
 
-# Playwright 测试产物（任意层级）
-test-results/
-playwright-report/
-blob-report/
-playwright/.cache/
+# WebdriverIO 测试产物
+errorShots/
+wdio-logs/
 
 # ZCode agent 本地工作状态
 .zcode/

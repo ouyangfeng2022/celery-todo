@@ -8,18 +8,6 @@
 
 ## [Unreleased]
 
-### Fixed
-
-- 修复 2.20.2 安装包启动后停留在加载页无限转圈的问题：hoisted 布局下
-  `electron-rebuild` 静默漏建 better-sqlite3，安装包内是 Node/Bun ABI 的预编译
-  产物，首个数据查询即 dlopen 失败。`rebuild:electron` 显式把构建根指向仓库
-  并新增 Electron ABI 验证闸门（`scripts/verify-native-abi.mjs`），打包前实际
-  加载原生模块，不匹配立即失败
-- 恢复 2.x 的数据目录：打包产物 package.json 缺少顶层 `productName`，monorepo
-  改名后 userData 漂移到 `%APPDATA%\@celery\desktop-electron`，升级用户的数据
-  与升级器缓存不可见；补回 `productName: "celery-todo"` 后与旧版完全一致
-- 应用初始化失败时在加载页展示错误信息并写入控制台，不再只显示转圈
-
 ## [v3.4.2] - 2026-09-08
 
 ### Added
@@ -185,6 +173,23 @@
 ### Security
 
 - 正式发行的 Windows、Linux AppImage / deb 与 macOS app 更新产物均附带更新签名；`latest.json` 提供自动更新清单
+
+## [v2.20.2] - 2026-08-15
+
+> 2.x Electron 线的最终版本（迁移过渡包，附于 v3.0.0 Release 引导旧客户端升级）。
+> 2.x 已于 3.4.2 之后停止维护并从仓库移除；此为历史记录。
+
+### Fixed
+
+- 修复 2.20.2 安装包启动后停留在加载页无限转圈的问题：hoisted 布局下
+  `electron-rebuild` 静默漏建 better-sqlite3，安装包内是 Node/Bun ABI 的预编译
+  产物，首个数据查询即 dlopen 失败。`rebuild:electron` 显式把构建根指向仓库
+  并新增 Electron ABI 验证闸门（`scripts/verify-native-abi.mjs`），打包前实际
+  加载原生模块，不匹配立即失败
+- 恢复 2.x 的数据目录：打包产物 package.json 缺少顶层 `productName`，monorepo
+  改名后 userData 漂移到 `%APPDATA%\@celery\desktop-electron`，升级用户的数据
+  与升级器缓存不可见；补回 `productName: "celery-todo"` 后与旧版完全一致
+- 应用初始化失败时在加载页展示错误信息并写入控制台，不再只显示转圈
 
 ## [v2.20.0] - 2026-08-14
 

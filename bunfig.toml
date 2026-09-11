@@ -1,10 +1,7 @@
-# 强制使用 hoisted（扁平）node_modules 布局。
+# 固定使用 hoisted（扁平）node_modules 布局。
 #
-# Bun 1.3 起 isolated 布局成为默认：依赖以符号链接收进 node_modules/.bun/
-# store，只有各 workspace 直接依赖会出现在 apps/*/node_modules 里。electron-builder
-# 24 的依赖收集只认应用目录下物理可见的包，导致共享传递依赖（如 electron-updater
-# 的 fs-extra）被打进 asar 时被漏掉 —— 2.20.1 安装包启动即崩
-# （Cannot find module 'fs-extra'）。固定 hoisted 恢复 monorepo 化之前
-# electron-builder 一直验证过的布局。
+# 历史：Bun 1.3 起 isolated 布局成为默认，曾导致（已移除的 2.x Electron 壳）
+# electron-builder 漏打传递依赖。2.x 已于 3.4.2 之后退役，此处保留 hoisted
+# 是为了避免整套 workspace 重新洗牌 node_modules —— 当前布局经长期验证。
 [install]
 linker = "hoisted"

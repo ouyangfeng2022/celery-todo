@@ -1,5 +1,5 @@
 # CI 质量门：每次 PR 或推送到 main 时跑 lint + test + build。
-# 与 release.yml 解耦 —— 后者由 tag 推送独立触发，不依赖本工作流。
+# 与 desktop-release.yml 解耦 —— 后者由 v3* tag 推送独立触发，不依赖本工作流。
 # 失败的 PR 不应合并；推到 main 后失败的话，下一次发版前必须修。
 
 name: CI
@@ -9,7 +9,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    # 排除 tag 推送 —— tag 由 release.yml 处理，不重复跑。
+    # 排除 tag 推送 —— 发版 tag 由 desktop-release.yml 处理，不重复跑。
     tags-ignore: ['v*']
 
 # 同一分支/PR 重复推送时取消旧 run。

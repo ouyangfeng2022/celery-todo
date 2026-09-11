@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="apps/desktop-electron/assets/celery-todo.svg" width="220" alt="Celery Todo" />
+<img src="apps/desktop/assets/celery-todo.svg" width="220" alt="Celery Todo" />
 
 # Celery Todo
 
@@ -30,8 +30,6 @@ Celery 风格 UI · 多项目管理 · 桌面贴图浮窗 · 拖拽排序 · 本
 </div>
 
 Celery Todo 3.0 基于 Tauri 2、React 与 Rust 构建。数据保存在本机 SQLite 数据库中，无需账号或网络连接；`celery` CLI 与桌面端读写同一份 v3 数据库。
-
-> 3.0 是一次跨端重构：主线桌面端位于 `apps/desktop/`（Tauri）；2.x Electron 应用保留在 `apps/desktop-electron/`，作为独立版本线并行维护发版。
 
 ---
 
@@ -86,7 +84,7 @@ Celery Todo 3.0 基于 Tauri 2、React 与 Rust 构建。数据保存在本机 S
 | 本地存储         | SQLite（WAL、外键、FTS5）                                     |
 | CLI              | Rust + clap                                                   |
 | 单元测试         | Vitest、Rust tests                                            |
-| E2E 测试         | WebdriverIO + tauri-driver；Playwright Electron（2.x 对照壳） |
+| E2E 测试         | WebdriverIO + tauri-driver                                      |
 | 包管理与构建编排 | Bun workspaces + Turborepo                                    |
 
 ---
@@ -134,8 +132,7 @@ celery-todo/
 ├── apps/
 │   ├── desktop/             # 3.0 Tauri 2 桌面端（React/Vite + Rust 宿主）
 │   ├── cli/                 # Rust CLI：celery
-│   ├── mobile/              # Expo 移动端（独立发布节奏）
-│   └── desktop-electron/    # 2.x Electron 迁移对照壳
+│   └── mobile/              # Expo 移动端（独立发布节奏）
 ├── crates/
 │   └── celery-db/           # SQLite schema、迁移、Repository 实现与 FTS
 ├── packages/
@@ -164,7 +161,6 @@ celery CLI ───────────────────────
 - **TypeScript**：`bun run lint`、`bun run test:run`、`bun run build`
 - **Rust**：`cargo test -p celery-db`（同时校验生成的 TypeScript 绑定）和 `cargo check -p celery-desktop`
 - **Tauri E2E**：GitHub Actions 在 Linux 上使用 WebdriverIO 与 `tauri-driver`
-- **Electron 对照壳 E2E**：GitHub Actions 在 Windows 上使用 Playwright；仅按改动域运行对应 spec
 
 完整约定、命令和变更区域到测试文件的映射见 [`AGENTS.md`](./AGENTS.md)。
 

@@ -1,419 +1,186 @@
 # AGENTS.md
 
 Workspace instructions for ZCode agents working in `celery-todo`.
-For deeper background see `README.md` and `CLAUDE.md` (Chinese + English).
+For deeper background see `README.md`（中文）与 [`VERSIONING.md`](./VERSIONING.md)。
 
-## 3.0 跨端重构（进行中，分支 `refactor/3.0-monorepo`）
-
-仓库正按「Celery Todo 3.0 跨端重构计划」迁移为 Bun workspaces + Turborepo
-monorepo。**除本节外，本文件其余章节描述的是 2.x Electron 应用** —— 它已整体迁入
-`apps/desktop-electron/`，作为迁移对照壳保留到 Tauri 端达到功能基线为止。阅读旧章节时，
-把 `src/…`、`electron/…`、`cli/…`、`e2e/…`、`public/…`、`build/…` 一律读作
-`apps/desktop-electron/` 下的同名目录。
-
-已完成阶段（每个阶段一个 commit，全部保持构建/测试绿色）：
-
-1. **Monorepo 骨架** —— Bun workspaces（`apps/*`、`packages/*`）+ Turborepo
-   （`turbo.json`）。根 `package.json` 是版本号唯一源；`scripts/bump-version.mjs`
-   发版时同步所有 workspace 包的 `version` 字段。
-2. **共享内核 `packages/core`（`@celery/core`）** —— 实体、校验、计划日期、排序、
-   模板、统计、v2 导入导出规则（76 个单测）。Electron 壳经 `@/types`、`@/utils/*`
-   兼容 shim 消费，应用内既有 import 未改动。
-3. **v3 数据层**：
-   - `crates/celery-db`（Rust）—— 全新 `schema_migrations` v1 起（不复用 2.x
-     `settings.dataVersion`）；`projects` / `todos` / `archived_todos`（原
-     `deleted_todos`，无 `expires_at`）/ `settings` / FTS5 trigram 全文索引；
-     WAL + 外键 + busy_timeout；游标分页；批量写单事务。43 个 Rust 测试。
-   - `packages/data`（`@celery/data`）—— Repository 契约（todos/projects/settings +
-     ChangeFeed）、v3 导出格式（`celery-todo/v3`，旧 JSON 明确拒绝）、内存适配器。
-     DTO 类型由 ts-rs 从 Rust 生成到 `src/generated/`（**改 Rust DTO 后必须
-     `cargo test -p celery-db` 重新生成并提交**，CI 有漂移检查）。
-   - `packages/test-contracts`（`@celery/test-contracts`）—— 共享契约测试套件
-     （16 条），内存适配器已接入；Tauri / Expo 适配器完成后挂同一套。
-4. **Tauri 桌面骨架 `apps/desktop`（`@celery/desktop`）** —— Tauri 2 + React/Vite，
-   29 个强类型命令薄封装 celery-db（`src-tauri/src/commands.rs`），renderer 经
-   `createTauriRepositories()` 走 Repository 契约（`src/lib/tauri-repositories.ts`）。
-   骨架 UI 验证全链路；正式 UI 沿用 2.x 信息架构迁移是后续里程碑。
-
-3.0 关键命令（根目录执行）：
-
-```bash
-cargo test -p celery-db          # Rust 单测 + 重新生成 TS 绑定
-cargo check -p celery-desktop    # Tauri 宿主 crate 编译检查
-bun run desktop:dev              # Tauri 桌面端开发（弹真实窗口，勿在无人值守时跑）
-bun run desktop:build            # Tauri NSIS 打包（release 慢，lto 全开）
-bun run test:run                 # turbo：所有 TS 包的单测
-bun run build                    # turbo：renderer/electron 壳/桌面端构建
-```
-
-1. **2.x 旧库导入（计划第 6 步后端）** —— `celery-db` 的 `legacy_v2` 模块：
-   `inspect_v2(path)` 永不抛错、所有问题进报告；`CeleryDb::import_from_v2` 以
-   只读 ATTACH 挂载源库后在目标 v3 库单事务转换（失败整体回滚、可重试）；
-   `detect_v2_source()` 自动探测 2.x 默认目录与 `storage-config.json` 自定义目录。
-   只认 `dataVersion` 4–9；活跃事项孤儿引用终止导入；归档保留项目名快照；
-   设置按白名单导入（主题/模板/视图/`sort.*`），OS 级状态跳过。9 项专项测试。
-   桌面端已接：`legacy_v2_*` Tauri 命令 + `@celery/data` 的
-   `LegacyV2ImportService` + 骨架 UI 的首启导入横幅（仅空库时出现）。
-2. **Rust CLI（`apps/cli`，binary 名 `celery`）** —— clap 子命令
-   `status/projects/list/add/done/archive`，复用 celery-db、与桌面端同一
-   `%APPDATA%/com.celery.todo`（经 `celery_db::storage_config` 解析自定义数据
-   目录，两端同库）；id 支持前缀匹配。CLI 写入后的桌面实时刷新已接
-   （`cli_notify.rs` 回环 TCP + `data-changed` 广播）。
-3. **`packages/ui-tokens`（`@celery/ui-tokens`）** —— 从 2.x 提取的跨端设计
-   token：coral/sand/ink 色阶、light/dark/celery 三主题语义色、Poppins/Lora
-   字体栈、4px 间距、圆角/阴影/动效；`tokens.css`（CSS 变量）+ TS 常量双形态。
-4. **Expo 移动端（`apps/mobile`）** —— expo-sqlite 适配器实现同一套
-   Repository 契约（v3 schema 同构、搜索用 LIKE、游标分页）。正式 UI 已实施：
-   Expo Router 四入口（事项/计划/搜索/设置）、右滑完成左滑归档、长按操作面板、
-   原生拖拽手动排序、三主题；项目管理在端内闭环（首启 `ensureInbox` 自动建
-   收集箱，项目栏「＋」新建、长按重命名/删除）——移动端是**独立应用**，
-   数据只存本机，与桌面端互不相通、无导入关系。品牌图标（icon/adaptive/
-   splash）由根 `scripts/generate-mobile-icons.mjs` 生成、`app.json` 引用。
-   **独立于根 workspace**（Windows 本机 bun 链接 RN
-   长路径依赖树失败），依赖用 `file:` 指向共享包；类型检查由
-   `.github/workflows/mobile.yml` 在 ubuntu CI 强制。见 `apps/mobile/README.md`。
-   安卓发版：`desktop-release.yml` 的 v3* tag 自动构建 APK（ubuntu 上
-   `expo prebuild` + `gradle assembleRelease`，构建前按 tag 同步 `app.json`
-   的 `expo.version` 与 `versionCode`；debug keystore 签名、可侧载，
-   附到桌面端同一 Release；Play 商店分发仍走 EAS 线 `mobile-release.yml`）。
-5. **正式桌面 UI 迁移·阶段 A（renderer 主体）** —— 2.x 的组件/hooks/stores
-   整体迁入 `apps/desktop`（Tailwind 3 + globals.css + 字体栈原样保留），
-   `src/utils/dataGateway.ts` 重写为 v3 Repository 契约实现（`order`↔`rank`、
-   `deletedAt`↔`archivedAt` 映射；分页抽取上限 1.2 万行防御）；App.tsx 拆分为
-   `src/app/`（启动/跨窗口同步/全局搜索/导入导出四个 hook + 自绘标题栏 +
-   首启导入横幅）。平台耦合收敛到 `src/platform`（能力开关 `capabilities`，
-   托盘/贴图/自启/更新/存储迁移未点亮前以 no-op 桩 + UI 门槛隐藏）。
-   配套 Rust：`replace_all`/`reset_db`（v2 JSON 全量导入单事务）、
-   `archived_count`/`incomplete_counts` 聚合、写命令后 `data-changed` 广播
-   （renderer 按窗口 label 过滤自发事件）。单测 51 项（含网关映射层 8 项，
-   经 `configureDataGateway` 注入内存适配器）。
-6. **平台能力·阶段 B（已完成，随 3.0.0/3.0.1 发布）** —— 托盘（`tray.rs`：
-    完整菜单 + 单击切换主窗 + 退出看门狗防死锁）、多贴图窗口（`stickers.rs`：
-    创建/复制/换项目/关闭/返回主窗 + **重启恢复**；Windows 建窗必须离开主线程，
-    wry#583）、开机自启（tauri-plugin-autostart）、窗口状态记忆
-    （`window_state.rs`：主窗 rect + **最大化标记** + 贴图清单，400ms debounce）、
-    单实例、应用内更新（tauri-plugin-updater + 端点/公钥在 tauri.conf，签名
-    发布流水线 `.github/workflows/desktop-release.yml`；reqwest 不读 Windows
-    系统代理，设置页「网络代理」三键 proxyEnabled/proxyMode/proxyUrl 经
-    `proxy.rs` 映射为 HTTP(S)_PROXY 环境变量并即时生效，否则国内直连
-    GitHub 超时）、原生「另存为」导出
-    （`export_save_file` + `open_in_folder` + ExportNotice 真实路径回执）、
-    自定义数据目录（`storage.rs` + `celery_db::storage_config`：`storage-config.json`
-    恒在 appData 根，切换 = checkpoint WAL → 拷贝 → 配置 → 旧库重挂，失败回滚；
-    CLI 同一解析保持两端同库）。CLI 写入后桌面实时刷新也已接（`cli_notify.rs`
-    回环 TCP，发现文件恒在 appData 根）。
-
-尚未实施的计划阶段：WebdriverIO Tauri E2E 扩充（现仅
-Linux + xvfd 4 条冒烟，见 `apps/desktop/e2e/`）、性能夹具基线。
-SQLite 默认不加密；无云同步，各设备数据独立。
+> 2.x Electron 应用已于 3.4.2 之后退役删除（2026-09）。已发布的 2.x 安装包仍在
+> GitHub Releases；存量用户经 2.20.2 迁移引导升级到 3.x，旧数据由 3.0 的
+> `legacy_v2` 导入路径承接。本仓库现只维护 3.x 单线。
 
 ## Project purpose
 
-Celery Todo — an Electron desktop todo app (React 18 + TypeScript + Tailwind).
-All data is stored locally via SQLite compiled to WASM (`sql.js`) and persisted
-to IndexedDB. Multi-project, drag-and-drop, recycle bin, system tray, themes.
+Celery Todo — 本地优先的跨端待办应用。桌面端为 Tauri 2（React 18 renderer +
+Rust 宿主），数据存本机 SQLite（`celery-db`，WAL + FTS5），无账号、无云同步。
+多项目、拖拽排序、归档、系统托盘、桌面贴图浮窗、三主题。Rust CLI（`celery`）
+与桌面端读写同一份数据库；Expo 移动端是独立应用，数据只存本机。
 
 ## Major directories
 
 ```text
-apps/desktop-electron/   # 2.x Electron 应用（迁移对照壳）：内含原 electron/、src/、
-                         # cli/、e2e/、public/、build/、assets/ 与应用级 scripts/
-apps/desktop/            # 3.0 Tauri 2 桌面端（React/Vite renderer + src-tauri 命令层）
-packages/core/           # @celery/core 共享业务内核（实体/规则，平台无关）
+apps/desktop/            # Tauri 2 桌面端（React/Vite renderer + src-tauri 命令层）
+apps/cli/                # Rust CLI：celery（与桌面端同库）
+apps/mobile/             # Expo 移动端（独立应用、独立发布节奏，不入根 workspace）
+crates/celery-db/        # v3 SQLite 数据层（Rust）：schema、迁移、仓储、FTS5、legacy_v2
+packages/core/           # @celery/core 共享业务内核（实体/校验/排序/模板/统计）
 packages/data/           # @celery/data Repository 契约 + v3 导出格式 + 内存适配器
 packages/test-contracts/ # @celery/test-contracts 共享契约测试套件
-crates/celery-db/        # v3 SQLite 数据层（Rust）：schema、迁移、仓储、FTS5
-scripts/                 # 仓库级脚本（bump-version、check-repo-health、extract-changelog、
-                         # generate-icons —— 图标产物写入 apps/desktop-electron/public；
-                         # generate-mobile-icons —— 移动端图标写入 apps/mobile/assets）
-.github/workflows/       # ci.yml（lint/test/build + Rust 任务）、e2e.yml、release.yml
+packages/ui-tokens/      # @celery/ui-tokens 跨端设计 token（CSS 变量 + TS 常量）
+scripts/                 # 仓库级脚本（check-repo-health、generate-mobile-icons、
+                         #   inject-android-signing）
+.github/workflows/       # ci.yml、desktop-e2e.yml、desktop-release.yml、mobile*.yml
 ```
 
 ## Commands
 
-Package manager is **bun** (declared via `packageManager` in package.json).
-根脚本经 Turbo / `bun run --filter` 委托到各 workspace；应用级脚本在
-`apps/desktop-electron/package.json`。在仓库根执行：
+Package manager is **bun**（根 `packageManager` 声明）。根脚本经 Turbo /
+`bun run --filter` 委托到各 workspace。在仓库根执行：
 
 ```bash
-bun install                 # install deps（workspace 全量）
-bun run dev                 # 2.x 壳 Vite dev server (http://localhost:5173)
-bun run build               # turbo：tsc + vite（壳与桌面端 renderer）
+bun install                 # 安装 workspace 全量依赖
+bun run build               # turbo：tsc + vite（renderer 构建；唯一的 typecheck 门禁）
 bun run lint                # eslint（所有包，--max-warnings 0）
 bun run format              # prettier（apps/*/src、packages/*/src）
 bun run test:run            # 所有 TS 包单测
-bun run e2e                 # 2.x 壳 Playwright E2E（完整套件，禁日常本地跑）
-bun run cli                 # 2.x 壳 Node CLI
-cargo test -p celery-db     # 3.0 Rust 数据层测试 + 生成 TS 绑定
+bun run typecheck           # turbo：各包 tsc --noEmit
+bun run desktop:dev         # Tauri 桌面端开发（弹真实窗口，勿在无人值守时跑）
+bun run desktop:build       # Tauri 打包（release 慢，lto 全开）
+cargo test -p celery-db     # Rust 数据层测试 + 重新生成 TS 绑定
+cargo check -p celery-desktop  # Tauri 宿主 crate 编译检查
 ```
 
-Electron 壳专属（也可在根经同名委托脚本调用）：`electron:dev`、`build:electron`、
-`electron:build`、`build:cli`、`test:cli`、`rebuild:electron`。
+## Architecture（数据流与边界）
 
-There is no standalone `typecheck` script — `bun run build` (and
-`build:electron`) run `tsc -b`, which is the typecheck gate.
+```text
+React renderer（apps/desktop/src）
+  │  components → hooks → zustand stores
+  ▼
+src/utils/dataGateway.ts        # v3 Repository 契约实现（order↔rank、
+  │                             #   deletedAt↔archivedAt 映射；分页抽取上限 1.2 万行）
+  ▼
+@celery/data 契约 → createTauriRepositories() → Tauri commands
+  │                                                        │
+  ▼                                                        ▼
+crates/celery-db（SQLite：projects · todos · archived_todos ·   apps/cli（celery）
+  settings · schema_migrations · FTS5）                        同一数据库
+  │
+  └─ 写事务后广播 data-changed（renderer 按窗口 label 过滤自发事件；
+     CLI 写入经 cli_notify.rs 回环 TCP 触发同一广播）
+```
+
+- **分层**：Components → Hooks → Zustand stores → `dataGateway.ts` → Repository
+  契约。Store 直接调 gateway，不要再加第二层抽象。平台耦合（托盘/贴图/自启/
+  更新/存储）一律收敛在 `src/platform`（能力开关 `capabilities`，浏览器/测试
+  环境为 no-op 桩 + UI 门槛隐藏）。
+- **schema 真源在 Rust**：改表结构在 `crates/celery-db` 加迁移；改 Rust DTO 后
+  必须跑 `cargo test -p celery-db` 重新生成 `packages/data/src/generated/` 的
+  TS 绑定并提交，CI 有漂移检查。
+- **共享类型改动的闸门**：凡改 `packages/core` 的共享类型（尤其给 `AppSettings`
+  加必填字段），本地必须跑**根** `bun run build`（turbo 全量 typecheck），
+  单包 `tsc --noEmit` 不算数——多个 workspace 同时消费这些类型。
+- **数据目录**：桌面端与 CLI 共用 `%APPDATA%/com.celery.todo`（经
+  `celery_db::storage_config` 解析 `storage-config.json` 自定义目录；该文件
+  恒在 appData 根）。SQLite 默认不加密；无云同步。
+- **移动端是独立应用**：expo-sqlite 适配同一套 Repository 契约，但数据只存
+  本机、与桌面端互不相通、无导入关系。Windows 本机 bun 链接 RN 依赖树会失败，
+  故 `apps/mobile` 独立于根 workspace（依赖 `file:` 指向共享包）；类型检查由
+  `mobile.yml` 在 ubuntu CI 强制（无 push 触发，直接 push main 会跳过——改完
+  本地 `bun run typecheck`）。见 `apps/mobile/README.md`。
 
 ## Testing strategy
 
-Two test layers, kept strictly separate:
-
-- **Vitest unit/component tests** (`src/test/`) — fast, run in jsdom, no
-  Electron. `vite.config.ts` scopes vitest to `src/**` and excludes `e2e/`, so
-  the Playwright specs are never picked up by vitest.
-- **Playwright Electron E2E** (`e2e/`) — drives the *real* packaged app via
-  `_electron.launch()`. Each test gets an isolated `userData` dir through the
-  `CELERY_TODO_USERDATA` env hook in `electron/main.ts` (which also disables
-  `requestSingleInstanceLock` and sets a unique `app.name` in test mode). See
-  the "E2E testing" section below.
-
-### Run only the specs you need
-
-**严禁运行 `bun run e2e`（完整套件）。** 每个 E2E test 都启动一个独立 Electron 进程并冷加载
-sql-wasm.wasm，完整套件耗时 ~6-8 分钟，严重拖累效率。只跑与改动相关的 spec：
-
-```bash
-bunx playwright test e2e/todos.spec.ts                  # 单个文件
-bunx playwright test e2e/todos.spec.ts e2e/projects.spec.ts   # 多个相关文件
-bunx playwright test -g "拖拽"                            # 按名称关键词（跨文件）
-bunx playwright test -g "回收站|删除"                       # regex
-bunx playwright test --last-failed                        # 仅上次失败项
-bunx playwright test e2e/filters.spec.ts --headed         # 看显式窗口运行
-```
-
-### Change-area → spec map
-
-| Changed area | Run this spec |
-| --- | --- |
-| `src/components/todos/` | `e2e/todos.spec.ts` |
-| `src/components/filters/` | `e2e/filters.spec.ts`, `e2e/search.spec.ts` |
-| `src/components/projects/` | `e2e/projects.spec.ts` |
-| `src/components/recycle/` | `e2e/recycle.spec.ts` |
-| `src/components/settings/` | `e2e/settings.spec.ts` |
-| `src/utils/export.ts` / import-export | `e2e/import-export.spec.ts` |
-| `src/hooks/useKeyboardShortcuts.ts` | `e2e/keyboard.spec.ts` |
-| `src/components/common/NotificationPanel.tsx` | `e2e/notifications.spec.ts` |
-| dnd-kit drag-and-drop | `e2e/dnd.spec.ts` |
-| `electron/main.ts` / startup flow | `e2e/app.spec.ts` |
-| Cross-cutting (database.ts, stores, App.tsx, types) | 依次运行最相关的 3-4 个 spec，不要跑全量 |
-| `cli/**` | 不跑 E2E —— CLI 与 Electron 无关。跑 `bun run test:cli` |
-
-When in doubt about blast radius (e.g. touching `database.ts`, a Zustand store,
-`App.tsx`, or shared types), 根据改动涉及的功能域选 3-4 个最相关的 spec，
-不要跑全量套件（参见禁止完整套件的规定）。
-
-> **CLI 隔离**：`cli/` 有独立的 `tsconfig.json` 与 `vitest.config.ts`，不进入
-> 根 `tsc -b` 与主 vitest。改动 CLI 源码只需 `bun run build:cli` + `bun run test:cli`，
-> 不会影响 renderer/electron 构建，也无需跑 Playwright。`better-sqlite3` / `commander` /
-> `tsx` 全部是 devDependencies，绝不进 electron-builder 打包（`build.files` 不含 `dist-cli`）。
-
-## Data flow
-
-```text
-React Components
-  │  (Header, TodoList, ProjectSidebar, SettingsPanel, …)
-  ▼
-Custom Hooks        useTodos, useProjects, useFilter, useTheme, …
-  ▼
-Zustand Stores      useTodoStore, useProjectStore,
-  │                 useSettingsStore, useNotificationStore
-  ▼
-SQLite (sql.js WASM)   src/utils/database.ts
-  │                     └─ IndexedDB persistence
-  ▼
-Tables: projects · todos · deleted_todos · settings · notifications
-```
-
-## Database schema
-
-```text
-projects:        id, name, color, created_at, updated_at
-todos:           id, project_id, title, description, completed, priority,
-                 due_date, created_at, updated_at, completed_at, sort_order
-deleted_todos:   same as todos + deleted_at, expires_at   (30-day recycle bin)
-settings:        key, value                                 (K/V store)
-notifications:   id, type, title, message, todo_id, created_at, read
-```
-
-## Architecture boundaries
-
-- Layering follows the data flow above: **Components → Hooks → Zustand stores
-  → `src/utils/database.ts`**. Stores call database functions directly; do not
-  add a second abstraction layer.
-- Database is the single source of truth. `database.ts` exposes typed helpers
-  plus `rowToTodo()` / `rowToProject()` mappers from snake_case DB rows to
-  camelCase TS interfaces. Keep new columns/snake_case on the DB side and map.
-- Saving is debounced (500ms) into IndexedDB; `flushSave()` forces a write.
-  Anything that mutates the DB should go through the existing store actions so
-  the debounced save fires.
-- Multi-project: every todo has `project_id`; switching project calls
-  `useTodoStore.getState().loadProject(projectId)`. A default project is created
-  automatically — don't assume an empty DB.
-- Recycle bin: deletes move rows to `deleted_todos` with a 30-day `expires_at`;
-  restore moves them back. Auto-cleanup uses `expires_at`.
-- Electron main process (`electron/main.ts`) handles window/tray/auto-start;
-  `electron/preload.ts` is the IPC bridge; `electron/tray.ts` the system tray.
-  Window position is persisted to `window-state.json` in userData. Touching IPC
-  = touch both preload and main. `main.ts` also has a test-only hook: if
-  `CELERY_TODO_USERDATA` is set (only by E2E), it redirects userData, sets a
-  unique `app.name`, and skips the single-instance lock — production behavior
-  is unchanged. Don't remove this without updating `e2e/helpers.ts`.
+- **Vitest 单测/组件测试**（`apps/desktop/src/test/` + 各 packages）— jsdom，
+  快；改哪个域就跑哪个文件：`cd apps/desktop && bunx vitest run src/test/xxx.test.tsx`。
+  网关映射层测试经 `configureDataGateway` 注入内存适配器，不依赖 Tauri。
+- **共享契约测试**（`packages/test-contracts`）— 内存适配器已接入；新适配器
+  实现后挂同一套。
+- **Rust 测试** — `cargo test -p celery-db`（含 ts-rs 绑定再生成）。
+- **WebdriverIO Tauri E2E**（`apps/desktop/e2e/`）— 目前仅 Linux + xvfd 4 条
+  冒烟（`desktop-e2e.yml`，手动触发）。E2E 会启动真实应用窗口，日常开发不要
+  本地跑，交给 CI。
+- **移动端无自动化测试**（CI 只 tsc）；所有 mobile 修复依赖真机手动验证。
 
 ## Conventions
 
-- **Comments are primarily Chinese.** Match existing Chinese comment style in
-  `.ts`/`.tsx` files when editing; user-facing strings stay Chinese.
-- TypeScript: `strict` on. CamelCase for interfaces, snake_case for DB columns.
-  `@/*` path alias maps to `src/*` (configured in tsconfig.json) — prefer it for
-  imports over deep relative paths.
-- ESLint treats `@typescript-eslint/no-explicit-any` and unused-vars as warn;
-  CI gate is `--max-warnings 0`, so new code must not introduce warnings.
-- Prettier handles formatting; run `bun run format` rather than hand-formatting.
-- Bulk operations exist (`addTodosBulk`, `batchAction`, `deleteTodos`) — reuse
-  them instead of looping single-item ops.
-- Keyboard shortcuts are centralized in `useKeyboardShortcuts()`.
+- **注释以中文为主**；用户可见文案保持中文。
+- TypeScript `strict`；接口 CamelCase、DB 列 snake_case（Rust 侧）。`@/*`
+  alias 映射 `apps/desktop/src/*`，优先用 alias 而非深层相对路径。
+- ESLint 把 `no-explicit-any` / unused-vars 设为 warn，但 CI 门禁
+  `--max-warnings 0`——新代码不得引入任何 warning。
+- 格式交给 Prettier：跑 `bun run format`，不要手调格式。
+- 批量操作（`addTodosBulk`、`batchAction`、`deleteTodos`）已存在——复用它们，
+  不要循环单条操作。
+- 键盘快捷键集中在 `useKeyboardShortcuts()`。
 
 ## Versioning
 
-Three independent version numbers coexist; full policy in [`VERSIONING.md`](./VERSIONING.md).
+三类版本号（App / DB schema / 导出格式）完整策略见
+[`VERSIONING.md`](./VERSIONING.md)。要点：
 
-- **App version** — `package.json` `version` (SemVer). Single source of truth.
-  Renderer reads it via `import { APP_VERSION } from '@/utils/version'`
-  (injected by `vite.config.ts` `define`); Electron main reads `app.getVersion()`.
-  Releases go through `bun run bump -- <patch|minor|major>` (see
-  `scripts/bump-version.mjs`), which also updates `CHANGELOG.md` and creates an
-  annotated `vX.Y.Z` tag. Don't bump `package.json:version` by hand.
-- **DB schema version** — `DB_VERSION` in `src/utils/database.ts`. **Any schema
-  change MUST bump `DB_VERSION` and add a migration row.** Persisted as
-  `settings.dataVersion`. Irreversible migrations require a MAJOR App bump.
-- **Export format version** — `EXPORT_FORMAT_VERSION` in `src/utils/export.ts`.
-  Bump when the JSON export structure changes. Do **not** confuse with
-  `DB_VERSION` (one describes tables, the other describes files).
+- **App 版本单一源 = `apps/desktop/src-tauri/tauri.conf.json` 的 `version`**，
+  与根 `Cargo.toml` 的 `[workspace.package] version` **手动同步**（无自动校验）。
+  Renderer 经 vite `define` 读到 `APP_VERSION`。workspace 各 package.json 的
+  version 仅作展示对齐。
+- **DB schema 版本** = `crates/celery-db` 的 `schema_migrations`（v1 起）。
+  任何 schema 变更必须走 Rust 迁移并重新生成 TS 绑定；不可逆迁移配 MAJOR bump。
+- **导出格式版本** = `packages/data/src/export-format.ts` 的
+  `V3_EXPORT_FORMAT_VERSION`（格式标识 `celery-todo/v3`，旧 2.x JSON 拒绝）。
 
 ### GitHub release pipeline
 
-- Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds the
-  NSIS installer on `windows-latest`, extracts the matching section from
-  `CHANGELOG.md` via `scripts/extract-changelog.mjs`, and creates a GitHub
-  Release with those notes + the built artifacts.
-- One-shot release command: `bun run bump -- <patch|minor|major> --push` —
-  bumps version, writes CHANGELOG, commits, tags, pushes both, and CI takes
-  over. Workflow requires repo Settings → Actions → Workflow permissions =
-  "Read and write permissions".
-- The workflow fails fast if `package.json:version` ≠ the pushed tag, so the
-  two cannot drift. See `VERSIONING.md` §8 for the full chain diagram.
-- **Every release MUST update `README.md` in the same release commit**: sync
-  the 下载 section's version-pinned link and installer file names (e.g.
-  `Celery.Todo_3.4.2_x64-setup.exe`) to the new version, and sweep the rest of
-  the file for other stale version/branch references. Applies to both release
-  lines — 3.x Tauri (`v3*` tags → `desktop-release.yml`) and 2.x Electron
-  (`v*` tags → `release.yml`).
+- 发版手动流程：改 `tauri.conf.json` + 根 `Cargo.toml` 两处版本 → 收敛
+  `CHANGELOG.md` 的 `[Unreleased]` → **同一 commit 更新 README 的下载链接与
+  安装包文件名**（如 `Celery.Todo_3.4.3_x64-setup.exe`）→ 提交、打 `v3*`
+  tag 推送。`desktop-release.yml` 按 tag 构建 Win/macOS/Linux 安装包 +
+  `celery.exe` + Android APK（`expo.version`/`versionCode` 按 tag 自动同步），
+  附到同一 Release。iOS / Play 商店走 EAS 线 `mobile-release.yml`（手动）。
+- 不要在红 CI 上打 tag；`desktop-release.yml` 自身不重跑测试。
 
-## Electron / build gotchas
+## Tauri / Rust gotchas
 
-- Electron sources compile with a **separate** `electron/tsconfig.json`
-  (`module: CommonJS`, `outDir: ../dist-electron`). After every electron TS
-  build, `scripts/fix-electron-cjs.mjs` writes `dist-electron/package.json`
-  with `{ "type": "commonjs" }` so Node loads it as CJS. If you change the
-  electron build pipeline, keep that step — Electron's `main` field points at
-  `dist-electron/main.js`.
-- `package.json` `"type": "module"` applies to the renderer/Vite side; the
-  Electron build is forced CJS as above. Don't mix `import`/`require` across the
-  boundary without going through the build step.
-- `tsconfig.json` has `noEmit: true` and uses project references
-  (`tsconfig.node.json` for Vite config). `tsc -b` is the canonical build; don't
-  call `tsc` directly without `-b`.
-- `sql.js` WASM is loaded via `import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url'`
-  in `src/utils/database.ts`. Vite resolves it from `node_modules` in dev and
-  emits a hashed asset in prod — **don't** hand-copy a `sql-wasm.wasm` into
-  `public/`; that creates a stale duplicate that drifts from the JS glue layer
-  on every `sql.js` upgrade.
-- electron-builder config is inlined in `package.json` (`build` field). Windows
-  target is NSIS; output goes to `release/`.
-- **原生模块 ABI 闸门（2.20.2 事故）**：hoisted 布局下 `@electron/rebuild` 的模块
-  发现以 buildPath 的 package.json 依赖为种子、且向上扫描会在无 package.json 的
-  目录层截断 —— 直接 `electron-rebuild -f -o better-sqlite3` 会**静默重建 0 个
-  模块**（退出码 0），打包带进 Node/Bun ABI 的预编译产物，首个 `data:query` 即
-  dlopen 失败、加载页无限转圈。因此 `rebuild:electron` 固定为
-  `electron-rebuild -f -o better-sqlite3 -m ../..`（buildPath = 仓库根；根
-  `package.json` 的 devDependencies 也声明了 better-sqlite3 作为发现种子），并在
-  末尾接 `scripts/verify-native-abi.mjs` —— 用 Electron 自带 Node
-  （`ELECTRON_RUN_AS_NODE=1`）实际加载原生模块，不匹配即打包前失败。**不要移除
-  这道闸门**；`bun install` 后如果又跑过 `rebuild:node` / CLI 测试，重打包前必须
-  重新 `bun run rebuild:electron`。
-- **打包产物的 `productName` 决定 userData**：Electron 的 `app.name`（进而
-  `%APPDATA%` 下的数据目录、electron-updater 缓存标识）读的是 **asar 内
-  package.json 的顶层 `productName`**（无则用 `name`）；electron-builder 不会把
-  `build.productName` 写进 asar。`apps/desktop-electron/package.json` 顶层必须保持
-  `"productName": "celery-todo"`（与 2.x 一致），否则升级用户数据全部"消失"
-  （2.20.2 曾漂移到 `%APPDATA%\@celery\desktop-electron`）。`build.productName:
-  "Celery Todo"` 只影响 exe/安装包/快捷方式命名。
-- Windows 无框窗口（`titleBarStyle: 'hidden'` + `titleBarOverlay`）在拖拽改窗口
-  大小时，OS 会在右上角绘制一个尺寸提示框（如 "1200 × 800"），与 overlay 的
-  最小化按钮位置重叠。这是 Windows + Chromium 的已知行为
-  ([electron/electron#943](https://github.com/electron/electron/issues/943))，
-  非 React 元素、Electron 亦无 API 可隐藏。如需消除，唯一选项是 `thickFrame: false`，
-  代价是失去拖拽窗口边缘改大小的能力 —— 当前选择保留原生 resize，故仅作记录。
+- **同步命令/菜单回调里绝不能建 WebviewWindow（wry#583）**——会冻结全部 IPC，
+  症状像各种数据 bug。Windows 建窗必须离开主线程（`stickers.rs` 已按此实现）；
+  `quit_app` 的看门狗防退出死锁，不要移除。
+- **updater（reqwest）不读 Windows 系统代理**：设置页「网络代理」三键经
+  `proxy.rs` 映射为 HTTP(S)_PROXY 环境变量并即时生效，否则国内直连 GitHub
+  超时。
+- **外链跳转**：markdown 链接无 target 会整页导航，须 `platform` 的
+  `bindExternalLinks` 全局拦截走默认浏览器；opener 注入脚本只拦
+  `target=_blank`；缺 `opener:default` capability 时所有 `open_url` 被静默
+  拒绝（含 `_blank`）。
+- **自定义数据目录切换** = checkpoint WAL → 拷贝 → 写 `storage-config.json` →
+  旧库重挂，失败回滚（`storage.rs`）；`storage-config.json` 与
+  `cli_notify` 发现文件恒在 appData 根，不随数据目录迁移。
+- **窗口状态记忆**（`window_state.rs`）：主窗 rect + 最大化标记 + 贴图清单，
+  400ms debounce；最小化状态不得持久化（否则下次启动窗口跑出屏幕外）。
+- **bun linker 固定 hoisted**（`bunfig.toml`）：历史原因是（已删除的）2.x
+  electron-builder 依赖收集；现保留以避免整套 workspace 重新洗牌
+  node_modules。不要随手改回 isolated。
+- `apps/desktop` 的 `vite.config.ts` 从 `tauri.conf.json` 读版本号注入
+  `__APP_VERSION__`；vitest 的 include/exclude 也在该文件里，E2E 目录不会
+  被单测误捡。
 
-## E2E testing (Playwright Electron)
+## 2.x 存量数据承接（legacy_v2）
 
-Specs in `e2e/` drive the real packaged Electron app (not a browser). Before
-adding or editing E2E tests, read `e2e/helpers.ts` and keep these conventions:
+`crates/celery-db` 的 `legacy_v2` 模块负责导入 2.x 旧库：
 
-- **`launchApp()` / `closeApp()`** from `e2e/helpers.ts` are the only sanctioned
-  way to start/stop the app. `beforeEach` → `launchApp()`, `afterEach` →
-  `closeApp()`. Never call `electron.launch` / `app.close()` directly.
-- **Default focus mode**: the app boots into focus mode (sidebar/Header/FilterBar
-  hidden). `launchApp()` already presses `Ctrl+P` to exit it; don't re-exit in
-  tests unless you're specifically testing focus mode.
-- **Selectors**: the app has no `data-testid`. Use semantic locators
-  (`getByRole`, `getByPlaceholderText`, `getByLabel`) and exact text. Many
-  hover-only buttons (row actions, sidebar collapse handle) need `.hover()`
-  first or `{ force: true }`. Scope multi-match locators to their container
-  (e.g. a project row, the settings dialog) with `.filter({ has: ... })`.
-- **ConfirmDialog**: press `Enter` to confirm / `Escape` to cancel (the dialog
-  listens for both). Don't try to click the confirm button — its text collides
-  with row-level buttons.
-- **dnd-kit drag**: use keyboard `Space` (pick up) → `ArrowUp/Down` → `Space`
-  (drop) on the drag handle, not mouse simulation. Switch sort to `manual`
-  first for todos, otherwise the sort algorithm overwrites the reorder.
-- **Exports** (`<a download>` + Blob) don't reliably fire Playwright's download
-  event in Electron. `e2e/import-export.spec.ts` monkey-patches
-  `HTMLAnchorElement.prototype.click` to capture content; reuse that helper.
-- **Persistence**: DB writes are debounced 500ms. Before reloading or asserting
-  cross-restart state, `waitForSave()` or press `Ctrl+S` (`flushSave`).
-- **CI**: `.github/workflows/e2e.yml` is **opt-in** (only `workflow_dispatch`,
-  no `pull_request` trigger) — it never runs/auto-blocks PRs. Trigger it
-  manually from the Actions tab when you want a full `windows-latest` run.
-  Local cold-start can flake (one known instance: the "首次启动" test when a
-  zombie electron process lingers); `playwright.config.ts` sets `retries: 1`
-  locally / `2` on CI as a safety net.
+- `inspect_v2(path)` 永不抛错，所有问题进报告；`CeleryDb::import_from_v2`
+  以只读 ATTACH 挂载源库后在目标 v3 库单事务转换（失败整体回滚、可重试）。
+- `detect_v2_source()` 自动探测 2.x 默认目录与 `storage-config.json` 自定义目录。
+- 只认 `dataVersion` 4–9；活跃事项孤儿引用终止导入；归档保留项目名快照；
+  设置按白名单导入（主题/模板/视图/`sort.*`），OS 级状态跳过。
+- 桌面端入口：`legacy_v2_*` Tauri 命令 + `@celery/data` 的
+  `LegacyV2ImportService` + 首启导入横幅（仅空库时出现）。
+- 2.x 数据真机位置：`%APPDATA%/celery-todo/data`（排查导入问题先看这里）。
 
 ## Read before editing sensitive areas
 
-- `src/utils/database.ts` — schema, migrations, and all data access.
-- `src/store/useTodoStore.ts` — most complex store (recycle bin, bulk ops,
-  filtering, sorting).
-- `electron/main.ts` + `electron/preload.ts` — IPC surface; any change must be
-  mirrored on both sides and recompiled via `build:electron` / `electron:dev`.
-- `electron/install-options.ts` + `build/installer.nsh` — NSIS 自定义安装页
-  与主进程的"一次性信箱"协议。`installer.nsh` 在用户勾选「使用自定义设置」
-  时把选择写入 `userData/install-options.json`，`install-options.ts` 在
-  `app.whenReady` 早期读取、应用、删除。**任何字段重命名/增删都要同步两边**，
-  且 NSIS 改动**必须本地 `bun run electron:build` 一次跑通 Setup.exe 才能合**
-  （vitest 无法覆盖 NSIS 脚本本身；只有 `normalizeInstallOptions` 纯函数有单测）。
-  升级场景下 `${isUpdated}` 宏自动跳过自定义页，不要破坏 PRE 函数里的 Abort。
-- `electron/updater.ts` — auto-update (electron-updater) integration: events
-  broadcast to the renderer, `app.isPackaged` short-circuit for dev, and
-  IPC channels consumed by `src/hooks/useAutoUpdate.ts`. Touching the
-  updater = mirror changes in main, preload, and `src/types/global.d.ts`.
-- `e2e/helpers.ts` — `launchApp`/`closeApp`, the `CELERY_TODO_USERDATA` env
-  hook contract with `electron/main.ts`, and shared selector/interaction
-  helpers that every spec depends on.
-- `vite.config.ts` — dev server, alias, plugin setup, and the vitest
-  include/exclude that keeps E2E specs out of unit-test runs.
-- `cli/src/storage.ts` + `cli/src/db.ts` — the CLI's mirror of the app's
-  storage-path resolution and DB schema. Any change to `electron/storage.ts`,
-  the DB schema (`src/utils/database.ts` createTables / `DB_VERSION`), or the
-  Todo/Project types must be reflected here too. The CLI does **not** run
-  migrations — it assumes an already-initialized DB, so it must track schema
-  changes by hand. See `cli/README.md` §架构 / 关键约束.
+- `apps/desktop/src/utils/dataGateway.ts` — Repository 契约实现与全部映射层。
+- `apps/desktop/src/store/useTodoStore.ts` — 最复杂的 store（归档、批量、
+  筛选、排序）。
+- `apps/desktop/src-tauri/src/commands.rs` — Tauri 命令面；改命令时同步
+  `tauri-repositories.ts` 与（若涉及 DTO）Rust 侧绑定再生成。
+- `apps/desktop/src/platform/index.ts` — 平台能力开关与降级桩。
+- `apps/desktop/src/store/useSettingsStore.ts` — K/V 持久化读取层：新增设置
+  字段要在这里补缺失键回退，并跑根 `bun run build`。
+- `apps/desktop/e2e/wdio.conf.ts` — E2E 启动约定。
+- `apps/mobile/README.md` — 移动端架构与关键约束（独立依赖树、无自动化测试）。

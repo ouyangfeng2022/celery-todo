@@ -1,14 +1,13 @@
 {
   "name": "celery-todo",
   "private": true,
-  "version": "2.20.2",
+  "version": "3.4.2",
   "description": "Celery Todo monorepo（3.0 跨端：Tauri 桌面 + Expo 移动 + 共享核心）",
   "license": "MIT",
   "type": "module",
   "packageManager": "bun@1.3.10",
   "workspaces": [
     "apps/desktop",
-    "apps/desktop-electron",
     "packages/*"
   ],
   "repository": {
@@ -20,40 +19,25 @@
   },
   "homepage": "https://github.com/ouyangfeng2022/celery-todo#readme",
   "scripts": {
-    "dev": "bun run --filter @celery/desktop-electron dev",
     "build": "turbo run build",
-    "build:electron": "bun run --filter @celery/desktop-electron build:electron",
     "lint": "turbo run lint",
-    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,css}\" \"apps/*/cli/**/*.ts\" \"packages/*/src/**/*.{ts,tsx,css}\"",
+    "format": "prettier --write \"apps/*/src/**/*.{ts,tsx,css}\" \"packages/*/src/**/*.{ts,tsx,css}\"",
     "test": "turbo run test:run",
     "test:run": "turbo run test:run",
     "test:coverage": "turbo run test:coverage",
     "typecheck": "turbo run typecheck",
-    "e2e": "bun run --filter @celery/desktop-electron e2e",
-    "e2e:install": "bun run --filter @celery/desktop-electron e2e:install",
-    "rebuild:electron": "bun run --filter @celery/desktop-electron rebuild:electron",
     "desktop:dev": "bun run --filter @celery/desktop tauri:dev",
     "desktop:build": "bun run --filter @celery/desktop tauri:build",
-    "electron:dev": "bun run --filter @celery/desktop-electron electron:dev",
-    "electron:build": "bun run --filter @celery/desktop-electron electron:build",
-    "cli": "bun run --filter @celery/desktop-electron cli",
-    "build:cli": "turbo run build:cli",
-    "test:cli": "turbo run test:cli",
-    "bump": "node scripts/bump-version.mjs",
-    "extract-changelog": "node scripts/extract-changelog.mjs",
     "check-repo": "node scripts/check-repo-health.mjs"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
-    "better-sqlite3": "^11.8.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.8",
     "prettier": "^3.3.3",
+    "sharp": "^0.35.3",
     "turbo": "^2.3.3"
-  },
-  "dependencies": {
-    "xlsx": "^0.18.5"
   }
 }

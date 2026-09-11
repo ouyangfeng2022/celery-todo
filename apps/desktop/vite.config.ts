@@ -4,10 +4,9 @@ import path from 'path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// 读取 tauri.conf.json 中的 version 字段，作为应用版本号的唯一源。
-// workspace 根 package.json 的 version 跟随 2.x Electron 发版线，与 3.0 桌面端
-// 的 tauri.conf.json 各自独立（desktop-release 流水线 bump 的是后者），不能混用。
-// 通过 define 在构建期把 __APP_VERSION__ 注入为字符串常量。
+// 读取 tauri.conf.json 中的 version 字段，作为应用版本号的唯一源
+// （Rust workspace.package.version 同步维护）。通过 define 在构建期把
+// __APP_VERSION__ 注入为字符串常量。
 const tauriConf = JSON.parse(
   readFileSync(
     fileURLToPath(new URL('./src-tauri/tauri.conf.json', import.meta.url)),
@@ -16,7 +15,6 @@ const tauriConf = JSON.parse(
 ) as { version: string };
 
 // Tauri 桌面端 renderer 的 Vite 配置。
-// 端口 5174：与迁移壳（Electron，5173）区分，允许两套应用并行开发。
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,

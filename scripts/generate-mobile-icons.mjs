@@ -3,8 +3,7 @@
  * @description 一次性脚本：把品牌 Logo（橙色无文字版，与桌面端图标同源）
  * 光栅化为 Expo 移动端所需的图标资产。
  *
- * 源：apps/desktop-electron/assets/celery-todo-no-text-light.svg
- * （主配色 = 橙色版，见 scripts/generate-icons.mjs 的说明）
+ * 源：apps/desktop/assets/celery-todo-no-text-light.svg（主配色 = 橙色版）
  *
  * 产物（apps/mobile/assets/）：
  *   - icon.png            1024×1024  Expo icon（iOS 不允许透明，纸白底）
@@ -24,7 +23,7 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
-const svgPath = resolve(root, 'apps/desktop-electron/assets/celery-todo-no-text-light.svg');
+const svgPath = resolve(root, 'apps/desktop/assets/celery-todo-no-text-light.svg');
 const outDir = resolve(root, 'apps/mobile/assets');
 
 if (!existsSync(svgPath)) {
