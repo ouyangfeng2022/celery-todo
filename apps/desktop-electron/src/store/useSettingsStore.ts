@@ -138,6 +138,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       completedSinkToBottom: false,
       showTimeLabels: true,
       showAllDoneCelebration: true,
+      // 2.x 无「导出图片」功能（该键由共享类型引入），恒为默认显示
+      showExportBranding: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），恒为主窗口行为
       startupWindow: DEFAULT_SETTINGS.startupWindow,
       // 2.x 无「网络代理」设置项（该键由共享类型引入），恒为默认直连

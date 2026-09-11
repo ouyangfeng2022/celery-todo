@@ -1563,6 +1563,8 @@ export function exportAllData(): import('../types').AppExportData {
       completedSinkToBottom: false,
       showTimeLabels: true,
       showAllDoneCelebration: true,
+      // 2.x 无「导出图片」功能（该键由共享类型引入），导出恒为默认显示
+      showExportBranding: true,
       // 2.x 无「启动窗口」设置项（该键由共享类型引入），导出恒为主窗口
       startupWindow: DEFAULT_SETTINGS.startupWindow,
       // 2.x 无「网络代理」设置项（该键由共享类型引入），导出恒为默认直连

@@ -45,4 +45,21 @@ describe('ExportImageCard', () => {
     expect(screen.getByText('事项 8')).toBeInTheDocument();
     expect(screen.queryByText(/预览省略/)).not.toBeInTheDocument();
   });
+
+  it('底部署名包含 GitHub 链接与仓库二维码', () => {
+    render(<ExportImageCard project={project} todos={todos} filter="all" />);
+
+    expect(screen.getByText('github.com/ouyangfeng2022/celery-todo')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'GitHub 仓库二维码' })).toBeInTheDocument();
+  });
+
+  it('showBranding=false 时底部署名不显示链接与二维码，保留品牌与日期', () => {
+    render(
+      <ExportImageCard project={project} todos={todos} filter="all" showBranding={false} />,
+    );
+
+    expect(screen.queryByText('github.com/ouyangfeng2022/celery-todo')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'GitHub 仓库二维码' })).not.toBeInTheDocument();
+    expect(screen.getByText('Celery Todo')).toBeInTheDocument();
+  });
 });

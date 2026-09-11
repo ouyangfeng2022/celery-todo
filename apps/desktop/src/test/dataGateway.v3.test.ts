@@ -184,6 +184,7 @@ describe('dataGateway（v3 内存适配器）', () => {
         completedSinkToBottom: false,
         showTimeLabels: true,
         showAllDoneCelebration: true,
+        showExportBranding: true,
         proxyEnabled: false,
         proxyMode: 'system',
         proxyUrl: '',

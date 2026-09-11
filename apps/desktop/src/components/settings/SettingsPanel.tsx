@@ -297,6 +297,7 @@ function SettingsPanelComponent({
                     completedSinkToBottom={settings.completedSinkToBottom}
                     showTimeLabels={settings.showTimeLabels}
                     showAllDoneCelebration={settings.showAllDoneCelebration}
+                    showExportBranding={settings.showExportBranding}
                     onUpdateSettings={onUpdateSettings}
                   />
                 )}

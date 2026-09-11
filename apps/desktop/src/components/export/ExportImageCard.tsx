@@ -9,6 +9,7 @@
  */
 
 import { forwardRef, useMemo } from 'react';
+import { create as createQr } from 'qrcode';
 import type { Project, Todo } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { sortTodos } from '../../utils/sortTodos';
@@ -25,10 +26,63 @@ export interface ExportImageCardProps {
   filter: ExportImageFilter;
   /** 仅用于弹窗内预览；省略时渲染完整事项列表，供最终图片导出使用。 */
   maxItems?: number;
+  /** 底部署名是否显示 GitHub 链接与二维码；省略时显示（由设置 showExportBranding 控制）。 */
+  showBranding?: boolean;
 }
 
 /** 卡片渲染宽度（CSS 像素）。导出时 pixelRatio: 2 → 1440px 物理像素 */
 const CARD_WIDTH = 720;
+
+/** 底部署名指向的仓库主页（链接文字与二维码内容一致） */
+const GITHUB_REPO_URL = 'https://github.com/ouyangfeng2022/celery-todo';
+const GITHUB_REPO_LABEL = GITHUB_REPO_URL.replace(/^https?:\/\//, '');
+
+/**
+ * 仓库二维码：qrcode 的 create() 纯同步计算模块矩阵，模块加载时算一次即可。
+ * 直接渲染成内联 SVG path（每个模块一个 1×1 方块）—— 矢量随 pixelRatio 放大
+ * 不失真，且不经过 <img>，html-to-image 截图时无需图片内联，无加载时序问题。
+ */
+const QR_MODULES = createQr(GITHUB_REPO_URL, { errorCorrectionLevel: 'M' }).modules;
+const QR_PATH = (() => {
+  const parts: string[] = [];
+  for (let row = 0; row < QR_MODULES.size; row++) {
+    for (let col = 0; col < QR_MODULES.size; col++) {
+      if (QR_MODULES.get(row, col)) parts.push(`M${col} ${row}h1v1h-1z`);
+    }
+  }
+  return parts.join('');
+})();
+
+/**
+ * 二维码徽标：固定白底 + 深色模块，保证任意主题（含深色）下都可扫描 ——
+ * 部分扫码器不识别反色二维码，故不走 CSS 变量。
+ */
+function QrBadge() {
+  return (
+    <div
+      style={{
+        flexShrink: 0,
+        padding: 6,
+        backgroundColor: '#fff',
+        borderRadius: 8,
+        border: '1px solid var(--border-color)',
+        lineHeight: 0,
+      }}
+    >
+      <svg
+        width={48}
+        height={48}
+        viewBox={`0 0 ${QR_MODULES.size} ${QR_MODULES.size}`}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label="GitHub 仓库二维码"
+        style={{ display: 'block' }}
+      >
+        <path d={QR_PATH} fill="#221f1a" />
+      </svg>
+    </div>
+  );
+}
 
 /**
  * 把 ISO 日期格式化为「YYYY.MM.DD」。
@@ -216,7 +270,7 @@ function ProgressBar({ total, completed }: { total: number; completed: number })
 }
 
 export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
-  function ExportImageCard({ project, todos, filter, maxItems }, ref) {
+  function ExportImageCard({ project, todos, filter, maxItems, showBranding = true }, ref) {
     // —— 统计口径始终基于全量 todos ——
     const total = todos.length;
     const completedCount = todos.filter((t) => t.completed).length;
@@ -373,23 +427,78 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
             </>
           )}
 
-          {/* 底部署名 */}
-          <div
-            style={{
-              marginTop: 24,
-              paddingTop: 14,
-              borderTop: '1px solid var(--border-color)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              fontFamily: 'var(--font-brand)',
-              fontSize: 12,
-              color: 'var(--text-quaternary)',
-            }}
-          >
-            <span style={{ fontStyle: 'italic' }}>Celery Todo</span>
-            <span>{exportedLabel}</span>
-          </div>
+          {/* 底部署名：开启推广位时附 GitHub 链接与二维码，否则仅品牌 + 日期 */}
+          {showBranding ? (
+            <div
+              style={{
+                marginTop: 24,
+                paddingTop: 14,
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                gap: 16,
+              }}
+            >
+              <div
+                style={{
+                  minWidth: 0,
+                  fontFamily: 'var(--font-brand)',
+                  fontSize: 12,
+                  color: 'var(--text-quaternary)',
+                }}
+              >
+                <div style={{ fontStyle: 'italic' }}>Celery Todo</div>
+                <div
+                  style={{
+                    marginTop: 2,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 11,
+                    wordBreak: 'break-all',
+                  }}
+                >
+                  {GITHUB_REPO_LABEL}
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  gap: 10,
+                  flexShrink: 0,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--font-brand)',
+                    fontSize: 12,
+                    color: 'var(--text-quaternary)',
+                    paddingBottom: 3,
+                  }}
+                >
+                  {exportedLabel}
+                </span>
+                <QrBadge />
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: 24,
+                paddingTop: 14,
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontFamily: 'var(--font-brand)',
+                fontSize: 12,
+                color: 'var(--text-quaternary)',
+              }}
+            >
+              <span style={{ fontStyle: 'italic' }}>Celery Todo</span>
+              <span>{exportedLabel}</span>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -13,6 +13,7 @@ interface GeneralSectionProps {
   completedSinkToBottom: boolean;
   showTimeLabels: boolean;
   showAllDoneCelebration: boolean;
+  showExportBranding: boolean;
   onUpdateSettings: (updates: {
     theme?: ThemeName;
     colorMode?: ThemeMode;
@@ -20,6 +21,7 @@ interface GeneralSectionProps {
     completedSinkToBottom?: boolean;
     showTimeLabels?: boolean;
     showAllDoneCelebration?: boolean;
+    showExportBranding?: boolean;
   }) => void;
 }
 
@@ -42,6 +44,7 @@ export function GeneralSection({
   completedSinkToBottom,
   showTimeLabels,
   showAllDoneCelebration,
+  showExportBranding,
   onUpdateSettings,
 }: GeneralSectionProps) {
   return (
@@ -146,6 +149,28 @@ export function GeneralSection({
             />
           </label>
         </div>
+      </section>
+
+      <section>
+        <h3 className="claude-eyebrow mb-3" style={{ color: 'var(--text-secondary)' }}>
+          图片导出
+        </h3>
+        <label className="flex cursor-pointer items-center justify-between gap-6 py-2">
+          <span>
+            <span className="block text-sm" style={{ color: 'var(--text-primary)' }}>
+              显示仓库链接与二维码
+            </span>
+            <span className="mt-1 block text-xs" style={{ color: 'var(--text-tertiary)' }}>
+              项目导出为图片时，底部署名处附带 GitHub 链接与二维码
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            checked={showExportBranding}
+            onChange={(event) => onUpdateSettings({ showExportBranding: event.target.checked })}
+            className="h-4 w-4 flex-shrink-0 accent-[var(--accent)]"
+          />
+        </label>
       </section>
     </div>
   );

@@ -151,6 +151,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       completedSinkToBottom: stored.completedSinkToBottom === 'true',
       showTimeLabels: stored.showTimeLabels !== 'false',
       showAllDoneCelebration: stored.showAllDoneCelebration !== 'false',
+      // 导出图片署名：老数据无该键时默认显示 GitHub 链接与二维码
+      showExportBranding: stored.showExportBranding !== 'false',
       // ===== 网络代理（老数据缺失键时默认关闭、跟随系统代理） =====
       proxyEnabled: stored.proxyEnabled === 'true',
       proxyMode: stored.proxyMode === 'custom' ? 'custom' : 'system',

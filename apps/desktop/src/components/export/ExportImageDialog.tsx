@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExportImageCard, type ExportImageFilter } from './ExportImageCard';
 import { exportNodeAsPngBlob } from '../../utils/exportImage';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import type { Project, Todo } from '../../types';
 
 export interface ExportImageDialogProps {
@@ -58,6 +59,8 @@ export function ExportImageDialog({
   const [filter, setFilter] = useState<ExportImageFilter>('all');
   const [busy, setBusy] = useState<'copy' | 'download' | null>(null);
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  // 底部署名是否附 GitHub 链接与二维码（设置页「图片导出」可关）；订阅式读取，开关即时反映到预览
+  const showBranding = useSettingsStore((s) => s.showExportBranding);
   const cardRef = useRef<HTMLDivElement>(null);
   const autoExportStartedRef = useRef(false);
 
@@ -143,7 +146,13 @@ export function ExportImageDialog({
   if (autoExport) {
     return open ? (
       <div aria-hidden="true" className="fixed left-[-10000px] top-0 pointer-events-none">
-        <ExportImageCard ref={cardRef} project={project} todos={todos} filter="all" />
+        <ExportImageCard
+          ref={cardRef}
+          project={project}
+          todos={todos}
+          filter="all"
+          showBranding={showBranding}
+        />
       </div>
     ) : null;
   }
@@ -227,13 +236,25 @@ export function ExportImageDialog({
               style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
               <div style={{ flexShrink: 0 }}>
-                <ExportImageCard project={project} todos={todos} filter={filter} maxItems={6} />
+                <ExportImageCard
+                  project={project}
+                  todos={todos}
+                  filter={filter}
+                  maxItems={6}
+                  showBranding={showBranding}
+                />
               </div>
             </div>
 
             {/* 完整卡片仅供 PNG 生成；不影响用户看到的摘要预览。 */}
             <div aria-hidden="true" className="fixed left-[-10000px] top-0 pointer-events-none">
-              <ExportImageCard ref={cardRef} project={project} todos={todos} filter={filter} />
+              <ExportImageCard
+                ref={cardRef}
+                project={project}
+                todos={todos}
+                filter={filter}
+                showBranding={showBranding}
+              />
             </div>
 
             {/* 底部操作栏 + 反馈 */}
