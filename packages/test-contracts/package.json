@@ -1,7 +1,7 @@
 {
   "name": "@celery/test-contracts",
   "private": true,
-  "version": "3.4.2",
+  "version": "3.5.0",
   "description": "Repository 共享契约测试套件：内存适配器、Rust SQLite（经 Tauri 桥）与 Expo 适配器跑同一套规范",
   "license": "MIT",
   "type": "module",

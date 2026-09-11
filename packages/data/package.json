@@ -1,7 +1,7 @@
 {
   "name": "@celery/data",
   "private": true,
-  "version": "3.4.2",
+  "version": "3.5.0",
   "description": "Repository 契约、查询 DTO、v3 导入导出格式与内存适配器（Tauri / Expo / 测试共用）",
   "license": "MIT",
   "type": "module",
