@@ -1,8 +1,8 @@
 /**
  * @file TodoDetailDialog - 事项详情浮窗
- * @description 点击 todo 标题后弹出，承担标题/描述/优先级/计划日期/所属项目的
- *              完整编辑能力。Markdown 渲染器仅在描述切到「预览」tab 时懒加载，
- *              避免首次进入浮窗就拉取 react-markdown / KaTeX chunk。
+ * @description 点击 todo 标题后弹出，默认整体只读预览（标题纯文本、描述渲染
+ *              Markdown），顶部「编辑」开关进入编辑态；优先级/计划日期/置顶/
+ *              归档不受开关影响，始终即时可操作。
  *
  * 实现要点：
  * - 标题/描述本地草稿 + 600ms debounce 提交；关闭/归档前强制 flush，避免丢失输入。
@@ -21,7 +21,7 @@ import type { Priority } from '../../types';
 import { CheckIcon, ArchiveIcon, PinIcon, CalendarIcon, XIcon } from '../common/Icons';
 import { DateInput } from '../common/DateInput';
 
-// Markdown/GFM/KaTeX 仅在浮窗切到「预览」tab 时加载。
+// Markdown/GFM/KaTeX 只在预览态挂载时加载，编辑态不拉取这些 chunk。
 const MarkdownContent = lazy(() =>
   import('../common/MarkdownContent').then((module) => ({ default: module.MarkdownContent })),
 );
@@ -60,7 +60,7 @@ function TodoDetailDialogComponent() {
   // 当前打开的 todo.id；用于在 todo 引用变化（其他字段更新）时跳过草稿重置
   const openedIdRef = useRef<string | null>(null);
 
-  const [descMode, setDescMode] = useState<'edit' | 'preview'>('preview');
+  const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // 浮窗打开/切换 todo 时：同步草稿、重置 lastSaved、autosize textarea。
@@ -79,7 +79,7 @@ function TodoDetailDialogComponent() {
     titleDraftRef.current = todo.title;
     descDraftRef.current = initialDesc;
     lastSavedRef.current = { title: todo.title, desc: initialDesc };
-    setDescMode('preview');
+    setIsEditing(false);
     setIsSaving(false);
     const raf = requestAnimationFrame(() => {
       autosizeTextarea(titleRef.current);
@@ -98,6 +98,17 @@ function TodoDetailDialogComponent() {
   useEffect(() => {
     autosizeTextarea(descRef.current);
   }, [descDraft]);
+
+  // 进入编辑态时 textarea 才挂载，rows/minHeight 只给初始高度；
+  // 长标题/长描述需要再量一次，否则要等到首次输入才会撑开。
+  useEffect(() => {
+    if (!isEditing) return;
+    const raf = requestAnimationFrame(() => {
+      autosizeTextarea(titleRef.current);
+      autosizeTextarea(descRef.current);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isEditing]);
 
   // 卸载时清理 debounce timer（不在这里 flush —— 关闭流程已显式 flush）
   useEffect(() => {
@@ -157,6 +168,18 @@ function TodoDetailDialogComponent() {
       requestAnimationFrame(() => autosizeTextarea(descRef.current));
     },
     [scheduleSave],
+  );
+
+  // 关闭开关即退出编辑：立即落库并清掉「保存中」，预览与状态条同步到最终内容
+  const handleEditToggle = useCallback(
+    (editing: boolean) => {
+      if (!editing) {
+        flushNow();
+        setIsSaving(false);
+      }
+      setIsEditing(editing);
+    },
+    [flushNow],
   );
 
   const handleClose = useCallback(() => {
@@ -234,8 +257,23 @@ function TodoDetailDialogComponent() {
                 {todo.completed ? '已完成' : '标记完成'}
               </button>
 
+              {/* 编辑开关：关 = 只读预览，开 = 标题/描述可编辑 */}
+              <label
+                className="ml-auto flex min-h-8 cursor-pointer select-none items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
+                style={{ color: isEditing ? 'var(--accent)' : 'var(--text-secondary)' }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isEditing}
+                  onChange={(e) => handleEditToggle(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                  aria-label="编辑事项内容"
+                />
+                编辑
+              </label>
+
               <span
-                className="ml-auto flex items-center gap-1.5 text-xs font-medium"
+                className="flex items-center gap-1.5 text-xs font-medium"
                 style={{ color: 'var(--text-secondary)' }}
                 aria-live="polite"
               >
@@ -268,20 +306,32 @@ function TodoDetailDialogComponent() {
                 {/* 标题 + 元数据工具栏：优先级 / 计划日期 / 置顶 / 归档
                  * 集中在标题正下方，方便快速操作；不再单独设底部动作栏或属性卡片。 */}
                 <div className="border-b pb-4" style={{ borderColor: 'var(--border-color)' }}>
-                  <textarea
-                    ref={titleRef}
-                    value={titleDraft}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="事项标题"
-                    aria-label="事项标题"
-                    rows={1}
-                    className="todo-title-input w-full resize-none overflow-y-auto text-2xl font-semibold leading-snug sm:text-3xl"
-                    style={{
-                      color: 'var(--text-primary)',
-                      fontFamily: 'var(--font-heading)',
-                      maxHeight: TEXTAREA_MAX_HEIGHT,
-                    }}
-                  />
+                  {isEditing ? (
+                    <textarea
+                      ref={titleRef}
+                      value={titleDraft}
+                      onChange={(e) => handleTitleChange(e.target.value)}
+                      placeholder="事项标题"
+                      aria-label="事项标题"
+                      rows={1}
+                      className="todo-title-input w-full resize-none overflow-y-auto text-2xl font-semibold leading-snug sm:text-3xl"
+                      style={{
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-heading)',
+                        maxHeight: TEXTAREA_MAX_HEIGHT,
+                      }}
+                    />
+                  ) : (
+                    <h2
+                      className="w-full whitespace-pre-wrap break-words text-2xl font-semibold leading-snug sm:text-3xl"
+                      style={{
+                        color: 'var(--text-primary)',
+                        fontFamily: 'var(--font-heading)',
+                      }}
+                    >
+                      {titleDraft}
+                    </h2>
+                  )}
 
                   {/* 元数据工具栏：窄窗自动换行 */}
                   <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-2">
@@ -368,45 +418,16 @@ function TodoDetailDialogComponent() {
                   </div>
                 </div>
 
-                {/* 描述：编辑是工作区主体，预览保留相同的纸面层级。 */}
+                {/* 描述：默认 Markdown 预览，顶部「编辑」开关打开后切为 textarea。 */}
                 <section aria-labelledby="todo-detail-description-heading" className="grid gap-2.5">
-                  <div className="flex items-center gap-1">
-                    <span
-                      id="todo-detail-description-heading"
-                      className="mr-auto font-serif text-sm font-medium"
-                      style={{ color: 'var(--text-primary)' }}
-                    >
-                      描述
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setDescMode('edit')}
-                      className={cn(
-                        'rounded px-2 py-0.5 text-xs transition-colors',
-                        descMode === 'edit'
-                          ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-                          : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
-                      )}
-                    >
-                      编辑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDescMode('preview')}
-                      className={cn(
-                        'rounded px-2 py-0.5 text-xs transition-colors',
-                        descMode === 'preview'
-                          ? 'bg-[var(--bg-hover)] text-[var(--text-primary)]'
-                          : 'text-[var(--text-tertiary)] hover:bg-[var(--bg-hover)]',
-                      )}
-                    >
-                      预览
-                    </button>
-                    <span className="ml-1 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                      支持 Markdown
-                    </span>
-                  </div>
-                  {descMode === 'edit' ? (
+                  <span
+                    id="todo-detail-description-heading"
+                    className="font-serif text-sm font-medium"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    描述
+                  </span>
+                  {isEditing ? (
                     <textarea
                       ref={descRef}
                       value={descDraft}
