@@ -35,15 +35,15 @@ Celery Todo 3.0 基于 Tauri 2、React 与 Rust 构建。数据保存在本机 S
 
 ## 下载
 
-在 [v3.5.0 正式版](https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.5.0) 或 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 下载对应平台的安装包。
+在 [v3.6.0 正式版](https://github.com/ouyangfeng2022/celery-todo/releases/tag/v3.6.0) 或 [最新 Release](https://github.com/ouyangfeng2022/celery-todo/releases/latest) 下载对应平台的安装包。
 
 | 平台                | 文件                                                                 |
 | ------------------- | -------------------------------------------------------------------- |
-| Windows x64         | `Celery.Todo_3.5.0_x64-setup.exe`                                    |
-| macOS Apple Silicon | `Celery.Todo_3.5.0_aarch64.dmg`                                      |
-| macOS Intel         | `Celery.Todo_3.5.0_x64.dmg`                                          |
-| Linux               | `Celery.Todo_3.5.0_amd64.AppImage` 或 `Celery.Todo_3.5.0_amd64.deb` |
-| Android             | `Celery.Todo_3.5.0_android.apk`                                      |
+| Windows x64         | `Celery.Todo_3.6.0_x64-setup.exe`                                    |
+| macOS Apple Silicon | `Celery.Todo_3.6.0_aarch64.dmg`                                      |
+| macOS Intel         | `Celery.Todo_3.6.0_x64.dmg`                                          |
+| Linux               | `Celery.Todo_3.6.0_amd64.AppImage` 或 `Celery.Todo_3.6.0_amd64.deb` |
+| Android             | `Celery.Todo_3.6.0_android.apk`                                      |
 | Windows CLI         | `celery.exe`                                                         |
 
 发布附件中的 `.sig` 与 `latest.json` 用于 Tauri 自动更新校验。应用会检查 GitHub Release 上的新版本。

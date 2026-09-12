@@ -1,7 +1,7 @@
 {
   "name": "@celery/desktop",
   "private": true,
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Celery Todo 3.0 桌面端（Tauri 2 + React/Vite），数据层为 crates/celery-db",
   "license": "MIT",
   "type": "module",

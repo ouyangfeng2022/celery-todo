@@ -1,7 +1,7 @@
 {
   "name": "@celery/ui-tokens",
   "private": true,
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Celery Todo 3.0 跨端设计 token：颜色、字体、间距、圆角、阴影、动效（桌面 Tailwind 与移动 RN StyleSheet 共用）",
   "license": "MIT",
   "type": "module",

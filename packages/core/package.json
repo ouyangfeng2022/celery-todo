@@ -1,7 +1,7 @@
 {
   "name": "@celery/core",
   "private": true,
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Celery Todo 共享业务内核：实体、校验、筛选、排序、计划、模板、统计与导入导出规则（平台无关）",
   "license": "MIT",
   "type": "module",
