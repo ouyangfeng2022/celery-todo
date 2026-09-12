@@ -13,6 +13,7 @@ import { create as createQr } from 'qrcode';
 import type { Project, Todo } from '../../types';
 import { PRIORITY_LABELS, PRIORITY_SOLID } from '../../types';
 import { sortTodos } from '../../utils/sortTodos';
+import { MarkdownContent } from '../common/MarkdownContent';
 
 /** 展示范围筛选 —— 头部统计始终基于全量，不受此影响 */
 export type ExportImageFilter = 'all' | 'pending' | 'completed';
@@ -28,6 +29,8 @@ export interface ExportImageCardProps {
   maxItems?: number;
   /** 底部署名是否显示 GitHub 链接与二维码；省略时显示（由设置 showExportBranding 控制）。 */
   showBranding?: boolean;
+  /** 是否渲染事项描述详情（Markdown）；省略时显示（由设置 showExportDetails 控制）。 */
+  showDetails?: boolean;
 }
 
 /** 卡片渲染宽度（CSS 像素）。导出时 pixelRatio: 2 → 1440px 物理像素 */
@@ -105,7 +108,7 @@ function orderAsProject(todos: Todo[]): Todo[] {
 }
 
 /** 单行任务视觉：复选框 + 标题 + 优先级标签，与 TodoItem 风格对齐 */
-function TodoRow({ todo }: { todo: Todo }) {
+function TodoRow({ todo, showDetails }: { todo: Todo; showDetails: boolean }) {
   return (
     <div
       style={{
@@ -140,7 +143,7 @@ function TodoRow({ todo }: { todo: Todo }) {
         {todo.completed && '✓'}
       </div>
 
-      {/* 标题 + 描述摘要 */}
+      {/* 标题 + 描述详情（与事项详情浮窗同款 Markdown 预览渲染，不再截断成单行） */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -154,20 +157,18 @@ function TodoRow({ todo }: { todo: Todo }) {
         >
           {todo.title}
         </div>
-        {todo.description && (
+        {showDetails && todo.description && (
           <div
+            className="markdown-body"
             style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: 12.5,
-              lineHeight: 1.4,
-              color: 'var(--text-tertiary)',
-              marginTop: 2,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              marginTop: 4,
+              fontSize: 13,
+              lineHeight: 1.55,
+              color: 'var(--text-secondary)',
+              wordBreak: 'break-word',
             }}
           >
-            {todo.description}
+            <MarkdownContent content={todo.description} />
           </div>
         )}
       </div>
@@ -270,7 +271,10 @@ function ProgressBar({ total, completed }: { total: number; completed: number })
 }
 
 export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
-  function ExportImageCard({ project, todos, filter, maxItems, showBranding = true }, ref) {
+  function ExportImageCard(
+    { project, todos, filter, maxItems, showBranding = true, showDetails = true },
+    ref,
+  ) {
     // —— 统计口径始终基于全量 todos ——
     const total = todos.length;
     const completedCount = todos.filter((t) => t.completed).length;
@@ -397,7 +401,7 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
                 <>
                   <GroupHeader label="待办" count={pendingCount} />
                   {displayedPending.map((todo) => (
-                    <TodoRow key={todo.id} todo={todo} />
+                    <TodoRow key={todo.id} todo={todo} showDetails={showDetails} />
                   ))}
                 </>
               )}
@@ -405,7 +409,7 @@ export const ExportImageCard = forwardRef<HTMLDivElement, ExportImageCardProps>(
                 <>
                   <GroupHeader label="已完成" count={completedCount} />
                   {displayedCompleted.map((todo) => (
-                    <TodoRow key={todo.id} todo={todo} />
+                    <TodoRow key={todo.id} todo={todo} showDetails={showDetails} />
                   ))}
                 </>
               )}

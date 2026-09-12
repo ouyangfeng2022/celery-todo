@@ -9,11 +9,12 @@
  *   取得它生成 PNG；可见区域只展示前几项，避免长项目撑高弹窗。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ExportImageCard, type ExportImageFilter } from './ExportImageCard';
 import { exportNodeAsPngBlob } from '../../utils/exportImage';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { contentHasMath } from '../common/contentHasMath';
 import type { Project, Todo } from '../../types';
 
 export interface ExportImageDialogProps {
@@ -49,6 +50,29 @@ async function copyBlobToClipboard(blob: Blob): Promise<boolean> {
   }
 }
 
+/** 等一帧渲染提交；rAF 不可用的环境（jsdom）退化为定时器。 */
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => resolve());
+    } else {
+      setTimeout(resolve, 16);
+    }
+  });
+}
+
+/**
+ * 事项描述里的公式走 KaTeX 懒加载（MarkdownContent 内部）。
+ * 截图前等该模块就绪并让 React 完成 fallback 替换，否则「直接导出」
+ * （挂载后立即截图）可能把纯文本 fallback 写进 PNG。
+ */
+async function waitMathRendered(chunk: Promise<unknown> | null): Promise<void> {
+  if (!chunk) return;
+  await chunk;
+  await nextPaint();
+  await nextPaint();
+}
+
 export function ExportImageDialog({
   open,
   project,
@@ -61,8 +85,19 @@ export function ExportImageDialog({
   const [feedback, setFeedback] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   // 底部署名是否附 GitHub 链接与二维码（设置页「图片导出」可关）；订阅式读取，开关即时反映到预览
   const showBranding = useSettingsStore((s) => s.showExportBranding);
+  // 事项描述详情是否渲染（设置页「图片导出」可关）；同为订阅式，关闭后预览与导出立即回到纯标题行
+  const showDetails = useSettingsStore((s) => s.showExportDetails);
   const cardRef = useRef<HTMLDivElement>(null);
   const autoExportStartedRef = useRef(false);
+  // 描述含公式时预载 KaTeX 渲染模块（与 MarkdownContent 内部懒加载共享同一模块缓存）；
+  // 详情整体关闭时描述不渲染，无需加载。
+  const mathChunk = useMemo(
+    () =>
+      showDetails && todos.some((t) => t.description && contentHasMath(t.description))
+        ? import('../common/MathMarkdownContent')
+        : null,
+    [showDetails, todos],
+  );
 
   // 每次打开重置局部状态（上次反馈/筛选不残留）
   useEffect(() => {
@@ -90,6 +125,7 @@ export function ExportImageDialog({
     setBusy('download');
     setFeedback(null);
     try {
+      await waitMathRendered(mathChunk);
       const blob = await exportNodeAsPngBlob(cardRef.current);
       downloadBlob(blob, filename);
       setFeedback({ kind: 'ok', text: '已保存' });
@@ -99,13 +135,14 @@ export function ExportImageDialog({
     } finally {
       setBusy(null);
     }
-  }, [filename]);
+  }, [filename, mathChunk]);
 
   const handleCopy = useCallback(async () => {
     if (!cardRef.current) return;
     setBusy('copy');
     setFeedback(null);
     try {
+      await waitMathRendered(mathChunk);
       const blob = await exportNodeAsPngBlob(cardRef.current);
       const ok = await copyBlobToClipboard(blob);
       if (ok) {
@@ -121,12 +158,13 @@ export function ExportImageDialog({
     } finally {
       setBusy(null);
     }
-  }, [filename]);
+  }, [filename, mathChunk]);
 
   // 直接导出也复用同一张完整卡片，避免把可见预览中的截断事项写入 PNG。
   const handleAutoExport = useCallback(async () => {
     if (!cardRef.current) return;
     try {
+      await waitMathRendered(mathChunk);
       const blob = await exportNodeAsPngBlob(cardRef.current);
       downloadBlob(blob, filename);
     } catch (err) {
@@ -134,7 +172,7 @@ export function ExportImageDialog({
     } finally {
       onClose();
     }
-  }, [filename, onClose]);
+  }, [filename, mathChunk, onClose]);
 
   useEffect(() => {
     if (!open || !autoExport || autoExportStartedRef.current) return;
@@ -152,6 +190,7 @@ export function ExportImageDialog({
           todos={todos}
           filter="all"
           showBranding={showBranding}
+          showDetails={showDetails}
         />
       </div>
     ) : null;
@@ -242,6 +281,7 @@ export function ExportImageDialog({
                   filter={filter}
                   maxItems={6}
                   showBranding={showBranding}
+                  showDetails={showDetails}
                 />
               </div>
             </div>
@@ -254,6 +294,7 @@ export function ExportImageDialog({
                 todos={todos}
                 filter={filter}
                 showBranding={showBranding}
+                showDetails={showDetails}
               />
             </div>
 

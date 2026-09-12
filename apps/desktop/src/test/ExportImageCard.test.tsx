@@ -46,6 +46,26 @@ describe('ExportImageCard', () => {
     expect(screen.queryByText(/预览省略/)).not.toBeInTheDocument();
   });
 
+  it('事项描述以 Markdown 预览形式完整渲染', () => {
+    const mdTodos: Todo[] = [
+      { ...todos[0], id: 'md-1', title: '带描述事项', description: '含 **加粗** 与 `code`' },
+    ];
+    render(<ExportImageCard project={project} todos={mdTodos} filter="all" />);
+
+    expect(screen.getByText('加粗').tagName).toBe('STRONG');
+    expect(screen.getByText('code').tagName).toBe('CODE');
+  });
+
+  it('showDetails=false 时不渲染事项描述', () => {
+    const mdTodos: Todo[] = [
+      { ...todos[0], id: 'md-2', title: '带描述事项', description: '这段描述不应出现' },
+    ];
+    render(<ExportImageCard project={project} todos={mdTodos} filter="all" showDetails={false} />);
+
+    expect(screen.getByText('带描述事项')).toBeInTheDocument();
+    expect(screen.queryByText('这段描述不应出现')).not.toBeInTheDocument();
+  });
+
   it('底部署名包含 GitHub 链接与仓库二维码', () => {
     render(<ExportImageCard project={project} todos={todos} filter="all" />);
 
@@ -54,9 +74,7 @@ describe('ExportImageCard', () => {
   });
 
   it('showBranding=false 时底部署名不显示链接与二维码，保留品牌与日期', () => {
-    render(
-      <ExportImageCard project={project} todos={todos} filter="all" showBranding={false} />,
-    );
+    render(<ExportImageCard project={project} todos={todos} filter="all" showBranding={false} />);
 
     expect(screen.queryByText('github.com/ouyangfeng2022/celery-todo')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'GitHub 仓库二维码' })).not.toBeInTheDocument();

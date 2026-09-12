@@ -247,6 +247,8 @@ export interface AppSettings {
   showAllDoneCelebration: boolean;
   /** 导出项目为图片时，底部署名是否附带 GitHub 仓库链接与二维码 */
   showExportBranding: boolean;
+  /** 导出项目为图片时，是否渲染每条事项的描述详情（Markdown） */
+  showExportDetails: boolean;
   // ===== 网络代理（仅桌面端更新器生效） =====
   /** 是否为应用内检查/下载更新启用代理 */
   proxyEnabled: boolean;
@@ -293,6 +295,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showAllDoneCelebration: true,
   // 导出图片默认附带仓库链接与二维码（推广位可在设置页关闭）
   showExportBranding: true,
+  // 导出图片默认渲染事项描述详情（同事项详情浮窗的 Markdown 预览）
+  showExportDetails: true,
   // 默认不走代理直连更新服务器；需要时在设置页开启（系统代理或自定义）
   proxyEnabled: false,
   proxyMode: 'system',
