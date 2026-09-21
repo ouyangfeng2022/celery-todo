@@ -257,7 +257,8 @@ function TodoDetailDialogComponent() {
                 {todo.completed ? '已完成' : '标记完成'}
               </button>
 
-              {/* 编辑开关：关 = 只读预览，开 = 标题/描述可编辑 */}
+              {/* 编辑开关：关 = 只读预览，开 = 标题/描述可编辑。
+               * 原生 checkbox 视觉隐藏，滑轨/圆点只作展示，键盘与读屏仍走 checkbox。 */}
               <label
                 className="ml-auto flex min-h-8 cursor-pointer select-none items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors hover:bg-[var(--bg-hover)]"
                 style={{ color: isEditing ? 'var(--accent)' : 'var(--text-secondary)' }}
@@ -266,9 +267,21 @@ function TodoDetailDialogComponent() {
                   type="checkbox"
                   checked={isEditing}
                   onChange={(e) => handleEditToggle(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-[var(--accent)]"
+                  className="peer sr-only"
                   aria-label="编辑事项内容"
                 />
+                <span
+                  aria-hidden="true"
+                  className="relative h-4 w-7 flex-shrink-0 rounded-full transition-colors duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--accent)]"
+                  style={{ backgroundColor: isEditing ? 'var(--accent)' : 'var(--border-strong)' }}
+                >
+                  <span
+                    className={cn(
+                      'absolute left-0.5 top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform duration-200',
+                      isEditing && 'translate-x-3',
+                    )}
+                  />
+                </span>
                 编辑
               </label>
 
