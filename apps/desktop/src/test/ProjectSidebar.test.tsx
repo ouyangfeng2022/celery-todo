@@ -65,8 +65,10 @@ describe('ProjectSidebar 设置菜单', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: '待重新安排 2' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '已逾期 2' })).toBeVisible();
     expect(screen.getByRole('button', { name: '今天 3' })).toBeVisible();
+    // 明天/本周/以后归入「计划」分组作为分类条件
+    expect(screen.getByText('计划')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '明天 1' }));
     expect(onTimeBucketChange).toHaveBeenCalledWith('tomorrow');
     expect(screen.getByRole('button', { name: '本周' })).toBeVisible();

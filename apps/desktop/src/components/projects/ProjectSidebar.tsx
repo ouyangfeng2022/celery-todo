@@ -297,6 +297,20 @@ export function SidebarUpdateCard({
   );
 }
 
+/** 归入「计划」分组的时间桶：作为分组内的分类条件，缩进展示。 */
+const PLAN_GROUP_BUCKETS: readonly TimeBucket[] = ['tomorrow', 'week', 'later'];
+
+/** 时间导航顺序：'plan' 占位渲染「计划」分组标题，其余为可直接切换的时间桶。 */
+const TIME_NAV: Array<TimeBucket | 'plan'> = [
+  'replan',
+  'today',
+  'plan',
+  'tomorrow',
+  'week',
+  'later',
+  'unscheduled',
+];
+
 /** 单个项目行（包装为 dnd-kit 可拖动节点） */
 interface SortableProjectItemProps {
   project: Project;
@@ -879,25 +893,35 @@ function ProjectSidebarComponent({
           </>
         ) : (
           <div className="space-y-1 pt-1">
-            {(Object.keys(TIME_BUCKET_LABELS) as TimeBucket[]).map((bucket) => {
-              const selected = bucket === timeBucket;
-              return (
+            {TIME_NAV.map((bucket) =>
+              bucket === 'plan' ? (
+                // 「计划」分组标题：明天/本周/以后作为其下的分类条件（缩进展示）
+                <div
+                  key="plan-group"
+                  className="px-2 pb-1 pt-3 text-xs font-medium"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  计划
+                </div>
+              ) : (
                 <button
                   key={bucket}
                   type="button"
                   onClick={() => onTimeBucketChange(bucket)}
-                  className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[var(--bg-hover)]"
+                  className={`flex w-full items-center gap-2.5 rounded-md py-2 pr-3 text-left text-sm transition-colors hover:bg-[var(--bg-hover)] ${
+                    PLAN_GROUP_BUCKETS.includes(bucket) ? 'pl-7' : 'pl-3'
+                  }`}
                   style={{
-                    color: selected ? 'var(--accent)' : 'var(--text-secondary)',
-                    backgroundColor: selected ? 'var(--accent-subtle)' : undefined,
+                    color: bucket === timeBucket ? 'var(--accent)' : 'var(--text-secondary)',
+                    backgroundColor: bucket === timeBucket ? 'var(--accent-subtle)' : undefined,
                   }}
                 >
                   <CalendarIcon size={14} />
                   <span className="flex-1">{TIME_BUCKET_LABELS[bucket]}</span>
                   {timeCounts[bucket] > 0 && <CountBadge>{timeCounts[bucket]}</CountBadge>}
                 </button>
-              );
-            })}
+              ),
+            )}
           </div>
         )}
       </div>
