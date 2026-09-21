@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import type { AppSettings, DeletedTodo, Project } from '../../types';
 import * as Icons from '../common/Icons';
 import { Header } from '../layout/Header';
+import { WindowTitlebar } from '../../app/WindowTitlebar';
 import type { UpdateStatus, UpdateInfoLite, DownloadProgress } from '@/hooks/useAutoUpdate';
 import { GeneralSection } from './sections/GeneralSection';
 import { StickerSection } from './sections/StickerSection';
@@ -163,10 +164,10 @@ function SettingsPanelComponent({
           onKeyDown={handleKeyDown}
           aria-label="设置"
         >
-          {/* 顶部行:复用主页面 <Header/> 工具组 + 分类标题区,与主页面顶部栏像素级一致。
-              左 280px 容器挂 Header(与主页面完全相同的工具组,不再有返回箭头),
-              右侧标题区按主页面标题区结构(拖拽区 + h1 + 右侧拖拽留白),
-              仅把项目名换成当前分类名。
+          {/* 顶部行:复用主页面 <Header/> 工具组 + <WindowTitlebar/> 标题区,
+              与主页面顶部栏像素级一致。左 280px 容器挂 Header(与主页面完全相同的
+              工具组,不再有返回箭头),右侧标题区复用 WindowTitlebar(自带拖拽区、
+              贴图入口与自绘 caption 按钮组),仅把项目名换成当前分类名。
               返回按钮改放在左侧导航栏顶部(原"设置"二字位置)。 */}
           <div className="flex flex-shrink-0">
             <div className="relative h-full w-[280px] flex-shrink-0">
@@ -188,29 +189,11 @@ function SettingsPanelComponent({
             </div>
 
             {/*
-              标题区:结构与主页面 App.tsx 标题区对齐。pr-[152px] 给原生 overlay 让位,
-              拖拽区铺满标题左侧到原生按钮之间的空白。背景 --bg-frame,与 Header 合成完整顶部栏。
+              标题区:复用主页面 <WindowTitlebar/>。设置页浮层(fixed inset-0)会盖住
+              主页面顶栏,若只留空白(2.x 原生 overlay 时代的做法)设置页就没有
+              窗口控制按钮组了;WindowTitlebar 自绘最小化/最大化/关闭并带拖拽区。
             */}
-            <div
-              className="relative flex h-full flex-1 items-center gap-3 px-7 pr-[152px]"
-              style={{ backgroundColor: 'var(--bg-frame)' }}
-            >
-              <div
-                aria-hidden="true"
-                className="titlebar-drag pointer-events-auto absolute inset-y-0 right-[152px]"
-                style={{ left: '0px' }}
-              />
-              <div className="titlebar-no-drag relative z-10 min-w-0">
-                <h1
-                  // leading-normal:防 truncate 裁拉丁降部,见 App.tsx 主页标题处注释
-                  className="truncate text-lg font-serif font-semibold leading-normal"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {activeNavItem.label}
-                </h1>
-              </div>
-              <div className="titlebar-no-drag relative z-10 ml-auto flex items-center gap-0.5" />
-            </div>
+            <WindowTitlebar title={activeNavItem.label} onEnterCompactMode={onEnterCompactMode} />
           </div>
 
           <div className="settings-panel flex min-h-0 flex-1">
