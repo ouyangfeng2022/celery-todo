@@ -1,5 +1,5 @@
 /**
- * @file 计划页：按时间桶（今天/明天/本周/以后/未安排/待重新安排）分组。
+ * @file 计划页：按时间桶（今天/明天/本周/以后/未安排/已逾期）分组。
  * @description 桶分类复用 @celery/core 的 planning 纯函数，与桌面端时间视图同源。
  */
 
@@ -21,7 +21,7 @@ const BUCKETS: { key: TimeBucket; label: string }[] = [
   { key: 'week', label: '本周' },
   { key: 'later', label: '以后' },
   { key: 'unscheduled', label: '未安排' },
-  { key: 'replan', label: '待重新安排' },
+  { key: 'replan', label: '已逾期' },
 ];
 
 export default function PlanScreen() {

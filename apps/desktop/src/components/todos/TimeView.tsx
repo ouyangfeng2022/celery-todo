@@ -282,7 +282,7 @@ export function TimeView({ projects, onInboxCreated, onOpenProject }: TimeViewPr
           style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-tertiary)' }}
         >
           {state.bucket === 'replan'
-            ? '没有需要重新安排的事项'
+            ? '没有已逾期的事项'
             : `“${TIME_BUCKET_LABELS[state.bucket]}”还没有事项`}
         </div>
       ) : (

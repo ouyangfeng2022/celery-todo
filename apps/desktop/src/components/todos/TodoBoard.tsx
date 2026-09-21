@@ -150,7 +150,7 @@ function TodoBoardComponent({
                     className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
                     style={{ color: 'var(--danger)', backgroundColor: 'var(--danger-subtle)' }}
                   >
-                    待重新安排
+                    已逾期
                   </span>
                 )}
                 <span

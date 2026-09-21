@@ -49,7 +49,7 @@ describe('time view store selectors', () => {
     ]);
   });
 
-  it('本周计数包含整周事项，同时保留今天与待重新安排的快捷计数', () => {
+  it('本周计数包含整周事项，同时保留今天与已逾期的快捷计数', () => {
     const counts = selectTimeBucketCounts([
       makeTodo('todo-1', '2026-08-10'),
       makeTodo('todo-2', '2026-08-12'),

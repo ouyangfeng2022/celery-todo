@@ -6,7 +6,7 @@ import { generateId, splitBulkTitles } from '../utils/helpers';
 import { classifyPlannedDate, isDateInCurrentWeek, type TimeBucket } from '../utils/planning';
 
 export const TIME_BUCKET_LABELS: Record<TimeBucket, string> = {
-  replan: '待重新安排',
+  replan: '已逾期',
   today: '今天',
   tomorrow: '明天',
   week: '本周',
