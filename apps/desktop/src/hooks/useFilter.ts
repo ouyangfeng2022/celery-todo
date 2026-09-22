@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Todo, FilterType, SortType } from '../types';
 import * as data from '../utils/dataGateway';
-import { DEFAULT_SORT, sortKey, sortTodos } from '../utils/sortTodos';
+import { DEFAULT_SORT, normalizeSortValue, sortKey, sortTodos } from '../utils/sortTodos';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 /** 默认值 */
@@ -50,12 +50,10 @@ export function useFilter(todos: Todo[], projectId: string, overrideFilter?: Fil
           prev[projectId] ? prev : { ...prev, [projectId]: storedFilter as FilterType },
         );
       }
-      if (
-        storedSort &&
-        (['created-desc', 'priority', 'manual'] as const).includes(storedSort as SortType)
-      ) {
+      if (storedSort) {
+        // normalizeSortValue 兜底脏值并把方向拆分前的旧值 priority 归一为 priority-desc
         setSortOverrides((prev) =>
-          prev[projectId] ? prev : { ...prev, [projectId]: storedSort as SortType },
+          prev[projectId] ? prev : { ...prev, [projectId]: normalizeSortValue(storedSort) },
         );
       }
     });

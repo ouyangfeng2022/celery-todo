@@ -39,12 +39,20 @@ export const PRIORITY_SOLID: Record<Priority, string> = {
 export type FilterType = 'all' | 'active' | 'completed';
 
 /**
- * 排序方式
- * - `created-desc`：按 createdAt 降序（新增置顶），用户可选
- * - `priority`：按优先级排序，用户可选
+ * 排序方式（方式 × 方向）
+ * - `created-desc`：按 createdAt 降序（新增置顶），历史默认
+ * - `created-asc`：按 createdAt 升序（最早创建在前）
+ * - `priority-desc`：按优先级降序（高 → 低）
+ * - `priority-asc`：按优先级升序（低 → 高）
  * - `manual`：用户拖拽重排后的内部状态，遵循 `todo.order`，不在界面中显示。
  */
-export type SortType = 'created-desc' | 'priority' | 'manual';
+export type SortType = 'created-desc' | 'created-asc' | 'priority-desc' | 'priority-asc' | 'manual';
+
+/** 用户可主动选择的排序方式族；方向（正/倒序）由 SortDirection 另行组合 */
+export type SortField = 'created' | 'priority';
+
+/** 排序方向：asc=正序，desc=倒序 */
+export type SortDirection = 'asc' | 'desc';
 
 /** 主工作区导航模式。 */
 export type NavigationMode = 'project' | 'time';
@@ -52,9 +60,9 @@ export type NavigationMode = 'project' | 'time';
 /** 项目事项的展示方式。 */
 export type TodoViewMode = 'list' | 'card';
 
-/** 用户可在下拉框主动选择的排序选项（manual 不在其中） */
-export const SORT_LABELS: Record<Exclude<SortType, 'manual'>, string> = {
-  'created-desc': '创建时间',
+/** 排序方式下拉展示标签（manual 只由拖拽产生，不在选项中） */
+export const SORT_FIELD_LABELS: Record<SortField, string> = {
+  created: '创建时间',
   priority: '优先级',
 };
 

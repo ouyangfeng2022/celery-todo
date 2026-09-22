@@ -6,13 +6,19 @@
  * 故主窗口改排序 → 贴图通过 data:changed 广播 refresh 后即同步。
  */
 
-import type { SortType, Todo } from './entities';
+import type { SortDirection, SortField, SortType, Todo } from './entities';
 
 /** 默认排序值（与历史行为保持一致） */
 export const DEFAULT_SORT: SortType = 'created-desc';
 
 /** 合法值白名单（防 settings 表脏值导致 UI 异常） */
-export const SORT_VALUES: readonly SortType[] = ['created-desc', 'priority', 'manual'];
+export const SORT_VALUES: readonly SortType[] = [
+  'created-desc',
+  'created-asc',
+  'priority-desc',
+  'priority-asc',
+  'manual',
+];
 
 /** per-project settings 命名键 */
 export const sortKey = (pid: string) => `sort.${pid}`;
@@ -23,6 +29,36 @@ const PRIORITY_WEIGHT: Record<string, number> = {
   medium: 2,
   low: 1,
 };
+
+/**
+ * 归一化 settings 表持久化的排序值：
+ * - 旧值 `priority`（方向拆分前的写法）映射为 `priority-desc`，保持老用户偏好；
+ * - 不在白名单内的脏值回退 DEFAULT_SORT。
+ */
+export function normalizeSortValue(raw: string | null | undefined): SortType {
+  if (raw === 'priority') return 'priority-desc';
+  return (SORT_VALUES as readonly string[]).includes(raw ?? '') ? (raw as SortType) : DEFAULT_SORT;
+}
+
+/** 取当前排序的方式族（manual 无方式语义，返回 null） */
+export function sortFieldOf(sort: SortType): SortField | null {
+  if (sort === 'manual') return null;
+  return sort.startsWith('created') ? 'created' : 'priority';
+}
+
+/** 取当前排序的方向（manual 无方向语义，按历史默认 desc 展示） */
+export function sortDirectionOf(sort: SortType): SortDirection {
+  return sort.endsWith('-asc') ? 'asc' : 'desc';
+}
+
+/** 切换排序方向（manual 不参与方向切换，原样返回） */
+export function toggleSortDirection(sort: SortType): SortType {
+  if (sort === 'manual') return sort;
+  // replace 返回 string，此处后缀必然合法（-asc ↔ -desc），断言收窄回 SortType
+  return (
+    sort.endsWith('-asc') ? sort.replace('-asc', '-desc') : sort.replace('-desc', '-asc')
+  ) as SortType;
+}
 
 /**
  * 从 settings 表读取该项目持久化的排序值（无值或脏值回退默认）。
@@ -41,19 +77,25 @@ export function sortTodos(todos: Todo[], sort: SortType): Todo[] {
       case 'created-desc':
         arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         break;
-      case 'priority':
-        // 主键：优先级降序（high > medium > low）
-        // 次键：createdAt 降序（新增在前），与 created-desc 全局规则保持一致，
+      case 'created-asc':
+        arr.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+        break;
+      case 'priority-desc':
+      case 'priority-asc': {
+        // 主键：优先级（desc=high→low，asc=low→high）
+        // 次键：createdAt 与主键同向（desc=新增在前，asc=最早在前），
         //       不依赖 DB 返回顺序，也不受 sort_order 残留（拖拽快照）影响——
         //       非手动模式下严格按时间排序，绝不被历史拖拽污染。
         // （createdAt 同毫秒时比较器返回 0，由 sort 稳定性保留 DB 序；此为边界，
         //   实际 UI 中连续添加间隔远超 1ms，不影响可见顺序。）
+        const dir = sort === 'priority-asc' ? 1 : -1;
         arr.sort(
           (a, b) =>
-            PRIORITY_WEIGHT[b.priority] - PRIORITY_WEIGHT[a.priority] ||
-            b.createdAt.localeCompare(a.createdAt),
+            dir * (PRIORITY_WEIGHT[a.priority] - PRIORITY_WEIGHT[b.priority]) ||
+            dir * a.createdAt.localeCompare(b.createdAt),
         );
         break;
+      }
       case 'manual':
         arr.sort((a, b) => a.order - b.order);
         break;

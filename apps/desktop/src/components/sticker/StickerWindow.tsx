@@ -2,14 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as data from '../../utils/dataGateway';
-import { DEFAULT_SORT, SORT_VALUES, sortKey, sortTodos } from '../../utils/sortTodos';
+import { DEFAULT_SORT, normalizeSortValue, sortKey, sortTodos } from '../../utils/sortTodos';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import {
   PRIORITY_LABELS,
   PRIORITY_SOLID,
   type Priority,
   type Project,
-  type SortType,
   type Todo,
 } from '../../types';
 import { generateId } from '../../utils/helpers';
@@ -56,10 +55,7 @@ function sameProjects(a: Project[], b: Project[]): boolean {
 async function loadStickerTodos(pid: string): Promise<Todo[]> {
   if (!pid) return [];
   const [all, storedSort] = await Promise.all([data.getTodos(pid), data.getSetting(sortKey(pid))]);
-  const sort =
-    storedSort && (SORT_VALUES as readonly string[]).includes(storedSort)
-      ? (storedSort as SortType)
-      : DEFAULT_SORT;
+  const sort = storedSort ? normalizeSortValue(storedSort) : DEFAULT_SORT;
   const active = sortTodos(
     all.filter((t) => !t.completed),
     sort,
