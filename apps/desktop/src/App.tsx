@@ -167,6 +167,7 @@ function App() {
     restoreTodo,
     permanentlyDelete,
     emptyArchive,
+    emptyProjectArchive,
   } = useTodos();
   // 详情浮窗的开关直接订阅 store：useTodos 不暴露 openDetail，且浮窗本身会自取
   // detailTodoId，App 这里只需要把 openDetail 透传给列表/卡片视图。
@@ -316,8 +317,7 @@ function App() {
   // 庆祝卡只在「全部」分类下顶替列表：「进行中」如实显示空态、「已完成」必须
   // 能看到已完成的事项本身，否则用户在任一分类下都找不到刚完成的事项。
   const allDone = stats.total > 0 && stats.active === 0;
-  const showAllDoneCard =
-    allDone && filter === 'all' && settings.showAllDoneCelebration;
+  const showAllDoneCard = allDone && filter === 'all' && settings.showAllDoneCelebration;
   // 撒花触发条件（两层防重复）：
   //   1) prevAllDoneRef —— 防同一 mount 周期内反复重渲染时重复触发（上升边沿）。
   //   2) celebrated.<projectId> 持久化键（settings 表）—— 防重启/切走再切回时重复撒花。
@@ -942,6 +942,7 @@ function App() {
           onRestoreTodo={handleRestoreFromHistory}
           onPermanentDeleteTodo={permanentlyDelete}
           onEmptyArchive={emptyArchive}
+          onEmptyProjectArchive={emptyProjectArchive}
           onExportHistory={() => void handleExportHistory()}
           updateStatus={isAutoUpdateAvailable ? updateStatus : undefined}
           updateInfo={isAutoUpdateAvailable ? updateInfo : undefined}

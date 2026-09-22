@@ -27,6 +27,8 @@ interface HistorySectionProps {
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */
   onEmptyArchive: () => void;
+  /** 清空指定项目的归档（项目分组删除按钮） */
+  onEmptyProjectArchive: (projectId: string) => void;
   /** 导出全量归档为 JSON 快照（只读，不可导回） */
   onExportHistory: () => void;
 }
@@ -36,6 +38,7 @@ export function HistorySection({
   onRestoreTodo,
   onPermanentDeleteTodo,
   onEmptyArchive,
+  onEmptyProjectArchive,
   onExportHistory,
 }: HistorySectionProps) {
   // === 分页数据 state ===
@@ -110,6 +113,14 @@ export function HistorySection({
     onEmptyArchive();
     void reload();
   }, [onEmptyArchive, reload]);
+  // 网关按项目清空在服务端抽取该项目全部归档（不受当前分页加载范围限制）。
+  const handleEmptyProject = useCallback(
+    (projectId: string) => {
+      onEmptyProjectArchive(projectId);
+      void reload();
+    },
+    [onEmptyProjectArchive, reload],
+  );
 
   return (
     <section>
@@ -123,6 +134,7 @@ export function HistorySection({
         onRestore={handleRestore}
         onPermanentDelete={handlePermanentDelete}
         onEmptyAll={handleEmptyAll}
+        onEmptyProject={handleEmptyProject}
         onExportHistory={onExportHistory}
       />
     </section>

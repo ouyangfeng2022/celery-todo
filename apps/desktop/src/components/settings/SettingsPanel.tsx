@@ -57,6 +57,8 @@ interface SettingsPanelProps {
   onPermanentDeleteTodo: (id: string) => void;
   /** 清空全部归档 */
   onEmptyArchive: () => void;
+  /** 清空指定项目的归档（历史页项目分组删除） */
+  onEmptyProjectArchive: (projectId: string) => void;
   /** 导出全量归档为 JSON 快照（只读，不可导回） */
   onExportHistory: () => void;
   // ===== 自动升级（仅桌面端；Web 下 undefined，UI 不渲染升级行） =====
@@ -103,6 +105,7 @@ function SettingsPanelComponent({
   onRestoreTodo,
   onPermanentDeleteTodo,
   onEmptyArchive,
+  onEmptyProjectArchive,
   onExportHistory,
   updateStatus = 'idle',
   updateInfo = null,
@@ -323,6 +326,7 @@ function SettingsPanelComponent({
                     onRestoreTodo={onRestoreTodo}
                     onPermanentDeleteTodo={onPermanentDeleteTodo}
                     onEmptyArchive={onEmptyArchive}
+                    onEmptyProjectArchive={onEmptyProjectArchive}
                     onExportHistory={onExportHistory}
                   />
                 )}

@@ -31,6 +31,7 @@ export function useTodos() {
   const restoreTodo = useTodoStore((state) => state.restoreTodo);
   const permanentlyDelete = useTodoStore((state) => state.permanentlyDelete);
   const emptyArchive = useTodoStore((state) => state.emptyArchive);
+  const emptyProjectArchive = useTodoStore((state) => state.emptyProjectArchive);
 
   const addTodo = useCallback(
     (title: string, priority: Priority = 'medium', description?: string, plannedDate?: string) => {
@@ -92,5 +93,6 @@ export function useTodos() {
     restoreTodo,
     permanentlyDelete,
     emptyArchive,
+    emptyProjectArchive,
   };
 }

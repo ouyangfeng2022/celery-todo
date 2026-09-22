@@ -1,6 +1,6 @@
 /**
  * @file ArchiveHistoryView - 已归档事项视图
- * @description 按项目归类展示归档事项，支持搜索、筛选、恢复与永久删除。
+ * @description 按项目归类展示归档事项，支持搜索、筛选、恢复、按项目删除与永久删除。
  */
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +27,8 @@ interface ArchiveHistoryViewProps {
   onRestore: (todo: DeletedTodo) => void;
   onPermanentDelete: (id: string) => void;
   onEmptyAll: () => void;
+  /** 永久删除指定项目的全部归档（服务端按项目抽取，不受当前分页限制） */
+  onEmptyProject: (projectId: string) => void;
   onExportHistory: () => void;
 }
 
@@ -42,11 +44,16 @@ function ArchiveHistoryViewComponent({
   onRestore,
   onPermanentDelete,
   onEmptyAll,
+  onEmptyProject,
   onExportHistory,
 }: ArchiveHistoryViewProps) {
   const [confirmEmpty, setConfirmEmpty] = useState(false);
   const [restoreTarget, setRestoreTarget] = useState<DeletedTodo | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeletedTodo | null>(null);
+  const [projectDeleteTarget, setProjectDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<ArchiveFilter>('all');
   const [projectId, setProjectId] = useState('all');
@@ -265,75 +272,89 @@ function ArchiveHistoryViewComponent({
         </div>
       ) : (
         <div ref={scrollContainerRef} className="max-h-[55vh] space-y-7 overflow-y-auto pr-1">
-          {groupedItems.map(({ id, project, todos }) => (
-            <section key={id}>
-              <div className="mb-2.5 flex items-center justify-between px-0.5">
-                <div
-                  className="flex min-w-0 items-center gap-2 text-sm font-semibold"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  <FolderIcon
-                    size={16}
-                    style={{ color: project?.color ?? 'var(--text-tertiary)' }}
-                  />
-                  <span className="truncate">
-                    {project?.name ?? todos[0]?.projectName ?? '已删除的项目'}
+          {groupedItems.map(({ id, project, todos }) => {
+            const projectName = project?.name ?? todos[0]?.projectName ?? '已删除的项目';
+            return (
+              <section key={id}>
+                <div className="mb-2.5 flex items-center justify-between px-0.5">
+                  <div
+                    className="flex min-w-0 items-center gap-2 text-sm font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    <FolderIcon
+                      size={16}
+                      style={{ color: project?.color ?? 'var(--text-tertiary)' }}
+                    />
+                    <span className="truncate">{projectName}</span>
+                    <button
+                      onClick={() => setProjectDeleteTarget({ id, name: projectName })}
+                      className="shrink-0 rounded-md p-1 text-[var(--text-tertiary)] transition-colors hover:bg-[var(--bg-tertiary)] hover:text-[var(--danger)]"
+                      aria-label={`永久删除项目「${projectName}」的全部归档事项`}
+                      title="永久删除该项目全部归档事项"
+                    >
+                      <TrashIcon size={14} />
+                    </button>
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                    {todos.length} 个事项
                   </span>
                 </div>
-                <span className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  {todos.length} 个事项
-                </span>
-              </div>
-              <div
-                className="overflow-hidden rounded-xl border"
-                style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}
-              >
-                {todos.map((todo, index) => (
-                  <div
-                    key={todo.id}
-                    className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-secondary)]"
-                    style={{ borderTop: index === 0 ? undefined : '1px solid var(--border-color)' }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="truncate text-sm font-medium"
-                        style={{ color: 'var(--text-primary)' }}
-                      >
-                        {todo.title}
-                      </p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                        归档于{' '}
-                        {timeFormat === 'exact'
-                          ? formatDateTime(todo.deletedAt)
-                          : formatRelativeTime(todo.deletedAt)}
-                      </p>
+                <div
+                  className="overflow-hidden rounded-xl border"
+                  style={{
+                    borderColor: 'var(--border-color)',
+                    backgroundColor: 'var(--bg-primary)',
+                  }}
+                >
+                  {todos.map((todo, index) => (
+                    <div
+                      key={todo.id}
+                      className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-secondary)]"
+                      style={{
+                        borderTop: index === 0 ? undefined : '1px solid var(--border-color)',
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p
+                          className="truncate text-sm font-medium"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          {todo.title}
+                        </p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                          归档于{' '}
+                          {timeFormat === 'exact'
+                            ? formatDateTime(todo.deletedAt)
+                            : formatRelativeTime(todo.deletedAt)}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <button
+                          onClick={() => setDeleteTarget(todo)}
+                          className="rounded-md p-1.5 opacity-0 transition-all hover:bg-[var(--bg-tertiary)] group-hover:opacity-100 focus:opacity-100"
+                          style={{ color: 'var(--text-tertiary)' }}
+                          aria-label={`永久删除 ${todo.title}`}
+                          title="永久删除"
+                        >
+                          <TrashIcon size={15} />
+                        </button>
+                        <button
+                          onClick={() => setRestoreTarget(todo)}
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
+                          style={{
+                            backgroundColor: 'var(--bg-tertiary)',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          取消归档
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        onClick={() => setDeleteTarget(todo)}
-                        className="rounded-md p-1.5 opacity-0 transition-all hover:bg-[var(--bg-tertiary)] group-hover:opacity-100 focus:opacity-100"
-                        style={{ color: 'var(--text-tertiary)' }}
-                        aria-label={`永久删除 ${todo.title}`}
-                        title="永久删除"
-                      >
-                        <TrashIcon size={15} />
-                      </button>
-                      <button
-                        onClick={() => setRestoreTarget(todo)}
-                        className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors hover:opacity-80"
-                        style={{
-                          backgroundColor: 'var(--bg-tertiary)',
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        取消归档
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
+                  ))}
+                </div>
+              </section>
+            );
+          })}
           {hasFilters && visibleItems.length === 0 && (
             <p className="py-12 text-center text-sm" style={{ color: 'var(--text-tertiary)' }}>
               没有符合条件的已归档事项
@@ -383,6 +404,18 @@ function ArchiveHistoryViewComponent({
           setDeleteTarget(null);
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <ConfirmDialog
+        open={projectDeleteTarget !== null}
+        title="永久删除项目归档"
+        message={`此操作将永久删除项目「${projectDeleteTarget?.name}」的全部归档事项（含当前未加载的部分），无法恢复。确定继续吗？`}
+        confirmText="永久删除"
+        danger
+        onConfirm={() => {
+          if (projectDeleteTarget) onEmptyProject(projectDeleteTarget.id);
+          setProjectDeleteTarget(null);
+        }}
+        onCancel={() => setProjectDeleteTarget(null)}
       />
     </div>
   );

@@ -88,8 +88,10 @@ interface TodoState {
   restoreTodo: (id: string) => Promise<void>;
   /** 永久删除归档事项（不可恢复） */
   permanentlyDelete: (id: string) => Promise<void>;
-  /** 清空当前项目的归档 */
+  /** 清空全部归档（历史页「全部删除」，跨项目） */
   emptyArchive: () => Promise<void>;
+  /** 清空指定项目的归档（历史页按项目删除分组） */
+  emptyProjectArchive: (projectId: string) => Promise<void>;
 
   // === 清理 ===
   /** 清空已完成（归档已完成的 todo） */
@@ -370,8 +372,15 @@ export const useTodoStore = create<TodoState>((set, get) => ({
   },
 
   emptyArchive: async () => {
-    await data.emptyArchive(get().currentProjectId);
+    // 历史页「全部删除」是跨项目视图；2.x 语义曾传 currentProjectId（只清当前
+    // 项目），与对话框文案「所有已归档事项」不符，v3 起改为全局清空。
+    await data.emptyArchive();
     set({ deletedTodos: [] });
+  },
+
+  emptyProjectArchive: async (projectId: string) => {
+    await data.emptyArchive(projectId);
+    set({ deletedTodos: get().deletedTodos.filter((t) => t.projectId !== projectId) });
   },
 
   clearCompleted: async () => {
